@@ -31,7 +31,7 @@ if __name__ == '__main__':
     try:
         api_paste_config_file = CONF.find_file(CONF.api_paste_config)
         app = pastedeploy.paste_deploy_app(api_paste_config_file, PRODUCT_NAME, {})
-        server = wsgi.Service(app, CONF.bind_port)
+        server = wsgi.Service(app, host=CONF.bind_host, port=CONF.bind_port)
         
         launcher = service.launch(server, workers=CONF.magnetodb_api_workers)
         launcher.wait()

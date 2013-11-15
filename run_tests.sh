@@ -37,7 +37,7 @@ function process_option {
 }
 
 venv=.venv
-with_venv=tools/with_venv.sh
+with_venv="tools/with_venv.sh"
 wrapper=""
 debug=0
 
@@ -51,7 +51,7 @@ function run_tests {
         # provided.
         testrargs="discover ./magnetodb/tests"
       fi
-      ${wrapper} python -m testtools.run $args $testrargs
+      ${wrapper} "python -m testtools.run $args $testrargs"
 
       # Short circuit because all of the testr and coverage stuff
       # below does not make sense when running testtools.run for
@@ -63,7 +63,7 @@ function run_tests {
     if [ -n "$args" ] ; then
         args="-t $args"
     fi
-    python setup.py testr --slowest $args
+    ${wrapper} python setup.py testr --slowest $args
 }
 
 function run_pep8 {

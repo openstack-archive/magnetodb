@@ -10,6 +10,8 @@ common_opts = [
 
     cfg.IntOpt('magnetodb_api_workers', default=None),
 
+    cfg.StrOpt('bind_host', default="0.0.0.0"),
+
     cfg.IntOpt('bind_port', default=80)
 ]
 
