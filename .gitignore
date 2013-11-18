@@ -4,3 +4,10 @@
 .pydevproject
 *~
 .testrepository
+.idea
+.tox
+.venv
+AUTHORS
+ChangeLog
+magnetodb.egg*
+*py*.egg
