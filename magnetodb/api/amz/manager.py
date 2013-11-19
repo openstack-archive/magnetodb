@@ -16,19 +16,7 @@
 #    under the License.
 
 
-import os
+class DynamoDBManager():
 
-PROJECT_NAME = 'magnetodb'
-
-
-def get_root_dir(start_search_path, root_dir_name):
-    cur_path = os.path.abspath(start_search_path)
-    while (os.path.basename(cur_path) != root_dir_name or
-           os.path.exists(os.path.join(cur_path, '__init__.py'))):
-        new_cur_path = os.path.dirname(cur_path)
-        if (not new_cur_path) or (new_cur_path == cur_path):
-            raise RuntimeError("Can't find project root directory.")
-        cur_path = new_cur_path
-    return cur_path
-
-PROJECT_ROOT_DIR = get_root_dir(__file__, PROJECT_NAME)
+    def list_tables(self):
+        return []

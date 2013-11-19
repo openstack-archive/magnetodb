@@ -1,4 +1,7 @@
-#    Copyright 2012 OpenStack Foundation
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
+# Copyright 2011 OpenStack LLC.
+# All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -15,17 +18,24 @@
 import routes
 
 from magnetodb.openstack.common import wsgi
-from magnetodb.api import controller as api_controller
+from magnetodb.api.amz import controller as amz_api_controller
+from magnetodb.api.amz import wsgi as amz_wsgi
 
 
 class MagnetoDBAppFactrory(wsgi.Router):
+
     """API"""
     def __init__(self):
         mapper = routes.Mapper()
         super(MagnetoDBAppFactrory, self).__init__(mapper)
 
-        api_app = wsgi.Resource(api_controller.ApiController())
-        mapper.connect("/", controller=api_app, conditions={'method': 'PUT'},
+        amz_api_app = (
+            amz_wsgi.AmzDynamoDBResource(
+                controller=amz_api_controller.AmzDynamoDBApiController())
+        )
+
+        mapper.connect("/", controller=amz_api_app,
+                       conditions={'method': 'POST'},
                        action="process_request")
 
 

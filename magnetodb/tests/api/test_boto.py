@@ -1,4 +1,6 @@
-# Copyright 2011 OpenStack Foundation
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
+# Copyright 2011 OpenStack LLC.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,21 +15,33 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 import boto
+import os
 import unittest
 
+from boto.regioninfo import RegionInfo
+
 from magnetodb.tests.fake import magnetodb_api_fake
+from magnetodb.common import PROJECT_ROOT_DIR
 
 CONF = magnetodb_api_fake.CONF
 
 
 class Test(unittest.TestCase):
 
+    CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
+                               'etc/magnetodb-test.conf')
+
+    PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
+                                     'etc/api-paste-test.ini')
+
     @classmethod
     def setUpClass(cls):
         super(Test, cls).setUpClass()
 
-        magnetodb_api_fake.run_fake_magnetodb_api()
+        magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE,
+                                                  cls.CONFIG_FILE)
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
 
     @classmethod
@@ -36,8 +50,13 @@ class Test(unittest.TestCase):
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
     @staticmethod
-    def connect_boto_dynamodb(host=CONF.bind_host, port=CONF.bind_port):
-        from boto.regioninfo import RegionInfo
+    def connect_boto_dynamodb(host=None, port=None):
+        if not host:
+            host = CONF.bind_host
+
+        if not port:
+            port = CONF.bind_port
+
         endpoint = '{}:{}'.format(host, port)
         region = RegionInfo(name='test_server', endpoint=endpoint)
         return boto.connect_dynamodb(aws_access_key_id="asd",
