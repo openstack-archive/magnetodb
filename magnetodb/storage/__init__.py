@@ -15,29 +15,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb.common import config
 
-from oslo.config import cfg
+CONF = config.CONF
 
+from magnetodb.openstack.common import importutils
 
-common_opts = [
-    cfg.StrOpt('api_paste_config',
-               default="api-paste.ini",
-               help='File name for the paste.deploy config for magnetodb-api'),
-
-    cfg.IntOpt('magnetodb_api_workers', default=None),
-
-    cfg.StrOpt('bind_host', default="0.0.0.0"),
-
-    cfg.IntOpt('bind_port', default=80),
-
-    cfg.StrOpt('storage_impl', default="magnetodb.storage.impl.fake")
-]
-
-CONF = cfg.CONF
-CONF.register_opts(common_opts)
+STORAGE_IMPL = importutils.import_module(CONF.storage_impl)
 
 
-def parse_args(argv, default_config_files=None):
-    cfg.CONF(args=argv[1:],
-             project='magnetodb',
-             default_config_files=default_config_files)
+def list_tables(exclusive_start_table_name=None, limit=None):
+    """
+    @return list of table names
+    """
+    return STORAGE_IMPL.list_tables(exclusive_start_table_name, limit)

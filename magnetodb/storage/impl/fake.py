@@ -16,7 +16,5 @@
 #    under the License.
 
 
-class DynamoDBManager():
-
-    def list_tables(self):
-        return []
+def list_tables(exclusive_start_table_name, limit):
+    return []

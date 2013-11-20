@@ -21,8 +21,8 @@ from magnetodb.openstack.common import wsgi
 
 
 class AmzDynamoDBRequest(wsgi.Request):
-    default_request_content_types = ('application/x-amz-json-1.0')
-    default_accept_types = ('application/x-amz-json-1.0')
+    default_request_content_types = ('application/x-amz-json-1.0',)
+    default_accept_types = ('application/x-amz-json-1.0',)
     default_accept_type = 'application/x-amz-json-1.0'
 
 
@@ -34,6 +34,14 @@ class AmzDynamoDBResource(wsgi.Resource):
             }
             deserializer = (
                 wsgi.RequestDeserializer(body_deserializers=body_deserializers)
+            )
+
+        if not serializer:
+            body_serializers = {
+                'application/x-amz-json-1.0': wsgi.JSONDictSerializer()
+            }
+            serializer = (
+                wsgi.ResponseSerializer(body_serializers=body_serializers)
             )
         super(AmzDynamoDBResource, self).__init__(controller,
                                                   deserializer=deserializer,

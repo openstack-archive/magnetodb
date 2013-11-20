@@ -18,47 +18,45 @@
 import re
 
 from magnetodb.common import exception
-from magnetodb.api.amz import manager
+from magnetodb.api.amz import dynamodb
 
 
 class AmzDynamoDBApiController():
 
     capabilities = {
         'DynamoDB': {
-            '20111205': manager.DynamoDBManager()
+            '20111205': dynamodb.capabilities
         }
     }
 
-    def do_process_request(self, service_name, api_version, operation_name,
-                           param):
+    def process_action(self, service_name, api_version, action_name,
+                       action_params):
         service_capabilities = self.capabilities.get(service_name, None)
 
         if service_capabilities is None:
             raise exception.ServiceUnavailableException(
                 "Service '%s' isn't supported" % service_name)
 
-        target_manager = service_capabilities.get(api_version, None)
+        target_capabilities = service_capabilities.get(api_version, None)
 
-        if target_manager is None:
+        if target_capabilities is None:
             raise (
                 exception.ServiceUnavailableException(
                     "Service '%s' doesn't support API version '%s'" %
                     (service_name, api_version))
             )
 
-        operation_name = re.sub("(.)([A-Z])", r"\1_\2", operation_name).lower()
+        action = target_capabilities.get(action_name, None)
 
-        operation = getattr(target_manager, operation_name, None)
-
-        if operation is None:
+        if action is None:
             raise (
                 exception.ValidationException(
                     "Service '%s', API version '%s' "
-                    "doesn't support operation '%s'" %
-                    (service_name, api_version, operation_name))
+                    "doesn't support action '%s'" %
+                    (service_name, api_version, action_name))
             )
 
-        return operation(param) if param else operation()
+        return action.perform(action_params)
 
     def process_request(self, req, body):
         target = req.environ['HTTP_X_AMZ_TARGET']
@@ -80,7 +78,7 @@ class AmzDynamoDBApiController():
             )
         service_name = matcher.group(1)
         api_version = matcher.group(2)
-        operation_name = matcher.group(3)
+        action_name = matcher.group(3)
 
-        self.do_process_request(service_name, api_version, operation_name,
-                                body)
+        return self.process_action(service_name, api_version,
+                                   action_name, body)
