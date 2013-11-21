@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright 2011 OpenStack LLC.
+# Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -43,8 +43,8 @@ class AmazonResource(wsgi.Resource):
                 wsgi.ResponseSerializer(body_serializers=body_serializers)
             )
         super(AmazonResource, self).__init__(controller,
-                                                  deserializer=deserializer,
-                                                  serializer=serializer)
+                                             deserializer=deserializer,
+                                             serializer=serializer)
 
     @webob.dec.wsgify(RequestClass=AmazonRequest)
     def __call__(self, request):
