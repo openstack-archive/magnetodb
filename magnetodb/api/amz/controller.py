@@ -17,8 +17,9 @@
 
 import re
 
-from magnetodb.common import exception
 from magnetodb.api.amz import dynamodb
+
+from magnetodb.common import exception
 
 
 class AmzDynamoDBApiController():
@@ -29,7 +30,7 @@ class AmzDynamoDBApiController():
         }
     }
 
-    def process_action(self, service_name, api_version, action_name,
+    def process_action(self, context, service_name, api_version, action_name,
                        action_params):
         service_capabilities = self.capabilities.get(service_name, None)
 
@@ -56,7 +57,7 @@ class AmzDynamoDBApiController():
                     (service_name, api_version, action_name))
             )
 
-        return action.perform(action_params)
+        return action.perform(context, action_params)
 
     def process_request(self, req, body):
         target = req.environ['HTTP_X_AMZ_TARGET']
@@ -80,5 +81,5 @@ class AmzDynamoDBApiController():
         api_version = matcher.group(2)
         action_name = matcher.group(3)
 
-        return self.process_action(service_name, api_version,
+        return self.process_action(req.context, service_name, api_version,
                                    action_name, body)

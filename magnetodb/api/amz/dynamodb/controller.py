@@ -10,9 +10,10 @@ LOG = logging.getLogger(__name__)
 class DynamoDBAction():
     schema = {}
 
-    def __init__(self, action_params):
+    def __init__(self, context, action_params):
         self.validate_params(action_params)
         self.action_params = action_params
+        self.context = context
 
     @classmethod
     def format_validation_msg(self, errors):
@@ -41,10 +42,10 @@ class DynamoDBAction():
                 raise exception.ValidationException(error_msg)
 
     @classmethod
-    def perform(cls, action_params):
+    def perform(cls, context, action_params):
         cls.validate_params(action_params)
 
-        return cls(action_params)()
+        return cls(context, action_params)()
 
 
 class ListTablesDynamoDBAction(DynamoDBAction):
@@ -71,7 +72,7 @@ class ListTablesDynamoDBAction(DynamoDBAction):
         limit = self.action_params.get(self.LIMIT_PARAM, None)
 
         table_names = (
-            storage.list_tables(
+            storage.list_tables(self.context,
                 exclusive_start_table_name=exclusive_start_table_name,
                 limit=limit)
         )

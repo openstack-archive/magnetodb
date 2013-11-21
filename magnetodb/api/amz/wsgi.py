@@ -15,18 +15,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb.openstack.common import wsgi
 import webob
 
-from magnetodb.openstack.common import wsgi
 
-
-class AmzDynamoDBRequest(wsgi.Request):
+class AmazonRequest(wsgi.Request):
     default_request_content_types = ('application/x-amz-json-1.0',)
     default_accept_types = ('application/x-amz-json-1.0',)
     default_accept_type = 'application/x-amz-json-1.0'
 
 
-class AmzDynamoDBResource(wsgi.Resource):
+class AmazonResource(wsgi.Resource):
     def __init__(self, controller, deserializer=None, serializer=None):
         if not deserializer:
             body_deserializers = {
@@ -43,10 +42,10 @@ class AmzDynamoDBResource(wsgi.Resource):
             serializer = (
                 wsgi.ResponseSerializer(body_serializers=body_serializers)
             )
-        super(AmzDynamoDBResource, self).__init__(controller,
+        super(AmazonResource, self).__init__(controller,
                                                   deserializer=deserializer,
                                                   serializer=serializer)
 
-    @webob.dec.wsgify(RequestClass=AmzDynamoDBRequest)
+    @webob.dec.wsgify(RequestClass=AmazonRequest)
     def __call__(self, request):
-        return super(AmzDynamoDBResource, self).__call__(request)
+        return super(AmazonResource, self).__call__(request)

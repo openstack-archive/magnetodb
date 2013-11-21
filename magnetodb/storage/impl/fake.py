@@ -16,5 +16,5 @@
 #    under the License.
 
 
-def list_tables(exclusive_start_table_name, limit):
+def list_tables(context, exclusive_start_table_name, limit):
     return []

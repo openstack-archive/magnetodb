@@ -24,8 +24,8 @@ from magnetodb.openstack.common import importutils
 STORAGE_IMPL = importutils.import_module(CONF.storage_impl)
 
 
-def list_tables(exclusive_start_table_name=None, limit=None):
+def list_tables(context, exclusive_start_table_name=None, limit=None):
     """
     @return list of table names
     """
-    return STORAGE_IMPL.list_tables(exclusive_start_table_name, limit)
+    return STORAGE_IMPL.list_tables(context, exclusive_start_table_name, limit)

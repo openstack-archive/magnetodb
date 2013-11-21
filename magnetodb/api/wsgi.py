@@ -17,20 +17,21 @@
 
 import routes
 
-from magnetodb.openstack.common import wsgi
 from magnetodb.api.amz import controller as amz_api_controller
-from magnetodb.api.amz.dynamodb import wsgi as dynamodb_wsgi
+from magnetodb.api.amz import wsgi as amozon_wsgi
+
+from magnetodb.openstack.common import wsgi
 
 
-class MagnetoDBAppFactrory(wsgi.Router):
+class MagnetoDBApplication(wsgi.Router):
 
     """API"""
     def __init__(self):
         mapper = routes.Mapper()
-        super(MagnetoDBAppFactrory, self).__init__(mapper)
+        super(MagnetoDBApplication, self).__init__(mapper)
 
         amz_dynamodb_api_app = (
-            dynamodb_wsgi.AmzDynamoDBResource(
+            amozon_wsgi.AmazonResource(
                 controller=amz_api_controller.AmzDynamoDBApiController())
         )
 
@@ -38,6 +39,6 @@ class MagnetoDBAppFactrory(wsgi.Router):
                        conditions={'method': 'POST'},
                        action="process_request")
 
-
-def app_factory(global_conf, **local_conf):
-    return MagnetoDBAppFactrory()
+    @classmethod
+    def factory_method(cls, global_conf, **local_conf):
+        return cls()
