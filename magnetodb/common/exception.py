@@ -15,10 +15,41 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import re
+from magnetodb.openstack.common import exception as openstack_exception
+from magnetodb.openstack.common import log as logging
 
-class ValidationException(Exception):
+LOG = logging.getLogger(__name__)
+
+
+def safe_fmt_string(text):
+    return re.sub(r'%([0-9]+)', r'\1', text)
+
+
+class MagnetoError(openstack_exception.OpenstackException):
+    """Base exception that all custom trove app exceptions inherit from."""
+    internal_message = None
+
+    def __init__(self, message=None, **kwargs):
+        if message is not None:
+            self.message = message
+        if self.internal_message is not None:
+            try:
+                LOG.error(safe_fmt_string(self.internal_message) % kwargs)
+            except Exception:
+                LOG.error(self.internal_message)
+        self.message = safe_fmt_string(self.message)
+        super(MagnetoError, self).__init__(**kwargs)
+
+
+class ValidationException(MagnetoError):
     pass
 
 
-class ServiceUnavailableException(Exception):
+class ServiceUnavailableException(MagnetoError):
     pass
+
+
+class BackendInteractionException(MagnetoError):
+    pass
+
