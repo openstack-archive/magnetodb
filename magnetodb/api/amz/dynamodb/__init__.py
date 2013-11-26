@@ -15,8 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.api.amz.dynamodb.controller import ListTablesDynamoDBAction
+from magnetodb.api.amz.dynamodb.action import list_tables
 
 capabilities = {
-    'ListTables': ListTablesDynamoDBAction
+    'ListTables': list_tables.ListTablesDynamoDBAction
 }
