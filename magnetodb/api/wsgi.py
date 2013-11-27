@@ -18,7 +18,7 @@
 import routes
 
 from magnetodb.api.amz import controller as amz_api_controller
-from magnetodb.api.amz import wsgi as amozon_wsgi
+from magnetodb.api.amz import wsgi as amazon_wsgi
 
 from magnetodb.openstack.common import wsgi
 
@@ -31,7 +31,7 @@ class MagnetoDBApplication(wsgi.Router):
         super(MagnetoDBApplication, self).__init__(mapper)
 
         amz_dynamodb_api_app = (
-            amozon_wsgi.AmazonResource(
+            amazon_wsgi.AmazonResource(
                 controller=amz_api_controller.AmzDynamoDBApiController())
         )
 
