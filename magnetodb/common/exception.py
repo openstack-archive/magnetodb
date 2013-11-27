@@ -27,7 +27,7 @@ def safe_fmt_string(text):
 
 
 class MagnetoError(openstack_exception.OpenstackException):
-    """Base exception that all custom trove app exceptions inherit from."""
+    """Base exception that all custom MagnetoDB app exceptions inherit from."""
     internal_message = None
 
     def __init__(self, message=None, **kwargs):
@@ -52,4 +52,3 @@ class ServiceUnavailableException(MagnetoError):
 
 class BackendInteractionException(MagnetoError):
     pass
-
