@@ -1,5 +1,13 @@
-magnetodb
+MagnetoDB
 =========
 
-Repo: https://github.com/Mirantis/magnetodb
+**MagnetoDB** - NoSQL database service for OpenStack
 
+
+Links
+------------------
+Wiki - https://wiki.openstack.org/wiki/MagnetoDB
+
+IRC - #magnetodb at FreeNode
+
+Source code - https://github.com/Mirantis/magnetodb

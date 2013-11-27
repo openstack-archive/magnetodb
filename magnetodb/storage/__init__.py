@@ -37,8 +37,7 @@ def create_table(context, table_name, attribute_defs, key_attributes,
                        (the first in list, required) attribute name and extra
                        key attribute names (the second and other list items,
                        not required)
-
-            indexed_non_key_attributes: list non key names to be indexed
+    @param indexed_non_key_attributes: list non key names to be indexed
     """
     STORAGE_IMPL.create_table(context, table_name, attribute_defs,
                               key_attributes, indexed_non_key_attributes=None)

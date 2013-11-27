@@ -37,8 +37,8 @@ except ImportError:
 from babel import localedata
 import six
 
-_localedir = os.environ.get('trove'.upper() + '_LOCALEDIR')
-_t = gettext.translation('trove', localedir=_localedir, fallback=True)
+_localedir = os.environ.get('magnetodb'.upper() + '_LOCALEDIR')
+_t = gettext.translation('magnetodb', localedir=_localedir, fallback=True)
 
 _AVAILABLE_LANGUAGES = {}
 USE_LAZY = False
@@ -58,7 +58,7 @@ def enable_lazy():
 
 def _(msg):
     if USE_LAZY:
-        return Message(msg, 'trove')
+        return Message(msg, 'magnetodb')
     else:
         return _t.ugettext(msg)
 
