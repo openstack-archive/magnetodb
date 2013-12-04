@@ -16,11 +16,9 @@
 #    under the License.
 
 from magnetodb.common import config
-
-CONF = config.CONF
-
 from magnetodb.openstack.common import importutils
 
+CONF = config.CONF
 STORAGE_IMPL = importutils.import_module(CONF.storage_impl)
 
 

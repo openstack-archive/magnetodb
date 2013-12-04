@@ -29,7 +29,9 @@ common_opts = [
 
     cfg.IntOpt('bind_port', default=80),
 
-    cfg.StrOpt('storage_impl', default="magnetodb.storage.impl.fake")
+    cfg.StrOpt('storage_impl', default="magnetodb.storage.impl.fake"),
+
+    cfg.DictOpt('storage_param', default=None)
 ]
 
 CONF = cfg.CONF
