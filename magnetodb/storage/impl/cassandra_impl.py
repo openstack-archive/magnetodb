@@ -15,13 +15,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cassandra.cluster import Cluster
-
 from magnetodb.common import config
+import json
 
 CONF = config.CONF
 
-CLUSTER = Cluster(**CONF.storage_param)
+from cassandra import cluster
+
+storage_param = json.loads(CONF.storage_param)
+
+CLUSTER = cluster.Cluster(**storage_param)
 SESSION = CLUSTER.connect()
 
 
