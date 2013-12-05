@@ -1,16 +1,16 @@
 
 
 class AttributeType():
-    ATTRIBUTE_TYPE_STRING = "string"
-    ATTRIBUTE_TYPE_NUMBER = "number"
-    ATTRIBUTE_TYPE_BLOB = "blob"
+    ELEMENT_TYPE_STRING = "string"
+    ELEMENT_TYPE_NUMBER = "number"
+    ELEMENT_TYPE_BLOB = "blob"
 
-    ATTRIBUTE_COLLECTION_TYPE_SET = "set"
+    COLLECTION_TYPE_SET = "set"
 
-    _allowed_types = {ATTRIBUTE_TYPE_STRING, ATTRIBUTE_TYPE_NUMBER,
-                      ATTRIBUTE_TYPE_BLOB}
+    _allowed_types = {ELEMENT_TYPE_STRING, ELEMENT_TYPE_NUMBER,
+                      ELEMENT_TYPE_BLOB}
 
-    _allowed_collection_types = {None, ATTRIBUTE_COLLECTION_TYPE_SET}
+    _allowed_collection_types = {None, COLLECTION_TYPE_SET}
 
     def __init__(self, element_type, collection_type=None):
         assert (element_type in self._allowed_types,
@@ -34,9 +34,6 @@ class AttributeType():
 
 class AttributeDefinition():
     def __init__(self, attr_name, attr_type):
-        assert (attr_type.collection_type is None,
-                "Can't use collection in schema attribute definition")
-
         self._name = attr_name
         self._type = attr_type
 
@@ -119,7 +116,7 @@ class NotIndexedCondition(Condition):
     pass
 
 
-class WriteItemRequest():
+class WriteItemBatchableRequest():
     def __init__(self, table_name, timestamp):
         """
         @param table_name: String, name of table to delete item from
@@ -139,9 +136,8 @@ class WriteItemRequest():
         return self._timestamp
 
 
-class DeleteItemRequest(WriteItemRequest):
-    def __init__(self, table_name, indexed_condition_map,
-                 not_indexed_condition_map=None):
+class DeleteItemRequest(WriteItemBatchableRequest):
+    def __init__(self, table_name, indexed_condition_map):
         """
         @param table_name: String, name of table to delete item from
         @param indexed_condition_map: indexed attribute name to
@@ -157,39 +153,49 @@ class DeleteItemRequest(WriteItemRequest):
         return self._indexed_condition_map
 
 
-class PutItemRequest(WriteItemRequest):
-    def __init__(self, table_name, key_map, if_not_exist=False):
+class PutItemRequest(WriteItemBatchableRequest):
+    def __init__(self, table_name, attribute_map):
         """
         @param table_name: String, name of table to delete item from
-        @param key_map: key attribute name to
-                    key attribute value mapping. It defines row's it to put
+        @param attribute_map: attribute name to AttributeValue mapping.
+                    It defines row key and additional attributes to put
                     item
         """
         super(PutItemRequest, self).__init__(table_name)
 
-        self._key_map = key_map
+        self._attribute_map = attribute_map
 
     @property
-    def key_map(self):
-        return self._key_map
+    def attribute_map(self):
+        return self._attribute_map
+    
+    
+class UpdateItemAction():
+    UPDATE_ACTION_PUT = "put"
+    UPDATE_ACTION_DELETE = "delete"
+    UPDATE_ACTION_ADD = "add"
+    
+    _allowed_actions = {UPDATE_ACTION_PUT, UPDATE_ACTION_DELETE, UPDATE_ACTION_ADD}
 
-
-class UpdateItemRequest(WriteItemRequest):
-    def __init__(self, table_name, key_map, not_indexed_condition_map=None):
+    def __init__(self, action, value):
         """
-        @param table_name: String, name of table to delete item from
-        @param key_map: key attribute name to
-                    key attribute value mapping. It defines row's it to put
-                    item
+        @param action: one of available action names
+        @param value: AttributeValue instance, parameter for action
         """
-        super(PutItemRequest, self).__init__(table_name)
-
-        self._key_map = key_map
+        assert (action in self._allowed_actions,
+                "Update action '%s' is't allowed" % action)
+        
+        self._action = action
+        self._attribute_value = value
 
     @property
-    def key_map(self):
-        return self._key_map
-
+    def action(self):
+        return _action
+    
+    @property
+    def value(self):
+        return value
+    
 
 class TableSchema():
     def __init__(self, table_name, attribute_defs, key_attributes,
