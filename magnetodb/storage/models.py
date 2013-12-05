@@ -112,8 +112,18 @@ class IndexedCondition(Condition):
         return cls(cls.CONDITION_TYPE_GREATER_OR_EQUAL, condition_arg)
 
 
-class NotIndexedCondition(Condition):
-    pass
+class ExpectedCondition(Condition):
+    CONDITION_TYPE_EXISTS = "exists"
+
+    _allowed_types = {Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_EXISTS}
+
+    @classmethod
+    def exists(cls):
+        return cls(cls.CONDITION_TYPE_EXISTS, True)
+
+    @classmethod
+    def not_exists(cls, condition_arg):
+        return cls(cls.CONDITION_TYPE_EXISTS, False)
 
 
 class WriteItemBatchableRequest():
@@ -168,14 +178,15 @@ class PutItemRequest(WriteItemBatchableRequest):
     @property
     def attribute_map(self):
         return self._attribute_map
-    
-    
+
+
 class UpdateItemAction():
     UPDATE_ACTION_PUT = "put"
     UPDATE_ACTION_DELETE = "delete"
     UPDATE_ACTION_ADD = "add"
-    
-    _allowed_actions = {UPDATE_ACTION_PUT, UPDATE_ACTION_DELETE, UPDATE_ACTION_ADD}
+
+    _allowed_actions = {UPDATE_ACTION_PUT, UPDATE_ACTION_DELETE,
+                        UPDATE_ACTION_ADD}
 
     def __init__(self, action, value):
         """
@@ -184,18 +195,18 @@ class UpdateItemAction():
         """
         assert (action in self._allowed_actions,
                 "Update action '%s' is't allowed" % action)
-        
+
         self._action = action
-        self._attribute_value = value
+        self._value = value
 
     @property
     def action(self):
-        return _action
-    
+        return self._action
+
     @property
     def value(self):
-        return value
-    
+        return self._value
+
 
 class TableSchema():
     def __init__(self, table_name, attribute_defs, key_attributes,

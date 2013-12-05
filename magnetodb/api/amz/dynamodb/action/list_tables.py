@@ -49,10 +49,10 @@ class ListTablesDynamoDBAction(DynamoDBAction):
 
         if table_names:
             res = {"TableNames": table_names}
-            
-            if limit==len(table_names):
-                res["LastEvaluatedTableName"] = table_names[-1],
+
+            if limit == len(table_names):
+                res["LastEvaluatedTableName"] = table_names[-1]
         else:
             res = {}
-            
+
         return res
