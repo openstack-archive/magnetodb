@@ -85,7 +85,7 @@ class Types():
 
     TABLE_NAME = {
         "type": "string",
-        "pattern": "'^\w+",
+        "pattern": "^\w+",
     }
 
     KEY_SCHEMA = {

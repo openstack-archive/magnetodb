@@ -37,8 +37,7 @@ def create_table(context, table_schema):
 
     @raise BackendInteractionException
     """
-
-    raise NotImplemented
+    STORAGE_IMPL.create_table(context, table_schema)
 
 
 def delete_table(context, table_name):
@@ -50,7 +49,7 @@ def delete_table(context, table_name):
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    STORAGE_IMPL.delete_table(context, table_name)
 
 
 def describe_table(context, table_name):
@@ -64,7 +63,7 @@ def describe_table(context, table_name):
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    return STORAGE_IMPL.describe_table(context, table_name)
 
 
 # TODO: IT IS DRAFT ONLY
@@ -88,33 +87,22 @@ def list_tables(context, exclusive_start_table_name=None, limit=None):
     return SESSION.execute(bound)
 
 
-def put_item(context, put_request, if_not_exist=False):
+def put_item(context, put_request, if_not_exist=False, not_indexed_condition_map=None):
     """
     @param context: current request context
     @param put_request: contains PutItemRequest items to perform
                 put item operation
-    @param if_not_exist: put item only is row is new record
-
-    @return: True if operation performed, otherwise False
-
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
-
-
-def update_item(context, update_request, not_indexed_condition_map=None):
-    """
-    @param context: current request context
-    @param update_request: contains UpdateItemRequest items to perform
-                update item operation
+    @param if_not_exist: put item only is row is new record (It is possible to use 
+                only one of if_not_exist and not_indexed_condition_map parameter)
     @param not_indexed_condition_map: not indexed attribute name to
                 NotIndexedCondition instance mapping. It provides preconditions
-                to make decision about should item be updated or not
+                to make decision about should item be put or not
+
     @return: True if operation performed, otherwise False
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    return STORAGE_IMPL.put_item(context, put_request, if_not_exist)
 
 
 def delete_item(context, delete_request, not_indexed_condition_map=None):
@@ -132,20 +120,41 @@ def delete_item(context, delete_request, not_indexed_condition_map=None):
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    return STORAGE_IMPL.delete_item(context, delete_request,
+                                    not_indexed_condition_map)
 
 
 def execute_write_batch(context, write_request_list, durable=True):
     """
     @param context: current request context
-    @param write_request_list: contains WriteItemRequest items to perform
-                deleting
+    @param write_request_list: contains WriteItemBatchableRequest items to
+                perform batch
     @param durable: if True, batch will be fully performed or fully skipped.
                 Partial batch execution isn't allowed
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    STORAGE_IMPL.execute_write_batch(context, write_request_list, durable)
+
+
+def update_item(context, table_name, key_attribute_map, attribute_action_map,
+                not_indexed_condition_map=None):
+    """
+    @param context: current request context
+    @param table_name: String, name of table to delete item from
+    @param key_attribute_map: key attribute name to
+                AttributeValue mapping. It defines row it to update item
+    @param attribute_action_map: attribute name to UpdateItemAction instance
+                mapping. It defines actions to perform for each given attribute
+    @param not_indexed_condition_map: not indexed attribute name to
+                NotIndexedCondition instance mapping. It provides preconditions
+                to make decision about should item be updated or not
+    @return: True if operation performed, otherwise False
+
+    @raise BackendInteractionException
+    """
+    return STORAGE_IMPL.update_item(context, update_request,
+                                    not_indexed_condition_map)
 
 
 def select_item(context, table_name, indexed_condition_map,
@@ -164,8 +173,9 @@ def select_item(context, table_name, indexed_condition_map,
     @param consistent: define is operation consistent or not (by default it is
                 not consistent)
 
-    @return map of retrieved attributes and it's values
+    @return list of attribute name to AttributeValue mappings
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    return STORAGE_IMPL.select_item(context, table_name, indexed_condition_map,
+                                    attributes_to_get, limit, consistent)
