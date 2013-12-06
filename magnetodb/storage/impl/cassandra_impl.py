@@ -33,6 +33,10 @@ class CassandraStorageImpl():
     CASSANDRA_TO_STORAGE_TYPES = {val: key for key, val
                                   in STORAGE_TO_CASSANDRA_TYPES.iteritems()}
 
+    CONDITION_TO_OP = {
+        models.Condition.CONDITION_TYPE_EQUAL: '='
+    }
+
     USER_COLUMN_PREFIX = 'user_'
     SYSTEM_COLUMN_PREFIX = 'system_'
     SYSTEM_COLUMN_ATTRS = SYSTEM_COLUMN_PREFIX + 'attrs'
@@ -161,7 +165,7 @@ class CassandraStorageImpl():
 
     def describe_table(self, context, table_name):
         """
-        Creates table
+        Describes table
 
         @param context: current request context
         @param table_name: String, name of table to describes
@@ -255,7 +259,7 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def delete_item(self, context, delete_request,
                     expected_condition_map=None):
@@ -274,7 +278,22 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        query = "DELETE FROM {}.{} WHERE ".format(
+            context.tenant, delete_request.table_name)
+
+        where = " AND ".join((self._condition_as_string(attr, cond)
+                              for attr, cond
+                              in delete_request.key_attribute_map.iteritems()))
+
+        query += where
+
+        self._execute_query(query)
+
+        return True
+
+    def _condition_as_string(self, attr, condition):
+        op = self.CONDITION_TO_OP[condition.type]
+        return self.USER_COLUMN_PREFIX + attr + op + repr(condition.arg)
 
     def execute_write_batch(self, context, write_request_list, durable=True):
         """
@@ -286,7 +305,7 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
@@ -306,7 +325,7 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def select_item(self, context, table_name, indexed_condition_map,
                     attributes_to_get=None, limit=None, consistent=True):
@@ -329,4 +348,4 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        raise NotImplementedError

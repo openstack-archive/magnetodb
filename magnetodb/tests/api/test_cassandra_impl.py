@@ -112,6 +112,12 @@ class TestCassandraBase(unittest.TestCase):
         query = "DROP TABLE IF EXISTS {}.{}".format(keyspace, table_name)
         self.SESSION.execute(query)
 
+    def _select_all(self, keyspace=None, table_name=None):
+        keyspace = keyspace or self.keyspace
+        table_name = None or self.table_name
+        query = "SELECT * FROM {}.{}".format(keyspace, table_name)
+        return self.SESSION.execute(query)
+
 
 class TestCassandraTableCrud(TestCassandraBase):
 
@@ -172,3 +178,31 @@ class TestCassandraTableCrud(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.delete_table(self.context, self.table_name)
 
         self.assertEqual([], self._get_table_names())
+
+
+class TestCassandraItemCrud(TestCassandraBase):
+
+    def test_delete_item(self):
+        self._create_table()
+        self._create_index()
+
+        query = ("INSERT INTO {}.{} (user_id, user_range, user_indexed)"
+                 "VALUES (1, '1', '1')").format(self.keyspace,
+                                                self.table_name)
+
+        self.SESSION.execute(query)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)
+
+        del_req = models.DeleteItemRequest(
+            self.table_name, {'id': models.Condition.eq(1),
+                              'range': models.Condition.eq('1')})
+
+        self.CASANDRA_STORAGE_IMPL.delete_item(self.context, del_req)
+
+        all = self._select_all()
+
+        self.assertEqual(0, len(all))
