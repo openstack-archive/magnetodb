@@ -38,11 +38,8 @@ STORAGE_TO_CASSANDRA_TYPES = {
     AttributeType.ELEMENT_TYPE_BLOB: 'blob'
 }
 
-CASSANDRA_TO_STORAGE_TYPES = {
-    'text': AttributeType.ELEMENT_TYPE_STRING,
-    'decimal': AttributeType.ELEMENT_TYPE_NUMBER,
-    'blob': AttributeType.ELEMENT_TYPE_BLOB
-}
+CASSANDRA_TO_STORAGE_TYPES = {val: key for key, val
+                              in STORAGE_TO_CASSANDRA_TYPES.iteritems()}
 
 USER_COLUMN_PREFIX = 'user_'
 SYSTEM_COLUMN_PREFIX = 'system_'
