@@ -44,7 +44,7 @@ class Values():
     ATTRIBUTE_TYPE_STRING_SET = "SS"
     ATTRIBUTE_TYPE_NUMBER_SET = "NS"
     ATTRIBUTE_TYPE_BLOB_SET = "BS"
-    
+
     KEY_TYPE_HASH = "HASH"
     KEY_TYPE_RANGE = "RANGE"
 
@@ -104,29 +104,29 @@ class Parser():
     DYNAMODB_TO_STORAGE_TYPE_MAP = {
         Values.ATTRIBUTE_TYPE_STRING: models.AttributeType(
             models.AttributeType.ELEMENT_TYPE_STRING),
-        
+
         Values.ATTRIBUTE_TYPE_STRING_SET: models.AttributeType(
             models.AttributeType.ELEMENT_TYPE_STRING,
             models.AttributeType.COLLECTION_TYPE_SET),
-        
+
         Values.ATTRIBUTE_TYPE_NUMBER: models.AttributeType(
             models.AttributeType.ELEMENT_TYPE_NUMBER),
-       
+
         Values.ATTRIBUTE_TYPE_NUMBER_SET: models.AttributeType(
             models.AttributeType.ELEMENT_TYPE_NUMBER,
             models.AttributeType.COLLECTION_TYPE_SET),
-        
+
         Values.ATTRIBUTE_TYPE_BLOB: models.AttributeType(
             models.AttributeType.ELEMENT_TYPE_BLOB),
-        
+
         Values.ATTRIBUTE_TYPE_BLOB_SET: models.AttributeType(
             models.AttributeType.ELEMENT_TYPE_BLOB,
             models.AttributeType.COLLECTION_TYPE_SET)
     }
 
-    STORAGE_TO_DYNAMODB_TYPE_MAP = dict(
-        [(v, k) for (k, v) in DYNAMODB_TO_STORAGE_TYPE_MAP.iteritems()]
-    )
+    STORAGE_TO_DYNAMODB_TYPE_MAP = {
+        v: k for k, v in DYNAMODB_TO_STORAGE_TYPE_MAP.iteritems()
+    }
 
     @classmethod
     def parse_attribute_definition(cls, attr_def_json):
@@ -151,23 +151,21 @@ class Parser():
             Props.ATTRIBUTE_NAME: attr_def.name,
             Props.ATTRIBUTE_TYPE: dynamodb_type
         }
-        
+
     @classmethod
     def parse_key_schema(cls, key_def_list_json):
-        res = []
-        
         hash_key_attr_name = None
         range_key_attr_name = None
-        
+
         for key_def in key_def_list_json:
             dynamodb_key_attr_name = key_def.get(Props.ATTRIBUTE_NAME, None)
             dynamodb_key_type = key_def.get(Props.KEY_TYPE, None)
-            
+
             if dynamodb_key_type == Values.KEY_TYPE_HASH:
                 assert (
                     hash_key_attr_name is None, "Only one HASH key is allowed"
                 )
-                
+
                 hash_key_attr_name = dynamodb_key_attr_name
             elif dynamodb_key_type == Values.KEY_TYPE_RANGE:
                 assert (
@@ -177,24 +175,24 @@ class Parser():
                 range_key_attr_name = dynamodb_key_attr_name
 
         return (hash_key_attr_name, range_key_attr_name)
-    
+
     @classmethod
     def format_key_schema(cls, key_attr_names):
         assert (
             len(key_attr_names) > 0,
             "At least HASH key should be specified. No one is given"
         )
-        
+
         assert (
             len(key_attr_names) <= 2,
             "More then 2 keys given. Only one HASH and one RANGE key allowed"
         )
-        
+
         res = [{
             Props.KEY_TYPE: Values.KEY_TYPE_HASH,
             Props.ATTRIBUTE_NAME: key_attr_names[0]
         }]
-        
+
         if len(key_attr_names) > 1:
             res.append({
                 Props.KEY_TYPE: Values.KEY_TYPE_RANGE,

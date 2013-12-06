@@ -87,11 +87,11 @@ class CreateTableDynamoDBAction(DynamoDBAction):
             parser.Parser.parse_attribute_definition,
             self.action_params.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
         )
-        
+
         key_attrs = parser.Parser.parse_key_schema(
             self.action_params.get(parser.Props.KEY_SCHEMA, [])
         )
-        
+
         key_attrs_per_projection_list = map(
             parser.Parser.parse_key_schema,
             map(
@@ -100,17 +100,17 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                                        [])
             )
         )
-        
+
         indexed_attr_names = []
-        
+
         for key_attrs_for_projection in key_attrs_per_projection_list:
             assert (
                 len(key_attrs_for_projection) > 1,
                 "Range key in index wasn't specified"
             )
             indexed_attr_names.append(key_attrs_for_projection[1])
-        
+
         table_schema = models.TableSchema(table_name, attribute_definitions,
                                           key_attrs, indexed_attr_names)
-        
+
         storage.create_table(table_schema)
