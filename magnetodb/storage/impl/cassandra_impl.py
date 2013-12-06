@@ -19,7 +19,9 @@ import json
 from magnetodb.common import config
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.openstack.common import log as logging
+from magnetodb.storage.models import AttributeDefinition
 from magnetodb.storage.models import AttributeType
+from magnetodb.storage.models import TableSchema
 
 
 LOG = logging.getLogger(__name__)
@@ -30,10 +32,16 @@ storage_param = json.loads(CONF.storage_param) if CONF.storage_param else {}
 CLUSTER = cluster.Cluster(**storage_param)
 SESSION = CLUSTER.connect()
 
-AWS_TO_CASSANDRA_TYPES = {
+STORAGE_TO_CASSANDRA_TYPES = {
     AttributeType.ELEMENT_TYPE_STRING: 'text',
     AttributeType.ELEMENT_TYPE_NUMBER: 'decimal',
     AttributeType.ELEMENT_TYPE_BLOB: 'blob'
+}
+
+CASSANDRA_TO_STORAGE_TYPES = {
+    'text': AttributeType.ELEMENT_TYPE_STRING,
+    'decimal': AttributeType.ELEMENT_TYPE_NUMBER,
+    'blob': AttributeType.ELEMENT_TYPE_BLOB
 }
 
 USER_COLUMN_PREFIX = 'user_'
@@ -47,8 +55,8 @@ def _execute_query(query):
     try:
         LOG.debug("Executing query {}".format(query))
         return SESSION.execute(query)
-    except Exception:
-        msg = "Error executing query {}".format(query)
+    except Exception as e:
+        msg = "Error executing query {}:{}".format(query, e.message)
         LOG.error(msg)
         raise BackendInteractionException(
             msg)
@@ -69,14 +77,21 @@ def create_table(context, table_schema):
 
     for attr_def in table_schema.attribute_defs:
         query += "{} {},".format(USER_COLUMN_PREFIX + attr_def.name,
-                                 AWS_TO_CASSANDRA_TYPES[attr_def.type])
+                                 STORAGE_TO_CASSANDRA_TYPES[attr_def.type])
 
     query += "{} map<text, blob>,".format(SYSTEM_COLUMN_ATTRS)
     query += "{} map<text, text>,".format(SYSTEM_COLUMN_ATTR_TYPES)
     query += "{} map<text, text>,".format(SYSTEM_COLUMN_ATTR_EXISTS)
 
-    prefixed_attrs = (USER_COLUMN_PREFIX + name
-                      for name in table_schema.key_attributes)
+    prefixed_attrs = [USER_COLUMN_PREFIX + name
+                      for name in table_schema.key_attributes]
+
+    key_count = len(prefixed_attrs)
+
+    if key_count < 1 or key_count > 2:
+        raise BackendInteractionException(
+            "Expected 1 or 2 key attribute(s). Found {}: {}".format(
+                key_count, table_schema.key_attributes))
 
     primary_key = ','.join(prefixed_attrs)
     query += "PRIMARY KEY ({})".format(primary_key)
@@ -135,7 +150,46 @@ def describe_table(context, table_name):
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    try:
+        keyspace_meta = CLUSTER.metadata.keyspaces[context.tenant]
+    except KeyError:
+        raise BackendInteractionException(
+            "Tenant '{}' does not exist".format(context.tenant))
+
+    try:
+        table_meta = keyspace_meta.tables[table_name]
+    except KeyError:
+        raise BackendInteractionException(
+            "Table '{}' does not exist".format(table_name))
+
+    prefix_len = len(USER_COLUMN_PREFIX)
+
+    user_columns = [val for key, val
+                    in table_meta.columns.iteritems()
+                    if key.startswith(USER_COLUMN_PREFIX)]
+
+    attr_defs = []
+    indexed_attrs = []
+
+    for column in user_columns:
+        name = column.name[prefix_len:]
+        type = CASSANDRA_TO_STORAGE_TYPES[column.typestring]
+        attr_defs.append(AttributeDefinition(name, type))
+        if column.index:
+            indexed_attrs.append(name)
+
+    hash_key_name = table_meta.partition_key[0].name[prefix_len:]
+
+    key_attrs = [hash_key_name]
+
+    if table_meta.clustering_key:
+        range_key_name = table_meta.clustering_key[0].name[prefix_len:]
+        key_attrs.append(range_key_name)
+
+    table_schema = TableSchema(table_meta.name, attr_defs,
+                               key_attrs, indexed_attrs)
+
+    return table_schema
 
 
 def list_tables(context, exclusive_start_table_name=None, limit=None):

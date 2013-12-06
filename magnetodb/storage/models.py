@@ -37,6 +37,13 @@ class AttributeType():
         self.element_type = element_type
         self._collection_type = collection_type
 
+    def __eq__(self, other):
+        return (self.element_type == other.element_type
+                and self._collection_type == other._collection_type)
+
+    def __hash__(self):
+        return hash((self.element_type, self._collection_type))
+
     @property
     def element_type(self):
         return self._type
@@ -50,6 +57,13 @@ class AttributeDefinition():
     def __init__(self, attr_name, attr_type):
         self._name = attr_name
         self._type = attr_type
+
+    def __eq__(self, other):
+        return (self.name == other.name
+                and self.type == other.type)
+
+    def __hash__(self):
+        return hash((self.name, self.type))
 
     @property
     def name(self):
@@ -241,6 +255,27 @@ class TableSchema():
         self._attribute_defs = attribute_defs
         self._key_attributes = key_attributes
         self._indexed_non_key_attributes = indexed_non_key_attributes
+
+    def __eq__(self, other):
+        if self.table_name != other.table_name:
+            return False
+
+        if self.key_attributes != other.key_attributes:
+            return False
+
+        attrs1 = self.attribute_defs or []
+        attrs2 = other.attribute_defs or []
+
+        if set(attrs1) != set(attrs2):
+            return False
+
+        indexed1 = self.indexed_non_key_attributes or []
+        indexed2 = other.indexed_non_key_attributes or []
+
+        if set(indexed1) != set(indexed2):
+            return False
+
+        return True
 
     @property
     def table_name(self):

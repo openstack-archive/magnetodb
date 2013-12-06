@@ -41,16 +41,18 @@ class TestCassandraImpl(unittest.TestCase):
     def setUpClass(cls):
         super(TestCassandraImpl, cls).setUpClass()
         cls.orig_session = impl.SESSION
+        cls.orig_cluster = impl.CLUSTER
         cls.orig_conf = config.CONF
         config.parse_args([], default_config_files=[CONFIG_FILE])
         storage_param = json.loads(config.CONF.storage_param)
-        cluster = impl.cluster.Cluster(**storage_param)
-        impl.SESSION = cluster.connect()
+        impl.CLUSTER = impl.cluster.Cluster(**storage_param)
+        impl.SESSION = impl.CLUSTER.connect()
 
     @classmethod
     def tearDownClass(cls):
         super(TestCassandraImpl, cls).tearDownClass()
         impl.SESSION = cls.orig_session
+        impl.CLUSTER = cls.orig_cluster
         config.CONF = cls.orig_conf
 
     def setUp(self):
@@ -72,6 +74,10 @@ class TestCassandraImpl(unittest.TestCase):
 
         listed = impl.list_tables(self.context)
         self.assertEqual(['test'], listed)
+
+        desc = impl.describe_table(self.context, 'test')
+
+        self.assertEqual(schema, desc)
 
         impl.delete_table(self.context, 'test')
 
