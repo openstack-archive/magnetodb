@@ -17,8 +17,9 @@ from cassandra import cluster
 import json
 
 from magnetodb.common import config
-from magnetodb.openstack.common import log as logging
 from magnetodb.common.exception import BackendInteractionException
+from magnetodb.openstack.common import log as logging
+from magnetodb.storage.models import AttributeType
 
 
 LOG = logging.getLogger(__name__)
@@ -29,7 +30,11 @@ storage_param = json.loads(CONF.storage_param) if CONF.storage_param else {}
 CLUSTER = cluster.Cluster(**storage_param)
 SESSION = CLUSTER.connect()
 
-AWS_TO_CASSANDRA_TYPES = {'S': 'text', 'N': 'decimal', 'B': 'blob'}
+AWS_TO_CASSANDRA_TYPES = {
+    AttributeType.ELEMENT_TYPE_STRING: 'text',
+    AttributeType.ELEMENT_TYPE_NUMBER: 'decimal',
+    AttributeType.ELEMENT_TYPE_BLOB: 'blob'
+}
 
 USER_COLUMN_PREFIX = 'user_'
 SYSTEM_COLUMN_PREFIX = 'system_'

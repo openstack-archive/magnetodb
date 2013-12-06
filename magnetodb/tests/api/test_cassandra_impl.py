@@ -23,6 +23,7 @@ from magnetodb.common import PROJECT_ROOT_DIR
 from magnetodb.common import config
 from magnetodb.storage.impl import cassandra_impl as impl
 from magnetodb.storage.models import AttributeDefinition
+from magnetodb.storage.models import AttributeType
 from magnetodb.storage.models import TableSchema
 
 CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
@@ -57,9 +58,12 @@ class TestCassandraImpl(unittest.TestCase):
 
     def test_crud_table(self):
         attrs = [
-            AttributeDefinition('id', 'N'),
-            AttributeDefinition('range', 'S'),
-            AttributeDefinition('indexed', 'S'),
+            AttributeDefinition('id',
+                                AttributeType.ELEMENT_TYPE_NUMBER),
+            AttributeDefinition('range',
+                                AttributeType.ELEMENT_TYPE_STRING),
+            AttributeDefinition('indexed',
+                                AttributeType.ELEMENT_TYPE_STRING),
         ]
 
         schema = TableSchema('test', attrs, ['id', 'range'], ['indexed'])
