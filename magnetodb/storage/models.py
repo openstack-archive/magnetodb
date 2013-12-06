@@ -14,7 +14,34 @@
 #    under the License.
 
 
-class AttributeType():
+class ModelBase(object):
+
+    _data_fields = []
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __eq__(self, other):
+        for field in self._data_fields:
+            if self[field] != other[field]:
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        fields_as_list = []
+        for field in self._data_fields:
+            fields_as_list.append(self[field])
+        return hash(tuple(fields_as_list))
+
+
+class AttributeType(ModelBase):
     ELEMENT_TYPE_STRING = "string"
     ELEMENT_TYPE_NUMBER = "number"
     ELEMENT_TYPE_BLOB = "blob"
@@ -25,6 +52,8 @@ class AttributeType():
                       ELEMENT_TYPE_BLOB}
 
     _allowed_collection_types = {None, COLLECTION_TYPE_SET}
+
+    _data_fields = ['element_type', '_collection_type']
 
     def __init__(self, element_type, collection_type=None):
         assert (element_type in self._allowed_types,
@@ -37,13 +66,6 @@ class AttributeType():
         self.element_type = element_type
         self._collection_type = collection_type
 
-    def __eq__(self, other):
-        return (self.element_type == other.element_type
-                and self._collection_type == other._collection_type)
-
-    def __hash__(self):
-        return hash((self.element_type, self._collection_type))
-
     @property
     def element_type(self):
         return self._type
@@ -53,17 +75,13 @@ class AttributeType():
         return self._collection_type
 
 
-class AttributeDefinition():
+class AttributeDefinition(ModelBase):
+
+    _data_fields = ['name', 'type']
+
     def __init__(self, attr_name, attr_type):
         self._name = attr_name
         self._type = attr_type
-
-    def __eq__(self, other):
-        return (self.name == other.name
-                and self.type == other.type)
-
-    def __hash__(self):
-        return hash((self.name, self.type))
 
     @property
     def name(self):
@@ -75,6 +93,7 @@ class AttributeDefinition():
 
 
 class AttributeValue():
+
     def __init__(self, attr_type, attr_value):
         self._type = attr_type
         self._value = attr_value
