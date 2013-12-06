@@ -14,5 +14,9 @@
 #    under the License.
 
 
-def list_tables(context, exclusive_start_table_name, limit):
-    return []
+class FakeStorageImpl():
+    def __init__(self, **kwargs):
+        pass
+
+    def list_tables(self, context, exclusive_start_table_name, limit):
+        return []

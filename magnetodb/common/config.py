@@ -29,7 +29,7 @@ common_opts = [
 
     cfg.StrOpt('storage_impl', default="magnetodb.storage.impl.fake_impl"),
 
-    cfg.StrOpt('storage_param', default=None)
+    cfg.StrOpt('storage_param', default={})
 ]
 
 CONF = cfg.CONF

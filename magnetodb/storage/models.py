@@ -63,12 +63,12 @@ class AttributeType(ModelBase):
                 "Attribute type collection '%s' is't allowed" %
                 collection_type)
 
-        self.element_type = element_type
+        self._element_type = element_type
         self._collection_type = collection_type
 
     @property
     def element_type(self):
-        return self._type
+        return self._element_type
 
     @property
     def collection_type(self):
@@ -77,7 +77,7 @@ class AttributeType(ModelBase):
 
 class AttributeDefinition(ModelBase):
 
-    _data_fields = ['name', 'type']
+    _data_fields = ['name']
 
     def __init__(self, attr_name, attr_type):
         self._name = attr_name
@@ -194,20 +194,22 @@ class WriteItemBatchableRequest():
 
 
 class DeleteItemRequest(WriteItemBatchableRequest):
-    def __init__(self, table_name, indexed_condition_map):
+    def __init__(self, table_name, key_attribute_map):
         """
         @param table_name: String, name of table to delete item from
+        @param key_attribute_map: key attribute name to
+                    AttributeValue mapping. It defines row to be deleted
         @param indexed_condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be removed
         """
         super(DeleteItemRequest, self).__init__(table_name)
 
-        self._indexed_condition_map = indexed_condition_map
+        self._key_attribute_map = key_attribute_map
 
     @property
-    def indexed_condition_map(self):
-        return self._indexed_condition_map
+    def key_attribute_map(self):
+        return self._key_attribute_map
 
 
 class PutItemRequest(WriteItemBatchableRequest):
@@ -255,46 +257,28 @@ class UpdateItemAction():
         return self._value
 
 
-class TableSchema():
+class TableSchema(ModelBase):
+    _data_fields = ['table_name', 'attribute_defs', 'key_attributes',
+                    'indexed_non_key_attributes']
+
     def __init__(self, table_name, attribute_defs, key_attributes,
                  indexed_non_key_attributes=None):
         """
         @param table_name: String, name of table to create
         @param attribute_defs: list of AttributeDefinition which define table
                     attribute names and types
-        @param key_attrs: list of key attribute names, contains partitional_key
+        @param key_attrs: set of key attribute names, contains partitional_key
                     (the first in list, required) attribute name and extra key
                     attribute names (the second and other list items, not
                     required)
 
-        @param indexed_non_key_attributes: list of non key attribute names to
+        @param indexed_non_key_attributes: set of non key attribute names to
                     be indexed
         """
         self._table_name = table_name
         self._attribute_defs = attribute_defs
         self._key_attributes = key_attributes
         self._indexed_non_key_attributes = indexed_non_key_attributes
-
-    def __eq__(self, other):
-        if self.table_name != other.table_name:
-            return False
-
-        if self.key_attributes != other.key_attributes:
-            return False
-
-        attrs1 = self.attribute_defs or []
-        attrs2 = other.attribute_defs or []
-
-        if set(attrs1) != set(attrs2):
-            return False
-
-        indexed1 = self.indexed_non_key_attributes or []
-        indexed2 = other.indexed_non_key_attributes or []
-
-        if set(indexed1) != set(indexed2):
-            return False
-
-        return True
 
     @property
     def table_name(self):

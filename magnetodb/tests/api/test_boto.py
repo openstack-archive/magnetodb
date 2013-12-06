@@ -26,10 +26,6 @@ CONF = magnetodb_api_fake.CONF
 
 
 class Test(unittest.TestCase):
-
-    CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
-                               'etc/magnetodb-test.conf')
-
     PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
                                      'etc/api-paste-test.ini')
 
@@ -37,8 +33,7 @@ class Test(unittest.TestCase):
     def setUpClass(cls):
         super(Test, cls).setUpClass()
 
-        magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE,
-                                                  cls.CONFIG_FILE)
+        magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE)
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
 
     @classmethod

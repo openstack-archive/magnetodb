@@ -12,3 +12,17 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import os
+
+from magnetodb.common import PROJECT_NAME
+from magnetodb.common import PROJECT_ROOT_DIR
+
+CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
+                           'etc/magnetodb-test.conf')
+
+from magnetodb.openstack.common import log
+log.setup(PROJECT_NAME)
+
+from magnetodb.common import config
+config.parse_args(argv=[], default_config_files=[CONFIG_FILE])
