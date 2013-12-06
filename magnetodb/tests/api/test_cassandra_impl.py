@@ -43,11 +43,11 @@ class TestCassandraImpl(unittest.TestCase):
     def test_crud_table(self):
         attrs = {
             models.AttributeDefinition(
-                'id', models.AttributeType.ELEMENT_TYPE_NUMBER),
+                'id', models.ATTRIBUTE_TYPE_NUMBER),
             models.AttributeDefinition(
-                'range', models.AttributeType.ELEMENT_TYPE_STRING),
+                'range', models.ATTRIBUTE_TYPE_STRING),
             models.AttributeDefinition(
-                'indexed', models.AttributeType.ELEMENT_TYPE_STRING)
+                'indexed', models.ATTRIBUTE_TYPE_STRING)
         }
 
         schema = models.TableSchema('test', attrs, {'id', 'range'},

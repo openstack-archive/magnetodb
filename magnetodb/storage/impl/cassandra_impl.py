@@ -25,9 +25,9 @@ LOG = logging.getLogger(__name__)
 class CassandraStorageImpl():
 
     STORAGE_TO_CASSANDRA_TYPES = {
-        models.AttributeType.ELEMENT_TYPE_STRING: 'text',
-        models.AttributeType.ELEMENT_TYPE_NUMBER: 'decimal',
-        models.AttributeType.ELEMENT_TYPE_BLOB: 'blob'
+        models.ATTRIBUTE_TYPE_STRING: 'text',
+        models.ATTRIBUTE_TYPE_NUMBER: 'decimal',
+        models.ATTRIBUTE_TYPE_BLOB: 'blob'
     }
 
     CASSANDRA_TO_STORAGE_TYPES = {val: key for key, val

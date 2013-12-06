@@ -75,6 +75,11 @@ class AttributeType(ModelBase):
         return self._collection_type
 
 
+ATTRIBUTE_TYPE_STRING = AttributeType(AttributeType.ELEMENT_TYPE_STRING)
+ATTRIBUTE_TYPE_NUMBER = AttributeType(AttributeType.ELEMENT_TYPE_NUMBER)
+ATTRIBUTE_TYPE_BLOB = AttributeType(AttributeType.ELEMENT_TYPE_BLOB)
+
+
 class AttributeDefinition(ModelBase):
 
     _data_fields = ['name']
