@@ -1,4 +1,5 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
+from magnetodb.storage.models import TableSchema
 
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
@@ -15,6 +16,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 def list_tables(context, exclusive_start_table_name, limit):
     return []
+
+
+def describe_table(context, table_name):
+    return None

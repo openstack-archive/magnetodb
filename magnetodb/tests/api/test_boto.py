@@ -23,11 +23,15 @@ from boto.regioninfo import RegionInfo
 
 from magnetodb.tests.fake import magnetodb_api_fake
 from magnetodb.common import PROJECT_ROOT_DIR
+from boto.dynamodb2.table import Table
+
+from mox import *
+
 
 CONF = magnetodb_api_fake.CONF
 
 
-class Test(unittest.TestCase):
+class BotoIntegrationTest(unittest.TestCase):
 
     CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
                                'etc/magnetodb-test.conf')
@@ -37,15 +41,18 @@ class Test(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(Test, cls).setUpClass()
+        super(BotoIntegrationTest, cls).setUpClass()
 
         magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE,
                                                   cls.CONFIG_FILE)
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
 
+        import magnetodb.storage as storage
+        cls.STORAGE = storage.STORAGE_IMPL
+
     @classmethod
     def tearDownClass(cls):
-        super(Test, cls).tearDownClass()
+        super(BotoIntegrationTest, cls).tearDownClass()
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
     @staticmethod
@@ -63,5 +70,48 @@ class Test(unittest.TestCase):
                                      region=region, port=port, is_secure=False,
                                      validate_certs=False)
 
+    def setUp(self):
+        self.storage_mocker = Mox()
+
+    def tearDown(self):
+        self.storage_mocker.UnsetStubs()
+
     def testListTable(self):
-        self.DYNAMODB_CON.list_tables()
+        self.storage_mocker.StubOutWithMock(self.STORAGE, "list_tables")
+        self.STORAGE.list_tables(IgnoreArg(),IgnoreArg(),IgnoreArg()).AndReturn(['table1','table2'])
+
+        self.storage_mocker.ReplayAll()
+        self.assertListEqual(['table1','table2'],self.DYNAMODB_CON.list_tables())
+
+        self.storage_mocker.VerifyAll()
+
+    def testDescribeTable(self):
+
+        self.storage_mocker.StubOutWithMock(self.STORAGE,'describe_table')
+
+        from magnetodb.storage import models
+        self.STORAGE.describe_table(IgnoreArg(),'test_table').AndReturn(models.TableSchema('test_table', None, None))
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        table_description = table.describe()
+
+        self.storage_mocker.VerifyAll()
+
+        self.assertEquals('test_table',
+                          table_description['Table']['TableName'])
+        self.assertListEqual([
+                            {
+                                "AttributeName": "city1",
+                                "AttributeType": "S"
+                            },
+                            {
+                                "AttributeName": "id",
+                                "AttributeType": "S"
+                            },
+                            {
+                                "AttributeName": "name",
+                                "AttributeType": "S"
+                            }
+                        ], table_description['Table']['AttributeDefinitions'])
