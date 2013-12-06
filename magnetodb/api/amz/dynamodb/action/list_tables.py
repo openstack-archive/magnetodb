@@ -18,15 +18,14 @@
 from magnetodb import storage
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.action import Props
-from magnetodb.api.amz.dynamodb.action import Types
+from magnetodb.api.amz.dynamodb import parser
 
 
 class ListTablesDynamoDBAction(DynamoDBAction):
     schema = {
         "properties": {
-            Props.EXCLUSIVE_START_TABLE_NAME:  Types.TABLE_NAME,
-            Props.LIMIT: {
+            parser.Props.EXCLUSIVE_START_TABLE_NAME:  parser.Types.TABLE_NAME,
+            parser.Props.LIMIT: {
                 "type": "integer",
                 "minimum": 0,
             }
@@ -35,10 +34,11 @@ class ListTablesDynamoDBAction(DynamoDBAction):
 
     def __call__(self):
         exclusive_start_table_name = (
-            self.action_params.get(Props.EXCLUSIVE_START_TABLE_NAME, None)
+            self.action_params.get(parser.Props.EXCLUSIVE_START_TABLE_NAME,
+                                   None)
         )
 
-        limit = self.action_params.get(Props.LIMIT, None)
+        limit = self.action_params.get(parser.Props.LIMIT, None)
 
         table_names = (
             storage.list_tables(

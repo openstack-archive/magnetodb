@@ -16,52 +16,46 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.action import Props
-from magnetodb.api.amz.dynamodb.action import Types
+from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
+from magnetodb.storage import models
 
 
 class CreateTableDynamoDBAction(DynamoDBAction):
     schema = {
-        "required": [Props.ATTRIBUTE_DEFINITIONS, Props.KEY_SCHEMA,
-                     Props.TABLE_NAME],
+        "required": [parser.Props.ATTRIBUTE_DEFINITIONS,
+                     parser.Props.KEY_SCHEMA,
+                     parser.Props.TABLE_NAME],
         "properties": {
-            Props.ATTRIBUTE_DEFINITIONS: {
+            parser.Props.ATTRIBUTE_DEFINITIONS: {
                 "type": "array",
-                "items": {
-                    "type": "object",
-                    "required": [Props.ATTRIBUTE_NAME,
-                                 Props.ATTRIBUTE_TYPE],
-                    "properties": {
-                        Props.ATTRIBUTE_NAME: Types.ATTRIBUTE_NAME,
-                        Props.ATTRIBUTE_TYPE: Types.ATTRIBUTE_TYPE
-                    }
-                }
+                "items": parser.Types.ATTRIBUTE_DEFINITION
             },
-            Props.KEY_SCHEMA: Types.KEY_SCHEMA,
+            parser.Props.KEY_SCHEMA: parser.Types.KEY_SCHEMA,
 
-            Props.LOCAL_SECONDARY_INDEXES: {
+            parser.Props.LOCAL_SECONDARY_INDEXES: {
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "required": [Props.INDEX_NAME, Props.KEY_SCHEMA,
-                                 Props.PROJECTION],
+                    "required": [parser.Props.INDEX_NAME,
+                                 parser.Props.KEY_SCHEMA,
+                                 parser.Props.PROJECTION],
                     "properties": {
-                        Props.INDEX_NAME: Types.INDEX_NAME,
-                        Props.KEY_SCHEMA: Types.KEY_SCHEMA,
-                        Props.PROJECTION: {
+                        parser.Props.INDEX_NAME: parser.Types.INDEX_NAME,
+                        parser.Props.KEY_SCHEMA: parser.Types.KEY_SCHEMA,
+                        parser.Props.PROJECTION: {
                             "type": "object",
-                            "required": [Props.NON_KEY_ATTRIBUTES,
-                                         Props.PROJECTION_TYPE],
+                            "required": [parser.Props.NON_KEY_ATTRIBUTES,
+                                         parser.Props.PROJECTION_TYPE],
                             "properties": {
-                                Props.NON_KEY_ATTRIBUTES: {
+                                parser.Props.NON_KEY_ATTRIBUTES: {
                                     "type": "array",
                                     "items": {
                                         "type": "string",
                                     }
                                 },
-                                Props.PROJECTION_TYPE: {
+                                parser.Props.PROJECTION_TYPE: {
                                     "type": "string",
                                 }
                             }
@@ -70,40 +64,55 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                 }
             },
 
-            Props.PROVISIONED_THROUGHPUT: {
+            parser.Props.PROVISIONED_THROUGHPUT: {
                 "type": "object",
-                "required": [Props.READ_CAPACITY_UNITS,
-                             Props.WRITE_CAPACITY_UNITS],
+                "required": [parser.Props.READ_CAPACITY_UNITS,
+                             parser.Props.WRITE_CAPACITY_UNITS],
                 "properties": {
-                    Props.READ_CAPACITY_UNITS: {
+                    parser.Props.READ_CAPACITY_UNITS: {
                         "type": "integer"
                     },
-                    Props.WRITE_CAPACITY_UNITS: {
+                    parser.Props.WRITE_CAPACITY_UNITS: {
                         "type": "integer"
                     }
                 }
             },
 
-            Props.TABLE_NAME: Types.TABLE_NAME
+            parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
         }
     }
 
     def __call__(self):
-        exclusive_start_table_name = (
-            self.action_params.get(Props.EXCLUSIVE_START_TABLE_NAME, None)
+        table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
+
+        attribute_definitions = map(
+            parser.Parser.parse_attribute_definition,
+            self.action_params.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
         )
-
-        limit = self.action_params.get(Props.LIMIT, None)
-
-        table_names = (
-            storage.list_tables(
-                self.context,
-                exclusive_start_table_name=exclusive_start_table_name,
-                limit=limit)
+        
+        key_attrs = parser.Parser.parse_key_schema(
+            self.action_params.get(parser.Props.KEY_SCHEMA, [])
         )
-
-        if table_names:
-            return {"LastEvaluatedTableName": table_names[-1],
-                    "TableNames": table_names}
-        else:
-            return {}
+        
+        key_attrs_per_projection_list = map(
+            parser.Parser.parse_key_schema,
+            map(
+                lambda index: index.get(parser.Props.KEY_SCHEMA, {}),
+                self.action_params.get(parser.Props.LOCAL_SECONDARY_INDEXES,
+                                       [])
+            )
+        )
+        
+        indexed_attr_names = []
+        
+        for key_attrs_for_projection in key_attrs_per_projection_list:
+            assert (
+                len(key_attrs_for_projection) > 1,
+                "Range key in index wasn't specified"
+            )
+            indexed_attr_names.append(key_attrs_for_projection[1])
+        
+        table_schema = models.TableSchema(table_name, attribute_definitions,
+                                          key_attrs, indexed_attr_names)
+        
+        storage.create_table(table_schema)
