@@ -78,11 +78,23 @@ def create_table(context, table_schema):
 
     query += ")"
 
-    _execute_query(query)
+    try:
+        _execute_query(query)
 
-    for attr in table_schema.indexed_non_key_attributes:
-        _create_index(context, table_schema.table_name,
-                      USER_COLUMN_PREFIX + attr)
+        for attr in table_schema.indexed_non_key_attributes:
+            _create_index(context, table_schema.table_name,
+                          USER_COLUMN_PREFIX + attr)
+    except Exception as e:
+        LOG.error("Table {} creation failed. Cleaning up...".format(
+            table_schema.table_name))
+
+        try:
+            delete_table(context, table_schema.table_name)
+        except Exception:
+            LOG.error("Failed table {} was not deleted".format(
+                table_schema.table_name))
+
+        raise e
 
 
 def _create_index(context, table_name, indexed_attr):
