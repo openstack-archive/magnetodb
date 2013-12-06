@@ -13,19 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
-import os
 import unittest
 
-from magnetodb.common import PROJECT_ROOT_DIR
-from magnetodb.common import config
-from magnetodb.storage.impl import cassandra_impl as impl
-from magnetodb.storage.models import AttributeDefinition
-from magnetodb.storage.models import AttributeType
-from magnetodb.storage.models import TableSchema
-
-CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
-                           'etc/magnetodb-test.conf')
+from magnetodb.storage import models
+from magnetodb.storage.impl import cassandra_impl
 
 
 class FakeContext(object):
@@ -38,46 +29,40 @@ class TestCassandraImpl(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super(TestCassandraImpl, cls).setUpClass()
-        cls.orig_session = impl.SESSION
-        cls.orig_cluster = impl.CLUSTER
-        cls.orig_conf = config.CONF
-        config.parse_args([], default_config_files=[CONFIG_FILE])
-        storage_param = json.loads(config.CONF.storage_param)
-        impl.CLUSTER = impl.cluster.Cluster(**storage_param)
-        impl.SESSION = impl.CLUSTER.connect()
+
+        cls.CASANDRA_STORAGE_IMPL = cassandra_impl.CassandraStorageImpl(
+            contact_points=("localhost",))
 
     @classmethod
     def tearDownClass(cls):
         super(TestCassandraImpl, cls).tearDownClass()
-        impl.SESSION = cls.orig_session
-        impl.CLUSTER = cls.orig_cluster
-        config.CONF = cls.orig_conf
 
     def setUp(self):
         self.context = FakeContext('default_tenant')
 
     def test_crud_table(self):
-        attrs = [
-            AttributeDefinition('id',
-                                AttributeType.ELEMENT_TYPE_NUMBER),
-            AttributeDefinition('range',
-                                AttributeType.ELEMENT_TYPE_STRING),
-            AttributeDefinition('indexed',
-                                AttributeType.ELEMENT_TYPE_STRING),
-        ]
+        attrs = {
+            models.AttributeDefinition(
+                'id', models.AttributeType.ELEMENT_TYPE_NUMBER),
+            models.AttributeDefinition(
+                'range', models.AttributeType.ELEMENT_TYPE_STRING),
+            models.AttributeDefinition(
+                'indexed', models.AttributeType.ELEMENT_TYPE_STRING)
+        }
 
-        schema = TableSchema('test', attrs, ['id', 'range'], ['indexed'])
+        schema = models.TableSchema('test', attrs, {'id', 'range'},
+                                    {'indexed'})
 
-        impl.create_table(self.context, schema)
+        self.CASANDRA_STORAGE_IMPL.create_table(self.context, schema)
 
-        listed = impl.list_tables(self.context)
+        listed = self.CASANDRA_STORAGE_IMPL.list_tables(self.context)
         self.assertEqual(['test'], listed)
 
-        desc = impl.describe_table(self.context, 'test')
+        desc = self.CASANDRA_STORAGE_IMPL.describe_table(self.context, 'test')
 
         self.assertEqual(schema, desc)
 
-        impl.delete_table(self.context, 'test')
+        self.CASANDRA_STORAGE_IMPL.delete_table(self.context, 'test')
 
-        listed = impl.list_tables(self.context)
+        listed = self.CASANDRA_STORAGE_IMPL.list_tables(self.context)
         self.assertEqual([], listed)

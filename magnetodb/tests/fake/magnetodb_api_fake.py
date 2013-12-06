@@ -19,19 +19,11 @@ from wsgi_intercept import http_client_intercept
 from magnetodb.common import config
 from magnetodb.common import PROJECT_NAME
 
-from magnetodb.openstack.common import log
-
-
 CONF = config.CONF
 
-log.setup(PROJECT_NAME)
 
-
-def run_fake_magnetodb_api(past_conf_file, magneto_conf_file):
+def run_fake_magnetodb_api(past_conf_file):
     from magnetodb.openstack.common import pastedeploy
-
-    config.parse_args(argv=[],
-                      default_config_files=[magneto_conf_file])
 
     http_client_intercept.install()
 

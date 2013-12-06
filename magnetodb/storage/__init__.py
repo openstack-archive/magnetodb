@@ -16,8 +16,13 @@
 from magnetodb.common import config
 from magnetodb.openstack.common import importutils
 
+from magnetodb.openstack.common import jsonutils
+
 CONF = config.CONF
-STORAGE_IMPL = importutils.import_module(CONF.storage_impl)
+
+storage_param = jsonutils.loads(CONF.storage_param)
+
+STORAGE_IMPL = importutils.import_class(CONF.storage_impl)(**storage_param)
 
 
 def create_table(context, table_schema):
