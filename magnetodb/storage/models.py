@@ -14,7 +14,34 @@
 #    under the License.
 
 
-class AttributeType():
+class ModelBase(object):
+
+    _data_fields = []
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __eq__(self, other):
+        for field in self._data_fields:
+            if self[field] != other[field]:
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        fields_as_list = []
+        for field in self._data_fields:
+            fields_as_list.append(self[field])
+        return hash(tuple(fields_as_list))
+
+
+class AttributeType(ModelBase):
     ELEMENT_TYPE_STRING = "string"
     ELEMENT_TYPE_NUMBER = "number"
     ELEMENT_TYPE_BLOB = "blob"
@@ -25,6 +52,8 @@ class AttributeType():
                       ELEMENT_TYPE_BLOB}
 
     _allowed_collection_types = {None, COLLECTION_TYPE_SET}
+
+    _data_fields = ['element_type', '_collection_type']
 
     def __init__(self, element_type, collection_type=None):
         assert (element_type in self._allowed_types,
@@ -46,7 +75,10 @@ class AttributeType():
         return self._collection_type
 
 
-class AttributeDefinition():
+class AttributeDefinition(ModelBase):
+
+    _data_fields = ['name', 'type']
+
     def __init__(self, attr_name, attr_type):
         self._name = attr_name
         self._type = attr_type
@@ -61,6 +93,7 @@ class AttributeDefinition():
 
 
 class AttributeValue():
+
     def __init__(self, attr_type, attr_value):
         self._type = attr_type
         self._value = attr_value
@@ -241,6 +274,27 @@ class TableSchema():
         self._attribute_defs = attribute_defs
         self._key_attributes = key_attributes
         self._indexed_non_key_attributes = indexed_non_key_attributes
+
+    def __eq__(self, other):
+        if self.table_name != other.table_name:
+            return False
+
+        if self.key_attributes != other.key_attributes:
+            return False
+
+        attrs1 = self.attribute_defs or []
+        attrs2 = other.attribute_defs or []
+
+        if set(attrs1) != set(attrs2):
+            return False
+
+        indexed1 = self.indexed_non_key_attributes or []
+        indexed2 = other.indexed_non_key_attributes or []
+
+        if set(indexed1) != set(indexed2):
+            return False
+
+        return True
 
     @property
     def table_name(self):

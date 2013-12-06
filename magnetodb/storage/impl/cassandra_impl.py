@@ -13,17 +13,53 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.common import config
+from cassandra import cluster
 import json
 
+from magnetodb.common import config
+from magnetodb.common.exception import BackendInteractionException
+from magnetodb.openstack.common import log as logging
+from magnetodb.storage.models import AttributeDefinition
+from magnetodb.storage.models import AttributeType
+from magnetodb.storage.models import TableSchema
+
+
+LOG = logging.getLogger(__name__)
 CONF = config.CONF
 
-from cassandra import cluster
-
-storage_param = json.loads(CONF.storage_param)
+storage_param = json.loads(CONF.storage_param) if CONF.storage_param else {}
 
 CLUSTER = cluster.Cluster(**storage_param)
 SESSION = CLUSTER.connect()
+
+STORAGE_TO_CASSANDRA_TYPES = {
+    AttributeType.ELEMENT_TYPE_STRING: 'text',
+    AttributeType.ELEMENT_TYPE_NUMBER: 'decimal',
+    AttributeType.ELEMENT_TYPE_BLOB: 'blob'
+}
+
+CASSANDRA_TO_STORAGE_TYPES = {
+    'text': AttributeType.ELEMENT_TYPE_STRING,
+    'decimal': AttributeType.ELEMENT_TYPE_NUMBER,
+    'blob': AttributeType.ELEMENT_TYPE_BLOB
+}
+
+USER_COLUMN_PREFIX = 'user_'
+SYSTEM_COLUMN_PREFIX = 'system_'
+SYSTEM_COLUMN_ATTRS = SYSTEM_COLUMN_PREFIX + 'attrs'
+SYSTEM_COLUMN_ATTR_TYPES = SYSTEM_COLUMN_PREFIX + 'attr_types'
+SYSTEM_COLUMN_ATTR_EXISTS = SYSTEM_COLUMN_PREFIX + 'attr_exists'
+
+
+def _execute_query(query):
+    try:
+        LOG.debug("Executing query {}".format(query))
+        return SESSION.execute(query)
+    except Exception as e:
+        msg = "Error executing query {}:{}".format(query, e.message)
+        LOG.error(msg)
+        raise BackendInteractionException(
+            msg)
 
 
 def create_table(context, table_schema):
@@ -35,7 +71,58 @@ def create_table(context, table_schema):
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+
+    query = "CREATE TABLE {}.{} (".format(context.tenant,
+                                          table_schema.table_name)
+
+    for attr_def in table_schema.attribute_defs:
+        query += "{} {},".format(USER_COLUMN_PREFIX + attr_def.name,
+                                 STORAGE_TO_CASSANDRA_TYPES[attr_def.type])
+
+    query += "{} map<text, blob>,".format(SYSTEM_COLUMN_ATTRS)
+    query += "{} map<text, text>,".format(SYSTEM_COLUMN_ATTR_TYPES)
+    query += "{} map<text, text>,".format(SYSTEM_COLUMN_ATTR_EXISTS)
+
+    prefixed_attrs = [USER_COLUMN_PREFIX + name
+                      for name in table_schema.key_attributes]
+
+    key_count = len(prefixed_attrs)
+
+    if key_count < 1 or key_count > 2:
+        raise BackendInteractionException(
+            "Expected 1 or 2 key attribute(s). Found {}: {}".format(
+                key_count, table_schema.key_attributes))
+
+    primary_key = ','.join(prefixed_attrs)
+    query += "PRIMARY KEY ({})".format(primary_key)
+
+    query += ")"
+
+    try:
+        _execute_query(query)
+
+        for attr in table_schema.indexed_non_key_attributes:
+            _create_index(context, table_schema.table_name,
+                          USER_COLUMN_PREFIX + attr)
+    except Exception as e:
+        LOG.error("Table {} creation failed. Cleaning up...".format(
+            table_schema.table_name))
+
+        try:
+            delete_table(context, table_schema.table_name)
+        except Exception:
+            LOG.error("Failed table {} was not deleted".format(
+                table_schema.table_name))
+
+        raise e
+
+
+def _create_index(context, table_name, indexed_attr):
+
+    query = "CREATE INDEX ON {}.{} ({})".format(
+        context.tenant, table_name, indexed_attr)
+
+    _execute_query(query)
 
 
 def delete_table(context, table_name):
@@ -47,7 +134,9 @@ def delete_table(context, table_name):
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    query = "DROP TABLE {}.{}".format(context.tenant, table_name)
+
+    _execute_query(query)
 
 
 def describe_table(context, table_name):
@@ -61,10 +150,48 @@ def describe_table(context, table_name):
 
     @raise BackendInteractionException
     """
-    raise NotImplemented
+    try:
+        keyspace_meta = CLUSTER.metadata.keyspaces[context.tenant]
+    except KeyError:
+        raise BackendInteractionException(
+            "Tenant '{}' does not exist".format(context.tenant))
+
+    try:
+        table_meta = keyspace_meta.tables[table_name]
+    except KeyError:
+        raise BackendInteractionException(
+            "Table '{}' does not exist".format(table_name))
+
+    prefix_len = len(USER_COLUMN_PREFIX)
+
+    user_columns = [val for key, val
+                    in table_meta.columns.iteritems()
+                    if key.startswith(USER_COLUMN_PREFIX)]
+
+    attr_defs = []
+    indexed_attrs = []
+
+    for column in user_columns:
+        name = column.name[prefix_len:]
+        type = CASSANDRA_TO_STORAGE_TYPES[column.typestring]
+        attr_defs.append(AttributeDefinition(name, type))
+        if column.index:
+            indexed_attrs.append(name)
+
+    hash_key_name = table_meta.partition_key[0].name[prefix_len:]
+
+    key_attrs = [hash_key_name]
+
+    if table_meta.clustering_key:
+        range_key_name = table_meta.clustering_key[0].name[prefix_len:]
+        key_attrs.append(range_key_name)
+
+    table_schema = TableSchema(table_meta.name, attr_defs,
+                               key_attrs, indexed_attrs)
+
+    return table_schema
 
 
-# TODO: IT IS DRAFT ONLY
 def list_tables(context, exclusive_start_table_name=None, limit=None):
     """
     @param context: current request context
@@ -75,14 +202,20 @@ def list_tables(context, exclusive_start_table_name=None, limit=None):
     @raise BackendInteractionException
     """
 
-    prepared = SESSION.prepare("""
-        SELECT columnfamily_name from system.schema_columnfamilies
-            where keyspace_name=? and columnfamily_name>? LIMIT ?
-    """)
+    query = "SELECT columnfamily_name from system.schema_columnfamilies"
 
-    bound = prepared.bind((context.tenant, exclusive_start_table_name, limit))
+    query += " WHERE keyspace_name = '{}'".format(context.tenant)
 
-    return SESSION.execute(bound)
+    if exclusive_start_table_name:
+        query += " AND columnfamily_name > '{}'".format(
+            exclusive_start_table_name)
+
+    if limit:
+        query += " LIMIT {}".format(limit)
+
+    tables = _execute_query(query)
+
+    return [row.columnfamily_name for row in tables]
 
 
 def put_item(context, put_request, if_not_exist=False,
