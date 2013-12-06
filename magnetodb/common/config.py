@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -29,7 +27,7 @@ common_opts = [
 
     cfg.IntOpt('bind_port', default=80),
 
-    cfg.StrOpt('storage_impl', default="magnetodb.storage.impl.fake"),
+    cfg.StrOpt('storage_impl', default="magnetodb.storage.impl.fake_impl"),
 
     cfg.StrOpt('storage_param', default=None)
 ]
