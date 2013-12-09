@@ -117,7 +117,7 @@ class Condition():
 
     _allowed_types = {CONDITION_TYPE_EQUAL}
 
-    def __init__(self, condition_type, attr_name, condition_arg):
+    def __init__(self, condition_type, condition_arg):
         assert (condition_type in self._allowed_types,
                 "Condition type '%s' is't allowed" % condition_type)
 
@@ -134,7 +134,7 @@ class Condition():
 
     @classmethod
     def eq(cls, condition_arg):
-        return cls(cls.CONDITION_TYPE_EQUALITY, condition_arg)
+        return cls(cls.CONDITION_TYPE_EQUAL, condition_arg)
 
 
 class IndexedCondition(Condition):
@@ -178,8 +178,8 @@ class ExpectedCondition(Condition):
         return cls(cls.CONDITION_TYPE_EXISTS, False)
 
 
-class WriteItemBatchableRequest():
-    def __init__(self, table_name, timestamp):
+class WriteItemBatchableRequest(object):
+    def __init__(self, table_name, timestamp=None):
         """
         @param table_name: String, name of table to delete item from
         @param timestamp: timestamp of operation. Operation will be skipped

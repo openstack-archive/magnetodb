@@ -37,7 +37,7 @@ class CassandraStorageImpl():
     SYSTEM_COLUMN_PREFIX = 'system_'
     SYSTEM_COLUMN_ATTRS = SYSTEM_COLUMN_PREFIX + 'attrs'
     SYSTEM_COLUMN_ATTR_TYPES = SYSTEM_COLUMN_PREFIX + 'attr_types'
-    SYSTEM_COLUMN_ATTR_EXISTS = SYSTEM_COLUMN_PREFIX + 'attr_exists'
+    SYSTEM_COLUMN_ATTR_EXIST = SYSTEM_COLUMN_PREFIX + 'attr_exist'
 
     def __init__(self, contact_points=("127.0.0.1",),
                  port=9042,
@@ -105,7 +105,7 @@ class CassandraStorageImpl():
 
         query += "{} map<text, blob>,".format(self.SYSTEM_COLUMN_ATTRS)
         query += "{} map<text, text>,".format(self.SYSTEM_COLUMN_ATTR_TYPES)
-        query += "{} map<text, text>,".format(self.SYSTEM_COLUMN_ATTR_EXISTS)
+        query += "{} map<text, text>,".format(self.SYSTEM_COLUMN_ATTR_EXIST)
 
         prefixed_attrs = [self.USER_COLUMN_PREFIX + name
                           for name in table_schema.key_attributes]
