@@ -14,9 +14,15 @@
 #    under the License.
 
 import unittest
+import uuid
+
+from cassandra import cluster
 
 from magnetodb.storage import models
 from magnetodb.storage.impl import cassandra_impl
+
+
+TEST_CONNECTION = {'contact_points': ("localhost",)}
 
 
 class FakeContext(object):
@@ -24,45 +30,145 @@ class FakeContext(object):
         self.tenant = tenant
 
 
-class TestCassandraImpl(unittest.TestCase):
+class TestCassandraBase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestCassandraImpl, cls).setUpClass()
+        super(TestCassandraBase, cls).setUpClass()
 
         cls.CASANDRA_STORAGE_IMPL = cassandra_impl.CassandraStorageImpl(
-            contact_points=("localhost",))
+            **TEST_CONNECTION)
+
+        cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
+        cls.SESSION = cls.CLUSTER.connect()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestCassandraImpl, cls).tearDownClass()
+        super(TestCassandraBase, cls).tearDownClass()
 
     def setUp(self):
-        self.context = FakeContext('default_tenant')
+        self.keyspace = self._get_unique_name()
 
-    def test_crud_table(self):
+        self._create_keyspace()
+
+        self.context = FakeContext(self.keyspace)
+
+        self.table_name = self._get_unique_name()
+
+    def tearDown(self):
+        self._drop_keyspace()
+
+    @staticmethod
+    def _get_unique_name():
+        name = str(uuid.uuid4())
+        return 'test' + filter(lambda x: x != '-', name)[:28]
+
+    def _create_keyspace(self, keyspace=None):
+        keyspace = keyspace or self.keyspace
+
+        query = "CREATE KEYSPACE {} WITH replication".format(keyspace)
+        query += " = {'class':'SimpleStrategy', 'replication_factor':1}"
+
+        self.SESSION.execute(query)
+
+    def _drop_keyspace(self, keyspace=None):
+        keyspace = keyspace or self.keyspace
+
+        query = ("DROP KEYSPACE {}".format(keyspace))
+
+        self.SESSION.execute(query)
+
+    def _get_table_names(self, keyspace=None):
+        keyspace = keyspace or self.keyspace
+
+        ks = self.CLUSTER.metadata.keyspaces[keyspace]
+
+        return ks.tables.keys()
+
+    def _create_table(self, keyspace=None, table_name=None):
+        keyspace = keyspace or self.keyspace
+        table_name = table_name or self.table_name
+        query = "CREATE TABLE {}.{} (".format(keyspace, table_name)
+        query += " user_id decimal,"
+        query += " user_range text,"
+        query += " user_indexed text,"
+        query += " system_attrs map<text, blob>,"
+        query += " system_attr_types map<text, text>,"
+        query += " system_attr_exist map<text, text>,"
+        query += " PRIMARY KEY(user_id, user_range))"
+        self.SESSION.execute(query)
+
+    def _create_index(self, keyspace=None, table_name=None,
+                      attr='user_indexed'):
+        keyspace = keyspace or self.keyspace
+        table_name = table_name or self.table_name
+        query = "CREATE INDEX ON {}.{} ({})".format(
+            keyspace, table_name, attr)
+        self.SESSION.execute(query)
+
+    def _drop_table(self, keyspace=None, table_name=None):
+        keyspace = keyspace or self.keyspace
+        table_name = None or self.table_name
+        query = "DROP TABLE IF EXISTS {}.{}".format(keyspace, table_name)
+        self.SESSION.execute(query)
+
+
+class TestCassandraTableCrud(TestCassandraBase):
+
+    def test_create_table(self):
+        self.assertEqual([], self._get_table_names())
+
         attrs = {
             models.AttributeDefinition(
-                'id', models.AttributeType.ELEMENT_TYPE_NUMBER),
+                'id', models.ATTRIBUTE_TYPE_NUMBER),
             models.AttributeDefinition(
-                'range', models.AttributeType.ELEMENT_TYPE_STRING),
+                'range', models.ATTRIBUTE_TYPE_STRING),
             models.AttributeDefinition(
-                'indexed', models.AttributeType.ELEMENT_TYPE_STRING)
+                'indexed', models.ATTRIBUTE_TYPE_STRING)
         }
 
-        schema = models.TableSchema('test', attrs, {'id', 'range'},
+        schema = models.TableSchema(self.table_name, attrs, {'id', 'range'},
                                     {'indexed'})
 
         self.CASANDRA_STORAGE_IMPL.create_table(self.context, schema)
 
-        listed = self.CASANDRA_STORAGE_IMPL.list_tables(self.context)
-        self.assertEqual(['test'], listed)
+        self.assertEqual([self.table_name], self._get_table_names())
 
-        desc = self.CASANDRA_STORAGE_IMPL.describe_table(self.context, 'test')
+    def test_list_table(self):
+        self.assertEqual(
+            [], self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
+
+        self._create_table()
+
+        self.assertEqual([self.table_name],
+                         self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
+
+    def test_describe_table(self):
+        attrs = {
+            models.AttributeDefinition(
+                'id', models.ATTRIBUTE_TYPE_NUMBER),
+            models.AttributeDefinition(
+                'range', models.ATTRIBUTE_TYPE_STRING),
+            models.AttributeDefinition(
+                'indexed', models.ATTRIBUTE_TYPE_STRING)
+        }
+
+        schema = models.TableSchema(self.table_name, attrs, {'id', 'range'},
+                                    {'indexed'})
+
+        self._create_table()
+        self._create_index()
+
+        desc = self.CASANDRA_STORAGE_IMPL.describe_table(
+            self.context, self.table_name)
 
         self.assertEqual(schema, desc)
 
-        self.CASANDRA_STORAGE_IMPL.delete_table(self.context, 'test')
+    def test_delete_table(self):
+        self._create_table()
 
-        listed = self.CASANDRA_STORAGE_IMPL.list_tables(self.context)
-        self.assertEqual([], listed)
+        self.assertEqual([self.table_name], self._get_table_names())
+
+        self.CASANDRA_STORAGE_IMPL.delete_table(self.context, self.table_name)
+
+        self.assertEqual([], self._get_table_names())
