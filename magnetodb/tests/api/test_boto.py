@@ -13,11 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import boto
+from boto.dynamodb2 import RegionInfo
+from boto.dynamodb2.layer1 import DynamoDBConnection
+from boto.dynamodb2.table import Table
+from boto.dynamodb2 import fields
+from boto.dynamodb2 import types
 import os
 import unittest
-
-from boto.regioninfo import RegionInfo
 
 from magnetodb.tests.fake import magnetodb_api_fake
 from magnetodb.common import PROJECT_ROOT_DIR
@@ -50,11 +52,36 @@ class Test(unittest.TestCase):
             port = CONF.bind_port
 
         endpoint = '{}:{}'.format(host, port)
-        region = RegionInfo(name='test_server', endpoint=endpoint)
-        return boto.connect_dynamodb(aws_access_key_id="asd",
-                                     aws_secret_access_key="asd",
-                                     region=region, port=port, is_secure=False,
-                                     validate_certs=False)
+        region = RegionInfo(name='test_server', endpoint=endpoint,
+                            connection_cls=DynamoDBConnection)
+
+        return region.connect(aws_access_key_id="asd",
+                              aws_secret_access_key="asd",
+                              port=port, is_secure=False,
+                              validate_certs=False)
 
     def testListTable(self):
         self.DYNAMODB_CON.list_tables()
+
+    def testCreateTable(self):
+        Table.create(
+            "test",
+            schema=[
+                fields.HashKey('hash', data_type=types.NUMBER),
+                fields.RangeKey('range', data_type=types.STRING)
+            ],
+            throughput={
+                'read': 20,
+                'write': 10,
+            },
+            indexes=[
+                fields.KeysOnlyIndex(
+                    'index_name',
+                    parts=[
+                        fields.RangeKey('indexed_field',
+                                        data_type=types.STRING)
+                    ]
+                )
+            ],
+            connection=self.DYNAMODB_CON
+        )

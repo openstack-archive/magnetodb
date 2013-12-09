@@ -24,7 +24,8 @@ class AmzDynamoDBApiController():
 
     capabilities = {
         'DynamoDB': {
-            '20111205': dynamodb.capabilities
+            '20111205': dynamodb.capabilities,
+            '20120810': dynamodb.capabilities
         }
     }
 
