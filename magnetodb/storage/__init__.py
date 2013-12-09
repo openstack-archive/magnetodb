@@ -18,12 +18,23 @@ from magnetodb.openstack.common import importutils
 
 from magnetodb.openstack.common import jsonutils
 
-CONF = config.CONF
+__STORAGE_IMPL = None
 
-storage_param = jsonutils.loads(CONF.storage_param)
 
-STORAGE_IMPL = importutils.import_class(CONF.storage_impl)(**storage_param)
+def __get_storage_impl():
+    global __STORAGE_IMPL;
+    
+    if __STORAGE_IMPL is None:
+        CONF = config.CONF
 
+        storage_param = jsonutils.loads(config.CONF.storage_param)
+
+        __STORAGE_IMPL = importutils.import_class(config.CONF.storage_impl)(
+            **storage_param
+        )
+
+    return __STORAGE_IMPL;
+    
 
 def create_table(context, table_schema):
     """
@@ -34,7 +45,7 @@ def create_table(context, table_schema):
 
     @raise BackendInteractionException
     """
-    STORAGE_IMPL.create_table(context, table_schema)
+    __get_storage_impl().create_table(context, table_schema)
 
 
 def delete_table(context, table_name):
@@ -46,7 +57,7 @@ def delete_table(context, table_name):
 
     @raise BackendInteractionException
     """
-    STORAGE_IMPL.delete_table(context, table_name)
+    __get_storage_impl().delete_table(context, table_name)
 
 
 def describe_table(context, table_name):
@@ -60,7 +71,7 @@ def describe_table(context, table_name):
 
     @raise BackendInteractionException
     """
-    return STORAGE_IMPL.describe_table(context, table_name)
+    return __get_storage_impl().describe_table(context, table_name)
 
 
 def list_tables(context, exclusive_start_table_name=None, limit=None):
@@ -72,7 +83,8 @@ def list_tables(context, exclusive_start_table_name=None, limit=None):
 
     @raise BackendInteractionException
     """
-    return STORAGE_IMPL.list_tables(context, exclusive_start_table_name, limit)
+    return __get_storage_impl().list_tables(context,
+                                            exclusive_start_table_name, limit)
 
 
 def put_item(context, put_request, if_not_exist=False,
@@ -92,7 +104,7 @@ def put_item(context, put_request, if_not_exist=False,
 
     @raise BackendInteractionException
     """
-    return STORAGE_IMPL.put_item(context, put_request, if_not_exist,
+    return __get_storage_impl().put_item(context, put_request, if_not_exist,
                                  expected_condition_map)
 
 
@@ -111,7 +123,7 @@ def delete_item(context, delete_request, expected_condition_map=None):
 
     @raise BackendInteractionException
     """
-    return STORAGE_IMPL.delete_item(context, delete_request,
+    return __get_storage_impl().delete_item(context, delete_request,
                                     expected_condition_map)
 
 
@@ -125,7 +137,8 @@ def execute_write_batch(context, write_request_list, durable=True):
 
     @raise BackendInteractionException
     """
-    STORAGE_IMPL.execute_write_batch(context, write_request_list, durable)
+    __get_storage_impl().execute_write_batch(context, write_request_list,
+                                             durable)
 
 
 def update_item(context, table_name, key_attribute_map, attribute_action_map,
@@ -144,9 +157,10 @@ def update_item(context, table_name, key_attribute_map, attribute_action_map,
 
     @raise BackendInteractionException
     """
-    return STORAGE_IMPL.update_item(context, table_name, key_attribute_map,
-                                    attribute_action_map,
-                                    expected_condition_map)
+    return __get_storage_impl().update_item(context, table_name,
+                                            key_attribute_map,
+                                            attribute_action_map,
+                                            expected_condition_map)
 
 
 def select_item(context, table_name, indexed_condition_map,

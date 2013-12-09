@@ -102,26 +102,12 @@ class Types():
 
 class Parser():
     DYNAMODB_TO_STORAGE_TYPE_MAP = {
-        Values.ATTRIBUTE_TYPE_STRING: models.AttributeType(
-            models.AttributeType.ELEMENT_TYPE_STRING),
-
-        Values.ATTRIBUTE_TYPE_STRING_SET: models.AttributeType(
-            models.AttributeType.ELEMENT_TYPE_STRING,
-            models.AttributeType.COLLECTION_TYPE_SET),
-
-        Values.ATTRIBUTE_TYPE_NUMBER: models.AttributeType(
-            models.AttributeType.ELEMENT_TYPE_NUMBER),
-
-        Values.ATTRIBUTE_TYPE_NUMBER_SET: models.AttributeType(
-            models.AttributeType.ELEMENT_TYPE_NUMBER,
-            models.AttributeType.COLLECTION_TYPE_SET),
-
-        Values.ATTRIBUTE_TYPE_BLOB: models.AttributeType(
-            models.AttributeType.ELEMENT_TYPE_BLOB),
-
-        Values.ATTRIBUTE_TYPE_BLOB_SET: models.AttributeType(
-            models.AttributeType.ELEMENT_TYPE_BLOB,
-            models.AttributeType.COLLECTION_TYPE_SET)
+        Values.ATTRIBUTE_TYPE_STRING: models.ATTRIBUTE_TYPE_STRING,
+        Values.ATTRIBUTE_TYPE_STRING_SET: models.ATTRIBUTE_TYPE_STRING_SET,
+        Values.ATTRIBUTE_TYPE_NUMBER: models.ATTRIBUTE_TYPE_NUMBER,
+        Values.ATTRIBUTE_TYPE_NUMBER_SET: models.ATTRIBUTE_TYPE_NUMBER_SET,
+        Values.ATTRIBUTE_TYPE_BLOB: models.ATTRIBUTE_TYPE_BLOB,
+        Values.ATTRIBUTE_TYPE_BLOB_SET: models.ATTRIBUTE_TYPE_BLOB_SET
     }
 
     STORAGE_TO_DYNAMODB_TYPE_MAP = {

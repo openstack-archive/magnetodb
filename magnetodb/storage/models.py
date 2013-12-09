@@ -76,8 +76,14 @@ class AttributeType(ModelBase):
 
 
 ATTRIBUTE_TYPE_STRING = AttributeType(AttributeType.ELEMENT_TYPE_STRING)
+ATTRIBUTE_TYPE_STRING_SET = AttributeType(AttributeType.ELEMENT_TYPE_STRING,
+                                          AttributeType.COLLECTION_TYPE_SET)
 ATTRIBUTE_TYPE_NUMBER = AttributeType(AttributeType.ELEMENT_TYPE_NUMBER)
+ATTRIBUTE_TYPE_NUMBER_SET = AttributeType(AttributeType.ELEMENT_TYPE_NUMBER,
+                                          AttributeType.COLLECTION_TYPE_SET)
 ATTRIBUTE_TYPE_BLOB = AttributeType(AttributeType.ELEMENT_TYPE_BLOB)
+ATTRIBUTE_TYPE_BLOB_SET = AttributeType(AttributeType.ELEMENT_TYPE_BLOB,
+                                        AttributeType.COLLECTION_TYPE_SET)
 
 
 class AttributeDefinition(ModelBase):
