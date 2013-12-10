@@ -42,39 +42,14 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                     "properties": {
                         parser.Props.INDEX_NAME: parser.Types.INDEX_NAME,
                         parser.Props.KEY_SCHEMA: parser.Types.KEY_SCHEMA,
-                        parser.Props.PROJECTION: {
-                            "type": "object",
-                            "required": [parser.Props.NON_KEY_ATTRIBUTES,
-                                         parser.Props.PROJECTION_TYPE],
-                            "properties": {
-                                parser.Props.NON_KEY_ATTRIBUTES: {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string",
-                                    }
-                                },
-                                parser.Props.PROJECTION_TYPE: {
-                                    "type": "string",
-                                }
-                            }
-                        }
+                        parser.Props.PROJECTION: parser.Types.PROJECTION
                     }
                 }
             },
 
-            parser.Props.PROVISIONED_THROUGHPUT: {
-                "type": "object",
-                "required": [parser.Props.READ_CAPACITY_UNITS,
-                             parser.Props.WRITE_CAPACITY_UNITS],
-                "properties": {
-                    parser.Props.READ_CAPACITY_UNITS: {
-                        "type": "integer"
-                    },
-                    parser.Props.WRITE_CAPACITY_UNITS: {
-                        "type": "integer"
-                    }
-                }
-            },
+            parser.Props.PROVISIONED_THROUGHPUT: (
+                parser.Types.PROVISIONED_THROUGHPUT
+            ),
 
             parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
         }
@@ -83,34 +58,52 @@ class CreateTableDynamoDBAction(DynamoDBAction):
     def __call__(self):
         table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
-        attribute_definitions = map(
-            parser.Parser.parse_attribute_definition,
+        #parse table attributes
+        attribute_definitions = parser.Parser.parse_attribute_definitions(
             self.action_params.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
         )
 
+        #parse table key schema
         key_attrs = parser.Parser.parse_key_schema(
             self.action_params.get(parser.Props.KEY_SCHEMA, [])
         )
 
-        key_attrs_per_projection_list = map(
-            parser.Parser.parse_key_schema,
-            map(
-                lambda index: index.get(parser.Props.KEY_SCHEMA, {}),
-                self.action_params.get(parser.Props.LOCAL_SECONDARY_INDEXES,
-                                       [])
-            )
+        #parse table indexed field list
+        indexed_attr_names = parser.Parser.parse_local_secondary_indexes(
+            self.action_params.get(parser.Props.LOCAL_SECONDARY_INDEXES, [])
         )
 
-        indexed_attr_names = []
-
-        for key_attrs_for_projection in key_attrs_per_projection_list:
-            assert (
-                len(key_attrs_for_projection) > 1,
-                "Range key in index wasn't specified"
-            )
-            indexed_attr_names.append(key_attrs_for_projection[1])
-
+        #prepare table_schema structure
         table_schema = models.TableSchema(table_name, attribute_definitions,
                                           key_attrs, indexed_attr_names)
 
-        storage.create_table(table_schema)
+        # creating table
+        storage.create_table(self.context, table_schema)
+
+        return {
+            parser.Props.TABLE_DESCRIPTION: {
+                parser.Props.ATTRIBUTE_DEFINITIONS: (
+                    parser.Parser.format_attribute_definitions(
+                        attribute_definitions
+                    )
+                ),
+                parser.Props.CREATION_DATE_TIME: 0,
+                parser.Props.ITEM_COUNT: 0,
+                parser.Props.KEY_SCHEMA: (
+                    parser.Parser.format_key_schema(
+                        key_attrs
+                    )
+                ),
+                parser.Props.LOCAL_SECONDARY_INDEXES: (
+                    parser.Parser.format_local_secondary_indexes(
+                        key_attrs[0], indexed_attr_names
+                    )
+                ),
+                parser.Props.PROVISIONED_THROUGHPUT: (
+                    parser.Values.PROVISIONED_THROUGHPUT_DUMMY
+                ),
+                parser.Props.TABLE_NAME: table_name,
+                parser.Props.TABLE_STATUS: parser.Values.TABLE_STATUS_ACTIVE,
+                parser.Props.TABLE_SIZE_BYTES: 0
+            }
+        }

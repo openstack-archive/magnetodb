@@ -33,7 +33,17 @@ class Props():
     PROVISIONED_THROUGHPUT = "ProvisionedThroughput"
     READ_CAPACITY_UNITS = "ReadCapacityUnits"
     WRITE_CAPACITY_UNITS = "WriteCapacityUnits"
+
+    TABLE_DESCRIPTION = "TableDescription"
+    TABLE_SIZE_BYTES = "TableSizeBytes"
+    TABLE_STATUS = "TableStatus"
+    CREATION_DATE_TIME = "CreationDateTime"
+    INDEX_SIZE_BYTES = "IndexSizeBytes"
+    ITEM_COUNT = "ItemCount"
+
+    TABLE_NAMES = "TableNames"
     EXCLUSIVE_START_TABLE_NAME = "ExclusiveStartTableName"
+    LAST_EVALUATED_TABLE_NAME = "LastEvaluatedTableName"
     LIMIT = "Limit"
 
 
@@ -48,6 +58,20 @@ class Values():
     KEY_TYPE_HASH = "HASH"
     KEY_TYPE_RANGE = "RANGE"
 
+    PROJECTION_TYPE_KEYS_ONLY = "KEYS_ONLY"
+    PROJECTION_TYPE_INCLUDE = "INCLUDE"
+    PROJECTION_TYPE_ALL = "ALL"
+
+    PROVISIONED_THROUGHPUT_DUMMY = {
+        "LastDecreaseDateTime": 0,
+        "LastIncreaseDateTime": 0,
+        "NumberOfDecreasesToday": 0,
+        "ReadCapacityUnits": 0,
+        "WriteCapacityUnits": 0
+    }
+
+    TABLE_STATUS_ACTIVE = "ACTIVE"
+
 
 class Types():
     ATTRIBUTE_NAME = {
@@ -56,12 +80,12 @@ class Types():
 
     ATTRIBUTE_TYPE = {
         "type": "string",
-        "oneOf": [Values.ATTRIBUTE_TYPE_STRING,
-                  Values.ATTRIBUTE_TYPE_NUMBER,
-                  Values.ATTRIBUTE_TYPE_BLOB,
-                  Values.ATTRIBUTE_TYPE_STRING_SET,
-                  Values.ATTRIBUTE_TYPE_NUMBER_SET,
-                  Values.ATTRIBUTE_TYPE_BLOB_SET]
+        "enum": [Values.ATTRIBUTE_TYPE_STRING,
+                 Values.ATTRIBUTE_TYPE_NUMBER,
+                 Values.ATTRIBUTE_TYPE_BLOB,
+                 Values.ATTRIBUTE_TYPE_STRING_SET,
+                 Values.ATTRIBUTE_TYPE_NUMBER_SET,
+                 Values.ATTRIBUTE_TYPE_BLOB_SET]
     }
 
     ATTRIBUTE_DEFINITION = {
@@ -75,7 +99,7 @@ class Types():
 
     KEY_TYPE = {
         "type": "string",
-        "oneOf": [Values.KEY_TYPE_HASH, Values.KEY_TYPE_RANGE]
+        "enum": [Values.KEY_TYPE_HASH, Values.KEY_TYPE_RANGE]
     }
 
     INDEX_NAME = {
@@ -95,6 +119,39 @@ class Types():
             "properties": {
                 Props.ATTRIBUTE_NAME: ATTRIBUTE_NAME,
                 Props.KEY_TYPE: KEY_TYPE
+            }
+        }
+    }
+
+    PROJECTION_TYPE = {
+        "type": "string",
+        "enum": [Values.PROJECTION_TYPE_KEYS_ONLY,
+                 Values.PROJECTION_TYPE_INCLUDE,
+                 Values.PROJECTION_TYPE_ALL]
+    }
+
+    PROJECTION = {
+        "type": "object",
+        "properties": {
+            Props.NON_KEY_ATTRIBUTES: {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                }
+            },
+            Props.PROJECTION_TYPE: PROJECTION_TYPE
+        }
+    }
+
+    PROVISIONED_THROUGHPUT = {
+        "type": "object",
+        "required": [Props.READ_CAPACITY_UNITS, Props.WRITE_CAPACITY_UNITS],
+        "properties": {
+            Props.READ_CAPACITY_UNITS: {
+                "type": "integer"
+            },
+            Props.WRITE_CAPACITY_UNITS: {
+                "type": "integer"
             }
         }
     }
@@ -127,16 +184,24 @@ class Parser():
 
     @classmethod
     def format_attribute_definition(cls, attr_def):
-        dynamodb_type = cls.STORAGE_TO_DYNAMODB_TYPE_MAP.get(attr_def.value,
+        dynamodb_type = cls.STORAGE_TO_DYNAMODB_TYPE_MAP.get(attr_def.type,
                                                              None)
 
         assert (dynamodb_type, "Unknown Attribute type returned by backend: %s"
-                % attr_def.value)
+                % attr_def.type)
 
         return {
             Props.ATTRIBUTE_NAME: attr_def.name,
             Props.ATTRIBUTE_TYPE: dynamodb_type
         }
+
+    @classmethod
+    def parse_attribute_definitions(cls, attr_def_list_json):
+        return map(cls.parse_attribute_definition, attr_def_list_json)
+
+    @classmethod
+    def format_attribute_definitions(cls, attr_def_list):
+        return map(cls.format_attribute_definition, attr_def_list)
 
     @classmethod
     def parse_key_schema(cls, key_def_list_json):
@@ -186,3 +251,42 @@ class Parser():
             })
 
         return res
+
+    @classmethod
+    def parse_local_secondary_index(cls, local_secondary_index_json):
+        key_attrs_for_projection = cls.parse_key_schema(
+            local_secondary_index_json.get(Props.KEY_SCHEMA, {})
+        )
+
+        assert (
+            len(key_attrs_for_projection) > 1,
+            "Range key in index wasn't specified"
+        )
+
+        return key_attrs_for_projection[1]
+
+    @classmethod
+    def format_local_secondary_index(cls, hash_key, local_secondary_index):
+        return {
+            Props.INDEX_NAME: local_secondary_index,
+            Props.KEY_SCHEMA: cls.format_key_schema((hash_key,
+                                                     local_secondary_index)),
+            Props.PROJECTION: {
+                Props.PROJECTION_TYPE: Values.PROJECTION_TYPE_ALL,
+                Props.NON_KEY_ATTRIBUTES: []
+            },
+            Props.INDEX_SIZE_BYTES: 0,
+            Props.INDEX_SIZE_BYTES: 0
+        }
+
+    @classmethod
+    def parse_local_secondary_indexes(cls, local_secondary_index_list_json):
+        return map(cls.parse_local_secondary_index,
+                   local_secondary_index_list_json)
+
+    @classmethod
+    def format_local_secondary_indexes(cls, hash_key,
+                                       local_secondary_index_list):
+        return map(lambda index: cls.format_local_secondary_index(hash_key,
+                                                                  index),
+                   local_secondary_index_list)

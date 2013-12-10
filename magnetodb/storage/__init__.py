@@ -22,19 +22,17 @@ __STORAGE_IMPL = None
 
 
 def __get_storage_impl():
-    global __STORAGE_IMPL;
-    
-    if __STORAGE_IMPL is None:
-        CONF = config.CONF
+    global __STORAGE_IMPL
 
+    if __STORAGE_IMPL is None:
         storage_param = jsonutils.loads(config.CONF.storage_param)
 
         __STORAGE_IMPL = importutils.import_class(config.CONF.storage_impl)(
             **storage_param
         )
 
-    return __STORAGE_IMPL;
-    
+    return __STORAGE_IMPL
+
 
 def create_table(context, table_schema):
     """
@@ -105,7 +103,7 @@ def put_item(context, put_request, if_not_exist=False,
     @raise BackendInteractionException
     """
     return __get_storage_impl().put_item(context, put_request, if_not_exist,
-                                 expected_condition_map)
+                                         expected_condition_map)
 
 
 def delete_item(context, delete_request, expected_condition_map=None):
@@ -124,7 +122,7 @@ def delete_item(context, delete_request, expected_condition_map=None):
     @raise BackendInteractionException
     """
     return __get_storage_impl().delete_item(context, delete_request,
-                                    expected_condition_map)
+                                            expected_condition_map)
 
 
 def execute_write_batch(context, write_request_list, durable=True):
@@ -183,5 +181,7 @@ def select_item(context, table_name, indexed_condition_map,
 
     @raise BackendInteractionException
     """
-    return STORAGE_IMPL.select_item(context, table_name, indexed_condition_map,
-                                    attributes_to_get, limit, consistent)
+    return __get_storage_impl().select_item(context, table_name,
+                                            indexed_condition_map,
+                                            attributes_to_get,
+                                            limit, consistent)

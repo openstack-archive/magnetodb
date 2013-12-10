@@ -14,7 +14,9 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb.action import list_tables
+from magnetodb.api.amz.dynamodb.action import create_table
 
 capabilities = {
-    'ListTables': list_tables.ListTablesDynamoDBAction
+    'ListTables': list_tables.ListTablesDynamoDBAction,
+    'CreateTable': create_table.CreateTableDynamoDBAction
 }
