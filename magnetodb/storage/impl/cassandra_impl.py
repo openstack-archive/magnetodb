@@ -33,11 +33,17 @@ class CassandraStorageImpl():
     CASSANDRA_TO_STORAGE_TYPES = {val: key for key, val
                                   in STORAGE_TO_CASSANDRA_TYPES.iteritems()}
 
+    CONDITION_TO_OP = {
+        models.Condition.CONDITION_TYPE_EQUAL: '='
+    }
+
     USER_COLUMN_PREFIX = 'user_'
     SYSTEM_COLUMN_PREFIX = 'system_'
     SYSTEM_COLUMN_ATTRS = SYSTEM_COLUMN_PREFIX + 'attrs'
     SYSTEM_COLUMN_ATTR_TYPES = SYSTEM_COLUMN_PREFIX + 'attr_types'
     SYSTEM_COLUMN_ATTR_EXIST = SYSTEM_COLUMN_PREFIX + 'attr_exist'
+
+    __schemas = {}
 
     def __init__(self, contact_points=("127.0.0.1",),
                  port=9042,
@@ -105,7 +111,7 @@ class CassandraStorageImpl():
 
         query += "{} map<text, blob>,".format(self.SYSTEM_COLUMN_ATTRS)
         query += "{} map<text, text>,".format(self.SYSTEM_COLUMN_ATTR_TYPES)
-        query += "{} map<text, text>,".format(self.SYSTEM_COLUMN_ATTR_EXIST)
+        query += "{} set<text>,".format(self.SYSTEM_COLUMN_ATTR_EXIST)
 
         prefixed_attrs = [self.USER_COLUMN_PREFIX + name
                           for name in table_schema.key_attributes]
@@ -161,7 +167,7 @@ class CassandraStorageImpl():
 
     def describe_table(self, context, table_name):
         """
-        Creates table
+        Describes table
 
         @param context: current request context
         @param table_name: String, name of table to describes
@@ -170,6 +176,19 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
+
+        try:
+            ks = self.__schemas[context.tenant]
+        except KeyError:
+            self.__schemas[context.tenant] = {}
+            ks = {}
+
+        try:
+            return ks[table_name]
+        except KeyError:
+            # just proceed with schema retrieval
+            pass
+
         try:
             keyspace_meta = self.cluster.metadata.keyspaces[context.tenant]
         except KeyError:
@@ -209,6 +228,8 @@ class CassandraStorageImpl():
         table_schema = models.TableSchema(table_meta.name, attr_defs,
                                           key_attrs, indexed_attrs)
 
+        self.__schemas[context.tenant][table_name] = table_schema
+
         return table_schema
 
     def list_tables(self, context, exclusive_start_table_name=None,
@@ -237,6 +258,14 @@ class CassandraStorageImpl():
 
         return [row.columnfamily_name for row in tables]
 
+    def _indexed_attrs(self, context, table):
+        schema = self.describe_table(context, table)
+        return schema.indexed_attrs
+
+    def _external_attrs(self, context, table):
+        schema = self.describe_table(context, table)
+        return [attr.name for attr in schema.attribute_defs]
+
     def put_item(self, context, put_request, if_not_exist=False,
                  expected_condition_map=None):
         """
@@ -255,7 +284,7 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def delete_item(self, context, delete_request,
                     expected_condition_map=None):
@@ -274,7 +303,38 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        query = "DELETE FROM {}.{} WHERE ".format(
+            context.tenant, delete_request.table_name)
+
+        where = " AND ".join((self._condition_as_string(attr, cond)
+                              for attr, cond
+                              in delete_request.key_attribute_map.iteritems()))
+
+        query += where
+
+        if expected_condition_map:
+            if_clause = " AND ".join((self._condition_as_string(attr, cond)
+                                      for attr, cond
+                                      in expected_condition_map.iteritems()))
+
+            query += " IF " + if_clause
+
+        self._execute_query(query)
+
+        return True
+
+    def _condition_as_string(self, attr, condition):
+        name = self.USER_COLUMN_PREFIX + attr
+
+        if condition.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
+            if condition.arg:
+                return "{}={{'{}'}}".format(
+                    self.SYSTEM_COLUMN_ATTR_EXIST, attr)
+            else:
+                return name + '=null'
+        else:
+            op = self.CONDITION_TO_OP[condition.type]
+            return name + op + repr(condition.arg)
 
     def execute_write_batch(self, context, write_request_list, durable=True):
         """
@@ -286,7 +346,7 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
@@ -306,7 +366,7 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def select_item(self, context, table_name, indexed_condition_map,
                     attributes_to_get=None, limit=None, consistent=True):
@@ -329,4 +389,4 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplemented
+        raise NotImplementedError
