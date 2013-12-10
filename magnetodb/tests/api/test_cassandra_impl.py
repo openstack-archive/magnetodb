@@ -92,9 +92,10 @@ class TestCassandraBase(unittest.TestCase):
         query += " user_id decimal,"
         query += " user_range text,"
         query += " user_indexed text,"
+        query += " user_nonindexed text,"
         query += " system_attrs map<text, blob>,"
         query += " system_attr_types map<text, text>,"
-        query += " system_attr_exist map<text, text>,"
+        query += " system_attr_exist set<text>,"
         query += " PRIMARY KEY(user_id, user_range))"
         self.SESSION.execute(query)
 
@@ -130,6 +131,8 @@ class TestCassandraTableCrud(TestCassandraBase):
             models.AttributeDefinition(
                 'range', models.ATTRIBUTE_TYPE_STRING),
             models.AttributeDefinition(
+                'nonindexed', models.ATTRIBUTE_TYPE_STRING),
+            models.AttributeDefinition(
                 'indexed', models.ATTRIBUTE_TYPE_STRING)
         }
 
@@ -156,6 +159,8 @@ class TestCassandraTableCrud(TestCassandraBase):
             models.AttributeDefinition(
                 'range', models.ATTRIBUTE_TYPE_STRING),
             models.AttributeDefinition(
+                'nonindexed', models.ATTRIBUTE_TYPE_STRING),
+            models.AttributeDefinition(
                 'indexed', models.ATTRIBUTE_TYPE_STRING)
         }
 
@@ -180,15 +185,16 @@ class TestCassandraTableCrud(TestCassandraBase):
         self.assertEqual([], self._get_table_names())
 
 
-class TestCassandraItemCrud(TestCassandraBase):
+class TestCassandraDeleteItem(TestCassandraBase):
 
-    def test_delete_item(self):
+    def test_delete_item_where(self):
         self._create_table()
         self._create_index()
 
-        query = ("INSERT INTO {}.{} (user_id, user_range, user_indexed)"
-                 "VALUES (1, '1', '1')").format(self.keyspace,
-                                                self.table_name)
+        query = ("INSERT INTO {}.{} (user_id, user_range,"
+                 " user_nonindexed, user_indexed)"
+                 " VALUES (1, '1', '1', '1')").format(self.keyspace,
+                                                      self.table_name)
 
         self.SESSION.execute(query)
 
@@ -198,11 +204,162 @@ class TestCassandraItemCrud(TestCassandraBase):
         self.assertEqual(1, all[0].user_id)
 
         del_req = models.DeleteItemRequest(
-            self.table_name, {'id': models.Condition.eq(1),
-                              'range': models.Condition.eq('1')})
+            self.table_name,
+            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
 
-        self.CASANDRA_STORAGE_IMPL.delete_item(self.context, del_req)
+        self.CASANDRA_STORAGE_IMPL.delete_item(
+            self.context, del_req)
 
         all = self._select_all()
 
         self.assertEqual(0, len(all))
+
+    def test_delete_item_where_negative(self):
+        self._create_table()
+        self._create_index()
+
+        query = ("INSERT INTO {}.{} (user_id, user_range,"
+                 " user_nonindexed, user_indexed)"
+                 " VALUES (1, '2', '1', '1')").format(self.keyspace,
+                                                      self.table_name)
+
+        self.SESSION.execute(query)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)
+
+        del_req = models.DeleteItemRequest(
+            self.table_name,
+            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+
+        self.CASANDRA_STORAGE_IMPL.delete_item(
+            self.context, del_req)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_delete_item_if_exists(self):
+        self._create_table()
+        self._create_index()
+
+        query = ("INSERT INTO {}.{} (user_id, user_range,"
+                 " user_nonindexed, user_indexed)"
+                 " VALUES (1, '1', '1', '1')").format(self.keyspace,
+                                                      self.table_name)
+
+        self.SESSION.execute(query)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)
+
+        expected = {'nonindexed': models.ExpectedCondition.exists()}
+
+        del_req = models.DeleteItemRequest(
+            self.table_name,
+            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+
+        self.CASANDRA_STORAGE_IMPL.delete_item(
+            self.context, del_req, expected)
+
+        all = self._select_all()
+
+        self.assertEqual(0, len(all))
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_delete_item_if_exists_negative(self):
+        self._create_table()
+        self._create_index()
+
+        query = ("INSERT INTO {}.{} (user_id, user_range,"
+                 " user_nonindexed, user_indexed)"
+                 " VALUES (1, '1', null, '1')").format(self.keyspace,
+                                                       self.table_name)
+
+        self.SESSION.execute(query)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)
+
+        expected = {'nonindexed': models.ExpectedCondition.exists()}
+
+        del_req = models.DeleteItemRequest(
+            self.table_name,
+            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+
+        self.CASANDRA_STORAGE_IMPL.delete_item(
+            self.context, del_req, expected)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_delete_item_if_not_exists(self):
+        self._create_table()
+        self._create_index()
+
+        query = ("INSERT INTO {}.{} (user_id, user_range,"
+                 " user_nonindexed, user_indexed)"
+                 " VALUES (1, '1', null, '1')").format(self.keyspace,
+                                                       self.table_name)
+
+        self.SESSION.execute(query)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)
+
+        expected = {'nonindexed': models.ExpectedCondition.not_exists()}
+
+        del_req = models.DeleteItemRequest(
+            self.table_name,
+            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+
+        self.CASANDRA_STORAGE_IMPL.delete_item(
+            self.context, del_req, expected)
+
+        all = self._select_all()
+
+        self.assertEqual(0, len(all))
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_delete_item_if_not_exists_negative(self):
+        self._create_table()
+        self._create_index()
+
+        query = ("INSERT INTO {}.{} (user_id, user_range,"
+                 " user_nonindexed, user_indexed)"
+                 " VALUES (1, '1', '1', '1')").format(self.keyspace,
+                                                      self.table_name)
+
+        self.SESSION.execute(query)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)
+
+        expected = {'nonindexed': models.ExpectedCondition.not_exists()}
+
+        del_req = models.DeleteItemRequest(
+            self.table_name,
+            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+
+        self.CASANDRA_STORAGE_IMPL.delete_item(
+            self.context, del_req, expected)
+
+        all = self._select_all()
+
+        self.assertEqual(1, len(all))
+        self.assertEqual(1, all[0].user_id)

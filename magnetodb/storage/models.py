@@ -180,7 +180,7 @@ class ExpectedCondition(Condition):
         return cls(cls.CONDITION_TYPE_EXISTS, True)
 
     @classmethod
-    def not_exists(cls, condition_arg):
+    def not_exists(cls):
         return cls(cls.CONDITION_TYPE_EXISTS, False)
 
 
