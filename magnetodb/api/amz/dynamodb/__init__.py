@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -16,9 +14,13 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb.action import list_tables
+from magnetodb.api.amz.dynamodb.action import create_table
 from magnetodb.api.amz.dynamodb.action import describe_table
+from magnetodb.api.amz.dynamodb.action import delete_table
 
 capabilities = {
     'ListTables': list_tables.ListTablesDynamoDBAction,
     'DescribeTable': describe_table.DescribeTableDynamoDBAction,
+    'CreateTable': create_table.CreateTableDynamoDBAction,
+    'DeleteTable': delete_table.DeleteTableDynamoDBAction,
 }

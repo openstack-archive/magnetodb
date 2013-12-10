@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -26,7 +24,8 @@ class AmzDynamoDBApiController():
 
     capabilities = {
         'DynamoDB': {
-            '20111205': dynamodb.capabilities
+            '20111205': dynamodb.capabilities,
+            '20120810': dynamodb.capabilities
         }
     }
 

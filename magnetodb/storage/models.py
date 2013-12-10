@@ -1,6 +1,47 @@
+# Copyright 2013 Mirantis Inc.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
 
 
-class AttributeType():
+class ModelBase(object):
+
+    _data_fields = []
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __eq__(self, other):
+        for field in self._data_fields:
+            if self[field] != other[field]:
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        fields_as_list = []
+        for field in self._data_fields:
+            fields_as_list.append(self[field])
+        return hash(tuple(fields_as_list))
+
+
+class AttributeType(ModelBase):
     ELEMENT_TYPE_STRING = "string"
     ELEMENT_TYPE_NUMBER = "number"
     ELEMENT_TYPE_BLOB = "blob"
@@ -12,6 +53,8 @@ class AttributeType():
 
     _allowed_collection_types = {None, COLLECTION_TYPE_SET}
 
+    _data_fields = ['element_type', '_collection_type']
+
     def __init__(self, element_type, collection_type=None):
         assert (element_type in self._allowed_types,
                 "Attribute type '%s' is't allowed" % element_type)
@@ -20,19 +63,33 @@ class AttributeType():
                 "Attribute type collection '%s' is't allowed" %
                 collection_type)
 
-        self.element_type = element_type
+        self._element_type = element_type
         self._collection_type = collection_type
 
     @property
     def element_type(self):
-        return self._type
+        return self._element_type
 
     @property
     def collection_type(self):
         return self._collection_type
 
 
-class AttributeDefinition():
+ATTRIBUTE_TYPE_STRING = AttributeType(AttributeType.ELEMENT_TYPE_STRING)
+ATTRIBUTE_TYPE_STRING_SET = AttributeType(AttributeType.ELEMENT_TYPE_STRING,
+                                          AttributeType.COLLECTION_TYPE_SET)
+ATTRIBUTE_TYPE_NUMBER = AttributeType(AttributeType.ELEMENT_TYPE_NUMBER)
+ATTRIBUTE_TYPE_NUMBER_SET = AttributeType(AttributeType.ELEMENT_TYPE_NUMBER,
+                                          AttributeType.COLLECTION_TYPE_SET)
+ATTRIBUTE_TYPE_BLOB = AttributeType(AttributeType.ELEMENT_TYPE_BLOB)
+ATTRIBUTE_TYPE_BLOB_SET = AttributeType(AttributeType.ELEMENT_TYPE_BLOB,
+                                        AttributeType.COLLECTION_TYPE_SET)
+
+
+class AttributeDefinition(ModelBase):
+
+    _data_fields = ['name']
+
     def __init__(self, attr_name, attr_type):
         self._name = attr_name
         self._type = attr_type
@@ -47,6 +104,7 @@ class AttributeDefinition():
 
 
 class AttributeValue():
+
     def __init__(self, attr_type, attr_value):
         self._type = attr_type
         self._value = attr_value
@@ -65,7 +123,7 @@ class Condition():
 
     _allowed_types = {CONDITION_TYPE_EQUAL}
 
-    def __init__(self, condition_type, attr_name, condition_arg):
+    def __init__(self, condition_type, condition_arg):
         assert (condition_type in self._allowed_types,
                 "Condition type '%s' is't allowed" % condition_type)
 
@@ -82,7 +140,7 @@ class Condition():
 
     @classmethod
     def eq(cls, condition_arg):
-        return cls(cls.CONDITION_TYPE_EQUALITY, condition_arg)
+        return cls(cls.CONDITION_TYPE_EQUAL, condition_arg)
 
 
 class IndexedCondition(Condition):
@@ -126,8 +184,8 @@ class ExpectedCondition(Condition):
         return cls(cls.CONDITION_TYPE_EXISTS, False)
 
 
-class WriteItemBatchableRequest():
-    def __init__(self, table_name, timestamp):
+class WriteItemBatchableRequest(object):
+    def __init__(self, table_name, timestamp=None):
         """
         @param table_name: String, name of table to delete item from
         @param timestamp: timestamp of operation. Operation will be skipped
@@ -147,20 +205,22 @@ class WriteItemBatchableRequest():
 
 
 class DeleteItemRequest(WriteItemBatchableRequest):
-    def __init__(self, table_name, indexed_condition_map):
+    def __init__(self, table_name, key_attribute_map):
         """
         @param table_name: String, name of table to delete item from
+        @param key_attribute_map: key attribute name to
+                    AttributeValue mapping. It defines row to be deleted
         @param indexed_condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be removed
         """
         super(DeleteItemRequest, self).__init__(table_name)
 
-        self._indexed_condition_map = indexed_condition_map
+        self._key_attribute_map = key_attribute_map
 
     @property
-    def indexed_condition_map(self):
-        return self._indexed_condition_map
+    def key_attribute_map(self):
+        return self._key_attribute_map
 
 
 class PutItemRequest(WriteItemBatchableRequest):
@@ -208,19 +268,22 @@ class UpdateItemAction():
         return self._value
 
 
-class TableSchema():
+class TableSchema(ModelBase):
+    _data_fields = ['table_name', 'attribute_defs', 'key_attributes',
+                    'indexed_non_key_attributes']
+
     def __init__(self, table_name, attribute_defs, key_attributes,
                  indexed_non_key_attributes=None):
         """
         @param table_name: String, name of table to create
         @param attribute_defs: list of AttributeDefinition which define table
                     attribute names and types
-        @param key_attrs: list of key attribute names, contains partitional_key
+        @param key_attrs: set of key attribute names, contains partitional_key
                     (the first in list, required) attribute name and extra key
                     attribute names (the second and other list items, not
                     required)
 
-        @param indexed_non_key_attributes: list of non key attribute names to
+        @param indexed_non_key_attributes: set of non key attribute names to
                     be indexed
         """
         self._table_name = table_name

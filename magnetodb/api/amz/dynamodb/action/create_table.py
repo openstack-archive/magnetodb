@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -16,94 +14,96 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.action import Props
-from magnetodb.api.amz.dynamodb.action import Types
+from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
+from magnetodb.storage import models
 
 
 class CreateTableDynamoDBAction(DynamoDBAction):
     schema = {
-        "required": [Props.ATTRIBUTE_DEFINITIONS, Props.KEY_SCHEMA,
-                     Props.TABLE_NAME],
+        "required": [parser.Props.ATTRIBUTE_DEFINITIONS,
+                     parser.Props.KEY_SCHEMA,
+                     parser.Props.TABLE_NAME],
         "properties": {
-            Props.ATTRIBUTE_DEFINITIONS: {
+            parser.Props.ATTRIBUTE_DEFINITIONS: {
+                "type": "array",
+                "items": parser.Types.ATTRIBUTE_DEFINITION
+            },
+            parser.Props.KEY_SCHEMA: parser.Types.KEY_SCHEMA,
+
+            parser.Props.LOCAL_SECONDARY_INDEXES: {
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "required": [Props.ATTRIBUTE_NAME,
-                                 Props.ATTRIBUTE_TYPE],
+                    "required": [parser.Props.INDEX_NAME,
+                                 parser.Props.KEY_SCHEMA,
+                                 parser.Props.PROJECTION],
                     "properties": {
-                        Props.ATTRIBUTE_NAME: Types.ATTRIBUTE_NAME,
-                        Props.ATTRIBUTE_TYPE: Types.ATTRIBUTE_TYPE
-                    }
-                }
-            },
-            Props.KEY_SCHEMA: Types.KEY_SCHEMA,
-
-            Props.LOCAL_SECONDARY_INDEXES: {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "required": [Props.INDEX_NAME, Props.KEY_SCHEMA,
-                                 Props.PROJECTION],
-                    "properties": {
-                        Props.INDEX_NAME: Types.INDEX_NAME,
-                        Props.KEY_SCHEMA: Types.KEY_SCHEMA,
-                        Props.PROJECTION: {
-                            "type": "object",
-                            "required": [Props.NON_KEY_ATTRIBUTES,
-                                         Props.PROJECTION_TYPE],
-                            "properties": {
-                                Props.NON_KEY_ATTRIBUTES: {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string",
-                                    }
-                                },
-                                Props.PROJECTION_TYPE: {
-                                    "type": "string",
-                                }
-                            }
-                        }
+                        parser.Props.INDEX_NAME: parser.Types.INDEX_NAME,
+                        parser.Props.KEY_SCHEMA: parser.Types.KEY_SCHEMA,
+                        parser.Props.PROJECTION: parser.Types.PROJECTION
                     }
                 }
             },
 
-            Props.PROVISIONED_THROUGHPUT: {
-                "type": "object",
-                "required": [Props.READ_CAPACITY_UNITS,
-                             Props.WRITE_CAPACITY_UNITS],
-                "properties": {
-                    Props.READ_CAPACITY_UNITS: {
-                        "type": "integer"
-                    },
-                    Props.WRITE_CAPACITY_UNITS: {
-                        "type": "integer"
-                    }
-                }
-            },
+            parser.Props.PROVISIONED_THROUGHPUT: (
+                parser.Types.PROVISIONED_THROUGHPUT
+            ),
 
-            Props.TABLE_NAME: Types.TABLE_NAME
+            parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
         }
     }
 
     def __call__(self):
-        exclusive_start_table_name = (
-            self.action_params.get(Props.EXCLUSIVE_START_TABLE_NAME, None)
+        table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
+
+        #parse table attributes
+        attribute_definitions = parser.Parser.parse_attribute_definitions(
+            self.action_params.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
         )
 
-        limit = self.action_params.get(Props.LIMIT, None)
-
-        table_names = (
-            storage.list_tables(
-                self.context,
-                exclusive_start_table_name=exclusive_start_table_name,
-                limit=limit)
+        #parse table key schema
+        key_attrs = parser.Parser.parse_key_schema(
+            self.action_params.get(parser.Props.KEY_SCHEMA, [])
         )
 
-        if table_names:
-            return {"LastEvaluatedTableName": table_names[-1],
-                    "TableNames": table_names}
-        else:
-            return {}
+        #parse table indexed field list
+        indexed_attr_names = parser.Parser.parse_local_secondary_indexes(
+            self.action_params.get(parser.Props.LOCAL_SECONDARY_INDEXES, [])
+        )
+
+        #prepare table_schema structure
+        table_schema = models.TableSchema(table_name, attribute_definitions,
+                                          key_attrs, indexed_attr_names)
+
+        # creating table
+        storage.create_table(self.context, table_schema)
+
+        return {
+            parser.Props.TABLE_DESCRIPTION: {
+                parser.Props.ATTRIBUTE_DEFINITIONS: (
+                    parser.Parser.format_attribute_definitions(
+                        attribute_definitions
+                    )
+                ),
+                parser.Props.CREATION_DATE_TIME: 0,
+                parser.Props.ITEM_COUNT: 0,
+                parser.Props.KEY_SCHEMA: (
+                    parser.Parser.format_key_schema(
+                        key_attrs
+                    )
+                ),
+                parser.Props.LOCAL_SECONDARY_INDEXES: (
+                    parser.Parser.format_local_secondary_indexes(
+                        key_attrs[0], indexed_attr_names
+                    )
+                ),
+                parser.Props.PROVISIONED_THROUGHPUT: (
+                    parser.Values.PROVISIONED_THROUGHPUT_DUMMY
+                ),
+                parser.Props.TABLE_NAME: table_name,
+                parser.Props.TABLE_STATUS: parser.Values.TABLE_STATUS_ACTIVE,
+                parser.Props.TABLE_SIZE_BYTES: 0
+            }
+        }

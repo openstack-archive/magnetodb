@@ -1,3 +1,18 @@
+# Copyright 2013 Mirantis Inc.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
 import jsonschema
 
 from magnetodb.common import exception
@@ -45,57 +60,3 @@ class DynamoDBAction():
         cls.validate_params(action_params)
 
         return cls(context, action_params)()
-
-
-class Props():
-    TABLE_NAME = "TableName"
-    ATTRIBUTE_DEFINITIONS = "AttributeDefinitions"
-    ATTRIBUTE_NAME = "AttributeName"
-    ATTRIBUTE_TYPE = "AttributeType"
-    KEY_SCHEMA = "KeySchema"
-    KEY_TYPE = "KeyType"
-    LOCAL_SECONDARY_INDEXES = "LocalSecondaryIndexes"
-    INDEX_NAME = "IndexName"
-    PROJECTION = "Projection"
-    NON_KEY_ATTRIBUTES = "NonKeyAttributes"
-    PROJECTION_TYPE = "ProjectionType"
-    PROVISIONED_THROUGHPUT = "ProvisionedThroughput"
-    READ_CAPACITY_UNITS = "ReadCapacityUnits"
-    WRITE_CAPACITY_UNITS = "WriteCapacityUnits"
-    EXCLUSIVE_START_TABLE_NAME = "ExclusiveStartTableName"
-    LIMIT = "Limit"
-
-
-class Types():
-    ATTRIBUTE_NAME = {
-        "type": "string"
-    }
-
-    ATTRIBUTE_TYPE = {
-        "type": "string"
-    }
-
-    KEY_TYPE = {
-        "type": "string"
-    }
-
-    INDEX_NAME = {
-        "type": "string"
-    }
-
-    TABLE_NAME = {
-        "type": "string",
-        "pattern": "^\w+",
-    }
-
-    KEY_SCHEMA = {
-        "type": "array",
-        "items": {
-            "type": "object",
-            "required": [Props.ATTRIBUTE_NAME, Props.KEY_TYPE],
-            "properties": {
-                Props.ATTRIBUTE_NAME: ATTRIBUTE_NAME,
-                Props.KEY_TYPE: KEY_TYPE
-            }
-        }
-    }

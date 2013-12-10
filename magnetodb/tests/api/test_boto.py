@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -15,21 +13,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import boto
+from boto.dynamodb2 import RegionInfo
+from boto.dynamodb2.layer1 import DynamoDBConnection
+from boto.dynamodb2.table import Table
+from boto.dynamodb2 import fields
+from boto.dynamodb2.types import *
 import os
 import unittest
-
-from boto.regioninfo import RegionInfo
 
 from magnetodb.tests.fake import magnetodb_api_fake
 from magnetodb.common import PROJECT_ROOT_DIR
 from boto.dynamodb2.table import Table
+from magnetodb.storage.models import *
+import magnetodb.storage as storage
+
 
 from mox import *
 
-
 CONF = magnetodb_api_fake.CONF
-
 
 class BotoIntegrationTest(unittest.TestCase):
 
@@ -41,18 +42,15 @@ class BotoIntegrationTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(BotoIntegrationTest, cls).setUpClass()
+        #super(TestCase, cls).setUpClass()
 
-        magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE,
-                                                  cls.CONFIG_FILE)
+        magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE)
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
 
-        import magnetodb.storage as storage
-        cls.STORAGE = storage.STORAGE_IMPL
+        cls.STORAGE=storage
 
     @classmethod
     def tearDownClass(cls):
-        super(BotoIntegrationTest, cls).tearDownClass()
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
     @staticmethod
@@ -64,11 +62,13 @@ class BotoIntegrationTest(unittest.TestCase):
             port = CONF.bind_port
 
         endpoint = '{}:{}'.format(host, port)
-        region = RegionInfo(name='test_server', endpoint=endpoint)
-        return boto.connect_dynamodb(aws_access_key_id="asd",
-                                     aws_secret_access_key="asd",
-                                     region=region, port=port, is_secure=False,
-                                     validate_certs=False)
+        region = RegionInfo(name='test_server', endpoint=endpoint,
+                            connection_cls=DynamoDBConnection)
+
+        return region.connect(aws_access_key_id="asd",
+                              aws_secret_access_key="asd",
+                              port=port, is_secure=False,
+                              validate_certs=False)
 
     def setUp(self):
         self.storage_mocker = Mox()
@@ -78,19 +78,25 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def testListTable(self):
         self.storage_mocker.StubOutWithMock(self.STORAGE, "list_tables")
-        self.STORAGE.list_tables(IgnoreArg(),IgnoreArg(),IgnoreArg()).AndReturn(['table1','table2'])
+        self.STORAGE.list_tables(IgnoreArg(),exclusive_start_table_name=None, limit=None).AndReturn(['table1','table2'])
 
         self.storage_mocker.ReplayAll()
-        self.assertListEqual(['table1','table2'],self.DYNAMODB_CON.list_tables())
+        self.assertEqual({'TableNames': ['table1', 'table2']},self.DYNAMODB_CON.list_tables())
 
         self.storage_mocker.VerifyAll()
+
 
     def testDescribeTable(self):
 
         self.storage_mocker.StubOutWithMock(self.STORAGE,'describe_table')
 
         from magnetodb.storage import models
-        self.STORAGE.describe_table(IgnoreArg(),'test_table').AndReturn(models.TableSchema('test_table', None, None))
+        self.STORAGE.describe_table(IgnoreArg(),'test_table').AndReturn(TableSchema('test_table',
+                               [AttributeDefinition('city1', ATTRIBUTE_TYPE_STRING),
+                                AttributeDefinition('id', ATTRIBUTE_TYPE_STRING),
+                                AttributeDefinition('name', ATTRIBUTE_TYPE_STRING)],
+                               ['id','name'],['city1']))
+
         self.storage_mocker.ReplayAll()
 
         table = Table('test_table', connection=self.DYNAMODB_CON)
@@ -115,3 +121,75 @@ class BotoIntegrationTest(unittest.TestCase):
                                 "AttributeType": "S"
                             }
                         ], table_description['Table']['AttributeDefinitions'])
+
+    def testDeleteTable(self):
+        self.storage_mocker.StubOutWithMock(self.STORAGE,'delete_table')
+
+        from magnetodb.storage import models
+        self.STORAGE.delete_table(IgnoreArg(),'test_table').AndReturn(TableSchema('test_table',
+                               [AttributeDefinition('city1', ATTRIBUTE_TYPE_STRING),
+                                AttributeDefinition('id', ATTRIBUTE_TYPE_STRING),
+                                AttributeDefinition('name', ATTRIBUTE_TYPE_STRING)],
+                               ['id','name'],['city1']))
+
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        table_description = table.delete()
+
+        self.storage_mocker.VerifyAll()
+
+        self.assertEquals('test_table',
+                          table_description['Table']['TableName'])
+        self.assertListEqual([
+                            {
+                                "AttributeName": "city1",
+                                "AttributeType": "S"
+                            },
+                            {
+                                "AttributeName": "id",
+                                "AttributeType": "S"
+                            },
+                            {
+                                "AttributeName": "name",
+                                "AttributeType": "S"
+                            }
+                        ], table_description['Table']['AttributeDefinitions'])
+
+    def testCreateTable(self):
+        self.storage_mocker.StubOutWithMock(self.STORAGE,'create_table')
+
+        from magnetodb.storage import models
+
+        table_schema = TableSchema('test',
+                               [AttributeDefinition('hash', ATTRIBUTE_TYPE_NUMBER),
+                                AttributeDefinition('range', ATTRIBUTE_TYPE_STRING),
+                                AttributeDefinition('indexed_field', ATTRIBUTE_TYPE_STRING)],
+                               ['hash','range'],['indexed_field'])
+
+        self.STORAGE.create_table(IgnoreArg(), IgnoreArg())
+
+        self.storage_mocker.ReplayAll()
+
+        table = Table.create(
+            "test",
+            schema=[
+                fields.HashKey('hash', data_type=NUMBER),
+                fields.RangeKey('range', data_type=STRING)
+            ],
+            throughput={
+                'read': 20,
+                'write': 10,
+            },
+            indexes=[
+                fields.KeysOnlyIndex(
+                    'index_name',
+                    parts=[
+                        fields.RangeKey('indexed_field',
+                                        data_type=STRING)
+                    ]
+                )
+            ],
+            connection=self.DYNAMODB_CON
+        )

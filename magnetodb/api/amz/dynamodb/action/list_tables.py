@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -18,15 +16,14 @@
 from magnetodb import storage
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.action import Props
-from magnetodb.api.amz.dynamodb.action import Types
+from magnetodb.api.amz.dynamodb import parser
 
 
 class ListTablesDynamoDBAction(DynamoDBAction):
     schema = {
         "properties": {
-            Props.EXCLUSIVE_START_TABLE_NAME:  Types.TABLE_NAME,
-            Props.LIMIT: {
+            parser.Props.EXCLUSIVE_START_TABLE_NAME:  parser.Types.TABLE_NAME,
+            parser.Props.LIMIT: {
                 "type": "integer",
                 "minimum": 0,
             }
@@ -35,10 +32,11 @@ class ListTablesDynamoDBAction(DynamoDBAction):
 
     def __call__(self):
         exclusive_start_table_name = (
-            self.action_params.get(Props.EXCLUSIVE_START_TABLE_NAME, None)
+            self.action_params.get(parser.Props.EXCLUSIVE_START_TABLE_NAME,
+                                   None)
         )
 
-        limit = self.action_params.get(Props.LIMIT, None)
+        limit = self.action_params.get(parser.Props.LIMIT, None)
 
         table_names = (
             storage.list_tables(
@@ -48,10 +46,10 @@ class ListTablesDynamoDBAction(DynamoDBAction):
         )
 
         if table_names:
-            res = {"TableNames": table_names}
+            res = {parser.Props.TABLE_NAMES: table_names}
 
             if limit == len(table_names):
-                res["LastEvaluatedTableName"] = table_names[-1]
+                res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
         else:
             res = {}
 

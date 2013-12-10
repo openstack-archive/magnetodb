@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -15,166 +13,320 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.common import config
-import json
-
-CONF = config.CONF
-
 from cassandra import cluster
 
-storage_param = json.loads(CONF.storage_param)
+from magnetodb.common.exception import BackendInteractionException
+from magnetodb.openstack.common import log as logging
+from magnetodb.storage import models
 
-CLUSTER = cluster.Cluster(**storage_param)
-SESSION = CLUSTER.connect()
-
-
-def create_table(context, table_schema):
-    """
-    Creates table
-
-    @param context: current request context
-    @param table_schema: TableSchema instance which define table to create
-
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
+LOG = logging.getLogger(__name__)
 
 
-def delete_table(context, table_name):
-    """
-    Creates table
+class CassandraStorageImpl():
 
-    @param context: current request context
-    @param table_name: String, name of table to delete
+    STORAGE_TO_CASSANDRA_TYPES = {
+        models.ATTRIBUTE_TYPE_STRING: 'text',
+        models.ATTRIBUTE_TYPE_NUMBER: 'decimal',
+        models.ATTRIBUTE_TYPE_BLOB: 'blob'
+    }
 
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
+    CASSANDRA_TO_STORAGE_TYPES = {val: key for key, val
+                                  in STORAGE_TO_CASSANDRA_TYPES.iteritems()}
 
+    USER_COLUMN_PREFIX = 'user_'
+    SYSTEM_COLUMN_PREFIX = 'system_'
+    SYSTEM_COLUMN_ATTRS = SYSTEM_COLUMN_PREFIX + 'attrs'
+    SYSTEM_COLUMN_ATTR_TYPES = SYSTEM_COLUMN_PREFIX + 'attr_types'
+    SYSTEM_COLUMN_ATTR_EXIST = SYSTEM_COLUMN_PREFIX + 'attr_exist'
 
-def describe_table(context, table_name):
-    """
-    Creates table
+    def __init__(self, contact_points=("127.0.0.1",),
+                 port=9042,
+                 compression=True,
+                 auth_provider=None,
+                 load_balancing_policy=None,
+                 reconnection_policy=None,
+                 default_retry_policy=None,
+                 conviction_policy_factory=None,
+                 metrics_enabled=False,
+                 connection_class=None,
+                 ssl_options=None,
+                 sockopts=None,
+                 cql_version=None,
+                 executor_threads=2,
+                 max_schema_agreement_wait=10):
 
-    @param context: current request context
-    @param table_name: String, name of table to describes
+        self.cluster = cluster.Cluster(
+            contact_points=contact_points,
+            port=port,
+            compression=compression,
+            auth_provider=auth_provider,
+            load_balancing_policy=load_balancing_policy,
+            reconnection_policy=reconnection_policy,
+            default_retry_policy=default_retry_policy,
+            conviction_policy_factory=conviction_policy_factory,
+            metrics_enabled=metrics_enabled,
+            connection_class=connection_class,
+            ssl_options=ssl_options,
+            sockopts=sockopts,
+            cql_version=cql_version,
+            executor_threads=executor_threads,
+            max_schema_agreement_wait=max_schema_agreement_wait
+        )
 
-    @return: TableSchema instance
+        self.session = self.cluster.connect()
 
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
+    def _execute_query(self, query):
+        try:
+            LOG.debug("Executing query {}".format(query))
+            return self.session.execute(query)
+        except Exception as e:
+            msg = "Error executing query {}:{}".format(query, e.message)
+            LOG.error(msg)
+            raise BackendInteractionException(
+                msg)
 
+    def create_table(self, context, table_schema):
+        """
+        Creates table
 
-# TODO: IT IS DRAFT ONLY
-def list_tables(context, exclusive_start_table_name=None, limit=None):
-    """
-    @param context: current request context
-    @param exclusive_start_table_name
-    @param limit: limit of returned table names
-    @return list of table names
+        @param context: current request context
+        @param table_schema: TableSchema instance which define table to create
 
-    @raise BackendInteractionException
-    """
+        @raise BackendInteractionException
+        """
 
-    prepared = SESSION.prepare("""
-        SELECT columnfamily_name from system.schema_columnfamilies
-            where keyspace_name=? and columnfamily_name>? LIMIT ?
-    """)
+        query = "CREATE TABLE {}.{} (".format(context.tenant,
+                                              table_schema.table_name)
 
-    bound = prepared.bind((context.tenant, exclusive_start_table_name, limit))
+        for attr_def in table_schema.attribute_defs:
+            query += "{} {},".format(
+                self.USER_COLUMN_PREFIX + attr_def.name,
+                self.STORAGE_TO_CASSANDRA_TYPES[attr_def.type])
 
-    return SESSION.execute(bound)
+        query += "{} map<text, blob>,".format(self.SYSTEM_COLUMN_ATTRS)
+        query += "{} map<text, text>,".format(self.SYSTEM_COLUMN_ATTR_TYPES)
+        query += "{} map<text, text>,".format(self.SYSTEM_COLUMN_ATTR_EXIST)
 
+        prefixed_attrs = [self.USER_COLUMN_PREFIX + name
+                          for name in table_schema.key_attributes]
 
-def put_item(context, put_request, if_not_exist=False,
-             expected_condition_map=None):
-    """
-    @param context: current request context
-    @param put_request: contains PutItemRequest items to perform
-                put item operation
-    @param if_not_exist: put item only is row is new record (It is possible to
-                use only one of if_not_exist and expected_condition_map
-                parameter)
-    @param expected_condition_map: expected attribute name to
-                ExpectedCondition instance mapping. It provides preconditions
-                to make decision about should item be put or not
+        key_count = len(prefixed_attrs)
 
-    @return: True if operation performed, otherwise False
+        if key_count < 1 or key_count > 2:
+            raise BackendInteractionException(
+                "Expected 1 or 2 key attribute(s). Found {}: {}".format(
+                    key_count, table_schema.key_attributes))
 
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
+        primary_key = ','.join(prefixed_attrs)
+        query += "PRIMARY KEY ({})".format(primary_key)
 
+        query += ")"
 
-def delete_item(context, delete_request, expected_condition_map=None):
-    """
-    @param context: current request context
-    @param delete_request: contains DeleteItemRequest items to perform
-                delete item operation
-    @param expected_condition_map: expected attribute name to
-                ExpectedCondition instance mapping. It provides preconditions
-                to make decision about should item be deleted or not
+        try:
+            self._execute_query(query)
 
-    @return: True if operation performed, otherwise False (if operation was
-                skipped by out of date timestamp, it is considered as
-                successfully performed)
+            for attr in table_schema.indexed_non_key_attributes:
+                self._create_index(context, table_schema.table_name,
+                                   self.USER_COLUMN_PREFIX + attr)
+        except Exception as e:
+            LOG.error("Table {} creation failed. Cleaning up...".format(
+                table_schema.table_name))
 
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
+            try:
+                self.delete_table(context, table_schema.table_name)
+            except Exception:
+                LOG.error("Failed table {} was not deleted".format(
+                    table_schema.table_name))
 
+            raise e
 
-def execute_write_batch(context, write_request_list, durable=True):
-    """
-    @param context: current request context
-    @param write_request_list: contains WriteItemBatchableRequest items to
-                perform batch
-    @param durable: if True, batch will be fully performed or fully skipped.
-                Partial batch execution isn't allowed
+    def _create_index(self, context, table_name, indexed_attr):
+        query = "CREATE INDEX ON {}.{} ({})".format(
+            context.tenant, table_name, indexed_attr)
 
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
+        self._execute_query(query)
 
+    def delete_table(self, context, table_name):
+        """
+        Creates table
 
-def update_item(context, table_name, key_attribute_map, attribute_action_map,
-                expected_condition_map=None):
-    """
-    @param context: current request context
-    @param table_name: String, name of table to delete item from
-    @param key_attribute_map: key attribute name to
-                AttributeValue mapping. It defines row it to update item
-    @param attribute_action_map: attribute name to UpdateItemAction instance
-                mapping. It defines actions to perform for each given attribute
-    @param expected_condition_map: expected attribute name to
-                ExpectedCondition instance mapping. It provides preconditions
-                to make decision about should item be updated or not
-    @return: True if operation performed, otherwise False
+        @param context: current request context
+        @param table_name: String, name of table to delete
 
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
+        @raise BackendInteractionException
+        """
+        query = "DROP TABLE {}.{}".format(context.tenant, table_name)
 
+        self._execute_query(query)
 
-def select_item(context, table_name, indexed_condition_map,
-                attributes_to_get=None, limit=None, consistent=True):
-    """
-    @param context: current request context
-    @param table_name: String, name of table to get item from
-    @param indexed_condition_map: indexed attribute name to
-                IndexedCondition instance mapping. It defines rows
-                set to be selected
-    @param attributes_to_get: attribute name list to get. If not specified, all
-                attributes should be returned. Also aggregate functions are
-                allowed, if they are supported by storage implementation
+    def describe_table(self, context, table_name):
+        """
+        Creates table
 
-    @param limit: maximum count of returned values
-    @param consistent: define is operation consistent or not (by default it is
-                not consistent)
+        @param context: current request context
+        @param table_name: String, name of table to describes
 
-    @return list of attribute name to AttributeValue mappings
+        @return: TableSchema instance
 
-    @raise BackendInteractionException
-    """
-    raise NotImplemented
+        @raise BackendInteractionException
+        """
+        try:
+            keyspace_meta = self.cluster.metadata.keyspaces[context.tenant]
+        except KeyError:
+            raise BackendInteractionException(
+                "Tenant '{}' does not exist".format(context.tenant))
+
+        try:
+            table_meta = keyspace_meta.tables[table_name]
+        except KeyError:
+            raise BackendInteractionException(
+                "Table '{}' does not exist".format(table_name))
+
+        prefix_len = len(self.USER_COLUMN_PREFIX)
+
+        user_columns = [val for key, val
+                        in table_meta.columns.iteritems()
+                        if key.startswith(self.USER_COLUMN_PREFIX)]
+
+        attr_defs = set()
+        indexed_attrs = set()
+
+        for column in user_columns:
+            name = column.name[prefix_len:]
+            type = self.CASSANDRA_TO_STORAGE_TYPES[column.typestring]
+            attr_defs.add(models.AttributeDefinition(name, type))
+            if column.index:
+                indexed_attrs.add(name)
+
+        hash_key_name = table_meta.partition_key[0].name[prefix_len:]
+
+        key_attrs = {hash_key_name}
+
+        if table_meta.clustering_key:
+            range_key_name = table_meta.clustering_key[0].name[prefix_len:]
+            key_attrs.add(range_key_name)
+
+        table_schema = models.TableSchema(table_meta.name, attr_defs,
+                                          key_attrs, indexed_attrs)
+
+        return table_schema
+
+    def list_tables(self, context, exclusive_start_table_name=None,
+                    limit=None):
+        """
+        @param context: current request context
+        @param exclusive_start_table_name
+        @param limit: limit of returned table names
+        @return list of table names
+
+        @raise BackendInteractionException
+        """
+
+        query = "SELECT columnfamily_name from system.schema_columnfamilies"
+
+        query += " WHERE keyspace_name = '{}'".format(context.tenant)
+
+        if exclusive_start_table_name:
+            query += " AND columnfamily_name > '{}'".format(
+                exclusive_start_table_name)
+
+        if limit:
+            query += " LIMIT {}".format(limit)
+
+        tables = self._execute_query(query)
+
+        return [row.columnfamily_name for row in tables]
+
+    def put_item(self, context, put_request, if_not_exist=False,
+                 expected_condition_map=None):
+        """
+        @param context: current request context
+        @param put_request: contains PutItemRequest items to perform
+                    put item operation
+        @param if_not_exist: put item only is row is new record (It is possible
+                    to use only one of if_not_exist and expected_condition_map
+                    parameter)
+        @param expected_condition_map: expected attribute name to
+                    ExpectedCondition instance mapping. It provides
+                    preconditions to make decision about should item be put or
+                    not
+
+        @return: True if operation performed, otherwise False
+
+        @raise BackendInteractionException
+        """
+        raise NotImplemented
+
+    def delete_item(self, context, delete_request,
+                    expected_condition_map=None):
+        """
+        @param context: current request context
+        @param delete_request: contains DeleteItemRequest items to perform
+                    delete item operation
+        @param expected_condition_map: expected attribute name to
+                    ExpectedCondition instance mapping. It provides
+                    preconditions to make decision about should item be deleted
+                    or not
+
+        @return: True if operation performed, otherwise False (if operation was
+                    skipped by out of date timestamp, it is considered as
+                    successfully performed)
+
+        @raise BackendInteractionException
+        """
+        raise NotImplemented
+
+    def execute_write_batch(self, context, write_request_list, durable=True):
+        """
+        @param context: current request context
+        @param write_request_list: contains WriteItemBatchableRequest items to
+                    perform batch
+        @param durable: if True, batch will be fully performed or fully
+                    skipped. Partial batch execution isn't allowed
+
+        @raise BackendInteractionException
+        """
+        raise NotImplemented
+
+    def update_item(self, context, table_name, key_attribute_map,
+                    attribute_action_map, expected_condition_map=None):
+        """
+        @param context: current request context
+        @param table_name: String, name of table to delete item from
+        @param key_attribute_map: key attribute name to
+                    AttributeValue mapping. It defines row it to update item
+        @param attribute_action_map: attribute name to UpdateItemAction
+                    instance mapping. It defines actions to perform for each
+                    given attribute
+        @param expected_condition_map: expected attribute name to
+                    ExpectedCondition instance mapping. It provides
+                    preconditions to make decision about should item be updated
+                    or not
+        @return: True if operation performed, otherwise False
+
+        @raise BackendInteractionException
+        """
+        raise NotImplemented
+
+    def select_item(self, context, table_name, indexed_condition_map,
+                    attributes_to_get=None, limit=None, consistent=True):
+        """
+        @param context: current request context
+        @param table_name: String, name of table to get item from
+        @param indexed_condition_map: indexed attribute name to
+                    IndexedCondition instance mapping. It defines rows
+                    set to be selected
+        @param attributes_to_get: attribute name list to get. If not specified,
+                    all attributes should be returned. Also aggregate functions
+                    are allowed, if they are supported by storage
+                    implementation
+
+        @param limit: maximum count of returned values
+        @param consistent: define is operation consistent or not (by default it
+                    is not consistent)
+
+        @return list of attribute name to AttributeValue mappings
+
+        @raise BackendInteractionException
+        """
+        raise NotImplemented

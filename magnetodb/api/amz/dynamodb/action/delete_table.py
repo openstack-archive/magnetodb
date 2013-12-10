@@ -18,8 +18,10 @@
 from datetime import datetime
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.action import Props
-from magnetodb.api.amz.dynamodb.action import Types
+from magnetodb.api.amz.dynamodb.action.describe_table import DescribeTableDynamoDBAction
+
+from magnetodb.api.amz.dynamodb.parser import Props, Parser
+from magnetodb.api.amz.dynamodb.parser import Types
 
 from magnetodb import storage
 
@@ -35,26 +37,4 @@ class DeleteTableDynamoDBAction(DynamoDBAction):
 
         table_name = self.action_params.get(Props.TABLE_NAME, None)
 
-        if table_name:
-            storage.delete_table(self.context, table_name)
-        '''
-                return {"AttributeDefinitions":[],
-                        "CreationDateTime":datetime.utcnow(),
-                        "ItemCount":10,
-                        "KeySchema":[
-                                    {"AttributeName":"keyname","KeyType":"HASH"},
-                                    {"AttributeName":"rangekeyname","KeyType":"RANGE"},
-                                ]
-                        },
-                        "LocalSecondaryIndexes":[
-                                                 {"IndexName":"testindex",
-                                                  "IndexSizeBytes":100,
-                                                  "ItemCount":200,
-                                                  "KeySchema":[
-                                                               {"AttributeName":"keyname","KeyType":"HASH"},
-                                                               {"AttributeName":"rangekeyname","KeyType":"RANGE"},
-                                                            ],
-                                                  }
-                                                 ]
-        '''
-        return {}
+        return Parser.format_table_schema(storage.delete_table(self.context, table_name))

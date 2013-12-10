@@ -18,8 +18,9 @@
 from datetime import datetime
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.action import Props
-from magnetodb.api.amz.dynamodb.action import Types
+from magnetodb.api.amz.dynamodb.parser import Props
+from magnetodb.api.amz.dynamodb.parser import Types
+from magnetodb.api.amz.dynamodb.parser import Parser
 
 from magnetodb import storage
 
@@ -38,69 +39,7 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
         table_shema = storage.describe_table(self.context, table_name)
 
         if not table_name:
-#           TODO (isviridov) implement the table not found scenario
+#           TODO (isviridov) implement the table not found scenario should be ResourceNotFoundException HTTP status 400
             raise NotImplementedError()
         else:
-            return  {
-                    "Table": {
-                        "AttributeDefinitions": [
-                            {
-                                "AttributeName": "city",
-                                "AttributeType": "S"
-                            },
-                            {
-                                "AttributeName": "id",
-                                "AttributeType": "S"
-                            },
-                            {
-                                "AttributeName": "name",
-                                "AttributeType": "S"
-                            }
-                        ],
-                        "CreationDateTime": 1,
-                        "ItemCount": 0,
-                        "KeySchema": [
-                            {
-                                "AttributeName": "id",
-                                "KeyType": "HASH"
-                            },
-                            {
-                                "AttributeName": "name",
-                                "KeyType": "RANGE"
-                            }
-                        ],
-                        "LocalSecondaryIndexes": [
-                            {
-                                "IndexName": "city-index",
-                                "IndexSizeBytes": 0,
-                                "ItemCount": 0,
-                                "KeySchema": [
-                                    {
-                                        "AttributeName": "id",
-                                        "KeyType": "HASH"
-                                    },
-                                    {
-                                        "AttributeName": "city",
-                                        "KeyType": "RANGE"
-                                    }
-                                ],
-                                "Projection": {
-                                    "NonKeyAttributes": [
-                                        "zip"
-                                    ],
-                                    "ProjectionType": "INCLUDE"
-                                }
-                            }
-                        ],
-                        "ProvisionedThroughput": {
-                            "NumberOfDecreasesToday": 0,
-                            "ReadCapacityUnits": 1,
-                            "WriteCapacityUnits": 1
-                        },
-                        "TableName": table_shema.table_name,
-                        "TableSizeBytes": 0,
-                        "TableStatus": "ACTIVE"
-                        }
-                }
-            
-     
+            return Parser.format_table_schema(table_shema)
