@@ -50,6 +50,7 @@ class CassandraStorageImpl():
     SYSTEM_COLUMN_ATTRS = SYSTEM_COLUMN_PREFIX + 'attrs'
     SYSTEM_COLUMN_ATTR_TYPES = SYSTEM_COLUMN_PREFIX + 'attr_types'
     SYSTEM_COLUMN_ATTR_EXIST = SYSTEM_COLUMN_PREFIX + 'attr_exist'
+    SYSTEM_COLUMN_HASH = SYSTEM_COLUMN_PREFIX + 'hash'
 
     __schemas = {}
 
@@ -125,6 +126,15 @@ class CassandraStorageImpl():
         prefixed_attrs = [self.USER_COLUMN_PREFIX + name
                           for name in table_schema.key_attributes]
 
+        hash_name = table_schema.key_attributes[0]
+        hash_type = [attr.type
+                     for attr in table_schema.attribute_defs
+                     if attr.name == hash_name][0]
+
+        cassandra_hash_type = self.STORAGE_TO_CASSANDRA_TYPES[hash_type]
+
+        query += "{} {},".format(self.SYSTEM_COLUMN_HASH, cassandra_hash_type)
+
         key_count = len(prefixed_attrs)
 
         if key_count < 1 or key_count > 2:
@@ -143,6 +153,10 @@ class CassandraStorageImpl():
             for attr in table_schema.indexed_non_key_attributes:
                 self._create_index(context, table_schema.table_name,
                                    self.USER_COLUMN_PREFIX + attr)
+
+            self._create_index(
+                context, table_schema.table_name, self.SYSTEM_COLUMN_HASH)
+
         except Exception as e:
             LOG.error("Table {} creation failed. Cleaning up...".format(
                 table_schema.table_name))
@@ -228,11 +242,11 @@ class CassandraStorageImpl():
 
         hash_key_name = table_meta.partition_key[0].name[prefix_len:]
 
-        key_attrs = {hash_key_name}
+        key_attrs = [hash_key_name]
 
         if table_meta.clustering_key:
             range_key_name = table_meta.clustering_key[0].name[prefix_len:]
-            key_attrs.add(range_key_name)
+            key_attrs.append(range_key_name)
 
         table_schema = models.TableSchema(table_meta.name, attr_defs,
                                           key_attrs, indexed_attrs)
@@ -411,10 +425,29 @@ class CassandraStorageImpl():
 
         query += where
 
+
+        hash_name = schema.key_attributes[0]
+
+        try:
+            hash_value = indexed_condition_map[hash_name].arg
+
+            query += " AND {}={}".format(
+                self.SYSTEM_COLUMN_HASH, hash_value)
+        except KeyError:
+            # do nothing
+            # just don't add condition on system_hash
+            pass
+
         if limit:
             query += " LIMIT {}".format(limit)
 
+        query += " ALLOW FILTERING"
+
         result = []
+
+        if consistent:
+            query = cluster.SimpleStatement(query)
+            query.consistency_level = cluster.ConsistencyLevel.QUORUM
 
         rows = self._execute_query(query)
 
