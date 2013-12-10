@@ -14,6 +14,7 @@
 #    under the License.
 
 from cassandra import cluster
+from cassandra import decoder
 
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.openstack.common import log as logging
@@ -27,14 +28,21 @@ class CassandraStorageImpl():
     STORAGE_TO_CASSANDRA_TYPES = {
         models.ATTRIBUTE_TYPE_STRING: 'text',
         models.ATTRIBUTE_TYPE_NUMBER: 'decimal',
-        models.ATTRIBUTE_TYPE_BLOB: 'blob'
+        models.ATTRIBUTE_TYPE_BLOB: 'blob',
+        models.ATTRIBUTE_TYPE_STRING_SET: 'set<text>',
+        models.ATTRIBUTE_TYPE_NUMBER_SET: 'set<decimal>',
+        models.ATTRIBUTE_TYPE_BLOB_SET: 'set<blob>'
     }
 
     CASSANDRA_TO_STORAGE_TYPES = {val: key for key, val
                                   in STORAGE_TO_CASSANDRA_TYPES.iteritems()}
 
     CONDITION_TO_OP = {
-        models.Condition.CONDITION_TYPE_EQUAL: '='
+        models.Condition.CONDITION_TYPE_EQUAL: '=',
+        models.IndexedCondition.CONDITION_TYPE_LESS: '<',
+        models.IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL: '<=',
+        models.IndexedCondition.CONDITION_TYPE_GREATER: '>',
+        models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL: '>=',
     }
 
     USER_COLUMN_PREFIX = 'user_'
@@ -80,6 +88,7 @@ class CassandraStorageImpl():
         )
 
         self.session = self.cluster.connect()
+        self.session.row_factory = decoder.dict_factory
 
     def _execute_query(self, query):
         try:
@@ -256,7 +265,7 @@ class CassandraStorageImpl():
 
         tables = self._execute_query(query)
 
-        return [row.columnfamily_name for row in tables]
+        return [row['columnfamily_name'] for row in tables]
 
     def _indexed_attrs(self, context, table):
         schema = self.describe_table(context, table)
@@ -389,4 +398,46 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplementedError
+
+        schema = self.describe_table(context, table_name)
+        attr_defs = {attr.name: attr.type for attr in schema.attribute_defs}
+
+        query = "SELECT * FROM {}.{} WHERE ".format(
+            context.tenant, table_name)
+
+        where = " AND ".join((self._condition_as_string(attr, cond)
+                              for attr, cond
+                              in indexed_condition_map.iteritems()))
+
+        query += where
+
+        if limit:
+            query += " LIMIT {}".format(limit)
+
+        result = []
+
+        rows = self._execute_query(query)
+
+        prefix_len = len(self.USER_COLUMN_PREFIX)
+
+        for row in rows:
+            record = {}
+
+            for key, val in row.iteritems():
+                if key.startswith(self.USER_COLUMN_PREFIX):
+                    name = key[prefix_len:]
+                    if not attributes_to_get or name in attributes_to_get:
+                        storage_type = attr_defs[name]
+                        record[name] = models.AttributeValue(storage_type, val)
+
+            types = row[self.SYSTEM_COLUMN_ATTR_TYPES]
+
+            for name, val in row[self.SYSTEM_COLUMN_ATTRS].iteritems():
+                if not attributes_to_get or name in attributes_to_get:
+                    type = types[name]
+                    storage_type = self.CASSANDRA_TO_STORAGE_TYPES[type]
+                    record[name] = models.AttributeValue(storage_type, val)
+
+            result.append(record)
+
+        return result
