@@ -42,8 +42,6 @@ class BotoIntegrationTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        #super(TestCase, cls).setUpClass()
-
         magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE)
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
 
@@ -136,26 +134,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
         table = Table('test_table', connection=self.DYNAMODB_CON)
 
-        table_description = table.delete()
+        self.assertTrue(table.delete())
 
         self.storage_mocker.VerifyAll()
 
-        self.assertEquals('test_table',
-                          table_description['Table']['TableName'])
-        self.assertListEqual([
-                            {
-                                "AttributeName": "city1",
-                                "AttributeType": "S"
-                            },
-                            {
-                                "AttributeName": "id",
-                                "AttributeType": "S"
-                            },
-                            {
-                                "AttributeName": "name",
-                                "AttributeType": "S"
-                            }
-                        ], table_description['Table']['AttributeDefinitions'])
 
     def testCreateTable(self):
         self.storage_mocker.StubOutWithMock(self.STORAGE,'create_table')
