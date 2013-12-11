@@ -13,15 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from datetime import datetime
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.action.describe_table import DescribeTableDynamoDBAction
-
-from magnetodb.api.amz.dynamodb.parser import Props, Parser
-from magnetodb.api.amz.dynamodb.parser import Types
-
+from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
 from magnetodb import storage
+
 
 class DeleteTableDynamoDBAction(DynamoDBAction):
     schema = {
@@ -35,4 +31,36 @@ class DeleteTableDynamoDBAction(DynamoDBAction):
 
         table_name = self.action_params.get(Props.TABLE_NAME, None)
 
-        return Parser.format_table_schema(storage.delete_table(self.context, table_name))
+        table_schema = storage.describe_table(self.context, table_name)
+
+        storage.delete_table(self.context, table_name)
+
+        #TODO (isviridov): fill ITEM_COUNT, TABLE_SIZE_BYTES,
+        # CREATION_DATE_TIME with real data
+        return {
+            Props.TABLE: {
+                Props.ATTRIBUTE_DEFINITIONS: (
+                    map(Parser.format_attribute_definition,
+                        table_schema.attribute_defs)
+                ),
+                Props.CREATION_DATE_TIME: 0,
+                Props.ITEM_COUNT: 0,
+                Props.KEY_SCHEMA: (
+                    Parser.format_key_schema(
+                        table_schema.key_attributes
+                    )
+                ),
+                Props.LOCAL_SECONDARY_INDEXES: (
+                    Parser.format_local_secondary_indexes(
+                        table_schema.key_attributes[0],
+                        table_schema.indexed_non_key_attributes
+                    )
+                ),
+                Props.PROVISIONED_THROUGHPUT: (
+                    Values.PROVISIONED_THROUGHPUT_DUMMY
+                ),
+                Props.TABLE_NAME: table_schema.table_name,
+                Props.TABLE_STATUS: Values.TABLE_STATUS_ACTIVE,
+                Props.TABLE_SIZE_BYTES: 0
+            }
+        }

@@ -13,14 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from datetime import datetime
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.parser import Props
-from magnetodb.api.amz.dynamodb.parser import Types
-from magnetodb.api.amz.dynamodb.parser import Parser
+from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
 
 from magnetodb import storage
+
 
 class DescribeTableDynamoDBAction(DynamoDBAction):
     schema = {
@@ -34,10 +32,35 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
 
         table_name = self.action_params.get(Props.TABLE_NAME, None)
 
-        table_shema = storage.describe_table(self.context, table_name)
+        table_schema = storage.describe_table(self.context, table_name)
 
         if not table_name:
-#           TODO (isviridov) implement the table not found scenario should be ResourceNotFoundException HTTP status 400
+#           TODO (isviridov) implement the table not found
+#           scenario should be ResourceNotFoundException HTTP status 400
             raise NotImplementedError()
         else:
-            return Parser.format_table_schema(table_shema)
+            return {Props.TABLE: {
+                Props.ATTRIBUTE_DEFINITIONS: (
+                    map(Parser.format_attribute_definition,
+                        table_schema.attribute_defs)
+                    ),
+                Props.CREATION_DATE_TIME: 0,
+                Props.ITEM_COUNT: 0,
+                Props.KEY_SCHEMA: (
+                    Parser.format_key_schema(
+                        table_schema.key_attributes
+                    )
+                ),
+                Props.LOCAL_SECONDARY_INDEXES: (
+                    Parser.format_local_secondary_indexes(
+                        table_schema.key_attributes[0],
+                        table_schema.indexed_non_key_attributes
+                    )
+                ),
+                Props.PROVISIONED_THROUGHPUT: (
+                    Values.PROVISIONED_THROUGHPUT_DUMMY
+                ),
+                Props.TABLE_NAME: table_schema.table_name,
+                Props.TABLE_STATUS: Values.TABLE_STATUS_ACTIVE,
+                Props.TABLE_SIZE_BYTES: 0
+            }}

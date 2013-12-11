@@ -64,11 +64,11 @@ class Values():
     PROJECTION_TYPE_ALL = "ALL"
 
     PROVISIONED_THROUGHPUT_DUMMY = {
-        "LastDecreaseDateTime": 1,
-        "LastIncreaseDateTime": 1,
-        "NumberOfDecreasesToday": 1,
-        "ReadCapacityUnits": 1,
-        "WriteCapacityUnits": 1
+        "LastDecreaseDateTime": 0,
+        "LastIncreaseDateTime": 0,
+        "NumberOfDecreasesToday": 0,
+        "ReadCapacityUnits": 0,
+        "WriteCapacityUnits": 0
     }
 
     TABLE_STATUS_ACTIVE = "ACTIVE"
@@ -291,31 +291,3 @@ class Parser():
         return map(lambda index: cls.format_local_secondary_index(hash_key,
                                                                   index),
                    local_secondary_index_list)
-
-    @classmethod
-    def format_table_schema(cls,table_schema):
-        return {
-            Props.TABLE: {
-                Props.ATTRIBUTE_DEFINITIONS: (
-                     map(cls.format_attribute_definition, table_schema.attribute_defs)
-                ),
-                Props.CREATION_DATE_TIME: 0,
-                Props.ITEM_COUNT: 0,
-                Props.KEY_SCHEMA: (
-                    Parser.format_key_schema(
-                        table_schema.key_attributes
-                    )
-                ),
-                Props.LOCAL_SECONDARY_INDEXES: (
-                    Parser.format_local_secondary_indexes(
-                        table_schema.key_attributes[0], table_schema.indexed_non_key_attributes
-                    )
-                ),
-                Props.PROVISIONED_THROUGHPUT: (
-                    Values.PROVISIONED_THROUGHPUT_DUMMY
-                ),
-                Props.TABLE_NAME: table_schema.table_name,
-                Props.TABLE_STATUS: Values.TABLE_STATUS_ACTIVE,
-                Props.TABLE_SIZE_BYTES: 0
-            }
-        }
