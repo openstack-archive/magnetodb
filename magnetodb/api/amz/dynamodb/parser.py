@@ -35,6 +35,7 @@ class Props():
     WRITE_CAPACITY_UNITS = "WriteCapacityUnits"
 
     TABLE_DESCRIPTION = "TableDescription"
+    TABLE = "Table"
     TABLE_SIZE_BYTES = "TableSizeBytes"
     TABLE_STATUS = "TableStatus"
     CREATION_DATE_TIME = "CreationDateTime"

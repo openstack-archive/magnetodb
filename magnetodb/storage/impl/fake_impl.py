@@ -20,3 +20,6 @@ class FakeStorageImpl():
 
     def list_tables(self, context, exclusive_start_table_name, limit):
         return []
+
+    def describe_table(context, table_name):
+        return None

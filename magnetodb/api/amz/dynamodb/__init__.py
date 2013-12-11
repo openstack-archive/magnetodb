@@ -15,8 +15,12 @@
 
 from magnetodb.api.amz.dynamodb.action import list_tables
 from magnetodb.api.amz.dynamodb.action import create_table
+from magnetodb.api.amz.dynamodb.action import describe_table
+from magnetodb.api.amz.dynamodb.action import delete_table
 
 capabilities = {
     'ListTables': list_tables.ListTablesDynamoDBAction,
-    'CreateTable': create_table.CreateTableDynamoDBAction
+    'DescribeTable': describe_table.DescribeTableDynamoDBAction,
+    'CreateTable': create_table.CreateTableDynamoDBAction,
+    'DeleteTable': delete_table.DeleteTableDynamoDBAction,
 }
