@@ -15,7 +15,7 @@
 
 from boto.dynamodb2 import RegionInfo
 from boto.dynamodb2.layer1 import DynamoDBConnection
-from boto.dynamodb2.types import STRING, NUMBER
+from boto.dynamodb2 import types
 from boto.dynamodb2 import fields
 import os
 import unittest
@@ -156,8 +156,8 @@ class BotoIntegrationTest(unittest.TestCase):
         Table.create(
             "test",
             schema=[
-                fields.HashKey('hash', data_type=NUMBER),
-                fields.RangeKey('range', data_type=STRING)
+                fields.HashKey('hash', data_type=types.NUMBER),
+                fields.RangeKey('range', data_type=types.STRING)
             ],
             throughput={
                 'read': 20,
@@ -168,7 +168,7 @@ class BotoIntegrationTest(unittest.TestCase):
                     'index_name',
                     parts=[
                         fields.RangeKey('indexed_field',
-                                        data_type=STRING)
+                                        data_type=types.STRING)
                     ]
                 )
             ],
