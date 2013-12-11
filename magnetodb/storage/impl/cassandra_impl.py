@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from decimal import Decimal
+import json
+
 from cassandra import cluster
 from cassandra import decoder
 
@@ -297,7 +300,7 @@ class CassandraStorageImpl():
         schema = self.describe_table(context, table)
         return schema.indexed_attrs
 
-    def _external_attrs(self, context, table):
+    def _predefined_attrs(self, context, table):
         schema = self.describe_table(context, table)
         return [attr.name for attr in schema.attribute_defs]
 
@@ -341,16 +344,12 @@ class CassandraStorageImpl():
         query = "DELETE FROM {}.{} WHERE ".format(
             context.tenant, delete_request.table_name)
 
-        where = " AND ".join((self._condition_as_string(attr, cond)
-                              for attr, cond
-                              in delete_request.key_attribute_map.iteritems()))
+        where = self._conditions_as_string(delete_request.key_attribute_map)
 
         query += where
 
         if expected_condition_map:
-            if_clause = " AND ".join((self._condition_as_string(attr, cond)
-                                      for attr, cond
-                                      in expected_condition_map.iteritems()))
+            if_clause = self._conditions_as_string(expected_condition_map)
 
             query += " IF " + if_clause
 
@@ -370,6 +369,11 @@ class CassandraStorageImpl():
         else:
             op = self.CONDITION_TO_OP[condition.type]
             return name + op + repr(condition.arg)
+
+    def _conditions_as_string(self, condition_map):
+        return " AND ".join((self._condition_as_string(attr, cond)
+                             for attr, cond
+                             in condition_map.iteritems()))
 
     def execute_write_batch(self, context, write_request_list, durable=True):
         """
@@ -401,7 +405,116 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplementedError
+        schema = self.describe_table(context, table_name)
+        set_clause = self._updates_as_string(
+            schema, key_attribute_map, attribute_action_map)
+
+        where = self._conditions_as_string(key_attribute_map)
+
+        query = "UPDATE {}.{} SET {} WHERE {}".format(
+            context.tenant, table_name, set_clause, where
+        )
+
+        if expected_condition_map:
+            if_clause = self._conditions_as_string(expected_condition_map)
+            query += " IF {}".format(if_clause)
+
+        self._execute_query(query)
+
+    def _updates_as_string(self, schema, key_attribute_map, update_map):
+        predefined_attrs = [attr.name for attr in schema.attribute_defs]
+
+        set_clause = ", ".join({
+            self._update_as_string(attr, update, attr in predefined_attrs)
+            for attr, update in update_map.iteritems()})
+
+        #update system_hash
+        hash_name = schema.key_attributes[0]
+        hash_value = key_attribute_map[hash_name].arg
+
+        set_clause += ",{}={}".format(
+            self.SYSTEM_COLUMN_HASH, repr(hash_value))
+
+        return set_clause
+
+    def _update_as_string(self, attr, update, is_predefined):
+        if is_predefined:
+            name = self.USER_COLUMN_PREFIX + attr
+        else:
+            name = "{}['{}']".format(self.SYSTEM_COLUMN_ATTRS, attr)
+
+        # delete value
+        if (update.action == models.UpdateItemAction.UPDATE_ACTION_DELETE
+            or (update.action == models.UpdateItemAction.UPDATE_ACTION_PUT
+                and (not update.value or not update.value.value))):
+            value = 'null'
+
+            type_update = "{}['{}'] = null".format(
+                self.SYSTEM_COLUMN_ATTR_TYPES, attr)
+
+            exists = "{} = {} - {{'{}'}}".format(
+                self.SYSTEM_COLUMN_ATTR_EXIST,
+                self.SYSTEM_COLUMN_ATTR_EXIST, attr)
+        # put or add
+        else:
+            type_update = "{}['{}'] = '{}'".format(
+                self.SYSTEM_COLUMN_ATTR_TYPES, attr,
+                self.STORAGE_TO_CASSANDRA_TYPES[update.value.type])
+
+            exists = "{} = {} + {{'{}'}}".format(
+                self.SYSTEM_COLUMN_ATTR_EXIST,
+                self.SYSTEM_COLUMN_ATTR_EXIST, attr)
+
+            value = self._encode_value(update.value, is_predefined)
+
+        op = '='
+        value_update = "{} {} {}".format(name, op, value)
+
+        return ", ".join((value_update, type_update, exists))
+
+    def _encode_value(self, value, is_predefined):
+        if not is_predefined:
+            val = value.value
+            if value.type.collection_type:
+                val = list(val)
+            jsoned = json.dumps(val)
+            return "textAsBlob('{}')".format(jsoned)
+        elif value.type.collection_type:
+            single_val_type = models.AttributeType(value.type.element_type)
+            values = ','.join(
+                (self._encode_single_value(
+                    models.AttributeValue(single_val_type, single_val))
+                 for single_val
+                 in value.value))
+
+            encoded = '{{{}}}'.format(values)
+            return encoded
+        else:
+            return self._encode_single_value(value)
+
+    @staticmethod
+    def _encode_single_value(value):
+        if value.type == models.ATTRIBUTE_TYPE_STRING:
+            encoded = "'{}'".format(value.value)
+        elif value.type == models.ATTRIBUTE_TYPE_NUMBER:
+            encoded = str(value.value)
+        else:
+            encoded = "textAsBlob('{}')".format(str(value.value))
+
+        return encoded
+
+    @staticmethod
+    def _decode_value(value, storage_type, is_predefined):
+        if not is_predefined:
+            val = json.loads(value)
+            decoded = set(val) if storage_type.collection_type else val
+        elif storage_type == models.ATTRIBUTE_TYPE_NUMBER:
+            decoded = Decimal(value)
+        elif storage_type.collection_type:
+            decoded = set(value)
+        else:
+            decoded = value
+        return models.AttributeValue(storage_type, decoded)
 
     def select_item(self, context, table_name, indexed_condition_map,
                     attributes_to_get=None, limit=None, consistent=True,
@@ -427,20 +540,16 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
-        schema = self.describe_table(context, table_name)
-        attr_defs = {attr.name: attr.type for attr in schema.attribute_defs}
-
         query = "SELECT * FROM {}.{} WHERE ".format(
             context.tenant, table_name)
 
-        where = " AND ".join((self._condition_as_string(attr, cond)
-                              for attr, cond
-                              in indexed_condition_map.iteritems()))
+        where = self._conditions_as_string(indexed_condition_map)
 
         query += where
 
+        # add system_hash condition
+        schema = self.describe_table(context, table_name)
         hash_name = schema.key_attributes[0]
-
         try:
             hash_value = indexed_condition_map[hash_name].arg
 
@@ -451,9 +560,11 @@ class CassandraStorageImpl():
             # just don't add condition on system_hash
             pass
 
+        #add limit
         if limit:
             query += " LIMIT {}".format(limit)
 
+        #add ordering
         try:
             range_name = schema.key_attributes[1]
         except IndexError:
@@ -466,33 +577,39 @@ class CassandraStorageImpl():
 
         query += " ALLOW FILTERING"
 
-        result = []
-
         if consistent:
             query = cluster.SimpleStatement(query)
             query.consistency_level = cluster.ConsistencyLevel.QUORUM
 
         rows = self._execute_query(query)
 
+        # process results
+
         prefix_len = len(self.USER_COLUMN_PREFIX)
+        attr_defs = {attr.name: attr.type for attr in schema.attribute_defs}
+        result = []
 
         for row in rows:
             record = {}
 
+            #add predefined attributes
             for key, val in row.iteritems():
-                if key.startswith(self.USER_COLUMN_PREFIX):
+                if key.startswith(self.USER_COLUMN_PREFIX) and val:
                     name = key[prefix_len:]
                     if not attributes_to_get or name in attributes_to_get:
                         storage_type = attr_defs[name]
-                        record[name] = models.AttributeValue(storage_type, val)
+                        record[name] = self._decode_value(
+                            val, storage_type, True)
 
+            #add dynamic attributes (from SYSTEM_COLUMN_ATTRS dict)
             types = row[self.SYSTEM_COLUMN_ATTR_TYPES]
-
-            for name, val in row[self.SYSTEM_COLUMN_ATTRS].iteritems():
+            attrs = row[self.SYSTEM_COLUMN_ATTRS] or {}
+            for name, val in attrs.iteritems():
                 if not attributes_to_get or name in attributes_to_get:
                     type = types[name]
                     storage_type = self.CASSANDRA_TO_STORAGE_TYPES[type]
-                    record[name] = models.AttributeValue(storage_type, val)
+                    record[name] = self._decode_value(
+                        val, storage_type, False)
 
             result.append(record)
 
