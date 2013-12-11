@@ -103,7 +103,9 @@ class AttributeDefinition(ModelBase):
         return self._type
 
 
-class AttributeValue():
+class AttributeValue(ModelBase):
+
+    _data_fields = ['value', 'type']
 
     def __init__(self, attr_type, attr_value):
         self._type = attr_type

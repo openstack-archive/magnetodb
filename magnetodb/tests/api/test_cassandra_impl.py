@@ -96,8 +96,10 @@ class TestCassandraBase(unittest.TestCase):
         query += " system_attrs map<text, blob>,"
         query += " system_attr_types map<text, text>,"
         query += " system_attr_exist set<text>,"
+        query += " system_hash decimal,"
         query += " PRIMARY KEY(user_id, user_range))"
         self.SESSION.execute(query)
+        self._create_index(attr='system_hash')
 
     def _create_index(self, keyspace=None, table_name=None,
                       attr='user_indexed'):
@@ -136,7 +138,7 @@ class TestCassandraTableCrud(TestCassandraBase):
                 'indexed', models.ATTRIBUTE_TYPE_STRING)
         }
 
-        schema = models.TableSchema(self.table_name, attrs, {'id', 'range'},
+        schema = models.TableSchema(self.table_name, attrs, ['id', 'range'],
                                     {'indexed'})
 
         self.CASANDRA_STORAGE_IMPL.create_table(self.context, schema)
@@ -164,7 +166,7 @@ class TestCassandraTableCrud(TestCassandraBase):
                 'indexed', models.ATTRIBUTE_TYPE_STRING)
         }
 
-        schema = models.TableSchema(self.table_name, attrs, {'id', 'range'},
+        schema = models.TableSchema(self.table_name, attrs, ['id', 'range'],
                                     {'indexed'})
 
         self._create_table()
@@ -363,3 +365,259 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         self.assertEqual(1, len(all))
         self.assertEqual(1, all[0].user_id)
+
+
+class TestCassandraSelectItem(TestCassandraBase):
+
+    def _insert_data(self, range_value=1):
+        query = "UPDATE {}.{}".format(self.keyspace, self.table_name)
+        query += " SET user_indexed='1', user_nonindexed='1',"
+        query += " system_hash=1,"
+        query += " {}['{}'] = textAsBlob('{}'), ".format(
+            self.CASANDRA_STORAGE_IMPL.SYSTEM_COLUMN_ATTRS,
+            'field', 'value')
+        query += " {}['{}']= '{}', ".format(
+            self.CASANDRA_STORAGE_IMPL.SYSTEM_COLUMN_ATTR_TYPES,
+            'field', self.CASANDRA_STORAGE_IMPL.STORAGE_TO_CASSANDRA_TYPES[
+                models.ATTRIBUTE_TYPE_STRING])
+        query += " {} = {} + {{ '{}','{}','{}','{}','{}' }} ".format(
+            self.CASANDRA_STORAGE_IMPL.SYSTEM_COLUMN_ATTR_EXIST,
+            self.CASANDRA_STORAGE_IMPL.SYSTEM_COLUMN_ATTR_EXIST,
+            'id', 'range', 'indexed', 'nonindexed', 'field')
+        query += " WHERE user_id = 1 AND user_range='{}'".format(range_value)
+
+        self.SESSION.execute(query)
+
+    def _validate_data(self, data):
+
+        expected = {}
+
+        expected['id'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_NUMBER, 1)
+
+        expected['range'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_STRING, '1')
+
+        expected['indexed'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_STRING, '1')
+
+        expected['nonindexed'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_STRING, '1')
+
+        expected['field'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_STRING, 'value')
+
+        self.assertDictEqual(expected, data)
+
+    def test_select_item(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, len(result))
+        self._validate_data(result[0])
+
+    def test_select_item_attr(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond, ['field'])
+
+        self.assertEqual(1, len(result))
+        self.assertEqual(
+            {'field': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_STRING, 'value')},
+            result[0])
+
+    def test_select_item_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.Condition.eq('2')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(0, len(result))
+
+    def test_select_item_less(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.lt('2')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, len(result))
+        self._validate_data(result[0])
+
+    def test_select_item_less_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.lt('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(0, len(result))
+
+    def test_select_item_less_eq(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.le('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, len(result))
+        self._validate_data(result[0])
+
+    def test_select_item_less_eq_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.le('0')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(0, len(result))
+
+    def test_select_item_greater(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.gt('0')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, len(result))
+        self._validate_data(result[0])
+
+    def test_select_item_greater_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.gt('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(0, len(result))
+
+    def test_select_item_greater_eq(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.ge('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, len(result))
+        self._validate_data(result[0])
+
+    def test_select_item_greater_eq_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.ge('2')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(0, len(result))
+
+    def test_select_item_indexed(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.Condition.eq('1'),
+                        'indexed': models.IndexedCondition.le('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, len(result))
+        self._validate_data(result[0])
+
+    def test_select_item_indexed_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.Condition.eq('1'),
+                        'indexed': models.IndexedCondition.lt('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(0, len(result))
+
+    def test_select_with_limit(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+        self._insert_data(2)
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.IndexedCondition.ge('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(2, len(result))
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond, limit=1)
+
+        self.assertEqual(1, len(result))
