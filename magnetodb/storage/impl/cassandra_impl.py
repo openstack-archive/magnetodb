@@ -19,6 +19,7 @@ from cassandra import decoder
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
+from magnetodb.storage.models import IndexDefinition
 
 LOG = logging.getLogger(__name__)
 
@@ -51,6 +52,9 @@ class CassandraStorageImpl():
     SYSTEM_COLUMN_ATTR_TYPES = SYSTEM_COLUMN_PREFIX + 'attr_types'
     SYSTEM_COLUMN_ATTR_EXIST = SYSTEM_COLUMN_PREFIX + 'attr_exist'
     SYSTEM_COLUMN_HASH = SYSTEM_COLUMN_PREFIX + 'hash'
+    SYSTEM_COLUMN_HASH_INDEX_NAME = (
+        SYSTEM_COLUMN_HASH + "_internal_index"
+    )
 
     __schemas = {}
 
@@ -150,12 +154,15 @@ class CassandraStorageImpl():
         try:
             self._execute_query(query)
 
-            for attr in table_schema.indexed_non_key_attributes:
+            for index_def in table_schema.index_defs:
                 self._create_index(context, table_schema.table_name,
-                                   self.USER_COLUMN_PREFIX + attr)
+                                   self.USER_COLUMN_PREFIX +
+                                   index_def.attribute_to_index,
+                                   index_def.index_name)
 
             self._create_index(
-                context, table_schema.table_name, self.SYSTEM_COLUMN_HASH)
+                context, table_schema.table_name, self.SYSTEM_COLUMN_HASH,
+                self.SYSTEM_COLUMN_HASH_INDEX_NAME)
 
         except Exception as e:
             LOG.error("Table {} creation failed. Cleaning up...".format(
@@ -169,9 +176,12 @@ class CassandraStorageImpl():
 
             raise e
 
-    def _create_index(self, context, table_name, indexed_attr):
-        query = "CREATE INDEX ON {}.{} ({})".format(
-            context.tenant, table_name, indexed_attr)
+    def _create_index(self, context, table_name, indexed_attr, index_name=""):
+        if index_name:
+            index_name = "_".join((table_name, index_name))
+
+        query = "CREATE INDEX {} ON {}.{} ({})".format(
+            index_name, context.tenant, table_name, indexed_attr)
 
         self._execute_query(query)
 
@@ -231,14 +241,16 @@ class CassandraStorageImpl():
                         if key.startswith(self.USER_COLUMN_PREFIX)]
 
         attr_defs = set()
-        indexed_attrs = set()
+        index_defs = set()
 
         for column in user_columns:
             name = column.name[prefix_len:]
-            type = self.CASSANDRA_TO_STORAGE_TYPES[column.typestring]
-            attr_defs.add(models.AttributeDefinition(name, type))
+            storage_type = self.CASSANDRA_TO_STORAGE_TYPES[column.typestring]
+            attr_defs.add(models.AttributeDefinition(name, storage_type))
             if column.index:
-                indexed_attrs.add(name)
+                index_defs.add(IndexDefinition(
+                    column.index.name[len(table_name) + 1:], name)
+                )
 
         hash_key_name = table_meta.partition_key[0].name[prefix_len:]
 
@@ -249,7 +261,7 @@ class CassandraStorageImpl():
             key_attrs.append(range_key_name)
 
         table_schema = models.TableSchema(table_meta.name, attr_defs,
-                                          key_attrs, indexed_attrs)
+                                          key_attrs, index_defs)
 
         self.__schemas[context.tenant][table_name] = table_schema
 
@@ -392,7 +404,8 @@ class CassandraStorageImpl():
         raise NotImplementedError
 
     def select_item(self, context, table_name, indexed_condition_map,
-                    attributes_to_get=None, limit=None, consistent=True):
+                    attributes_to_get=None, limit=None, consistent=True,
+                    order_type=None):
         """
         @param context: current request context
         @param table_name: String, name of table to get item from
@@ -407,6 +420,7 @@ class CassandraStorageImpl():
         @param limit: maximum count of returned values
         @param consistent: define is operation consistent or not (by default it
                     is not consistent)
+        @param order_type: defines order of returned rows
 
         @return list of attribute name to AttributeValue mappings
 
@@ -425,7 +439,6 @@ class CassandraStorageImpl():
 
         query += where
 
-
         hash_name = schema.key_attributes[0]
 
         try:
@@ -440,6 +453,16 @@ class CassandraStorageImpl():
 
         if limit:
             query += " LIMIT {}".format(limit)
+
+        try:
+            range_name = schema.key_attributes[1]
+        except IndexError:
+            range_name = None
+
+        if order_type and range_name:
+            query += " ORDER BY {} {}".format(
+                self.USER_COLUMN_PREFIX + range_name, order_type
+            )
 
         query += " ALLOW FILTERING"
 

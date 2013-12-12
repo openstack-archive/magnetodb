@@ -31,6 +31,10 @@ class FakeContext(object):
 
 
 class TestCassandraBase(unittest.TestCase):
+    KEYSPACE_PER_TEST_METHOD = "test"
+    KEYSPACE_PER_TEST_CLASS = "class"
+
+    _keyspace_scope = KEYSPACE_PER_TEST_CLASS
 
     @classmethod
     def setUpClass(cls):
@@ -42,41 +46,46 @@ class TestCassandraBase(unittest.TestCase):
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
         cls.SESSION = cls.CLUSTER.connect()
 
+        if cls._keyspace_scope == cls.KEYSPACE_PER_TEST_CLASS:
+            cls.keyspace = cls._get_unique_name()
+            cls._create_keyspace(cls.keyspace)
+
     @classmethod
     def tearDownClass(cls):
         super(TestCassandraBase, cls).tearDownClass()
+        if cls._keyspace_scope == cls.KEYSPACE_PER_TEST_CLASS:
+            cls._drop_keyspace(cls.keyspace)
 
     def setUp(self):
-        self.keyspace = self._get_unique_name()
-
-        self._create_keyspace()
+        if self._keyspace_scope == self.KEYSPACE_PER_TEST_METHOD:
+            self.keyspace = self._get_unique_name()
+            self._create_keyspace(self.keyspace)
 
         self.context = FakeContext(self.keyspace)
 
         self.table_name = self._get_unique_name()
 
     def tearDown(self):
-        self._drop_keyspace()
+        if self._keyspace_scope == self.KEYSPACE_PER_TEST_METHOD:
+            self._drop_keyspace(self.keyspace)
 
     @staticmethod
     def _get_unique_name():
         name = str(uuid.uuid4())
         return 'test' + filter(lambda x: x != '-', name)[:28]
 
-    def _create_keyspace(self, keyspace=None):
-        keyspace = keyspace or self.keyspace
-
+    @classmethod
+    def _create_keyspace(cls, keyspace):
         query = "CREATE KEYSPACE {} WITH replication".format(keyspace)
         query += " = {'class':'SimpleStrategy', 'replication_factor':1}"
 
-        self.SESSION.execute(query)
+        cls.SESSION.execute(query)
 
-    def _drop_keyspace(self, keyspace=None):
-        keyspace = keyspace or self.keyspace
-
+    @classmethod
+    def _drop_keyspace(cls, keyspace):
         query = ("DROP KEYSPACE {}".format(keyspace))
 
-        self.SESSION.execute(query)
+        cls.SESSION.execute(query)
 
     def _get_table_names(self, keyspace=None):
         keyspace = keyspace or self.keyspace
@@ -102,11 +111,15 @@ class TestCassandraBase(unittest.TestCase):
         self._create_index(attr='system_hash')
 
     def _create_index(self, keyspace=None, table_name=None,
-                      attr='user_indexed'):
+                      attr='user_indexed', index_name=""):
         keyspace = keyspace or self.keyspace
         table_name = table_name or self.table_name
-        query = "CREATE INDEX ON {}.{} ({})".format(
-            keyspace, table_name, attr)
+
+        if index_name:
+            index_name = "_".join((table_name, index_name))
+
+        query = "CREATE INDEX {} ON {}.{} ({})".format(
+            index_name, keyspace, table_name, attr)
         self.SESSION.execute(query)
 
     def _drop_table(self, keyspace=None, table_name=None):
@@ -138,21 +151,25 @@ class TestCassandraTableCrud(TestCassandraBase):
                 'indexed', models.ATTRIBUTE_TYPE_STRING)
         }
 
+        index_defs = {
+            models.IndexDefinition('index_name', 'indexed')
+        }
+
         schema = models.TableSchema(self.table_name, attrs, ['id', 'range'],
-                                    {'indexed'})
+                                    index_defs)
 
         self.CASANDRA_STORAGE_IMPL.create_table(self.context, schema)
 
         self.assertEqual([self.table_name], self._get_table_names())
 
     def test_list_table(self):
-        self.assertEqual(
-            [], self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
+        self.assertNotIn(self.table_name,
+                         self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
 
         self._create_table()
 
-        self.assertEqual([self.table_name],
-                         self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
+        self.assertIn(self.table_name,
+                      self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
 
     def test_describe_table(self):
         attrs = {
@@ -166,11 +183,15 @@ class TestCassandraTableCrud(TestCassandraBase):
                 'indexed', models.ATTRIBUTE_TYPE_STRING)
         }
 
+        index_defs = {
+            models.IndexDefinition('index_name', 'indexed')
+        }
+
         schema = models.TableSchema(self.table_name, attrs, ['id', 'range'],
-                                    {'indexed'})
+                                    index_defs)
 
         self._create_table()
-        self._create_index()
+        self._create_index(index_name="index_name")
 
         desc = self.CASANDRA_STORAGE_IMPL.describe_table(
             self.context, self.table_name)
@@ -180,11 +201,11 @@ class TestCassandraTableCrud(TestCassandraBase):
     def test_delete_table(self):
         self._create_table()
 
-        self.assertEqual([self.table_name], self._get_table_names())
+        self.assertIn(self.table_name, self._get_table_names())
 
         self.CASANDRA_STORAGE_IMPL.delete_table(self.context, self.table_name)
 
-        self.assertEqual([], self._get_table_names())
+        self.assertNotIn(self.table_name, self._get_table_names())
 
 
 class TestCassandraDeleteItem(TestCassandraBase):
