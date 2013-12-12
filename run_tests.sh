@@ -68,7 +68,7 @@ function run_tests {
 
 function run_pep8 {
     echo "Running flake8..."
-    bash -c "${wrapper} flake8"
+    bash -c "${wrapper} flake8 --filename=*.py,magnetodb-*"
 }
 
 # run unit tests with pep8 when no arguments are specified
