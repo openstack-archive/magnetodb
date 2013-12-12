@@ -162,7 +162,8 @@ def update_item(context, table_name, key_attribute_map, attribute_action_map,
 
 
 def select_item(context, table_name, indexed_condition_map,
-                attributes_to_get=None, limit=None, consistent=True):
+                attributes_to_get=None, limit=None,
+                consistent=True, order_type=None):
     """
     @param context: current request context
     @param table_name: String, name of table to get item from
@@ -176,6 +177,8 @@ def select_item(context, table_name, indexed_condition_map,
     @param limit: maximum count of returned values
     @param consistent: define is operation consistent or not (by default it is
                 not consistent)
+    @param order_type: defines order of returned rows, if 'None' - default
+                order will be used
 
     @return list of attribute name to AttributeValue mappings
 
@@ -184,4 +187,4 @@ def select_item(context, table_name, indexed_condition_map,
     return __get_storage_impl().select_item(context, table_name,
                                             indexed_condition_map,
                                             attributes_to_get,
-                                            limit, consistent)
+                                            limit, consistent, order_type)

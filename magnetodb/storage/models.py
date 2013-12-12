@@ -85,10 +85,13 @@ ATTRIBUTE_TYPE_BLOB = AttributeType(AttributeType.ELEMENT_TYPE_BLOB)
 ATTRIBUTE_TYPE_BLOB_SET = AttributeType(AttributeType.ELEMENT_TYPE_BLOB,
                                         AttributeType.COLLECTION_TYPE_SET)
 
+ORDER_TYPE_ASC = "ASC"
+ORDER_TYPE_DESC = "DESC"
+
 
 class AttributeDefinition(ModelBase):
 
-    _data_fields = ['name']
+    _data_fields = ['name', 'type']
 
     def __init__(self, attr_name, attr_type):
         self._name = attr_name
@@ -120,7 +123,7 @@ class AttributeValue(ModelBase):
         return self._type
 
 
-class Condition():
+class Condition(object):
     CONDITION_TYPE_EQUAL = "equal"
 
     _allowed_types = {CONDITION_TYPE_EQUAL}
@@ -242,7 +245,7 @@ class PutItemRequest(WriteItemBatchableRequest):
         return self._attribute_map
 
 
-class UpdateItemAction():
+class UpdateItemAction(object):
     UPDATE_ACTION_PUT = "put"
     UPDATE_ACTION_DELETE = "delete"
     UPDATE_ACTION_ADD = "add"
@@ -270,28 +273,59 @@ class UpdateItemAction():
         return self._value
 
 
+class IndexDefinition(ModelBase):
+    _data_fields = ['index_name', 'attribute_to_index', 'projected_attributes']
+
+    def __init__(self, index_name, attribute_to_index,
+                 projected_attributes=None):
+        """
+        @param index_name: name of index
+        @param attribute_to_index: attribute name to be indexed
+        @param projected_attributes: set of non key attribute names to be
+                    projected. If 'None' - all attributes will be projected
+        """
+        self._index_name = index_name
+        self._attribute_to_index = attribute_to_index
+        self._projected_attributes = (
+            None if projected_attributes is None else
+            frozenset(projected_attributes)
+        )
+
+    @property
+    def index_name(self):
+        return self._index_name
+
+    @property
+    def attribute_to_index(self):
+        return self._attribute_to_index
+
+    @property
+    def projected_attributes(self):
+        return self._projected_attributes
+
+
 class TableSchema(ModelBase):
     _data_fields = ['table_name', 'attribute_defs', 'key_attributes',
-                    'indexed_non_key_attributes']
+                    'index_defs']
 
     def __init__(self, table_name, attribute_defs, key_attributes,
-                 indexed_non_key_attributes=None):
+                 index_defs=None):
         """
         @param table_name: String, name of table to create
         @param attribute_defs: list of AttributeDefinition which define table
                     attribute names and types
-        @param key_attrs: set of key attribute names, contains partitional_key
+        @param key_attrs: list of key attribute names, contains partitional_key
                     (the first in list, required) attribute name and extra key
                     attribute names (the second and other list items, not
                     required)
 
-        @param indexed_non_key_attributes: set of non key attribute names to
-                    be indexed
+        @param index_defs: set of IndexDefinition which defines indexes on
+                    table attributes
         """
         self._table_name = table_name
         self._attribute_defs = attribute_defs
         self._key_attributes = key_attributes
-        self._indexed_non_key_attributes = indexed_non_key_attributes
+        self._index_defs = index_defs
 
     @property
     def table_name(self):
@@ -306,5 +340,5 @@ class TableSchema(ModelBase):
         return self._key_attributes
 
     @property
-    def indexed_non_key_attributes(self):
-        return self._indexed_non_key_attributes
+    def index_defs(self):
+        return self._index_defs
