@@ -1,0 +1,10 @@
+include magnetodb/api
+include magnetodb/common
+include magnetodb/openstack
+include magnetodb/storage
+include magnetodb/tests
+
+exclude .gitignore
+exclude .gitreview
+
+global-exclude *.pyc
