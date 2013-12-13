@@ -54,7 +54,7 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
                 Props.LOCAL_SECONDARY_INDEXES: (
                     Parser.format_local_secondary_indexes(
                         table_schema.key_attributes[0],
-                        table_schema.indexed_non_key_attributes
+                        table_schema.index_defs
                     )
                 ),
                 Props.PROVISIONED_THROUGHPUT: (

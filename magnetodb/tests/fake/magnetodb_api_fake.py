@@ -17,7 +17,7 @@ import wsgi_intercept
 from wsgi_intercept import http_client_intercept
 
 from magnetodb.common import config
-from magnetodb.common import PROJECT_NAME
+from magnetodb.tests import PROJECT_NAME
 
 CONF = config.CONF
 

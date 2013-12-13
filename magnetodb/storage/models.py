@@ -56,12 +56,13 @@ class AttributeType(ModelBase):
     _data_fields = ['element_type', '_collection_type']
 
     def __init__(self, element_type, collection_type=None):
-        assert (element_type in self._allowed_types,
-                "Attribute type '%s' is't allowed" % element_type)
+        assert element_type in self._allowed_types, (
+            "Attribute type '%s' is't allowed" % element_type
+        )
 
-        assert (collection_type in self._allowed_collection_types,
-                "Attribute type collection '%s' is't allowed" %
-                collection_type)
+        assert collection_type in self._allowed_collection_types, (
+            "Attribute type collection '%s' is't allowed" % collection_type
+        )
 
         self._element_type = element_type
         self._collection_type = collection_type
@@ -129,8 +130,9 @@ class Condition(object):
     _allowed_types = {CONDITION_TYPE_EQUAL}
 
     def __init__(self, condition_type, condition_arg):
-        assert (condition_type in self._allowed_types,
-                "Condition type '%s' is't allowed" % condition_type)
+        assert condition_type in self._allowed_types, (
+            "Condition type '%s' is't allowed" % condition_type
+        )
 
         self._condition_type = condition_type
         self._condition_arg = condition_arg
@@ -258,8 +260,9 @@ class UpdateItemAction(object):
         @param action: one of available action names
         @param value: AttributeValue instance, parameter for action
         """
-        assert (action in self._allowed_actions,
-                "Update action '%s' is't allowed" % action)
+        assert action in self._allowed_actions, (
+            "Update action '%s' is't allowed" % action
+        )
 
         self._action = action
         self._value = value
