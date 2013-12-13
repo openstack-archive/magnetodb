@@ -16,6 +16,16 @@
 #    under the License.
 
 from magnetodb.storage import models
+from magnetodb.storage.models import IndexDefinition
+from magnetodb.common.exception import MagnetoError
+
+
+TYPE_STRING = "S"
+TYPE_NUMBER = "N"
+TYPE_BLOB = "B"
+TYPE_STRING_SET = "SS"
+TYPE_NUMBER_SET = "NS"
+TYPE_BLOB_SET = "BS"
 
 
 class Props():
@@ -47,14 +57,24 @@ class Props():
     LAST_EVALUATED_TABLE_NAME = "LastEvaluatedTableName"
     LIMIT = "Limit"
 
+    EXPECTED = "Expected"
+    EXISTS = "Exists"
+    VALUE = "Value"
+    ITEM_TYPE_STRING = TYPE_STRING
+    ITEM_TYPE_NUMBER = TYPE_NUMBER
+    ITEM_TYPE_BLOB = TYPE_BLOB
+    ITEM_TYPE_STRING_SET = TYPE_STRING_SET
+    ITEM_TYPE_NUMBER_SET = TYPE_NUMBER_SET
+    ITEM_TYPE_BLOB_SET = TYPE_BLOB_SET
+
 
 class Values():
-    ATTRIBUTE_TYPE_STRING = "S"
-    ATTRIBUTE_TYPE_NUMBER = "N"
-    ATTRIBUTE_TYPE_BLOB = "B"
-    ATTRIBUTE_TYPE_STRING_SET = "SS"
-    ATTRIBUTE_TYPE_NUMBER_SET = "NS"
-    ATTRIBUTE_TYPE_BLOB_SET = "BS"
+    ATTRIBUTE_TYPE_STRING = TYPE_STRING
+    ATTRIBUTE_TYPE_NUMBER = TYPE_NUMBER
+    ATTRIBUTE_TYPE_BLOB = TYPE_BLOB
+    ATTRIBUTE_TYPE_STRING_SET = TYPE_STRING_SET
+    ATTRIBUTE_TYPE_NUMBER_SET = TYPE_NUMBER_SET
+    ATTRIBUTE_TYPE_BLOB_SET = TYPE_BLOB_SET
 
     KEY_TYPE_HASH = "HASH"
     KEY_TYPE_RANGE = "RANGE"
@@ -74,9 +94,15 @@ class Values():
     TABLE_STATUS_ACTIVE = "ACTIVE"
 
 
+ATTRIBUTE_NAME_PATTERN = "^\w+"
+TABLE_NAME_PATTERN = "^\w+"
+INDEX_NAME_PATTERN = "^\w+"
+
+
 class Types():
     ATTRIBUTE_NAME = {
-        "type": "string"
+        "type": "string",
+        "pattern": ATTRIBUTE_NAME_PATTERN
     }
 
     ATTRIBUTE_TYPE = {
@@ -104,12 +130,13 @@ class Types():
     }
 
     INDEX_NAME = {
-        "type": "string"
+        "type": "string",
+        "pattern": INDEX_NAME_PATTERN
     }
 
     TABLE_NAME = {
         "type": "string",
-        "pattern": "^\w+",
+        "pattern": TABLE_NAME_PATTERN,
     }
 
     KEY_SCHEMA = {
@@ -138,6 +165,7 @@ class Types():
                 "type": "array",
                 "items": {
                     "type": "string",
+                    "pattern": ATTRIBUTE_NAME_PATTERN
                 }
             },
             Props.PROJECTION_TYPE: PROJECTION_TYPE
@@ -154,6 +182,44 @@ class Types():
             Props.WRITE_CAPACITY_UNITS: {
                 "type": "integer"
             }
+        }
+    }
+
+    ITEM_VALUE = {
+        "type": "object",
+        "required": [Props.READ_CAPACITY_UNITS, Props.WRITE_CAPACITY_UNITS],
+        "properties": {
+            "oneOf": [
+                {
+                    Props.ITEM_TYPE_STRING: {
+                        "type": "string"
+                    },
+                    Props.ITEM_TYPE_NUMBER: {
+                        "type": "string"
+                    },
+                    Props.ITEM_TYPE_BLOB: {
+                        "type": "string"
+                    },
+                    Props.ITEM_TYPE_STRING_SET: {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    Props.ITEM_TYPE_NUMBER_SET: {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    Props.ITEM_TYPE_BLOB_SET: {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            ]
         }
     }
 
@@ -177,19 +243,20 @@ class Parser():
         dynamodb_attr_name = attr_def_json.get(Props.ATTRIBUTE_NAME, None)
         dynamodb__attr_type = attr_def_json.get(Props.ATTRIBUTE_TYPE, "")
 
-        type = cls.DYNAMODB_TO_STORAGE_TYPE_MAP.get(
+        storage_type = cls.DYNAMODB_TO_STORAGE_TYPE_MAP.get(
             dynamodb__attr_type, None
         )
 
-        return models.AttributeDefinition(dynamodb_attr_name, type)
+        return models.AttributeDefinition(dynamodb_attr_name, storage_type)
 
     @classmethod
     def format_attribute_definition(cls, attr_def):
         dynamodb_type = cls.STORAGE_TO_DYNAMODB_TYPE_MAP.get(attr_def.type,
                                                              None)
 
-        assert (dynamodb_type, "Unknown Attribute type returned by backend: %s"
-                % attr_def.type)
+        assert dynamodb_type, (
+            "Unknown Attribute type returned by backend: %s" % attr_def.type
+        )
 
         return {
             Props.ATTRIBUTE_NAME: attr_def.name,
@@ -214,14 +281,13 @@ class Parser():
             dynamodb_key_type = key_def.get(Props.KEY_TYPE, None)
 
             if dynamodb_key_type == Values.KEY_TYPE_HASH:
-                assert (
-                    hash_key_attr_name is None, "Only one HASH key is allowed"
+                assert hash_key_attr_name is None, (
+                    "Only one HASH key is allowed"
                 )
 
                 hash_key_attr_name = dynamodb_key_attr_name
             elif dynamodb_key_type == Values.KEY_TYPE_RANGE:
-                assert (
-                    range_key_attr_name is None,
+                assert range_key_attr_name is None, (
                     "Only one RANGE key is allowed"
                 )
                 range_key_attr_name = dynamodb_key_attr_name
@@ -230,13 +296,11 @@ class Parser():
 
     @classmethod
     def format_key_schema(cls, key_attr_names):
-        assert (
-            len(key_attr_names) > 0,
+        assert len(key_attr_names) > 0, (
             "At least HASH key should be specified. No one is given"
         )
 
-        assert (
-            len(key_attr_names) <= 2,
+        assert len(key_attr_names) <= 2, (
             "More then 2 keys given. Only one HASH and one RANGE key allowed"
         )
 
@@ -259,23 +323,52 @@ class Parser():
             local_secondary_index_json.get(Props.KEY_SCHEMA, {})
         )
 
-        assert (
-            len(key_attrs_for_projection) > 1,
-            "Range key in index wasn't specified"
+        try:
+            range_key = key_attrs_for_projection[1]
+        except IndexError:
+            raise MagnetoError("Range key in index wasn't specified")
+
+        index_name = local_secondary_index_json[Props.INDEX_NAME]
+
+        projection_type = local_secondary_index_json.get(
+            Props.PROJECTION_TYPE, Values.PROJECTION_TYPE_INCLUDE
         )
 
-        return key_attrs_for_projection[1]
+        if projection_type == Values.PROJECTION_TYPE_ALL:
+            projected_attrs = None
+        elif projection_type == Values.PROJECTION_TYPE_KEYS_ONLY:
+            projected_attrs = frozenset()
+        else:
+            projected_attrs = local_secondary_index_json.get(
+                Props.NON_KEY_ATTRIBUTES, None
+            )
+
+        return IndexDefinition(index_name, range_key, projected_attrs)
 
     @classmethod
     def format_local_secondary_index(cls, hash_key, local_secondary_index):
+        if local_secondary_index.projected_attributes:
+            projection = {
+                Props.PROJECTION_TYPE: Values.PROJECTION_TYPE_INCLUDE,
+                Props.NON_KEY_ATTRIBUTES: list(
+                    local_secondary_index.projected_attributes
+                )
+            }
+        elif local_secondary_index.projected_attributes is None:
+            projection = {
+                Props.PROJECTION_TYPE: Values.PROJECTION_TYPE_ALL
+            }
+        else:
+            projection = {
+                Props.PROJECTION_TYPE: Values.PROJECTION_TYPE_KEYS_ONLY
+            }
+
         return {
-            Props.INDEX_NAME: local_secondary_index,
-            Props.KEY_SCHEMA: cls.format_key_schema((hash_key,
-                                                     local_secondary_index)),
-            Props.PROJECTION: {
-                Props.PROJECTION_TYPE: Values.PROJECTION_TYPE_ALL,
-                Props.NON_KEY_ATTRIBUTES: []
-            },
+            Props.INDEX_NAME: local_secondary_index.index_name,
+            Props.KEY_SCHEMA: cls.format_key_schema(
+                (hash_key, local_secondary_index.attribute_to_index)
+            ),
+            Props.PROJECTION: projection,
             Props.INDEX_SIZE_BYTES: 0,
             Props.INDEX_SIZE_BYTES: 0
         }

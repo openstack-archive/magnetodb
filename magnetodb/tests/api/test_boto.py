@@ -21,10 +21,10 @@ import os
 import unittest
 
 from magnetodb.tests.fake import magnetodb_api_fake
-from magnetodb.common import PROJECT_ROOT_DIR
+from magnetodb.tests import PROJECT_ROOT_DIR
 from boto.dynamodb2.table import Table
 from magnetodb.storage.models import AttributeDefinition,\
-    ATTRIBUTE_TYPE_STRING, TableSchema
+    ATTRIBUTE_TYPE_STRING, TableSchema, IndexDefinition
 import magnetodb.storage as Storage
 
 from mox import Mox, IgnoreArg
@@ -50,6 +50,12 @@ class BotoIntegrationTest(unittest.TestCase):
     def tearDownClass(cls):
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
+    def setUp(self):
+        self.storage_mocker = Mox()
+
+    def tearDown(self):
+        self.storage_mocker.UnsetStubs()
+
     @staticmethod
     def connect_boto_dynamodb(host=None, port=None):
         if not host:
@@ -67,13 +73,7 @@ class BotoIntegrationTest(unittest.TestCase):
                               port=port, is_secure=False,
                               validate_certs=False)
 
-    def setUp(self):
-        self.storage_mocker = Mox()
-
-    def tearDown(self):
-        self.storage_mocker.UnsetStubs()
-
-    def testListTable(self):
+    def test_list_table(self):
         self.storage_mocker.StubOutWithMock(self.STORAGE, "list_tables")
         self.STORAGE.list_tables(IgnoreArg(),
                                  exclusive_start_table_name=None, limit=None)\
@@ -85,19 +85,22 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.VerifyAll()
 
-    def testDescribeTable(self):
+    def test_describe_table(self):
 
         self.storage_mocker.StubOutWithMock(self.STORAGE, 'describe_table')
 
-        self.STORAGE.describe_table(IgnoreArg(), 'test_table').\
-            AndReturn(TableSchema('test_table',
-                                  [AttributeDefinition('city1',
-                                                       ATTRIBUTE_TYPE_STRING),
-                                   AttributeDefinition('id',
-                                                       ATTRIBUTE_TYPE_STRING),
-                                   AttributeDefinition('name',
-                                                       ATTRIBUTE_TYPE_STRING)],
-                                  ['id', 'name'], ['city1']))
+        self.STORAGE.describe_table(IgnoreArg(), 'test_table').AndReturn(
+            TableSchema(
+                'test_table',
+                {
+                    AttributeDefinition('city1', ATTRIBUTE_TYPE_STRING),
+                    AttributeDefinition('id', ATTRIBUTE_TYPE_STRING),
+                    AttributeDefinition('name', ATTRIBUTE_TYPE_STRING)
+                },
+                ['id', 'name'],
+                {IndexDefinition('index_name', 'city1')}
+            )
+        )
 
         self.storage_mocker.ReplayAll()
 
@@ -109,7 +112,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.assertEquals('test_table',
                           table_description['Table']['TableName'])
-        self.assertListEqual(
+        self.assertItemsEqual(
             [
                 {
                     "AttributeName": "city1",
@@ -125,20 +128,23 @@ class BotoIntegrationTest(unittest.TestCase):
                 }
             ], table_description['Table']['AttributeDefinitions'])
 
-    def testDeleteTable(self):
+    def test_delete_table(self):
         self.storage_mocker.StubOutWithMock(self.STORAGE, 'delete_table')
         self.storage_mocker.StubOutWithMock(self.STORAGE, 'describe_table')
         self.STORAGE.delete_table(IgnoreArg(), 'test_table')
 
-        self.STORAGE.describe_table(IgnoreArg(), 'test_table').\
-            AndReturn(TableSchema('test_table',
-                                  [AttributeDefinition('city1',
-                                                       ATTRIBUTE_TYPE_STRING),
-                                   AttributeDefinition('id',
-                                                       ATTRIBUTE_TYPE_STRING),
-                                   AttributeDefinition('name',
-                                                       ATTRIBUTE_TYPE_STRING)],
-                                  ['id', 'name'], ['city1']))
+        self.STORAGE.describe_table(IgnoreArg(), 'test_table').AndReturn(
+            TableSchema(
+                'test_table',
+                {
+                    AttributeDefinition('city1', ATTRIBUTE_TYPE_STRING),
+                    AttributeDefinition('id', ATTRIBUTE_TYPE_STRING),
+                    AttributeDefinition('name', ATTRIBUTE_TYPE_STRING)
+                },
+                ['id', 'name'],
+                {IndexDefinition('index_name', 'city1')}
+            )
+        )
 
         self.storage_mocker.ReplayAll()
 
@@ -148,7 +154,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.VerifyAll()
 
-    def testCreateTable(self):
+    def test_create_table(self):
         self.storage_mocker.StubOutWithMock(self.STORAGE, 'create_table')
         self.STORAGE.create_table(IgnoreArg(), IgnoreArg())
         self.storage_mocker.ReplayAll()
