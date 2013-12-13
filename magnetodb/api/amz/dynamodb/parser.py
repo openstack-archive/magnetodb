@@ -66,6 +66,10 @@ class Props():
     ITEM_TYPE_STRING_SET = TYPE_STRING_SET
     ITEM_TYPE_NUMBER_SET = TYPE_NUMBER_SET
     ITEM_TYPE_BLOB_SET = TYPE_BLOB_SET
+    ITEM = "Item"
+    RETURN_CONSUMED_CAPACITY = "ReturnConsumedCapacity"
+    RETURN_ITEM_COLLECTION_METRICS = "ReturnItemCollectionMetrics"
+    RETURN_VALUES = "ReturnValues"
 
 
 class Values():
@@ -92,6 +96,19 @@ class Values():
     }
 
     TABLE_STATUS_ACTIVE = "ACTIVE"
+
+    RETURN_CONSUMED_CAPACITY_INDEXES = "INDEXES"
+    RETURN_CONSUMED_CAPACITY_TOTAL = "TOTAL"
+    RETURN_CONSUMED_CAPACITY_NONE = "NONE"
+
+    RETURN_ITEM_COLLECTION_METRICS_SIZE = "SIZE"
+    RETURN_ITEM_COLLECTION_METRICS_NONE = "NONE"
+
+    RETURN_VALUES_NONE = "NONE"
+    RETURN_VALUES_ALL_OLD = "ALL_OLD"
+    RETURN_VALUES_UPDATED_OLD = "UPDATED_OLD"
+    RETURN_VALUES_ALL_NEW = "ALL_NEW"
+    RETURN_VALUES_UPDATED_NEW = "UPDATED_NEW"
 
 
 ATTRIBUTE_NAME_PATTERN = "^\w+"
@@ -221,6 +238,19 @@ class Types():
                 }
             ]
         }
+    }
+
+    RETURN_CONSUMED_CAPACITY = {
+        "type": "string",
+        "enum": [Values.RETURN_CONSUMED_CAPACITY_INDEXES,
+                 Values.RETURN_CONSUMED_CAPACITY_TOTAL,
+                 Values.RETURN_CONSUMED_CAPACITY_NONE]
+    }
+
+    RETURN_ITEM_COLLECTION_METRICS = {
+        "type": "string",
+        "enum": [Values.RETURN_ITEM_COLLECTION_METRICS_SIZE,
+                 Values.RETURN_ITEM_COLLECTION_METRICS_NONE]
     }
 
 
