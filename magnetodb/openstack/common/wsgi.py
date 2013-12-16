@@ -20,6 +20,7 @@
 from __future__ import print_function
 
 import eventlet
+import eventlet.patcher
 eventlet.patcher.monkey_patch(all=False, socket=True)
 
 import datetime
