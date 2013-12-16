@@ -322,7 +322,122 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        raise NotImplementedError
+
+        schema = self.describe_table(context, put_request.table_name)
+        predefined_attrs = [attr.name for attr in schema.attribute_defs]
+        key_attrs = schema.key_attributes
+        attr_map = put_request.attribute_map
+
+        dynamic_values = self._put_dynamic_values(attr_map, predefined_attrs)
+        types = self._put_types(attr_map)
+        exists = self._put_exists(attr_map)
+
+        hash_name = schema.key_attributes[0]
+        hash_value = self._encode_single_value(attr_map[hash_name])
+
+        if expected_condition_map:
+
+            attrs = attr_map.keys()
+            non_key_attrs = [
+                attr for attr in predefined_attrs if attr not in key_attrs]
+            unset_attrs = [
+                attr for attr in predefined_attrs if attr not in attrs]
+
+            set_clause = ''
+
+            for attr, val in attr_map.iteritems():
+                if attr in non_key_attrs:
+                    set_clause += '{}{} = {},'.format(
+                        self.USER_COLUMN_PREFIX,
+                        attr, self._encode_value(val, True))
+                elif attr in unset_attrs:
+                    set_clause += '{}{} = null,'.format(
+                        self.USER_COLUMN_PREFIX,  attr)
+
+            set_clause += '{} = {{{}}},'.format(
+                self.SYSTEM_COLUMN_ATTRS, dynamic_values
+            )
+
+            set_clause += '{} = {{{}}},'.format(
+                self.SYSTEM_COLUMN_ATTR_TYPES, types
+            )
+
+            set_clause += '{} = {{{}}},'.format(
+                self.SYSTEM_COLUMN_ATTR_EXIST, exists
+            )
+
+            set_clause += '{} = {}'.format(
+                self.SYSTEM_COLUMN_HASH, hash_value
+            )
+
+            where = ' AND '.join((
+                '{}{} = {}'.format(
+                    self.USER_COLUMN_PREFIX,
+                    attr, self._encode_value(val, True))
+                for attr, val in attr_map.iteritems()
+                if attr in key_attrs
+            ))
+
+            query = 'UPDATE {}.{} SET {} WHERE {}'.format(
+                context.tenant, put_request.table_name, set_clause, where
+            )
+
+            if_clause = self._conditions_as_string(expected_condition_map)
+            query += " IF {}".format(if_clause)
+
+            self.session.execute(query)
+        else:
+            attrs = ''
+            values = ''
+
+            for attr, val in attr_map.iteritems():
+                if attr in predefined_attrs:
+                    attrs += '{}{},'.format(self.USER_COLUMN_PREFIX, attr)
+                    values += self._encode_value(val, True) + ','
+
+            attrs += ','.join((
+                self.SYSTEM_COLUMN_ATTRS,
+                self.SYSTEM_COLUMN_ATTR_TYPES,
+                self.SYSTEM_COLUMN_ATTR_EXIST,
+                self.SYSTEM_COLUMN_HASH
+            ))
+
+            values += ','.join((
+                '{{{}}}'.format(dynamic_values),
+                '{{{}}}'.format(types),
+                '{{{}}}'.format(exists),
+                hash_value
+            ))
+
+            query = 'INSERT INTO {}.{} ({}) VALUES ({})'.format(
+                context.tenant, put_request.table_name, attrs, values)
+
+            if if_not_exist:
+                query += ' IF NOT EXISTS'
+
+            self.session.execute(query)
+
+        return True
+
+    def _put_dynamic_values(self, attribute_map, predefined_attrs):
+        return ','.join((
+            "'{}':{}".format(attr, self._encode_value(val, False))
+            for attr, val
+            in attribute_map.iteritems()
+            if not attr in predefined_attrs
+        ))
+
+    def _put_types(self, attribute_map):
+        return ','.join((
+            "'{}':'{}'".format(attr, self.STORAGE_TO_CASSANDRA_TYPES[val.type])
+            for attr, val
+            in attribute_map.iteritems()))
+
+    def _put_exists(self, attribute_map):
+        return ','.join((
+            "'{}'".format(attr)
+            for attr, _
+            in attribute_map.iteritems()))
 
     def delete_item(self, context, delete_request,
                     expected_condition_map=None):
@@ -430,10 +545,10 @@ class CassandraStorageImpl():
 
         #update system_hash
         hash_name = schema.key_attributes[0]
-        hash_value = key_attribute_map[hash_name].arg
+        hash_value = key_attribute_map[hash_name]
 
         set_clause += ",{}={}".format(
-            self.SYSTEM_COLUMN_HASH, repr(hash_value))
+            self.SYSTEM_COLUMN_HASH, repr(hash_value.arg))
 
         return set_clause
 
