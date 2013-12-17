@@ -241,12 +241,19 @@ class IndexedCondition(Condition):
     CONDITION_TYPE_LESS_OR_EQUAL = "less_or_equal"
     CONDITION_TYPE_GREATER = "greater"
     CONDITION_TYPE_GREATER_OR_EQUAL = "greater_or_equal"
+
     CONDITION_TYPE_BETWEEN = "between"
     CONDITION_TYPE_BEGINS_WITH = "begins_with"
 
+    CONDITION_TYPE_IN = "in"
+    CONDITION_TYPE_CONTAINS = "contains"
+    CONDITION_TYPE_NOT_CONTAINS = "not_contains"
+    CONDITION_TYPE_NOT_EQUAL = "not_equal"
+
     _allowed_types = {Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_LESS,
                       CONDITION_TYPE_LESS_OR_EQUAL, CONDITION_TYPE_GREATER,
-                      CONDITION_TYPE_GREATER_OR_EQUAL}
+                      CONDITION_TYPE_GREATER_OR_EQUAL, CONDITION_TYPE_BETWEEN,
+                      CONDITION_TYPE_BEGINS_WITH}
 
     @classmethod
     def lt(cls, condition_arg):
