@@ -81,7 +81,7 @@ class PutItemDynamoDBAction(DynamoDBAction):
 
         # parse expected item conditions
         expected_item_conditions = (
-            parser.Parser.parse_expected_item_conditions(
+            parser.Parser.parse_expected_attribute_conditions(
                 self.action_params.get(parser.Props.EXPECTED, None)
             )
         )
@@ -137,34 +137,12 @@ class PutItemDynamoDBAction(DynamoDBAction):
                 parser.Props.SIZE_ESTIMATED_RANGE_GB: [0]
             }
 
-        if return_consumed_capacity in {
-                parser.Values.RETURN_CONSUMED_CAPACITY_INDEXES,
-                parser.Values.RETURN_CONSUMED_CAPACITY_TOTAL}:
-            consumed_capacity = {
-                parser.Props.GLOBAL_SECONDARY_INDEXES: {
-                    # TODO(dukhlov):
-                    # read schema and fill global index consumed
-                    # capacity to imitate DynamoDB API
-                    "global_index_name": {
-                        parser.Props.CAPACITY_UNITS: 0
-                    }
-                },
-                parser.Props.LOCAL_SECONDARY_INDEXES: {
-                    # TODO(dukhlov):
-                    # read schema and fill local index consumed
-                    # capacity to imitate DynamoDB API
-                    "local_index_name": {
-                        parser.Props.CAPACITY_UNITS: 0
-                    }
-                }
-            }
-
-            if (return_consumed_capacity ==
-                    parser.Values.RETURN_CONSUMED_CAPACITY_TOTAL):
-                consumed_capacity[parser.Props.CAPACITY_UNITS] = 0
-                consumed_capacity[parser.Props.TABLE] = {
-                    parser.Props.CAPACITY_UNITS: 0
-                }
-            response[parser.Props.CONSUMED_CAPACITY] = consumed_capacity
+        if (return_consumed_capacity !=
+                parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
+            response[parser.Props.CONSUMED_CAPACITY] = (
+                parser.Parser.format_consumed_capacity(
+                    return_consumed_capacity, None
+                )
+            )
 
         return response
