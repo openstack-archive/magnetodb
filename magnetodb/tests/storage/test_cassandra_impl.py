@@ -17,9 +17,10 @@ import unittest
 import uuid
 
 from cassandra import cluster
+from cassandra import decoder
 
 from magnetodb.storage import models
-from magnetodb.storage.impl import cassandra_impl
+from magnetodb.storage.impl import cassandra_impl as impl
 
 
 TEST_CONNECTION = {'contact_points': ("localhost",)}
@@ -36,19 +37,62 @@ class TestCassandraBase(unittest.TestCase):
 
     _keyspace_scope = KEYSPACE_PER_TEST_CLASS
 
+    test_data_keys = [
+        ('id', 'decimal', '1', 1),
+        ('range', 'text', "'1'", '1'),
+    ]
+
+    test_data_predefined_fields = [
+        ('indexed', 'text', "'ind'", 'ind'),
+        ('str', 'text', "'str'", 'str'),
+        ('numbr', 'decimal', '1', 1),
+        ('blb', 'blob', '0x{}'.format('blob'.encode('hex')), 'blob'),
+        ('set_number', 'set<decimal>', '{1,2,3}', {1, 2, 3}),
+        ('set_string', 'set<text>', "{'a','b','c'}", {'a', 'b', 'c'}),
+        ('set_blob', 'set<blob>', '{{0x{}, 0x{}}}'.format(
+            'blob1'.encode('hex'),
+            'blob2'.encode('hex')), {'blob1', 'blob2'})
+    ]
+
+    test_data_system_fields = [
+        ('system_hash', 'decimal'),
+        ('system_attrs', 'map<text,blob>'),
+        ('system_attr_types', 'map<text,text>'),
+        ('system_attr_exist', 'set<text>'),
+    ]
+
+    test_data_dynamic_fields = [
+        ('fnum', 'decimal', '1', 1),
+        ('fstr', 'text', '"fstr"', 'fstr'),
+        ('fblb', 'blob', '"fblob"', 'fblob'),
+        ('fsnum', 'set<decimal>', '[1,2,3]', {1, 2, 3}),
+        ('fsstr', 'set<text>', '["fa","fb","fc"]', {'fa', 'fb', 'fc'}),
+        ('fsblob', 'set<blob>', '["fblob1", "fblob2"]', {'fblob1', 'fblob2'})
+    ]
+
+    C2S_TYPES = impl.CassandraStorageImpl.CASSANDRA_TO_STORAGE_TYPES
+
     @classmethod
     def setUpClass(cls):
         super(TestCassandraBase, cls).setUpClass()
 
-        cls.CASANDRA_STORAGE_IMPL = cassandra_impl.CassandraStorageImpl(
+        cls.CASANDRA_STORAGE_IMPL = impl.CassandraStorageImpl(
             **TEST_CONNECTION)
 
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
         cls.SESSION = cls.CLUSTER.connect()
+        cls.SESSION.row_factory = decoder.dict_factory
 
         if cls._keyspace_scope == cls.KEYSPACE_PER_TEST_CLASS:
             cls.keyspace = cls._get_unique_name()
             cls._create_keyspace(cls.keyspace)
+
+        cls.expected_data = {
+            name: models.AttributeValue(cls.C2S_TYPES[typ], val)
+            for name, typ, _, val
+            in (cls.test_data_keys +
+                cls.test_data_dynamic_fields +
+                cls.test_data_predefined_fields)}
 
     @classmethod
     def tearDownClass(cls):
@@ -98,15 +142,21 @@ class TestCassandraBase(unittest.TestCase):
         keyspace = keyspace or self.keyspace
         table_name = table_name or self.table_name
         query = "CREATE TABLE {}.{} (".format(keyspace, table_name)
-        query += " user_id decimal,"
-        query += " user_range text,"
-        query += " user_indexed text,"
-        query += " user_nonindexed text,"
-        query += " system_attrs map<text, blob>,"
-        query += " system_attr_types map<text, text>,"
-        query += " system_attr_exist set<text>,"
-        query += " system_hash decimal,"
+
+        for field in self.test_data_keys:
+            name, typ, _, _ = field
+            query += 'user_{} {},'.format(name, typ)
+
+        for field in self.test_data_predefined_fields:
+            name, typ, _, _ = field
+            query += 'user_{} {},'.format(name, typ)
+
+        for field in self.test_data_system_fields:
+            name, typ = field
+            query += '{} {},'.format(name, typ)
+
         query += " PRIMARY KEY(user_id, user_range))"
+
         self.SESSION.execute(query)
         self._create_index(attr='system_hash')
 
@@ -130,9 +180,39 @@ class TestCassandraBase(unittest.TestCase):
 
     def _select_all(self, keyspace=None, table_name=None):
         keyspace = keyspace or self.keyspace
-        table_name = None or self.table_name
+        table_name = table_name or self.table_name
         query = "SELECT * FROM {}.{}".format(keyspace, table_name)
         return self.SESSION.execute(query)
+
+    def _insert_data(self, range_value=1):
+        query = "UPDATE {}.{} SET ".format(self.keyspace, self.table_name)
+
+        for field in self.test_data_predefined_fields:
+            name, typ, sval, _ = field
+            query += 'user_{}={},'.format(name, sval)
+
+        for field in self.test_data_dynamic_fields:
+            name, typ, sval, _ = field
+            query += "system_attrs['{}'] = 0x{},".format(
+                name, str(sval).encode('hex'))
+
+        for field in (self.test_data_keys +
+                      self.test_data_dynamic_fields +
+                      self.test_data_predefined_fields):
+            name, typ, _, _ = field
+            query += "system_attr_types['{}'] ='{}',".format(name, typ)
+            query += ("system_attr_exist = system_attr_exist + {{'{}'}},"
+                      .format(name))
+
+        query += 'system_hash = 1'
+
+        query += " WHERE user_id = 1 AND user_range='{}'".format(range_value)
+
+        self.SESSION.execute(query)
+
+    def _validate_data(self, data):
+
+        self.assertDictEqual(self.expected_data, data)
 
 
 class TestCassandraTableCrud(TestCassandraBase):
@@ -140,16 +220,10 @@ class TestCassandraTableCrud(TestCassandraBase):
     def test_create_table(self):
         self.assertEqual([], self._get_table_names())
 
-        attrs = {
-            models.AttributeDefinition(
-                'id', models.ATTRIBUTE_TYPE_NUMBER),
-            models.AttributeDefinition(
-                'range', models.ATTRIBUTE_TYPE_STRING),
-            models.AttributeDefinition(
-                'nonindexed', models.ATTRIBUTE_TYPE_STRING),
-            models.AttributeDefinition(
-                'indexed', models.ATTRIBUTE_TYPE_STRING)
-        }
+        attrs = {models.AttributeDefinition(name, self.C2S_TYPES[typ])
+                 for name, typ, _, _
+                 in (self.test_data_keys +
+                     self.test_data_predefined_fields)}
 
         index_defs = {
             models.IndexDefinition('index_name', 'indexed')
@@ -172,16 +246,14 @@ class TestCassandraTableCrud(TestCassandraBase):
                       self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
 
     def test_describe_table(self):
-        attrs = {
-            models.AttributeDefinition(
-                'id', models.ATTRIBUTE_TYPE_NUMBER),
-            models.AttributeDefinition(
-                'range', models.ATTRIBUTE_TYPE_STRING),
-            models.AttributeDefinition(
-                'nonindexed', models.ATTRIBUTE_TYPE_STRING),
-            models.AttributeDefinition(
-                'indexed', models.ATTRIBUTE_TYPE_STRING)
-        }
+
+        self._create_table()
+        self._create_index(index_name="index_name")
+
+        attrs = {models.AttributeDefinition(name, self.C2S_TYPES[typ])
+                 for name, typ, _, _
+                 in (self.test_data_keys +
+                     self.test_data_predefined_fields)}
 
         index_defs = {
             models.IndexDefinition('index_name', 'indexed')
@@ -189,9 +261,6 @@ class TestCassandraTableCrud(TestCassandraBase):
 
         schema = models.TableSchema(self.table_name, attrs, ['id', 'range'],
                                     index_defs)
-
-        self._create_table()
-        self._create_index(index_name="index_name")
 
         desc = self.CASANDRA_STORAGE_IMPL.describe_table(
             self.context, self.table_name)
@@ -213,18 +282,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
     def test_delete_item_where(self):
         self._create_table()
         self._create_index()
-
-        query = ("INSERT INTO {}.{} (user_id, user_range,"
-                 " user_nonindexed, user_indexed)"
-                 " VALUES (1, '1', '1', '1')").format(self.keyspace,
-                                                      self.table_name)
-
-        self.SESSION.execute(query)
-
-        all = self._select_all()
-
-        self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0].user_id)
+        self._insert_data()
+        self._insert_data(2)
 
         del_req = models.DeleteItemRequest(
             self.table_name,
@@ -235,27 +294,17 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         all = self._select_all()
 
-        self.assertEqual(0, len(all))
+        self.assertEqual(1, len(all))
+        self.assertEqual('2', all[0]['user_range'])
 
     def test_delete_item_where_negative(self):
         self._create_table()
         self._create_index()
-
-        query = ("INSERT INTO {}.{} (user_id, user_range,"
-                 " user_nonindexed, user_indexed)"
-                 " VALUES (1, '2', '1', '1')").format(self.keyspace,
-                                                      self.table_name)
-
-        self.SESSION.execute(query)
-
-        all = self._select_all()
-
-        self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0].user_id)
+        self._insert_data()
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+            {'id': models.Condition.eq(1), 'range': models.Condition.eq('2')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req)
@@ -263,7 +312,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0].user_id)
+        self.assertEqual(1, all[0]['user_id'])
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_delete_item_if_exists(self):
@@ -271,7 +320,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self._create_index()
 
         query = ("INSERT INTO {}.{} (user_id, user_range,"
-                 " user_nonindexed, user_indexed)"
+                 " user_str, user_indexed)"
                  " VALUES (1, '1', '1', '1')").format(self.keyspace,
                                                       self.table_name)
 
@@ -282,7 +331,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual(1, len(all))
         self.assertEqual(1, all[0].user_id)
 
-        expected = {'nonindexed': models.ExpectedCondition.exists()}
+        expected = {'str': models.ExpectedCondition.exists()}
 
         del_req = models.DeleteItemRequest(
             self.table_name,
@@ -301,7 +350,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self._create_index()
 
         query = ("INSERT INTO {}.{} (user_id, user_range,"
-                 " user_nonindexed, user_indexed)"
+                 " user_str, user_indexed)"
                  " VALUES (1, '1', null, '1')").format(self.keyspace,
                                                        self.table_name)
 
@@ -312,7 +361,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual(1, len(all))
         self.assertEqual(1, all[0].user_id)
 
-        expected = {'nonindexed': models.ExpectedCondition.exists()}
+        expected = {'str': models.ExpectedCondition.exists()}
 
         del_req = models.DeleteItemRequest(
             self.table_name,
@@ -332,7 +381,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self._create_index()
 
         query = ("INSERT INTO {}.{} (user_id, user_range,"
-                 " user_nonindexed, user_indexed)"
+                 " user_str, user_indexed)"
                  " VALUES (1, '1', null, '1')").format(self.keyspace,
                                                        self.table_name)
 
@@ -343,7 +392,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual(1, len(all))
         self.assertEqual(1, all[0].user_id)
 
-        expected = {'nonindexed': models.ExpectedCondition.not_exists()}
+        expected = {'str': models.ExpectedCondition.not_exists()}
 
         del_req = models.DeleteItemRequest(
             self.table_name,
@@ -362,7 +411,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self._create_index()
 
         query = ("INSERT INTO {}.{} (user_id, user_range,"
-                 " user_nonindexed, user_indexed)"
+                 " user_str, user_indexed)"
                  " VALUES (1, '1', '1', '1')").format(self.keyspace,
                                                       self.table_name)
 
@@ -373,7 +422,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual(1, len(all))
         self.assertEqual(1, all[0].user_id)
 
-        expected = {'nonindexed': models.ExpectedCondition.not_exists()}
+        expected = {'str': models.ExpectedCondition.not_exists()}
 
         del_req = models.DeleteItemRequest(
             self.table_name,
@@ -389,46 +438,6 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
 
 class TestCassandraSelectItem(TestCassandraBase):
-
-    def _insert_data(self, range_value=1):
-        query = "UPDATE {}.{}".format(self.keyspace, self.table_name)
-        query += " SET user_indexed='1', user_nonindexed='1',"
-        query += " system_hash=1,"
-        query += " {}['{}'] = textAsBlob('{}'), ".format(
-            self.CASANDRA_STORAGE_IMPL.SYSTEM_COLUMN_ATTRS,
-            'field', 'value')
-        query += " {}['{}']= '{}', ".format(
-            self.CASANDRA_STORAGE_IMPL.SYSTEM_COLUMN_ATTR_TYPES,
-            'field', self.CASANDRA_STORAGE_IMPL.STORAGE_TO_CASSANDRA_TYPES[
-                models.ATTRIBUTE_TYPE_STRING])
-        query += " {} = {} + {{ '{}','{}','{}','{}','{}' }} ".format(
-            self.CASANDRA_STORAGE_IMPL.SYSTEM_COLUMN_ATTR_EXIST,
-            self.CASANDRA_STORAGE_IMPL.SYSTEM_COLUMN_ATTR_EXIST,
-            'id', 'range', 'indexed', 'nonindexed', 'field')
-        query += " WHERE user_id = 1 AND user_range='{}'".format(range_value)
-
-        self.SESSION.execute(query)
-
-    def _validate_data(self, data):
-
-        expected = {}
-
-        expected['id'] = models.AttributeValue(
-            models.ATTRIBUTE_TYPE_NUMBER, 1)
-
-        expected['range'] = models.AttributeValue(
-            models.ATTRIBUTE_TYPE_STRING, '1')
-
-        expected['indexed'] = models.AttributeValue(
-            models.ATTRIBUTE_TYPE_STRING, '1')
-
-        expected['nonindexed'] = models.AttributeValue(
-            models.ATTRIBUTE_TYPE_STRING, '1')
-
-        expected['field'] = models.AttributeValue(
-            models.ATTRIBUTE_TYPE_STRING, 'value')
-
-        self.assertDictEqual(expected, data)
 
     def test_select_item(self):
         self._create_table()
@@ -455,12 +464,12 @@ class TestCassandraSelectItem(TestCassandraBase):
                         'range': models.Condition.eq('1')}
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond, ['field'])
+            self.context, self.table_name, indexed_cond, ['fstr'])
 
         self.assertEqual(1, len(result))
         self.assertEqual(
-            {'field': models.AttributeValue(
-                models.ATTRIBUTE_TYPE_STRING, 'value')},
+            {'fstr': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_STRING, 'fstr')},
             result[0])
 
     def test_select_item_negative(self):
@@ -601,7 +610,7 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         indexed_cond = {'id': models.Condition.eq(1),
                         'range': models.Condition.eq('1'),
-                        'indexed': models.IndexedCondition.le('1')}
+                        'indexed': models.IndexedCondition.le('ind')}
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
@@ -617,7 +626,7 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         indexed_cond = {'id': models.Condition.eq(1),
                         'range': models.Condition.eq('1'),
-                        'indexed': models.IndexedCondition.lt('1')}
+                        'indexed': models.IndexedCondition.lt('ind')}
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
@@ -642,3 +651,980 @@ class TestCassandraSelectItem(TestCassandraBase):
             self.context, self.table_name, indexed_cond, limit=1)
 
         self.assertEqual(1, len(result))
+
+
+class TestCassandraUpdateItem(TestCassandraBase):
+    def test_update_item_put_str(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'str': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, 'new')),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['str'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_STRING, 'new')
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_number(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'numbr': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 42)),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['numbr'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_NUMBER, 42)
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_blob(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'blb': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(models.ATTRIBUTE_TYPE_BLOB, 'new')),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['blb'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_BLOB, 'new')
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_set_str(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'set_string': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_STRING_SET, {'new'})),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['set_string'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_STRING_SET, {'new'})
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_set_number(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'set_number': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER_SET, {42})),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['set_number'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_NUMBER_SET, {42})
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_set_blob(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'set_blob': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_BLOB_SET, {'new'})),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['set_blob'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_BLOB_SET, {'new'})
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_dynamic_str(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'fstr': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, 'new')),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['fstr'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_STRING, 'new')
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_dynamic_number(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'fnum': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 42)),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['fnum'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_NUMBER, 42)
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_dynamic_blob(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'fblb': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(models.ATTRIBUTE_TYPE_BLOB, 'new')),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['fblb'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_BLOB, 'new')
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_dynamic_set_str(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'fsstr': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_STRING_SET, {'new1', 'new2'})),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['fsstr'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_STRING_SET, {'new1', 'new2'})
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_dynamic_set_number(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'fsnum': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_NUMBER_SET, {42, 43})),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['fsnum'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_NUMBER_SET, {42, 43})
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_put_dynamic_set_blob(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'fsblb': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_BLOB_SET, {'new1', 'new2'})),
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        expected['fsblb'] = models.AttributeValue(
+            models.ATTRIBUTE_TYPE_BLOB_SET, {'new1', 'new2'})
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+    def test_update_item_delete(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        actions = {
+            'str': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_DELETE, None),
+            'fstr': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_DELETE, None)
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
+                    for name, typ, _, val
+                    in (self.test_data_keys +
+                        self.test_data_predefined_fields +
+                        self.test_data_dynamic_fields)}
+
+        del expected['str']
+        del expected['fstr']
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([expected], result)
+
+
+class TestCassandraPutItem(TestCassandraBase):
+    def test_put_item_str(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'str': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, 'str'),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_number(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'numbr': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 42),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_blob(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'blb': models.AttributeValue(models.ATTRIBUTE_TYPE_BLOB, 'blob'),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_set_str(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'set_string': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_STRING_SET, {'str1', 'str2'}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_set_number(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'set_number': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_NUMBER_SET, {42, 43}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_set_blob(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'set_blob': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_BLOB_SET, {'blob1', 'blob2'}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_dynamic_str(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fstr': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, 'str'),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_dynamic_number(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fnum': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 42),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_dynamic_blob(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fblb': models.AttributeValue(models.ATTRIBUTE_TYPE_BLOB, 'blob'),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_dynamic_set_str(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fsstr': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_STRING_SET, {'str1', 'str2'}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_dynamic_set_number(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fsnum': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_NUMBER_SET, {42, 43}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    def test_put_item_dynamic_set_blob(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fsblb': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_BLOB_SET, {'blob1', 'blob2'}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_str(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'str': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, 'str'),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_number(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'numbr': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 42),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_blob(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'blb': models.AttributeValue(models.ATTRIBUTE_TYPE_BLOB, 'blob'),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_set_str(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'set_string': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_STRING_SET, {'str1', 'str2'}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_set_number(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'set_number': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_NUMBER_SET, {42, 43}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_set_blob(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'set_blob': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_BLOB_SET, {'blob1', 'blob2'}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_dynamic_str(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fstr': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, 'str'),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_dynamic_number(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fnum': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 42),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_dynamic_blob(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fblb': models.AttributeValue(models.ATTRIBUTE_TYPE_BLOB, 'blob'),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_dynamic_set_str(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fsstr': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_STRING_SET, {'str1', 'str2'}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_dynamic_set_number(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fsnum': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_NUMBER_SET, {42, 43}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
+
+    @unittest.skip("conditional updates noy yet implemented")
+    def test_put_item_expected_dynamic_set_blob(self):
+        self._create_table()
+        self._create_index()
+
+        put = {
+            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
+            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
+            'fsblb': models.AttributeValue(
+                models.ATTRIBUTE_TYPE_BLOB_SET, {'blob1', 'blob2'}),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
+                                            expected_condition_map={1: 1})
+
+        keys = {'id': models.Condition.eq(1),
+                'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys)
+
+        self.assertEquals([put], result)
