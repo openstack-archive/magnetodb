@@ -12,24 +12,22 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import decimal
+import unittest
 
+import os
 from boto.dynamodb import types
-
 from boto.dynamodb2 import RegionInfo
 from boto.dynamodb2.layer1 import DynamoDBConnection
 from boto.dynamodb2 import types as schema_types
 from boto.dynamodb2 import fields
-import os
-import unittest
-
 from magnetodb.tests.fake import magnetodb_api_fake
 from magnetodb.tests import PROJECT_ROOT_DIR
 from boto.dynamodb2.table import Table
-from magnetodb.storage.models import AttributeDefinition,\
-    ATTRIBUTE_TYPE_STRING, TableSchema, IndexDefinition
-import magnetodb.storage as Storage
-
+from magnetodb.storage import models
+from magnetodb import storage
 from mox import Mox, IgnoreArg
+
 
 CONF = magnetodb_api_fake.CONF
 
@@ -45,8 +43,6 @@ class BotoIntegrationTest(unittest.TestCase):
     def setUpClass(cls):
         magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE)
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
-
-        cls.STORAGE = Storage
 
     @classmethod
     def tearDownClass(cls):
@@ -76,9 +72,9 @@ class BotoIntegrationTest(unittest.TestCase):
                               validate_certs=False)
 
     def test_list_table(self):
-        self.storage_mocker.StubOutWithMock(self.STORAGE, "list_tables")
-        self.STORAGE.list_tables(IgnoreArg(),
-                                 exclusive_start_table_name=None, limit=None)\
+        self.storage_mocker.StubOutWithMock(storage, "list_tables")
+        storage.list_tables(IgnoreArg(),
+                            exclusive_start_table_name=None, limit=None) \
             .AndReturn(['table1', 'table2'])
 
         self.storage_mocker.ReplayAll()
@@ -89,18 +85,21 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def test_describe_table(self):
 
-        self.storage_mocker.StubOutWithMock(self.STORAGE, 'describe_table')
+        self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
-        self.STORAGE.describe_table(IgnoreArg(), 'test_table').AndReturn(
-            TableSchema(
+        storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
+            models.TableSchema(
                 'test_table',
                 {
-                    AttributeDefinition('city1', ATTRIBUTE_TYPE_STRING),
-                    AttributeDefinition('id', ATTRIBUTE_TYPE_STRING),
-                    AttributeDefinition('name', ATTRIBUTE_TYPE_STRING)
+                    models.AttributeDefinition(
+                        'city1', models.ATTRIBUTE_TYPE_STRING),
+                    models.AttributeDefinition(
+                        'id', models.ATTRIBUTE_TYPE_STRING),
+                    models.AttributeDefinition(
+                        'name', models.ATTRIBUTE_TYPE_STRING)
                 },
                 ['id', 'name'],
-                {IndexDefinition('index_name', 'city1')}
+                {models.IndexDefinition('index_name', 'city1')}
             )
         )
 
@@ -131,20 +130,23 @@ class BotoIntegrationTest(unittest.TestCase):
             ], table_description['Table']['AttributeDefinitions'])
 
     def test_delete_table(self):
-        self.storage_mocker.StubOutWithMock(self.STORAGE, 'delete_table')
-        self.storage_mocker.StubOutWithMock(self.STORAGE, 'describe_table')
-        self.STORAGE.delete_table(IgnoreArg(), 'test_table')
+        self.storage_mocker.StubOutWithMock(storage, 'delete_table')
+        self.storage_mocker.StubOutWithMock(storage, 'describe_table')
+        storage.delete_table(IgnoreArg(), 'test_table')
 
-        self.STORAGE.describe_table(IgnoreArg(), 'test_table').AndReturn(
-            TableSchema(
+        storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
+            models.TableSchema(
                 'test_table',
                 {
-                    AttributeDefinition('city1', ATTRIBUTE_TYPE_STRING),
-                    AttributeDefinition('id', ATTRIBUTE_TYPE_STRING),
-                    AttributeDefinition('name', ATTRIBUTE_TYPE_STRING)
+                    models.AttributeDefinition(
+                        'city1', models.ATTRIBUTE_TYPE_STRING),
+                    models.AttributeDefinition(
+                        'id', models.ATTRIBUTE_TYPE_STRING),
+                    models.AttributeDefinition(
+                        'name', models.ATTRIBUTE_TYPE_STRING)
                 },
                 ['id', 'name'],
-                {IndexDefinition('index_name', 'city1')}
+                {models.IndexDefinition('index_name', 'city1')}
             )
         )
 
@@ -157,8 +159,8 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.VerifyAll()
 
     def test_create_table(self):
-        self.storage_mocker.StubOutWithMock(self.STORAGE, 'create_table')
-        self.STORAGE.create_table(IgnoreArg(), IgnoreArg())
+        self.storage_mocker.StubOutWithMock(storage, 'create_table')
+        storage.create_table(IgnoreArg(), IgnoreArg())
         self.storage_mocker.ReplayAll()
 
         Table.create(
@@ -186,8 +188,8 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.VerifyAll()
 
     def test_put_item(self):
-        self.storage_mocker.StubOutWithMock(self.STORAGE, 'put_item')
-        self.STORAGE.put_item(
+        self.storage_mocker.StubOutWithMock(storage, 'put_item')
+        storage.put_item(
             IgnoreArg(), IgnoreArg(),
             if_not_exist=IgnoreArg(),
             expected_condition_map=IgnoreArg()).AndReturn(True)
@@ -195,15 +197,69 @@ class BotoIntegrationTest(unittest.TestCase):
 
         table = Table('test_table', connection=self.DYNAMODB_CON)
 
-        blob_data = bytearray([1, 2, 3, 4, 5])
-
+        blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
+        blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
         table.put_item(
             {
                 "hash_key": 1,
                 "range_key": "range",
-                "value": types.Binary(bytes(blob_data))
+                "value_blob": types.Binary(blob_data1),
+                "value_blob_set": {types.Binary(blob_data1),
+                                   types.Binary(blob_data2)}
             },
             False
         )
+
+        self.storage_mocker.VerifyAll()
+
+    def test_get_item(self):
+        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+
+        blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
+        blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
+
+        hash_key = "4.5621201231232132132132132132132142354E126"
+        range_key = "range"
+
+        storage.select_item(
+            IgnoreArg(), IgnoreArg(), IgnoreArg(),
+            attributes_to_get=IgnoreArg(), limit=IgnoreArg(),
+            consistent=IgnoreArg()
+        ).AndReturn(
+            [
+                {
+                    "hash_key": models.AttributeValue(
+                        models.ATTRIBUTE_TYPE_NUMBER,
+                        decimal.Decimal(hash_key)
+                    ),
+                    "range_key": models.AttributeValue(
+                        models.ATTRIBUTE_TYPE_STRING, range_key
+                    ),
+                    "value_blob": models.AttributeValue(
+                        models.ATTRIBUTE_TYPE_BLOB, blob_data1
+                    ),
+                    "value_blob_set": models.AttributeValue(
+                        models.ATTRIBUTE_TYPE_BLOB_SET,
+                        {blob_data1, blob_data2}
+                    )
+                }
+            ]
+        )
+
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        item = table.get_item(consistent=False, hash_key=1, range_key="range")
+
+        expected_item = {
+            "hash_key": decimal.Decimal(hash_key),
+            "range_key": range_key,
+            "value_blob": types.Binary(blob_data1),
+            "value_blob_set": {types.Binary(blob_data1),
+                               types.Binary(blob_data2)}
+        }
+
+        self.assertDictEqual(expected_item, dict(item.items()))
 
         self.storage_mocker.VerifyAll()

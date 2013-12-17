@@ -20,7 +20,7 @@
 from __future__ import print_function
 
 import eventlet
-import eventlet.patcher
+
 eventlet.patcher.monkey_patch(all=False, socket=True)
 
 import datetime
@@ -113,7 +113,7 @@ class Service(service.Service):
                 eventlet.sleep(0.1)
         if not sock:
             raise RuntimeError(_("Could not bind to %(host)s:%(port)s "
-                               "after trying for 30 seconds") %
+                                 "after trying for 30 seconds") %
                                {'host': host, 'port': port})
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # sockets can hang around forever without keepalive
@@ -237,7 +237,6 @@ class Debug(Middleware):
 
 
 class Router(object):
-
     """
     WSGI middleware that maps incoming requests to WSGI apps.
     """
@@ -354,6 +353,7 @@ class Resource(object):
     may raise a webob.exc exception or return a dict, which will be
     serialized by requested content type.
     """
+
     def __init__(self, controller, deserializer=None, serializer=None):
         """
         :param controller: object that implement methods created by routes lib
@@ -456,12 +456,12 @@ class JSONDictSerializer(DictSerializer):
                 _dtime = obj - datetime.timedelta(microseconds=obj.microsecond)
                 return _dtime.isoformat()
             return obj
-#            return six.text_type(obj)
+
+        #            return six.text_type(obj)
         return jsonutils.dumps(data, default=sanitizer)
 
 
 class XMLDictSerializer(DictSerializer):
-
     def __init__(self, metadata=None, xmlns=None):
         """
         :param metadata: information needed to deserialize xml into
@@ -723,7 +723,6 @@ class TextDeserializer(ActionDispatcher):
 
 
 class JSONDeserializer(TextDeserializer):
-
     def _from_json(self, datastring):
         try:
             return jsonutils.loads(datastring)
@@ -736,7 +735,6 @@ class JSONDeserializer(TextDeserializer):
 
 
 class XMLDeserializer(TextDeserializer):
-
     def __init__(self, metadata=None):
         """
         :param metadata: information needed to deserialize xml into

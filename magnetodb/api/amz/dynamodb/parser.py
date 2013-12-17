@@ -14,13 +14,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from __builtin__ import isinstance
+import base64
 import decimal
 
 from magnetodb.storage import models
 from magnetodb.storage.models import IndexDefinition
 from magnetodb.common.exception import MagnetoError
-import base64
 
 
 #init decimal context to meet DynamoDB number type behaviour expectation
@@ -90,6 +89,10 @@ class Props():
     SIZE_ESTIMATED_RANGE_GB = "SizeEstimateRangeGB"
     CONSUMED_CAPACITY = "ConsumedCapacity"
     CAPACITY_UNITS = "CapacityUnits"
+
+    ATTRIBUTES_TO_GET = "AttributesToGet"
+    CONSISTENT_READ = "ConsistentRead"
+    KEY = "Key"
 
 
 class Values():
@@ -451,7 +454,7 @@ class Parser():
                 (hash_key, local_secondary_index.attribute_to_index)
             ),
             Props.PROJECTION: projection,
-            Props.INDEX_SIZE_BYTES: 0,
+            Props.ITEM_COUNT: 0,
             Props.INDEX_SIZE_BYTES: 0
         }
 
@@ -469,13 +472,13 @@ class Parser():
 
     @staticmethod
     def decode_single_value(single_value_type, encoded_single_value):
+        assert isinstance(encoded_single_value, (str, unicode))
         if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            assert isinstance(encoded_single_value, (str, unicode))
             return encoded_single_value
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-            return decimal.Decimal(encoded_single_value, DECIMAL_CONTEXT)
+            return DECIMAL_CONTEXT.create_decimal(encoded_single_value)
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            return bytearray(base64.decodestring(encoded_single_value))
+            return base64.decodestring(encoded_single_value)
         else:
             assert False, "Value type wasn't recognized"
 
@@ -488,8 +491,8 @@ class Parser():
             assert isinstance(decoded_single_value, decimal.Decimal)
             return str(decoded_single_value)
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            assert isinstance(decoded_single_value, bytearray)
-            return base64.encodestring(bytes(decoded_single_value))
+            assert isinstance(decoded_single_value, str)
+            return base64.encodestring(decoded_single_value)
         else:
             assert False, "Value type wasn't recognized"
 
@@ -497,11 +500,10 @@ class Parser():
     def decode_attr_value(cls, dynamodb_attr_type, dynamodb_attr_value):
         attr_type = cls.DYNAMODB_TO_STORAGE_TYPE_MAP[dynamodb_attr_type]
         if attr_type.collection_type is not None:
-            attr_value = map(
-                lambda val: cls.decode_single_value(attr_type.element_type,
-                                                    val),
-                dynamodb_attr_value
-            )
+            attr_value = {
+                cls.decode_single_value(attr_type.element_type, val)
+                for val in dynamodb_attr_value
+            }
         else:
             attr_value = cls.decode_single_value(
                 attr_type.element_type, dynamodb_attr_value
@@ -579,3 +581,35 @@ class Parser():
                     )
                 )
         return expected_item_conditions
+
+    @staticmethod
+    def format_consumed_capacity(return_consumed_capacity, table_schema):
+        if return_consumed_capacity == Values.RETURN_CONSUMED_CAPACITY_NONE:
+            return None
+
+        consumed_capacity = {
+            Props.GLOBAL_SECONDARY_INDEXES: {
+                # TODO(dukhlov):
+                # read schema and fill global index consumed
+                # capacity to imitate DynamoDB API
+                "global_index_name": {
+                    Props.CAPACITY_UNITS: 0
+                }
+            },
+            Props.LOCAL_SECONDARY_INDEXES: {
+                # TODO(dukhlov):
+                # read schema and fill local index consumed
+                # capacity to imitate DynamoDB API
+                "local_index_name": {
+                    Props.CAPACITY_UNITS: 0
+                }
+            }
+        }
+
+        if return_consumed_capacity == Values.RETURN_CONSUMED_CAPACITY_TOTAL:
+            consumed_capacity[Props.CAPACITY_UNITS] = 0
+            consumed_capacity[Props.TABLE] = {
+                Props.CAPACITY_UNITS: 0
+            }
+
+        return consumed_capacity
