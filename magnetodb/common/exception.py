@@ -40,13 +40,21 @@ class MagnetoError(openstack_exception.OpenstackException):
         super(MagnetoError, self).__init__(**kwargs)
 
 
-class ValidationException(MagnetoError):
-    pass
-
-
-class ServiceUnavailableException(MagnetoError):
+class FrontendInteractionException(MagnetoError):
     pass
 
 
 class BackendInteractionException(MagnetoError):
+    pass
+
+
+class ValidationException(FrontendInteractionException):
+    pass
+
+
+class ServiceUnavailableException(FrontendInteractionException):
+    pass
+
+
+class ConditionalCheckFailedException(FrontendInteractionException):
     pass

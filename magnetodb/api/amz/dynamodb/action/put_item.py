@@ -19,27 +19,47 @@ from magnetodb.api.amz.dynamodb import parser
 from magnetodb import storage
 from magnetodb.storage import models
 
+from magnetodb.common import exception
+
 
 class PutItemDynamoDBAction(DynamoDBAction):
     schema = {
-        "required": [parser.Props.ATTRIBUTE_DEFINITIONS,
-                     parser.Props.KEY_SCHEMA,
+        "required": [parser.Props.ITEM,
                      parser.Props.TABLE_NAME],
         "properties": {
             parser.Props.EXPECTED: {
                 "type": "object",
                 "patternProperties": {
                     parser.ATTRIBUTE_NAME_PATTERN: {
-                        "oneOf" [
-                            parser.Props.EXISTS: {
-                                "type": "boolean",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "required": [parser.Props.EXISTS],
+                                "properties": {
+                                    parser.Props.EXISTS: {
+                                        "type": "boolean",
+                                    },
+                                }
                             },
-                            parser.Props.VALUE: parser.Types.ITEM_VALUE
+                            {
+                                "type": "object",
+                                "required": [parser.Props.VALUE],
+                                "properties": {
+                                    parser.Props.VALUE:
+                                        parser.Types.ITEM_VALUE,
+                                }
+                            },
                         ]
                     }
                 }
             },
-            parser.Props.ITEM: parser.Types.ITEM_VALUE,
+
+            parser.Props.ITEM: {
+                "type": "object",
+                "patternProperties": {
+                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
+                }
+            },
 
             parser.Props.RETURN_CONSUMED_CAPACITY: (
                 parser.Types.RETURN_CONSUMED_CAPACITY
@@ -56,56 +76,95 @@ class PutItemDynamoDBAction(DynamoDBAction):
         }
     }
 
-    #TODO: change body to correct one
     def __call__(self):
         table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
-        #parse table attributes
-        attribute_definitions = parser.Parser.parse_attribute_definitions(
-            self.action_params.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
+        # parse expected item conditions
+        expected_item_conditions = (
+            parser.Parser.parse_expected_item_conditions(
+                self.action_params.get(parser.Props.EXPECTED, None)
+            )
         )
 
-        #parse table key schema
-        key_attrs = parser.Parser.parse_key_schema(
-            self.action_params.get(parser.Props.KEY_SCHEMA, [])
+        # parse item
+        item_attributes = parser.Parser.parse_item_attributes(
+            self.action_params[parser.Props.ITEM]
         )
 
-        #parse table indexed field list
-        index_defs = parser.Parser.parse_local_secondary_indexes(
-            self.action_params.get(parser.Props.LOCAL_SECONDARY_INDEXES, [])
+        # parse return_values param
+        return_values = self.action_params.get(
+            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
         )
 
-        #prepare table_schema structure
-        table_schema = models.TableSchema(table_name, attribute_definitions,
-                                          key_attrs, index_defs)
+        # parse return_item_collection_metrics
+        return_item_collection_metrics = self.action_params.get(
+            parser.Props.RETURN_ITEM_COLLECTION_METRICS,
+            parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE
+        )
 
-        # creating table
-        storage.create_table(self.context, table_schema)
+        return_consumed_capacity = self.action_params.get(
+            parser.Props.RETURN_CONSUMED_CAPACITY,
+            parser.Values.RETURN_CONSUMED_CAPACITY_NONE
+        )
 
-        return {
-            parser.Props.TABLE_DESCRIPTION: {
-                parser.Props.ATTRIBUTE_DEFINITIONS: (
-                    parser.Parser.format_attribute_definitions(
-                        attribute_definitions
+        # put item
+        result = storage.put_item(
+            self.context,
+            models.PutItemRequest(table_name, item_attributes),
+            if_not_exist=False,
+            expected_condition_map=expected_item_conditions)
+
+        if not result:
+            raise exception.ConditionalCheckFailedException()
+
+        # format response
+        response = {}
+
+        if return_values != parser.Values.RETURN_VALUES_NONE:
+            response[parser.Props.ATTRIBUTES] = (
+                parser.Parser.format_item_attributes(item_attributes)
+            )
+
+        if (return_item_collection_metrics !=
+                parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE):
+            response[parser.Props.ITEM_COLLECTION_METRICS] = {
+                parser.Props.ITEM_COLLECTION_KEY: {
+                    parser.Parser.format_item_attributes(
+                        models.AttributeValue(models.ATTRIBUTE_TYPE_STRING,
+                                              "key")
                     )
-                ),
-                parser.Props.CREATION_DATE_TIME: 0,
-                parser.Props.ITEM_COUNT: 0,
-                parser.Props.KEY_SCHEMA: (
-                    parser.Parser.format_key_schema(
-                        key_attrs
-                    )
-                ),
-                parser.Props.LOCAL_SECONDARY_INDEXES: (
-                    parser.Parser.format_local_secondary_indexes(
-                        key_attrs[0], index_defs
-                    )
-                ),
-                parser.Props.PROVISIONED_THROUGHPUT: (
-                    parser.Values.PROVISIONED_THROUGHPUT_DUMMY
-                ),
-                parser.Props.TABLE_NAME: table_name,
-                parser.Props.TABLE_STATUS: parser.Values.TABLE_STATUS_ACTIVE,
-                parser.Props.TABLE_SIZE_BYTES: 0
+                },
+                parser.Props.SIZE_ESTIMATED_RANGE_GB: [0]
             }
-        }
+
+        if return_consumed_capacity in {
+                parser.Values.RETURN_CONSUMED_CAPACITY_INDEXES,
+                parser.Values.RETURN_CONSUMED_CAPACITY_TOTAL}:
+            consumed_capacity = {
+                parser.Props.GLOBAL_SECONDARY_INDEXES: {
+                    # TODO(dukhlov):
+                    # read schema and fill global index consumed
+                    # capacity to imitate DynamoDB API
+                    "global_index_name": {
+                        parser.Props.CAPACITY_UNITS: 0
+                    }
+                },
+                parser.Props.LOCAL_SECONDARY_INDEXES: {
+                    # TODO(dukhlov):
+                    # read schema and fill local index consumed
+                    # capacity to imitate DynamoDB API
+                    "local_index_name": {
+                        parser.Props.CAPACITY_UNITS: 0
+                    }
+                }
+            }
+
+            if (return_consumed_capacity ==
+                    parser.Values.RETURN_CONSUMED_CAPACITY_TOTAL):
+                consumed_capacity[parser.Props.CAPACITY_UNITS] = 0
+                consumed_capacity[parser.Props.TABLE] = {
+                    parser.Props.CAPACITY_UNITS: 0
+                }
+            response[parser.Props.CONSUMED_CAPACITY] = consumed_capacity
+
+        return response

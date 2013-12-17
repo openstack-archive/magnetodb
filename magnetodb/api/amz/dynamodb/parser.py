@@ -14,11 +14,22 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from __builtin__ import isinstance
+import decimal
 
 from magnetodb.storage import models
 from magnetodb.storage.models import IndexDefinition
 from magnetodb.common.exception import MagnetoError
 
+
+#init decimal context to meet DynamoDB number type behaviour expectation
+DECIMAL_CONTEXT = decimal.Context(
+    prec=38, rounding=None,
+    traps=[],
+    flags=[],
+    Emax=126,
+    Emin=-128
+)
 
 TYPE_STRING = "S"
 TYPE_NUMBER = "N"
@@ -36,6 +47,7 @@ class Props():
     KEY_SCHEMA = "KeySchema"
     KEY_TYPE = "KeyType"
     LOCAL_SECONDARY_INDEXES = "LocalSecondaryIndexes"
+    GLOBAL_SECONDARY_INDEXES = "GlobalSecondaryIndexes"
     INDEX_NAME = "IndexName"
     PROJECTION = "Projection"
     NON_KEY_ATTRIBUTES = "NonKeyAttributes"
@@ -70,6 +82,13 @@ class Props():
     RETURN_CONSUMED_CAPACITY = "ReturnConsumedCapacity"
     RETURN_ITEM_COLLECTION_METRICS = "ReturnItemCollectionMetrics"
     RETURN_VALUES = "ReturnValues"
+
+    ATTRIBUTES = "Attributes"
+    ITEM_COLLECTION_METRICS = "ItemCollectionMetrics"
+    ITEM_COLLECTION_KEY = "ItemCollectionKey"
+    SIZE_ESTIMATED_RANGE_GB = "SizeEstimateRangeGB"
+    CONSUMED_CAPACITY = "ConsumedCapacity"
+    CAPACITY_UNITS = "CapacityUnits"
 
 
 class Values():
@@ -203,32 +222,62 @@ class Types():
     }
 
     ITEM_VALUE = {
-        "type": "object",
-        "required": [Props.READ_CAPACITY_UNITS, Props.WRITE_CAPACITY_UNITS],
-        "properties": {
-            "oneOf": [
-                {
+        "oneOf": [
+            {
+                "type": "object",
+                "required": [Props.ITEM_TYPE_STRING],
+                "properties": {
                     Props.ITEM_TYPE_STRING: {
                         "type": "string"
-                    },
+                    }
+                }
+            },
+            {
+                "type": "object",
+                "required": [Props.ITEM_TYPE_NUMBER],
+                "properties": {
                     Props.ITEM_TYPE_NUMBER: {
                         "type": "string"
-                    },
+                    }
+                }
+            },
+            {
+                "type": "object",
+                "required": [Props.ITEM_TYPE_BLOB],
+                "properties": {
                     Props.ITEM_TYPE_BLOB: {
                         "type": "string"
-                    },
+                    }
+                }
+            },
+            {
+                "type": "object",
+                "required": [Props.ITEM_TYPE_STRING_SET],
+                "properties": {
                     Props.ITEM_TYPE_STRING_SET: {
                         "type": "array",
                         "items": {
                             "type": "string"
                         }
-                    },
+                    }
+                }
+            },
+            {
+                "type": "object",
+                "required": [Props.ITEM_TYPE_NUMBER_SET],
+                "properties": {
                     Props.ITEM_TYPE_NUMBER_SET: {
                         "type": "array",
                         "items": {
                             "type": "string"
                         }
-                    },
+                    }
+                }
+            },
+            {
+                "type": "object",
+                "required": [Props.ITEM_TYPE_BLOB_SET],
+                "properties": {
                     Props.ITEM_TYPE_BLOB_SET: {
                         "type": "array",
                         "items": {
@@ -236,8 +285,8 @@ class Types():
                         }
                     }
                 }
-            ]
-        }
+            }
+        ]
     }
 
     RETURN_CONSUMED_CAPACITY = {
@@ -334,10 +383,12 @@ class Parser():
             "More then 2 keys given. Only one HASH and one RANGE key allowed"
         )
 
-        res = [{
-            Props.KEY_TYPE: Values.KEY_TYPE_HASH,
-            Props.ATTRIBUTE_NAME: key_attr_names[0]
-        }]
+        res = [
+            {
+                Props.KEY_TYPE: Values.KEY_TYPE_HASH,
+                Props.ATTRIBUTE_NAME: key_attr_names[0]
+            }
+        ]
 
         if len(key_attr_names) > 1:
             res.append({
@@ -414,3 +465,115 @@ class Parser():
         return map(lambda index: cls.format_local_secondary_index(hash_key,
                                                                   index),
                    local_secondary_index_list)
+
+    @staticmethod
+    def decode_single_value(single_value_type, encoded_single_value):
+        if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
+            assert isinstance(encoded_single_value, str)
+            return encoded_single_value
+        elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
+            return decimal.Decimal(encoded_single_value, DECIMAL_CONTEXT)
+        elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
+            return encoded_single_value.decode('base64')
+        else:
+            assert False, "Value type wasn't recognized"
+
+    @staticmethod
+    def encode_single_value(single_value_type, decoded_single_value):
+        if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
+            assert isinstance(decoded_single_value, str)
+            return decoded_single_value
+        elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
+            assert isinstance(decoded_single_value, decimal.Decimal)
+            return str(decoded_single_value)
+        elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
+            return decoded_single_value.encode('base64')
+        else:
+            assert False, "Value type wasn't recognized"
+
+    @classmethod
+    def decode_attr_value(cls, dynamodb_attr_type, dynamodb_attr_value):
+        attr_type = cls.DYNAMODB_TO_STORAGE_TYPE_MAP[dynamodb_attr_type]
+        if attr_type.collection_type is not None:
+            attr_value = map(
+                lambda val: cls.decode_single_value(attr_type.element_type,
+                                                    val),
+                dynamodb_attr_value
+            )
+        else:
+            attr_value = cls.decode_single_value(
+                attr_type.element_type, dynamodb_attr_value
+            )
+        return models.AttributeValue(attr_type, attr_value)
+
+    @classmethod
+    def encode_attr_value(cls, attr_value):
+        if attr_value.type.collection_type is not None:
+            dynamodb_attr_value = map(
+                lambda val: cls.encode_single_value(
+                    attr_value.type.element_type,
+                    val),
+                attr_value.value
+            )
+        else:
+            dynamodb_attr_value = cls.encode_single_value(
+                attr_value.type.element_type, attr_value.value
+            )
+
+        return {
+            cls.STORAGE_TO_DYNAMODB_TYPE_MAP[attr_value.type]:
+            dynamodb_attr_value
+        }
+
+    @classmethod
+    def parse_item_attributes(cls, item_attributes_json):
+        item = {}
+        for (attr_name, dynamodb_attr) in item_attributes_json.iteritems():
+            assert len(dynamodb_attr) == 1
+            (dynamodb_attr_type, dynamodb_attr_value) = (
+                dynamodb_attr.items()[0]
+            )
+            item[attr_name] = cls.decode_attr_value(dynamodb_attr_type,
+                                                    dynamodb_attr_value)
+
+        return item
+
+    @classmethod
+    def format_item_attributes(cls, item_attributes):
+        attributes_json = {}
+        for (attr_name, attr_value) in item_attributes.iteritems():
+            attributes_json[attr_name] = cls.encode_attr_value(attr_value)
+
+        return attributes_json
+
+    @classmethod
+    def parse_expected_attribute_conditions(
+            cls, expected_attribute_conditions_json):
+        expected_item_conditions = {}
+
+        for (attr_name, dynamodb_condition) in (
+                expected_attribute_conditions_json.iteritems()):
+            assert len(dynamodb_condition) == 1
+            (dynamodb_condition_type, dynamodb_condition_value) = (
+                dynamodb_condition.items()[0]
+            )
+            if dynamodb_condition_type == Props.EXISTS:
+                assert isinstance(dynamodb_condition_value, bool)
+                expected_item_conditions[attr_name] = (
+                    models.ExpectedCondition.exists()
+                    if dynamodb_condition_value else
+                    models.ExpectedCondition.not_exists()
+                )
+            elif dynamodb_condition_type == Props.VALUE:
+                assert len(dynamodb_condition_value) == 1
+                (dynamodb_attr_type, dynamodb_attr_value) = (
+                    dynamodb_condition_value.items()[0]
+                )
+                expected_item_conditions[attr_name] = (
+                    models.ExpectedCondition.eq(
+                        cls.decode_attr_value(
+                            dynamodb_attr_type, dynamodb_attr_value
+                        )
+                    )
+                )
+        return expected_item_conditions
