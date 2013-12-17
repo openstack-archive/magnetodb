@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from boto.dynamodb import types
+
 from boto.dynamodb2 import RegionInfo
 from boto.dynamodb2.layer1 import DynamoDBConnection
-from boto.dynamodb2 import types
+from boto.dynamodb2 import types as schema_types
 from boto.dynamodb2 import fields
 import os
 import unittest
@@ -162,8 +164,8 @@ class BotoIntegrationTest(unittest.TestCase):
         Table.create(
             "test",
             schema=[
-                fields.HashKey('hash', data_type=types.NUMBER),
-                fields.RangeKey('range', data_type=types.STRING)
+                fields.HashKey('hash', data_type=schema_types.NUMBER),
+                fields.RangeKey('range', data_type=schema_types.STRING)
             ],
             throughput={
                 'read': 20,
@@ -174,9 +176,34 @@ class BotoIntegrationTest(unittest.TestCase):
                     'index_name',
                     parts=[
                         fields.RangeKey('indexed_field',
-                                        data_type=types.STRING)
+                                        data_type=schema_types.STRING)
                     ]
                 )
             ],
             connection=self.DYNAMODB_CON
         )
+
+        self.storage_mocker.VerifyAll()
+
+    def test_put_item(self):
+        self.storage_mocker.StubOutWithMock(self.STORAGE, 'put_item')
+        self.STORAGE.put_item(
+            IgnoreArg(), IgnoreArg(),
+            if_not_exist=IgnoreArg(),
+            expected_condition_map=IgnoreArg()).AndReturn(True)
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        blob_data = bytearray([1, 2, 3, 4, 5])
+
+        table.put_item(
+            {
+                "hash_key": 1,
+                "range_key": "range",
+                "value": types.Binary(bytes(blob_data))
+            },
+            False
+        )
+
+        self.storage_mocker.VerifyAll()

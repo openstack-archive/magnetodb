@@ -81,7 +81,7 @@ class PutItemDynamoDBAction(DynamoDBAction):
 
         # parse expected item conditions
         expected_item_conditions = (
-            parser.Parser.parse_expected_item_conditions(
+            parser.Parser.parse_expected_attribute_conditions(
                 self.action_params.get(parser.Props.EXPECTED, None)
             )
         )

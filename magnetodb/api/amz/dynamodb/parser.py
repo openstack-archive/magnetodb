@@ -20,6 +20,7 @@ import decimal
 from magnetodb.storage import models
 from magnetodb.storage.models import IndexDefinition
 from magnetodb.common.exception import MagnetoError
+import base64
 
 
 #init decimal context to meet DynamoDB number type behaviour expectation
@@ -469,25 +470,26 @@ class Parser():
     @staticmethod
     def decode_single_value(single_value_type, encoded_single_value):
         if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            assert isinstance(encoded_single_value, str)
+            assert isinstance(encoded_single_value, (str, unicode))
             return encoded_single_value
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
             return decimal.Decimal(encoded_single_value, DECIMAL_CONTEXT)
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            return encoded_single_value.decode('base64')
+            return bytearray(base64.decodestring(encoded_single_value))
         else:
             assert False, "Value type wasn't recognized"
 
     @staticmethod
     def encode_single_value(single_value_type, decoded_single_value):
         if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            assert isinstance(decoded_single_value, str)
+            isinstance(decoded_single_value, (str, unicode))
             return decoded_single_value
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
             assert isinstance(decoded_single_value, decimal.Decimal)
             return str(decoded_single_value)
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            return decoded_single_value.encode('base64')
+            assert isinstance(decoded_single_value, bytearray)
+            return base64.encodestring(bytes(decoded_single_value))
         else:
             assert False, "Value type wasn't recognized"
 
