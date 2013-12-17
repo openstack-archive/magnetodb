@@ -94,6 +94,11 @@ class Props():
     CONSISTENT_READ = "ConsistentRead"
     KEY = "Key"
 
+    SEGMENT = "Segment"
+    TOTAL_SEGMENTS = "TotalSegments"
+    ATTRIBUTE_VALUE_LIST = "AttributeValueList"
+    COMPARISON_OPERATOR = "ComparisonOperator"
+
 
 class Values():
     ATTRIBUTE_TYPE_STRING = TYPE_STRING
@@ -133,6 +138,24 @@ class Values():
     RETURN_VALUES_ALL_NEW = "ALL_NEW"
     RETURN_VALUES_UPDATED_NEW = "UPDATED_NEW"
 
+    ALL_ATTRIBUTES = "ALL_ATTRIBUTES"
+    ALL_PROJECTED_ATTRIBUTES = "ALL_PROJECTED_ATTRIBUTES"
+    SPECIFIC_ATTRIBUTES = "SPECIFIC_ATTRIBUTES"
+    COUNT = "COUNT"
+
+    EQ = "EQ"
+    NE = "NE"
+    LE = "LE"
+    LT = "LT"
+    GE = "GE"
+    GT = "GT"
+    NOT_NULL = "NOT_NULL"
+    NULL = "NULL"
+    CONTAINS = "CONTAINS"
+    NOT_CONTAINS = "NOT_CONTAINS"
+    BEGINS_WITH = "BEGINS_WITH"
+    IN = "IN"
+    BETWEEN = "BETWEEN"
 
 ATTRIBUTE_NAME_PATTERN = "^\w+"
 TABLE_NAME_PATTERN = "^\w+"
@@ -304,6 +327,31 @@ class Types():
         "type": "string",
         "enum": [Values.RETURN_ITEM_COLLECTION_METRICS_SIZE,
                  Values.RETURN_ITEM_COLLECTION_METRICS_NONE]
+    }
+
+    SELECT = {
+        "type": "string",
+        "enum": [Values.ALL_ATTRIBUTES,
+                 Values.ALL_PROJECTED_ATTRIBUTES,
+                 Values.SPECIFIC_ATTRIBUTES,
+                 Values.COUNT]
+    }
+
+    SCAN_OPERATOR = {
+        "type": "string",
+        "enum": [Values.EQ,
+                 Values.NE,
+                 Values.LE,
+                 Values.LT,
+                 Values.GE,
+                 Values.GT,
+                 Values.NOT_NULL,
+                 Values.NULL,
+                 Values.CONTAINS,
+                 Values.NOT_CONTAINS,
+                 Values.BEGINS_WITH,
+                 Values.IN,
+                 Values.BETWEEN]
     }
 
 
