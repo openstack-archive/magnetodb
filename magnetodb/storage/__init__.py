@@ -162,7 +162,7 @@ def update_item(context, table_name, key_attribute_map, attribute_action_map,
 
 
 def select_item(context, table_name, indexed_condition_map,
-                attributes_to_get=None, limit=None,
+                select_type=None, limit=None,
                 consistent=True, order_type=None):
     """
     @param context: current request context
@@ -170,10 +170,10 @@ def select_item(context, table_name, indexed_condition_map,
     @param indexed_condition_map: indexed attribute name to
                 IndexedCondition instance mapping. It defines rows
                 set to be selected
-    @param attributes_to_get: attribute name list to get. If not specified, all
-                attributes should be returned. Also aggregate functions are
-                allowed, if they are supported by storage implementation
-
+    @param select_type: SelectType instance. It defines with attributes will be
+                returned. If not specified, default will be used:
+                    SelectType.all() for query on table and
+                    SelectType.all_projected() for query on index
     @param limit: maximum count of returned values
     @param consistent: define is operation consistent or not (by default it is
                 not consistent)
@@ -186,5 +186,5 @@ def select_item(context, table_name, indexed_condition_map,
     """
     return __get_storage_impl().select_item(context, table_name,
                                             indexed_condition_map,
-                                            attributes_to_get,
+                                            select_type,
                                             limit, consistent, order_type)

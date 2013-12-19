@@ -632,7 +632,7 @@ class CassandraStorageImpl():
         return models.AttributeValue(storage_type, decoded)
 
     def select_item(self, context, table_name, indexed_condition_map,
-                    attributes_to_get=None, limit=None, consistent=True,
+                    select_type=None, limit=None, consistent=True,
                     order_type=None):
         """
         @param context: current request context
@@ -640,10 +640,10 @@ class CassandraStorageImpl():
         @param indexed_condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be selected
-        @param attributes_to_get: attribute name list to get. If not specified,
-                    all attributes should be returned. Also aggregate functions
-                    are allowed, if they are supported by storage
-                    implementation
+        @param select_type: SelectType instance. It defines with attributes
+                    will be returned. If not specified, default will be used:
+                        SelectType.all() for query on table and
+                        SelectType.all_projected() for query on index
 
         @param limit: maximum count of returned values
         @param consistent: define is operation consistent or not (by default it
@@ -703,6 +703,12 @@ class CassandraStorageImpl():
         prefix_len = len(self.USER_COLUMN_PREFIX)
         attr_defs = {attr.name: attr.type for attr in schema.attribute_defs}
         result = []
+
+        if select_type and (
+                select_type.type == models.SelectType.SELECT_TYPE_COUNT):
+            return len(rows)
+
+        attributes_to_get = select_type.attributes if select_type else None
 
         for row in rows:
             record = {}

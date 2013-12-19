@@ -100,7 +100,8 @@ class Props():
     COMPARISON_OPERATOR = "ComparisonOperator"
 
     EXCLUSIVE_START_KEY = "ExclusiveStartKey"
-    "KeyConditions"
+    KEY_CONDITIONS = "KeyConditions"
+    SCAN_INDEX_FORWARD = "ScanIndexForward"
     
 
 class Values():

@@ -124,6 +124,55 @@ class AttributeValue(ModelBase):
         return self._type
 
 
+    @property
+    def is_str(self):
+        return self._type == ATTRIBUTE_TYPE_STRING
+
+    @property
+    def is_number(self):
+        return self._type == ATTRIBUTE_TYPE_NUMBER
+
+    @property
+    def is_str_set(self):
+        return self._type == ATTRIBUTE_TYPE_STRING_SET
+
+    @property
+    def is_number_set(self):
+        return self._type == ATTRIBUTE_TYPE_NUMBER_SET
+
+    @property
+    def is_blob_set(self):
+        return self._type == ATTRIBUTE_TYPE_BLOB_SET
+
+    @classmethod
+    def str(cls, str_value):
+        assert isinstance(str_value, (str, unicode))
+        return cls(ATTRIBUTE_TYPE_STRING, str_value)
+
+    @classmethod
+    def blob(cls, blob_value):
+        assert isinstance(blob_value, (str, unicode))
+        return cls(ATTRIBUTE_TYPE_BLOB, blob_value)
+
+    @classmethod
+    def number(cls, number_value):
+        return cls(ATTRIBUTE_TYPE_NUMBER, decimal.Decimal(number_value))
+
+    @classmethod
+    def str_set(cls, str_value):
+        assert isinstance(str_value, (str, unicode))
+        return cls(ATTRIBUTE_TYPE_STRING_SET, str_value)
+
+    @classmethod
+    def blob_set(cls, blob_value):
+        assert isinstance(blob_value, (str, unicode))
+        return cls(ATTRIBUTE_TYPE_BLOB_SET, blob_value)
+
+    @classmethod
+    def number_set(cls, number_value):
+        return cls(ATTRIBUTE_TYPE_NUMBER_SET, decimal.Decimal(number_value))
+
+
 class Condition(object):
     CONDITION_TYPE_EQUAL = "equal"
 
@@ -155,6 +204,8 @@ class IndexedCondition(Condition):
     CONDITION_TYPE_LESS_OR_EQUAL = "less_or_equal"
     CONDITION_TYPE_GREATER = "greater"
     CONDITION_TYPE_GREATER_OR_EQUAL = "greater_or_equal"
+    CONDITION_TYPE_BETWEEN = "between"
+    CONDITION_TYPE_BEGINS_WITH = "begins_with"
 
     _allowed_types = {Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_LESS,
                       CONDITION_TYPE_LESS_OR_EQUAL, CONDITION_TYPE_GREATER,
@@ -176,6 +227,15 @@ class IndexedCondition(Condition):
     def ge(cls, condition_arg):
         return cls(cls.CONDITION_TYPE_GREATER_OR_EQUAL, condition_arg)
 
+    @classmethod
+    def btw(cls, condition_arg1, condition_arg2):
+        return cls(cls.CONDITION_TYPE_BETWEEN,
+                   (condition_arg1, condition_arg2))
+
+    @classmethod
+    def begins_with(cls, condition_arg):
+        return cls(cls.CONDITION_TYPE_BEGINS_WITH, condition_arg)
+
 
 class ExpectedCondition(Condition):
     CONDITION_TYPE_EXISTS = "exists"
@@ -189,6 +249,48 @@ class ExpectedCondition(Condition):
     @classmethod
     def not_exists(cls):
         return cls(cls.CONDITION_TYPE_EXISTS, False)
+
+
+class SelectType(object):
+    SELECT_TYPE_ALL = "all"
+    SELECT_TYPE_ALL_PROJECTED = "all_projected"
+    SELECT_TYPE_SPECIFIED = "specified"
+    SELECT_TYPE_COUNT = "count"
+
+    _allowed_types = {SELECT_TYPE_ALL, SELECT_TYPE_ALL_PROJECTED,
+                      SELECT_TYPE_SPECIFIED}
+
+    def __init__(self, select_type, attributes=None):
+        assert select_type in self._allowed_types, (
+            "Select type '%s' is't allowed" % select_type
+        )
+
+        self._select_type = select_type
+        self._attributes = attributes
+
+    @property
+    def type(self):
+        return self._select_type
+
+    @property
+    def attributes(self):
+        return self._attributes
+
+    @classmethod
+    def all(cls):
+        return cls(cls.SELECT_TYPE_ALL)
+
+    @classmethod
+    def all_projected(cls):
+        return cls(cls.SELECT_TYPE_ALL_PROJECTED)
+
+    @classmethod
+    def count(cls):
+        return cls(cls.SELECT_TYPE_COUNT)
+
+    @classmethod
+    def specified_attributes(cls, attributes):
+        return cls(cls.SELECT_TYPE_ALL_PROJECTED, frozenset(attributes))
 
 
 class WriteItemBatchableRequest(object):
@@ -317,7 +419,7 @@ class TableSchema(ModelBase):
         @param table_name: String, name of table to create
         @param attribute_defs: list of AttributeDefinition which define table
                     attribute names and types
-        @param key_attrs: list of key attribute names, contains partitional_key
+        @param key_attrs: list of key attribute names, contains partition key
                     (the first in list, required) attribute name and extra key
                     attribute names (the second and other list items, not
                     required)

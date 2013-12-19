@@ -464,7 +464,9 @@ class TestCassandraSelectItem(TestCassandraBase):
                         'range': models.Condition.eq('1')}
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond, ['fstr'])
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.specified_attributes(['fstr'])
+        )
 
         self.assertEqual(1, len(result))
         self.assertEqual(

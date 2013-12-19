@@ -56,8 +56,11 @@ class GetItemDynamoDBAction(DynamoDBAction):
             parser.Props.ATTRIBUTES_TO_GET, None
         )
 
-        if attributes_to_get is not None:
-            attributes_to_get = frozenset(attributes_to_get)
+        select_type = (
+            models.SelectType.all()
+            if attributes_to_get is None else
+            models.AttributeToGet.specified(attributes_to_get)
+        )
 
         # parse key_attributes
         key_attributes = parser.Parser.parse_item_attributes(
@@ -86,8 +89,7 @@ class GetItemDynamoDBAction(DynamoDBAction):
         # get item
         result = storage.select_item(
             self.context, table_name, indexed_condition_map,
-            attributes_to_get=attributes_to_get, limit=2,
-            consistent=consistent_read)
+            select_type=select_type, limit=2, consistent=consistent_read)
 
         assert len(result) == 1
 
