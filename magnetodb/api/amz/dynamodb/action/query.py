@@ -49,11 +49,22 @@ class QueryDynamoDBAction(DynamoDBAction):
                 "pattern": parser.INDEX_NAME_PATTERN
             },
 
-            parser.Props.KEY_CONDITIONS: parser.Types.QUERY_CONDITIONS,
-
-            parser.Props.LIMIT: {
-                "type": "integer",
-                "minimum": 0
+            parser.Props.KEY_CONDITIONS: {
+                "type": "object",
+                "patternProperties": {
+                    parser.ATTRIBUTE_NAME_PATTERN: {
+                        "type": "object",
+                        "properties": {
+                            parser.Props.ATTRIBUTE_VALUE_LIST: {
+                                "type": "array",
+                                "items": parser.ITEM_VALUE
+                            },
+                            parser.Props.COMPARISON_OPERATOR: (
+                                parser.Types.QUERY_OPERATOR
+                            )
+                        }
+                    }
+                }
             },
 
             parser.Props.RETURN_CONSUMED_CAPACITY: (
@@ -92,7 +103,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                 )
             )
 
-        index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
+        #index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
 
         key_conditions = self.action_params.get(parser.Props.KEY_CONDITIONS,
                                                 None)
@@ -100,7 +111,6 @@ class QueryDynamoDBAction(DynamoDBAction):
             key_conditions = parser.Parser.parse_attribute_conditions(
                 key_conditions
             )
-
 
         # TODO(dukhlov):
         # it would be nice to validate given table_name, key_attributes and
@@ -117,22 +127,27 @@ class QueryDynamoDBAction(DynamoDBAction):
             parser.Values.RETURN_CONSUMED_CAPACITY_NONE
         )
 
-        order_asc =  self.action_params.get(
+        order_asc = self.action_params.get(
             parser.Props.SCAN_INDEX_FORWARD, None
         )
 
+        order_type = (
+            None if order_asc is None else
+            models.ORDER_TYPE_ASC if order_asc else
+            models.ORDER_TYPE_DESC
+        )
 
         # format conditions to get item
         indexed_condition_map = {
             name: models.IndexedCondition.eq(value)
-            for name, value in key_attributes.iteritems()
+            for name, value in key_conditions.iteritems()
         }
 
         # get item
         result = storage.select_item(
             self.context, table_name, indexed_condition_map,
-            attributes_to_get=attributes_to_get, limit=2,
-            consistent=consistent_read)
+            attributes_to_get=attributes_to_get, limit=limit,
+            consistent=consistent_read, order_type=order_type)
 
         assert len(result) == 1
 

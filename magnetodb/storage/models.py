@@ -12,8 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-
 import decimal
 
 
@@ -56,15 +54,15 @@ class AttributeType(ModelBase):
 
     _allowed_collection_types = {None, COLLECTION_TYPE_SET}
 
-    _data_fields = ['element_type', '_collection_type']
+    _data_fields = ['element_type', 'collection_type']
 
     def __init__(self, element_type, collection_type=None):
         assert element_type in self._allowed_types, (
-            "Attribute type '%s' is't allowed" % element_type
+            "Attribute type '%s' isn't allowed" % element_type
         )
 
         assert collection_type in self._allowed_collection_types, (
-            "Attribute type collection '%s' is't allowed" % collection_type
+            "Attribute type collection '%s' isn't allowed" % collection_type
         )
 
         self._element_type = element_type
@@ -116,7 +114,21 @@ class AttributeValue(ModelBase):
 
     def __init__(self, attr_type, attr_value):
         self._type = attr_type
-        self._value = attr_value
+
+        if attr_type == ATTRIBUTE_TYPE_STRING:
+            self._value = self.__create_str(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_NUMBER:
+            self._value = self.__create_number(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_BLOB:
+            self._value = self.__create_blob(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_STRING_SET:
+            self._value = self.__create_str_set(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_NUMBER_SET:
+            self._value = self.__create_number_set(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_BLOB_SET:
+            self._value = self.__create_blob_set(attr_value)
+        else:
+            assert False, "Attribute type wasn't recognized"
 
     @property
     def value(self):
@@ -147,32 +159,55 @@ class AttributeValue(ModelBase):
         return self._type == ATTRIBUTE_TYPE_BLOB_SET
 
     @classmethod
+    def __create_str(cls, str_value):
+        assert isinstance(str_value, (str, unicode))
+        return str_value
+
+    @classmethod
+    def __create_number(cls, number_value):
+        return decimal.Decimal(number_value)
+
+    @classmethod
+    def __create_blob(cls, blob_value):
+        assert isinstance(blob_value, (str, unicode))
+        return blob_value
+
+    @classmethod
+    def __create_str_set(cls, str_set_value):
+        return frozenset(map(cls.__create_str, str_set_value))
+
+    @classmethod
+    def __create_number_set(cls, number_set_value):
+        return frozenset(map(cls.__create_number, number_set_value))
+
+    @classmethod
+    def __create_blob_set(cls, blob_set_value):
+        return frozenset(map(cls.__create_blob, blob_set_value))
+
+    @classmethod
     def str(cls, str_value):
         assert isinstance(str_value, (str, unicode))
         return cls(ATTRIBUTE_TYPE_STRING, str_value)
 
     @classmethod
     def blob(cls, blob_value):
-        assert isinstance(blob_value, (str, unicode))
         return cls(ATTRIBUTE_TYPE_BLOB, blob_value)
 
     @classmethod
     def number(cls, number_value):
-        return cls(ATTRIBUTE_TYPE_NUMBER, decimal.Decimal(number_value))
+        return cls(ATTRIBUTE_TYPE_NUMBER, number_value)
 
     @classmethod
-    def str_set(cls, str_value):
-        assert isinstance(str_value, (str, unicode))
-        return cls(ATTRIBUTE_TYPE_STRING_SET, str_value)
+    def str_set(cls, string_set_value):
+        return cls(ATTRIBUTE_TYPE_STRING_SET, string_set_value)
 
     @classmethod
-    def blob_set(cls, blob_value):
-        assert isinstance(blob_value, (str, unicode))
-        return cls(ATTRIBUTE_TYPE_BLOB_SET, blob_value)
+    def blob_set(cls, blob_set_value):
+        return cls(ATTRIBUTE_TYPE_BLOB_SET, blob_set_value)
 
     @classmethod
-    def number_set(cls, number_value):
-        return cls(ATTRIBUTE_TYPE_NUMBER_SET, decimal.Decimal(number_value))
+    def number_set(cls, number_set_value):
+        return cls(ATTRIBUTE_TYPE_NUMBER_SET, number_set_value)
 
 
 class Condition(object):
@@ -182,7 +217,7 @@ class Condition(object):
 
     def __init__(self, condition_type, condition_arg):
         assert condition_type in self._allowed_types, (
-            "Condition type '%s' is't allowed" % condition_type
+            "Condition type '%s' isn't allowed" % condition_type
         )
 
         self._condition_type = condition_type
@@ -264,7 +299,7 @@ class SelectType(object):
 
     def __init__(self, select_type, attributes=None):
         assert select_type in self._allowed_types, (
-            "Select type '%s' is't allowed" % select_type
+            "Select type '%s' isn't allowed" % select_type
         )
 
         self._select_type = select_type

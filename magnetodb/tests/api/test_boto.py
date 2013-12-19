@@ -33,9 +33,6 @@ CONF = magnetodb_api_fake.CONF
 
 
 class BotoIntegrationTest(unittest.TestCase):
-    CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
-                               'etc/magnetodb-test.conf')
-
     PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
                                      'etc/api-paste-test.ini')
 

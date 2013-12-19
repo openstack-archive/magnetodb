@@ -15,6 +15,7 @@
 
 from decimal import Decimal
 import json
+import binascii
 
 from cassandra import cluster
 from cassandra import decoder
@@ -22,7 +23,6 @@ from cassandra import decoder
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
-from magnetodb.storage.models import IndexDefinition
 
 LOG = logging.getLogger(__name__)
 
@@ -251,7 +251,7 @@ class CassandraStorageImpl():
             storage_type = self.CASSANDRA_TO_STORAGE_TYPES[column.typestring]
             attr_defs.add(models.AttributeDefinition(name, storage_type))
             if column.index:
-                index_defs.add(IndexDefinition(
+                index_defs.add(models.IndexDefinition(
                     column.index.name[len(table_name) + 1:], name)
                 )
 
@@ -333,10 +333,9 @@ class CassandraStorageImpl():
         exists = self._put_exists(attr_map)
 
         hash_name = schema.key_attributes[0]
-        hash_value = self._encode_single_value(attr_map[hash_name])
+        hash_value = self._encode_predefined_attr_value(attr_map[hash_name])
 
         if expected_condition_map:
-
             attrs = attr_map.keys()
             non_key_attrs = [
                 attr for attr in predefined_attrs if attr not in key_attrs]
@@ -459,7 +458,7 @@ class CassandraStorageImpl():
         query = "DELETE FROM {}.{} WHERE ".format(
             context.tenant, delete_request.table_name)
 
-        where = self._conditions_as_string(delete_request.key_attribute_map)
+        where = self._primary_key_as_string(delete_request.key_attribute_map)
 
         query += where
 
@@ -483,12 +482,20 @@ class CassandraStorageImpl():
                 return name + '=null'
         else:
             op = self.CONDITION_TO_OP[condition.type]
-            return name + op + repr(condition.arg)
+            return name + op + self._encode_predefined_attr_value(
+                condition.arg
+            )
 
     def _conditions_as_string(self, condition_map):
         return " AND ".join((self._condition_as_string(attr, cond)
                              for attr, cond
                              in condition_map.iteritems()))
+
+    def _primary_key_as_string(self, key_map):
+        return " AND ".join((
+            "{}={}".format(self.USER_COLUMN_PREFIX + attr_name,
+                           self._encode_predefined_attr_value(attr_value))
+            for attr_name, attr_value in key_map.iteritems()))
 
     def execute_write_batch(self, context, write_request_list, durable=True):
         """
@@ -524,7 +531,7 @@ class CassandraStorageImpl():
         set_clause = self._updates_as_string(
             schema, key_attribute_map, attribute_action_map)
 
-        where = self._conditions_as_string(key_attribute_map)
+        where = self._primary_key_as_string(key_attribute_map)
 
         query = "UPDATE {}.{} SET {} WHERE {}".format(
             context.tenant, table_name, set_clause, where
@@ -545,10 +552,11 @@ class CassandraStorageImpl():
 
         #update system_hash
         hash_name = schema.key_attributes[0]
-        hash_value = key_attribute_map[hash_name]
+        hash_value = self._encode_predefined_attr_value(
+            key_attribute_map[hash_name]
+        )
 
-        set_clause += ",{}={}".format(
-            self.SYSTEM_COLUMN_HASH, repr(hash_value.arg))
+        set_clause += ",{}={}".format(self.SYSTEM_COLUMN_HASH, hash_value)
 
         return set_clause
 
@@ -587,49 +595,78 @@ class CassandraStorageImpl():
 
         return ", ".join((value_update, type_update, exists))
 
-    def _encode_value(self, value, is_predefined):
-        if not is_predefined:
-            val = value.value
-            if value.type.collection_type:
-                val = list(val)
-            jsoned = json.dumps(val)
-            return "textAsBlob('{}')".format(jsoned)
-        elif value.type.collection_type:
-            single_val_type = models.AttributeType(value.type.element_type)
-            values = ','.join(
-                (self._encode_single_value(
-                    models.AttributeValue(single_val_type, single_val))
-                 for single_val
-                 in value.value))
-
-            encoded = '{{{}}}'.format(values)
-            return encoded
+    def _encode_value(self, attr_value, is_predefined):
+        if attr_value is None:
+            return 'null'
+        elif is_predefined:
+            return self._encode_predefined_attr_value(attr_value)
         else:
-            return self._encode_single_value(value)
+            return self._encode_dynamic_attr_value(attr_value)
+
+    def _encode_predefined_attr_value(self, attr_value):
+        if attr_value.type.collection_type:
+            values = ','.join(map(
+                lambda el: self._encode_single_value_as_predefined_attr(
+                    el, attr_value.type.element_type),
+                attr_value.value
+            ))
+            return '{{{}}}'.format(values)
+        else:
+            return self._encode_single_value_as_predefined_attr(
+                attr_value.value, attr_value.type.element_type
+            )
 
     @staticmethod
-    def _encode_single_value(value):
-        if value.type == models.ATTRIBUTE_TYPE_STRING:
-            encoded = "'{}'".format(value.value)
-        elif value.type == models.ATTRIBUTE_TYPE_NUMBER:
-            encoded = str(value.value)
+    def _encode_single_value_as_predefined_attr(value, element_type):
+        if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
+            return "'{}'".format(value)
+        elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
+            return str(value)
+        elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
+            return "0x{}".format(binascii.hexlify(value))
         else:
-            encoded = "textAsBlob('{}')".format(str(value.value))
+            assert False, "Value wasn't formatted for cql query"
 
-        return encoded
+    def _encode_dynamic_attr_value(self, attr_value):
+        val = attr_value.value
+        if attr_value.type.collection_type:
+            val = map(
+                lambda el: self._encode_single_value_as_dynamic_attr(
+                    el, attr_value.type.element_type
+                ),
+                val)
+        else:
+            val = self._encode_single_value_as_dynamic_attr(
+                val, attr_value.type.element_type)
+        return "0x{}".format(binascii.hexlify(json.dumps(val)))
 
     @staticmethod
-    def _decode_value(value, storage_type, is_predefined):
-        if not is_predefined:
-            val = json.loads(value)
-            decoded = set(val) if storage_type.collection_type else val
-        elif storage_type == models.ATTRIBUTE_TYPE_NUMBER:
-            decoded = Decimal(value)
-        elif storage_type.collection_type:
-            decoded = set(value)
+    def _encode_single_value_as_dynamic_attr(value, element_type):
+        if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
+            return value
+        elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
+            return str(value)
+        elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
+            return value
         else:
-            decoded = value
-        return models.AttributeValue(storage_type, decoded)
+            assert False, "Value wasn't formatted for cql query"
+
+    def _decode_value(self, value, storage_type, is_predefined):
+        if not is_predefined:
+            value = json.loads(value)
+
+        return models.AttributeValue(storage_type, value)
+
+    @staticmethod
+    def _decode_single_value(value, element_type):
+        if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
+            return value
+        elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
+            return Decimal(value)
+        elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
+            return value
+        else:
+            assert False, "Value wasn't formatted for cql query"
 
     def select_item(self, context, table_name, indexed_condition_map,
                     select_type=None, limit=None, consistent=True,
@@ -670,7 +707,9 @@ class CassandraStorageImpl():
         schema = self.describe_table(context, table_name)
         hash_name = schema.key_attributes[0]
         try:
-            hash_value = indexed_condition_map[hash_name].arg
+            hash_value = self._encode_predefined_attr_value(
+                indexed_condition_map[hash_name].arg
+            )
 
             query += " AND {}={}".format(
                 self.SYSTEM_COLUMN_HASH, hash_value)

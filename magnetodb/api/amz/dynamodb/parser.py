@@ -358,6 +358,17 @@ class Types():
                  Values.BETWEEN]
     }
 
+    QUERY_OPERATOR = {
+        "type": "string",
+        "enum": [Values.EQ,
+                 Values.LE,
+                 Values.LT,
+                 Values.GE,
+                 Values.GT,
+                 Values.BEGINS_WITH,
+                 Values.BETWEEN]
+    }
+
 
 class Parser():
     DYNAMODB_TO_STORAGE_TYPE_MAP = {
@@ -605,7 +616,7 @@ class Parser():
     @classmethod
     def parse_expected_attribute_conditions(
             cls, expected_attribute_conditions_json):
-        expected_item_conditions = {}
+        expected_attribute_conditions = {}
 
         for (attr_name, dynamodb_condition) in (
                 expected_attribute_conditions_json.iteritems()):
@@ -615,7 +626,7 @@ class Parser():
             )
             if dynamodb_condition_type == Props.EXISTS:
                 assert isinstance(dynamodb_condition_value, bool)
-                expected_item_conditions[attr_name] = (
+                expected_attribute_conditions[attr_name] = (
                     models.ExpectedCondition.exists()
                     if dynamodb_condition_value else
                     models.ExpectedCondition.not_exists()
@@ -625,14 +636,14 @@ class Parser():
                 (dynamodb_attr_type, dynamodb_attr_value) = (
                     dynamodb_condition_value.items()[0]
                 )
-                expected_item_conditions[attr_name] = (
+                expected_attribute_conditions[attr_name] = (
                     models.ExpectedCondition.eq(
                         cls.decode_attr_value(
                             dynamodb_attr_type, dynamodb_attr_value
                         )
                     )
                 )
-        return expected_item_conditions
+        return expected_attribute_conditions
 
     @staticmethod
     def format_consumed_capacity(return_consumed_capacity, table_schema):
@@ -665,3 +676,51 @@ class Parser():
             }
 
         return consumed_capacity
+
+    @classmethod
+    def parse_query_attribute_conditions(
+            cls, attribute_conditions_json):
+        attribute_conditions = {}
+
+        for (attr_name, dynamodb_condition) in (
+                attribute_conditions_json.iteritems()):
+            dynamodb_condition_type = (
+                dynamodb_condition[Props.COMPARISON_OPERATOR]
+            )
+            condition_args = map(
+                cls.decode_attr_value,
+                dynamodb_condition[Props.ATTRIBUTE_VALUE_LIST].iteritems()
+            )
+
+            if dynamodb_condition_type == Values.EQ:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = [
+                    models.IndexedCondition.eq(condition_args[0])
+                ]
+            elif dynamodb_condition_type == Values.GT:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = models.IndexedCondition.gt(
+                    condition_args[0]
+                )
+            elif dynamodb_condition_type == Values.LT:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = models.IndexedCondition.lt(
+                    condition_args[0]
+                )
+            elif dynamodb_condition_type == Values.GE:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = models.IndexedCondition.ge(
+                    condition_args[0]
+                )
+            elif dynamodb_condition_type == Values.LE:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = models.IndexedCondition.le(
+                    condition_args[0]
+                )
+            elif dynamodb_condition_type == Values.BEGINS_WITH:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = models.IndexedCondition.le(
+                    condition_args[0]
+                )
+
+        return attribute_conditions
