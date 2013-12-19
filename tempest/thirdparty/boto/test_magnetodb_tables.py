@@ -15,20 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-#import boto.dynamodb2
-#import os
-#import json
-#from boto.dynamodb2.table import Table
-#from boto.dynamodb2.items import Item
-#import boto.dynamodb2.fields
-#import boto.dynamodb2.types
-#from datetime import datetime
-#from boto.dynamodb.types import Binary
-#
-#print os.environ
-################################################################################
 from random import choice
-import datetime
+#import datetime
 
 from tempest.common.utils import data_utils
 from tempest.test import call_until_true
@@ -36,6 +24,9 @@ from tempest.thirdparty.boto.test import MagnetoDBTestCase
 
 
 class MagnetoDBTablesTest(MagnetoDBTestCase):
+
+    table_name = "yyekovenko_table1"
+    #table_name = "EmailSecurity--tempest-489078663"
 
     def _create_email_security_table(self, table_name):
         key_schema = [
@@ -100,6 +91,9 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         to_headers = ["%s@mail.com" % data_utils.rand_name()
                       for _ in range(10)]
         emails = []
+
+        expected = {}
+
         for _ in range(usercount):
             # generate emails
             email = "%s@mail.com" % data_utils.rand_name()
@@ -117,7 +111,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                     "from_header": {"S": choice(from_headers)},
                     "to_header": {"S": choice(to_headers)},
                 }
-                resp = self.client.put_item(table_name, item)
+                resp = self.client.put_item(table_name, item, expected=expected)
 
     def _wait_for_table_created(self, table_name, timeout=120, interval=3):
         def check():
@@ -139,57 +133,49 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         #
         self.assertTrue(self._wait_for_table_created(table_name))
 
+    def test_put_item(self):
         #table_name = "EmailSecurity--tempest-489078663"
-        #self._populate_email_security_table(table_name, 10, 100)
+        self._populate_email_security_table(self.table_name, 1, 3)
+        pass
 
     def test_describe_table(self):
-        #table_name = "table--tempest-2034358728"
-        table_name = "test_table"
-        resp = self.client.describe_table(table_name)
+        resp = self.client.describe_table(self.table_name)
         print resp
 
-    #def test_get_item(self):
-    #    resp = self.client.get_item(table_name='table--tempest-2034358728',
-    #                                key={"attribute1": {"S": "item1"}})
-    #    print resp
-    #
-    #    pass
+    def test_get_item(self):
+        # todo these data taken from magnetodb. Don't delete (while no scan)
+        key = {"user_id": {"S": "test-tempest-555188452@mail.com"},
+               "date_message_id": {
+                   "S": "2013-12-01T16:00:00.000001#"
+                        "4807956f-9c0b-407e-8cdb-e6357015e5d0"}}
 
+        resp = self.client.get_item(self.table_name, key=key)
+        print resp
+        pass
 
-        #conn = boto.dynamodb2.connect_to_region(
-        #        'us-east-1',
-        #        aws_access_key_id='ertert',
-        #        aws_secret_access_key='ertre')
-        #print "Table list:", conn.list_tables()
-        #
-        #test_table = Table('test_table', connection=conn)
-        #
-        #"""print json.dumps(test_table.describe(),
-        #                 sort_keys=True, indent=4, separators=(',', ': '))
-        #"""
-        #print json.dumps(Table('test2',connection=conn).describe(),
-        #                 sort_keys=True, indent=4, separators=(',', ': '))
-        #
-        #record = test_table.get_item(consistent=True, id='001', name='Name1')
-        #
-        #print record['id'], record['name']
-        #
-        #record['timestamp'] =  int(datetime.utcnow().strftime("%s"))
-        #record['str'] =  "string" + datetime.utcnow().strftime("%s")
-        #record['binary'] = Binary("long long text")
-        #record['string_set_test'] = {'1','22','dgs'}
-        #record['int_set'] = {1,2,3,4}
-        #record['binary_set_test'] = {Binary('one'), Binary('two'), Binary('three')}
-        #
-        #record.save()
-        #
-        #record2 = test_table.get_item(consistent=True, id='001', name='Name1')
-        #
-        #print type(record2['binary'].value)
-        #
-        #records = test_table.query(limit=100, reverse=True, index='town-index', id__eq='001', town__beginswith='S')
-        #
-        #print "Queried data:"
-        #
-        #for record in records:
-        #    print record['id'], record['name']
+    def test_list_tables(self):
+        resp = self.client.list_tables()
+        print resp
+
+    def test_query(self):
+
+        key_conditions = {
+            "user_id": {
+                "AttributeValueList": [
+                    {"S": "test-tempest-1967233908@mail.com"}
+                ],
+                "ComparisonOperator": "EQ"},
+            "date_message_id": {
+                "AttributeValueList": [
+                    {"S": "2013-12-01"},
+                    {"S": "2013-12-03"}
+                ],
+                "ComparisonOperator": "BETWEEN"
+            }
+        }
+        resp = self.client.query(table_name=self.table_name,
+                                 key_conditions=key_conditions)
+
+        self.assertTrue(resp.Count > 0)
+        for i in resp.Items:
+            print i

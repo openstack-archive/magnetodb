@@ -229,17 +229,18 @@ class ObjectClientS3(BotoClientBase):
 class APIClientDynamoDB(BotoClientBase):
 
     def connect_method(self, *args, **kwargs):
-        #return DynamoDBConnection(**kwargs)
-        from boto.regioninfo import RegionInfo
+        # connection to dynamodb
+        return DynamoDBConnection(**kwargs)
 
-        region_info = RegionInfo(name='magnetodb-1',
-                                 endpoint='172.18.169.204',
-                                 connection_cls=DynamoDBConnection)
-
-        return region_info.connect(
-            aws_access_key_id='AKIAJIM4GV44TAFS4VRA',
-            aws_secret_access_key='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',
-            is_secure=False, port=8080)
+        # connection to magnetodb on cz lab
+        #from boto.regioninfo import RegionInfo
+        #region_info = RegionInfo(name='magnetodb-1',
+        #                         endpoint='172.18.169.204',
+        #                         connection_cls=DynamoDBConnection)
+        #return region_info.connect(
+        #    aws_access_key_id='',
+        #    aws_secret_access_key='',
+        #    is_secure=False, port=8080)
 
     def __init__(self, config, *args, **kwargs):
         super(APIClientDynamoDB, self).__init__(config, *args, **kwargs)

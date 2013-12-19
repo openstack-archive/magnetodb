@@ -3,90 +3,61 @@ from boto.dynamodb2.layer1 import DynamoDBConnection
 from boto.regioninfo import RegionInfo
 import unittest
 
-#from tempest.thirdparty.boto
-
 
 class LoadTest1(FunkLoadTestCase):
 
-    def _create_email_security_table(self, conn, table_name):
-        key_schema = [
-            {"AttributeName": "user_id", "KeyType": "HASH"},
-            {"AttributeName": "date_message_id", "KeyType": "RANGE"}
-        ]
+    use_magneto = True
+    if use_magneto:
+        table_name = "yyekovenko_table1"
+    else:
+        table_name = 'EmailSecurity--tempest-489078663'
 
-        attribute_definitions = [
-            {"AttributeName": "user_id", "AttributeType": "S"},
-            {"AttributeName": "date_message_id", "AttributeType": "S"},
-            {"AttributeName": "message_id", "AttributeType": "S"},
-            {"AttributeName": "from_header", "AttributeType": "S"},
-            {"AttributeName": "to_header", "AttributeType": "S"},
-        ]
+    def setUp(self):
+        if self.use_magneto:
+            self.connection_data = {
+                "aws_access_key_id": "",
+                "aws_secret_access_key": "",
+                "region": RegionInfo(name='magnetodb-1',
+                                     endpoint='172.18.169.204',
+                                     connection_cls=DynamoDBConnection),
+                "port": 8080,
+                "is_secure": False
+            }
+        else:
+            self.connection_data = {
+                "aws_access_key_id": "AKIAJIM4GV44TAFS4VRA",
+                "aws_secret_access_key":
+                "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",
+                "region": RegionInfo(
+                    name='us-east-1',
+                    endpoint='dynamodb.us-east-1.amazonaws.com',
+                    connection_cls=DynamoDBConnection)
+            }
+        self.conn = DynamoDBConnection(**self.connection_data)
 
-        local_secondary_indexes = [
-            {
-                "IndexName": "message_id_index",
-                "KeySchema": [
-                    {"AttributeName": "user_id", "KeyType": "HASH"},
-                    {"AttributeName": "message_id", "KeyType": "RANGE"}
-                ],
-                "Projection": {"ProjectionType": "ALL"}
-            },
-            {
-                "IndexName": "from_header_index",
-                "KeySchema": [
-                    {"AttributeName": "user_id", "KeyType": "HASH"},
-                    {"AttributeName": "from_header", "KeyType": "RANGE"}
-                ],
-                "Projection": {"ProjectionType": "ALL"}
-            },
-            {
-                "IndexName": "to_header_index",
-                "KeySchema": [
-                    {"AttributeName": "user_id", "KeyType": "HASH"},
-                    {"AttributeName": "to_header", "KeyType": "RANGE"}
-                ],
-                "Projection": {"ProjectionType": "ALL"}
-            },
-        ]
+    def test_load_describe_table(self):
+        resp = self.conn.describe_table(table_name=self.table_name)
+        self.assertTrue(resp['Table']['TableName'] == self.table_name)
 
-        provisioned_throughput = {"ReadCapacityUnits": 1,
-                                  "WriteCapacityUnits": 1}
+    def test_load_list_tables(self):
+        resp = self.conn.list_tables()
+        self.assertTrue()
 
-        table = conn.create_table(attribute_definitions, table_name,
-                                  key_schema, provisioned_throughput,
-                                  local_secondary_indexes,
-                                  global_secondary_indexes=None)
-        return table
+    def test_load_get_item(self):
+        if self.use_magneto:
+            key = {"user_id": {"S": "test-tempest-555188452@mail.com"},
+                   "date_message_id": {
+                       "S": "2013-12-01T16:00:00.000001#"
+                            "4807956f-9c0b-407e-8cdb-e6357015e5d0"}}
+        else:
+            key = {"user_id": {"S": "test-tempest-1967233908@mail.com"},
+                   "date_message_id": {
+                       "S": "2013-12-01T16:00:00.000001#"
+                            "052fc4fd-6260-4e80-a6db-57b3af184fdc"}}
 
-    def test1(self):
-
-        self.connection_data = {
-            "aws_access_key_id": "AKIAJIM4GV44TAFS4VRA",
-            "aws_secret_access_key": "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",
-            "region": "magnetodb-1",
-        }
-
-        region_info = RegionInfo(name='magnetodb-1',
-                                 endpoint='172.18.169.204',
-                                 connection_cls=DynamoDBConnection)
-
-        conn = region_info.connect(
-            aws_access_key_id='AKIAJIM4GV44TAFS4VRA',
-            aws_secret_access_key='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',
-            is_secure=False, port=8080)
-
-        table = self._create_email_security_table(conn, "yyekovenko_table1")
-
-        #conn = DynamoDBConnection(**self.connection_data)
-
-        resp = conn.list_tables()
-        print resp
-
-        #resp = conn.get_item(table_name='table--tempest-2034358728',
-        #                     key={"attribute1": {"S": "item1"}})
-
-
-        #assert "Item" in resp
+        resp = self.conn.get_item(table_name=self.table_name,
+                                  key=key)
+        assert "Item" in resp
 
 
 if __name__ in ('main', '__main__'):
