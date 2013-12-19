@@ -78,12 +78,30 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                                          global_secondary_indexes=None)
         return table
 
+    def _create_email_security_table2(self, table_name):
+        from boto.dynamodb2.table import Table, AllIndex, HashKey, RangeKey
+        from boto.dynamodb2.fields import BaseSchemaField
+
+        schema = [HashKey('user_id'),
+                  RangeKey('date_message_id'),
+                  BaseSchemaField('message_id'),
+                  BaseSchemaField('from_header'),
+                  BaseSchemaField('to_header')]
+
+        indexes = [
+            AllIndex('message_id_index',
+                     parts=[HashKey('user_id'), RangeKey('message_id')]),
+            AllIndex('from_header_index',
+                     parts=[HashKey('user_id'), RangeKey('from_header')]),
+            AllIndex('to_header_index',
+                     parts=[HashKey('user_id'), RangeKey('to_header')])
+        ]
+        throughput = {"read": 1, "write": 1}
+
+        return Table(table_name, schema, throughput, indexes, self.client)
+
     def _populate_email_security_table(self, table_name, usercount, itemcount):
-        # populate the table
-        dates = ['2013-12-01T16:00:00.000001', '2013-12-02T17:00:00.000001',
-                 '2013-12-03T18:00:00.000001', '2013-12-04T17:00:00.000001',
-                 '2013-12-05T20:00:00.000001', '2013-12-06T21:00:00.000001',
-                 '2013-12-07T22:00:00.000001']
+        dates = ['2013-12-0%sT16:00:00.000001' % i for i in range(1, 8)]
 
         from_headers = ["%s@mail.com" % data_utils.rand_name()
                         for _ in range(10)]
@@ -91,17 +109,15 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         to_headers = ["%s@mail.com" % data_utils.rand_name()
                       for _ in range(10)]
         emails = []
-
+        # TODO bug workaround
         expected = {}
 
         for _ in range(usercount):
-            # generate emails
             email = "%s@mail.com" % data_utils.rand_name()
             emails.append(email)
 
             for item in range(itemcount):
                 message_id = data_utils.rand_uuid()
-                #date = datetime.datetime.now().isoformat()
                 date = choice(dates)
                 # put item
                 item = {
@@ -112,6 +128,30 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                     "to_header": {"S": choice(to_headers)},
                 }
                 resp = self.client.put_item(table_name, item, expected=expected)
+
+    def _populate_email_security_table2(self, table_name, usercount, itemcount):
+        from boto.dynamodb2.table import Table
+
+        dates = ['2013-12-0%sT16:00:00.000001' % i for i in range(1, 8)]
+        from_headers = ["%s@mail.com" % data_utils.rand_name()
+                        for _ in range(10)]
+        to_headers = ["%s@mail.com" % data_utils.rand_name()
+                      for _ in range(10)]
+        emails = []
+        table = Table(table_name, self.client)
+        for _ in range(usercount):
+            email = '%s@mail.com' % data_utils.rand_name()
+            emails.append(email)
+
+            for _ in range(itemcount):
+                message_id = data_utils.rand_uuid()
+                resp = table.put_item({
+                    'user_id': email,
+                    'date_message_id': choice(dates) + "#" + message_id,
+                    'message_id': message_id,
+                    'from_header': choice(from_headers),
+                    'to_header': choice(to_headers)}
+                )
 
     def _wait_for_table_created(self, table_name, timeout=120, interval=3):
         def check():
