@@ -67,11 +67,6 @@ class QueryDynamoDBAction(DynamoDBAction):
                 }
             },
 
-            parser.Props.LIMIT: {
-                "type": "integer",
-                "minimum": 0
-            },
-
             parser.Props.RETURN_CONSUMED_CAPACITY: (
                 parser.Types.RETURN_CONSUMED_CAPACITY
             ),

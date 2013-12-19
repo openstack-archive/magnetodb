@@ -702,8 +702,12 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
-        query = "SELECT * FROM {}.{} WHERE ".format(
-            context.tenant, table_name)
+        select_type = select_type or models.SelectType.all()
+
+        select = 'COUNT(*)' if select_type.is_count else '*'
+
+        query = "SELECT {} FROM {}.{} WHERE ".format(
+            select, context.tenant, table_name)
 
         where = self._conditions_as_string(indexed_condition_map)
 
@@ -746,6 +750,9 @@ class CassandraStorageImpl():
             query.consistency_level = cluster.ConsistencyLevel.QUORUM
 
         rows = self._execute_query(query)
+
+        if select_type.is_count:
+            return [{'count': models.AttributeValue.number(rows[0]['count'])}]
 
         # process results
 
