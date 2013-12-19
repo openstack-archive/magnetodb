@@ -223,7 +223,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         storage.select_item(
             IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            attributes_to_get=IgnoreArg(), limit=IgnoreArg(),
+            select_type=IgnoreArg(), limit=IgnoreArg(),
             consistent=IgnoreArg()
         ).AndReturn(
             [

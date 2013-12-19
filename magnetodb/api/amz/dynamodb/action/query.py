@@ -20,9 +20,9 @@ from magnetodb import storage
 from magnetodb.storage import models
 
 
-class GetItemDynamoDBAction(DynamoDBAction):
+class QueryDynamoDBAction(DynamoDBAction):
     schema = {
-        "required": [parser.Props.KEY,
+        "required": [parser.Props.KEY_CONDITIONS,
                      parser.Props.TABLE_NAME],
         "properties": {
             parser.Props.ATTRIBUTES_TO_GET: {
@@ -32,18 +32,40 @@ class GetItemDynamoDBAction(DynamoDBAction):
                     "pattern": parser.ATTRIBUTE_NAME_PATTERN
                 }
             },
+
             parser.Props.CONSISTENT_READ: {
                 "type": "boolean"
             },
-            parser.Props.KEY: {
+
+            parser.Props.EXCLUSIVE_START_KEY: {
                 "type": "object",
                 "patternProperties": {
                     parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
                 }
             },
+
+            parser.Props.INDEX_NAME: {
+                "type": "string",
+                "pattern": parser.INDEX_NAME_PATTERN
+            },
+
+            parser.Props.KEY_CONDITIONS: parser.Types.QUERY_CONDITIONS,
+
+            parser.Props.LIMIT: {
+                "type": "integer",
+                "minimum": 0
+            },
+
             parser.Props.RETURN_CONSUMED_CAPACITY: (
                 parser.Types.RETURN_CONSUMED_CAPACITY
             ),
+
+            parser.Props.SCAN_INDEX_FORWARD: {
+                "type": "boolean"
+            },
+
+            parser.Props.SELECT: parser.Types.SELECT,
+
             parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
         }
     }
@@ -56,16 +78,29 @@ class GetItemDynamoDBAction(DynamoDBAction):
             parser.Props.ATTRIBUTES_TO_GET, None
         )
 
-        select_type = (
-            models.SelectType.all()
-            if attributes_to_get is None else
-            models.AttributeToGet.specified(attributes_to_get)
-        )
+        if attributes_to_get is not None:
+            attributes_to_get = frozenset(attributes_to_get)
 
-        # parse key_attributes
-        key_attributes = parser.Parser.parse_item_attributes(
-            self.action_params[parser.Props.KEY]
+        # parse exclusive_start_key_attributes
+        exclusive_start_key_attributes = self.action_params.get(
+            parser.Props.EXCLUSIVE_START_KEY, None
         )
+        if exclusive_start_key_attributes is not None:
+            exclusive_start_key_attributes = (
+                parser.Parser.parse_item_attributes(
+                    exclusive_start_key_attributes
+                )
+            )
+
+        index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
+
+        key_conditions = self.action_params.get(parser.Props.KEY_CONDITIONS,
+                                                None)
+        if key_conditions is not None:
+            key_conditions = parser.Parser.parse_attribute_conditions(
+                key_conditions
+            )
+
 
         # TODO(dukhlov):
         # it would be nice to validate given table_name, key_attributes and
@@ -75,10 +110,17 @@ class GetItemDynamoDBAction(DynamoDBAction):
             parser.Props.CONSISTENT_READ, False
         )
 
+        limit = self.action_params.get(parser.Props.LIMIT, None)
+
         return_consumed_capacity = self.action_params.get(
             parser.Props.RETURN_CONSUMED_CAPACITY,
             parser.Values.RETURN_CONSUMED_CAPACITY_NONE
         )
+
+        order_asc =  self.action_params.get(
+            parser.Props.SCAN_INDEX_FORWARD, None
+        )
+
 
         # format conditions to get item
         indexed_condition_map = {
@@ -89,7 +131,8 @@ class GetItemDynamoDBAction(DynamoDBAction):
         # get item
         result = storage.select_item(
             self.context, table_name, indexed_condition_map,
-            select_type=select_type, limit=2, consistent=consistent_read)
+            attributes_to_get=attributes_to_get, limit=2,
+            consistent=consistent_read)
 
         assert len(result) == 1
 

@@ -99,6 +99,10 @@ class Props():
     ATTRIBUTE_VALUE_LIST = "AttributeValueList"
     COMPARISON_OPERATOR = "ComparisonOperator"
 
+    EXCLUSIVE_START_KEY = "ExclusiveStartKey"
+    KEY_CONDITIONS = "KeyConditions"
+    SCAN_INDEX_FORWARD = "ScanIndexForward"
+    
 
 class Values():
     ATTRIBUTE_TYPE_STRING = TYPE_STRING
