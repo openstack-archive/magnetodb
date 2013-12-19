@@ -655,8 +655,12 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
-        query = "SELECT * FROM {}.{} WHERE ".format(
-            context.tenant, table_name)
+        select_type = select_type or models.SelectType.all()
+
+        select = 'COUNT(*)' if select_type.is_count else '*'
+
+        query = "SELECT {} FROM {}.{} WHERE ".format(
+            select, context.tenant, table_name)
 
         where = self._conditions_as_string(indexed_condition_map)
 
@@ -698,15 +702,14 @@ class CassandraStorageImpl():
 
         rows = self._execute_query(query)
 
+        if select_type.is_count:
+            return [{'count': models.AttributeValue.number(rows[0]['count'])}]
+
         # process results
 
         prefix_len = len(self.USER_COLUMN_PREFIX)
         attr_defs = {attr.name: attr.type for attr in schema.attribute_defs}
         result = []
-
-        if select_type and (
-                select_type.type == models.SelectType.SELECT_TYPE_COUNT):
-            return len(rows)
 
         attributes_to_get = select_type.attributes if select_type else None
 

@@ -654,6 +654,22 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self.assertEqual(1, len(result))
 
+    def test_select_count(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {'id': models.Condition.eq(1),
+                        'range': models.Condition.eq('1')}
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.count())
+
+        self.assertEqual(1, len(result))
+        self.assertEqual(1, result[0]['count'].value)
+
 
 class TestCassandraUpdateItem(TestCassandraBase):
     def test_update_item_put_str(self):

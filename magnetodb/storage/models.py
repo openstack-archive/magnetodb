@@ -14,6 +14,9 @@
 #    under the License.
 
 
+import decimal
+
+
 class ModelBase(object):
 
     _data_fields = []
@@ -122,7 +125,6 @@ class AttributeValue(ModelBase):
     @property
     def type(self):
         return self._type
-
 
     @property
     def is_str(self):
@@ -258,7 +260,7 @@ class SelectType(object):
     SELECT_TYPE_COUNT = "count"
 
     _allowed_types = {SELECT_TYPE_ALL, SELECT_TYPE_ALL_PROJECTED,
-                      SELECT_TYPE_SPECIFIED}
+                      SELECT_TYPE_SPECIFIED, SELECT_TYPE_COUNT}
 
     def __init__(self, select_type, attributes=None):
         assert select_type in self._allowed_types, (
@@ -291,6 +293,22 @@ class SelectType(object):
     @classmethod
     def specified_attributes(cls, attributes):
         return cls(cls.SELECT_TYPE_ALL_PROJECTED, frozenset(attributes))
+
+    @property
+    def is_count(self):
+        return self._select_type == self.SELECT_TYPE_COUNT
+
+    @property
+    def is_all(self):
+        return self._select_type == self.SELECT_TYPE_ALL
+
+    @property
+    def is_all_projected(self):
+        return self._select_type == self.SELECT_TYPE_ALL_PROJECTED
+
+    @property
+    def is_specified(self):
+        return self._select_type == self.SELECT_TYPE_SPECIFIED
 
 
 class WriteItemBatchableRequest(object):
