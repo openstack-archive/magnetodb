@@ -60,7 +60,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                                 "items": parser.ITEM_VALUE
                             },
                             parser.Props.COMPARISON_OPERATOR: (
-                                parser.Types.COMPARISON_OPERATOR
+                                parser.Types.QUERY_OPERATOR
                             )
                         }
                     }

@@ -358,7 +358,7 @@ class Types():
                  Values.BETWEEN]
     }
 
-    COMPARISON_OPERATOR = {
+    QUERY_OPERATOR = {
         "type": "string",
         "enum": [Values.EQ,
                  Values.LE,

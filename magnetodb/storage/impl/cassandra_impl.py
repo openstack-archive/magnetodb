@@ -15,6 +15,7 @@
 
 from decimal import Decimal
 import json
+import binascii
 
 from cassandra import cluster
 from cassandra import decoder
@@ -457,7 +458,7 @@ class CassandraStorageImpl():
         query = "DELETE FROM {}.{} WHERE ".format(
             context.tenant, delete_request.table_name)
 
-        where = self._conditions_as_string(delete_request.key_attribute_map)
+        where = self._primary_key_as_string(delete_request.key_attribute_map)
 
         query += where
 
@@ -470,14 +471,8 @@ class CassandraStorageImpl():
 
         return True
 
-    def _condition_as_string(self, attr, condition_or_attr_value):
+    def _condition_as_string(self, attr, condition):
         name = self.USER_COLUMN_PREFIX + attr
-
-        condition = (
-            models.Condition.eq(condition_or_attr_value)
-            if isinstance(condition_or_attr_value, models.AttributeValue) else
-            condition_or_attr_value
-        )
 
         if condition.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
             if condition.arg:
@@ -495,6 +490,12 @@ class CassandraStorageImpl():
         return " AND ".join((self._condition_as_string(attr, cond)
                              for attr, cond
                              in condition_map.iteritems()))
+
+    def _primary_key_as_string(self, key_map):
+        return " AND ".join((
+            "{}={}".format(self.USER_COLUMN_PREFIX + attr_name,
+                           self._encode_predefined_attr_value(attr_value))
+            for attr_name, attr_value in key_map.iteritems()))
 
     def execute_write_batch(self, context, write_request_list, durable=True):
         """
@@ -530,7 +531,7 @@ class CassandraStorageImpl():
         set_clause = self._updates_as_string(
             schema, key_attribute_map, attribute_action_map)
 
-        where = self._conditions_as_string(key_attribute_map)
+        where = self._primary_key_as_string(key_attribute_map)
 
         query = "UPDATE {}.{} SET {} WHERE {}".format(
             context.tenant, table_name, set_clause, where
@@ -552,7 +553,7 @@ class CassandraStorageImpl():
         #update system_hash
         hash_name = schema.key_attributes[0]
         hash_value = self._encode_predefined_attr_value(
-            key_attribute_map[hash_name].arg
+            key_attribute_map[hash_name]
         )
 
         set_clause += ",{}={}".format(self.SYSTEM_COLUMN_HASH, hash_value)
@@ -587,7 +588,7 @@ class CassandraStorageImpl():
                 self.SYSTEM_COLUMN_ATTR_EXIST,
                 self.SYSTEM_COLUMN_ATTR_EXIST, attr)
 
-        value = self._encode_value(update.value, is_predefined)
+            value = self._encode_value(update.value, is_predefined)
 
         op = '='
         value_update = "{} {} {}".format(name, op, value)
@@ -622,7 +623,7 @@ class CassandraStorageImpl():
         elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
             return str(value)
         elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            return "textAsBlob('{}')".format(value)
+            return "0x{}".format(binascii.hexlify(value))
         else:
             assert False, "Value wasn't formatted for cql query"
 
@@ -637,7 +638,7 @@ class CassandraStorageImpl():
         else:
             val = self._encode_single_value_as_dynamic_attr(
                 val, attr_value.type.element_type)
-        return "textAsBlob('{}')".format(json.dumps(val))
+        return "0x{}".format(binascii.hexlify(json.dumps(val)))
 
     @staticmethod
     def _encode_single_value_as_dynamic_attr(value, element_type):
@@ -654,18 +655,7 @@ class CassandraStorageImpl():
         if not is_predefined:
             value = json.loads(value)
 
-        if storage_type.collection_type:
-            decoded = frozenset(map(
-                lambda e: self._decode_single_value(
-                    e, storage_type.element_type
-                ),
-                value
-            ))
-        else:
-            decoded = self._decode_single_value(value,
-                                                storage_type.element_type)
-
-        return models.AttributeValue(storage_type, decoded)
+        return models.AttributeValue(storage_type, value)
 
     @staticmethod
     def _decode_single_value(value, element_type):
