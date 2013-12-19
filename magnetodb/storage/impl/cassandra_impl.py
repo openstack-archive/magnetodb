@@ -594,26 +594,24 @@ class CassandraStorageImpl():
 
         return ", ".join((value_update, type_update, exists))
 
-    @classmethod
-    def _encode_value(cls, attr_value, is_predefined):
+    def _encode_value(self, attr_value, is_predefined):
         if attr_value is None:
             return 'null'
         elif is_predefined:
-            return cls._encode_predefined_attr_value(attr_value)
+            return self._encode_predefined_attr_value(attr_value)
         else:
-            return cls._encode_dynamic_attr_value(attr_value)
+            return self._encode_dynamic_attr_value(attr_value)
 
-    @classmethod
-    def _encode_predefined_attr_value(cls, attr_value):
+    def _encode_predefined_attr_value(self, attr_value):
         if attr_value.type.collection_type:
             values = ','.join(map(
-                lambda el: cls._encode_single_value_as_predefined_attr(
+                lambda el: self._encode_single_value_as_predefined_attr(
                     el, attr_value.type.element_type),
                 attr_value.value
             ))
             return '{{{}}}'.format(values)
         else:
-            return cls._encode_single_value_as_predefined_attr(
+            return self._encode_single_value_as_predefined_attr(
                 attr_value.value, attr_value.type.element_type
             )
 
@@ -628,16 +626,16 @@ class CassandraStorageImpl():
         else:
             assert False, "Value wasn't formatted for cql query"
 
-    @classmethod
-    def _encode_dynamic_attr_value(cls, attr_value):
+    def _encode_dynamic_attr_value(self, attr_value):
         val = attr_value.value
         if attr_value.type.collection_type:
             val = map(
-                lambda el: cls._encode_single_value_as_dynamic_attr(
-                    el, attr_value.type.element_type),
+                lambda el: self._encode_single_value_as_dynamic_attr(
+                    el, attr_value.type.element_type
+                ),
                 val)
         else:
-            val = cls._encode_single_value_as_dynamic_attr(
+            val = self._encode_single_value_as_dynamic_attr(
                 val, attr_value.type.element_type)
         return "textAsBlob('{}')".format(json.dumps(val))
 
@@ -652,20 +650,20 @@ class CassandraStorageImpl():
         else:
             assert False, "Value wasn't formatted for cql query"
 
-    @classmethod
-    def _decode_value(cls, value, storage_type, is_predefined):
+    def _decode_value(self, value, storage_type, is_predefined):
         if not is_predefined:
             value = json.loads(value)
 
         if storage_type.collection_type:
             decoded = frozenset(map(
-                lambda e: cls._decode_single_value(e,
-                                                   storage_type.element_type),
+                lambda e: self._decode_single_value(
+                    e, storage_type.element_type
+                ),
                 value
             ))
         else:
-            decoded = cls._decode_single_value(value,
-                                               storage_type.element_type)
+            decoded = self._decode_single_value(value,
+                                                storage_type.element_type)
 
         return models.AttributeValue(storage_type, decoded)
 
@@ -754,10 +752,6 @@ class CassandraStorageImpl():
         prefix_len = len(self.USER_COLUMN_PREFIX)
         attr_defs = {attr.name: attr.type for attr in schema.attribute_defs}
         result = []
-
-        if select_type and (
-                select_type.type == models.SelectType.SELECT_TYPE_COUNT):
-            return len(rows)
 
         attributes_to_get = select_type.attributes if select_type else None
 

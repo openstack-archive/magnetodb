@@ -102,7 +102,7 @@ class Props():
     EXCLUSIVE_START_KEY = "ExclusiveStartKey"
     KEY_CONDITIONS = "KeyConditions"
     SCAN_INDEX_FORWARD = "ScanIndexForward"
-    
+
 
 class Values():
     ATTRIBUTE_TYPE_STRING = TYPE_STRING
@@ -358,7 +358,7 @@ class Types():
                  Values.BETWEEN]
     }
 
-    QUERY_CONDITION_TYPE = {
+    COMPARISON_OPERATOR = {
         "type": "string",
         "enum": [Values.EQ,
                  Values.LE,
@@ -722,27 +722,5 @@ class Parser():
                 attribute_conditions[attr_name] = models.IndexedCondition.le(
                     condition_args[0]
                 )
-            assert len(dynamodb_condition) == 1
-            (dynamodb_condition_type, dynamodb_condition_value) = (
-                dynamodb_condition.items()[0]
-            )
-            if dynamodb_condition_type == Props.EXISTS:
-                assert isinstance(dynamodb_condition_value, bool)
-                expected_item_conditions[attr_name] = (
-                    models.ExpectedCondition.exists()
-                    if dynamodb_condition_value else
-                    models.ExpectedCondition.not_exists()
-                )
-            elif dynamodb_condition_type == Props.VALUE:
-                assert len(dynamodb_condition_value) == 1
-                (dynamodb_attr_type, dynamodb_attr_value) = (
-                    dynamodb_condition_value.items()[0]
-                )
-                expected_item_conditions[attr_name] = (
-                    models.ExpectedCondition.eq(
-                        cls.decode_attr_value(
-                            dynamodb_attr_type, dynamodb_attr_value
-                        )
-                    )
-                )
-        return expected_item_conditions
+
+        return attribute_conditions

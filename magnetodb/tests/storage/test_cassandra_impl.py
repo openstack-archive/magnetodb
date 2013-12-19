@@ -288,8 +288,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
         del_req = models.DeleteItemRequest(
             self.table_name,
             {
-                'id': models.Condition.eq(models.AttributeValue.number(1)),
-                'range': models.Condition.eq(models.AttributeValue.str('1'))
+                'id': models.AttributeValue.number(1),
+                'range': models.AttributeValue.str('1')
             }
         )
 
@@ -308,8 +308,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(models.AttributeValue.number(1)),
-             'range': models.Condition.eq(models.AttributeValue.str('2'))})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('2')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req)
@@ -340,8 +340,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(models.AttributeValue.number(1)),
-             'range': models.Condition.eq(models.AttributeValue.str('1'))})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req, expected)
@@ -371,8 +371,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(models.AttributeValue.number(1)),
-             'range': models.Condition.eq(models.AttributeValue.str('1'))})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req, expected)
@@ -403,8 +403,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(models.AttributeValue.number(1)),
-             'range': models.Condition.eq(models.AttributeValue.str('1'))})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req, expected)
@@ -434,8 +434,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(models.AttributeValue.number(1)),
-             'range': models.Condition.eq(models.AttributeValue.str('1'))})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req, expected)
@@ -580,7 +580,6 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': models.IndexedCondition.gt(models.AttributeValue.str('0'))
         }
 
-
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
@@ -597,7 +596,6 @@ class TestCassandraSelectItem(TestCassandraBase):
             'id': models.Condition.eq(models.AttributeValue.number(1)),
             'range': models.IndexedCondition.gt(models.AttributeValue.str('1'))
         }
-
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
@@ -631,7 +629,6 @@ class TestCassandraSelectItem(TestCassandraBase):
             'id': models.Condition.eq(models.AttributeValue.number(1)),
             'range': models.IndexedCondition.ge(models.AttributeValue.str('2'))
         }
-
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
@@ -708,8 +705,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -741,8 +738,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -774,8 +771,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -807,8 +804,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -841,8 +838,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -874,8 +871,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -908,8 +905,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -941,8 +938,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -974,8 +971,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -1007,8 +1004,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -1041,8 +1038,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -1075,8 +1072,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -1109,8 +1106,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._insert_data()
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         actions = {
@@ -1154,8 +1151,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1178,8 +1175,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1202,8 +1199,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1227,8 +1224,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1252,8 +1249,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1277,8 +1274,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1301,8 +1298,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1325,8 +1322,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1349,8 +1346,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1374,8 +1371,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1399,8 +1396,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1424,8 +1421,8 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1450,8 +1447,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1476,8 +1473,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1502,8 +1499,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1529,8 +1526,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1556,8 +1553,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1583,8 +1580,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1609,8 +1606,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1635,8 +1632,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1661,8 +1658,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1688,8 +1685,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1715,8 +1712,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
@@ -1742,8 +1739,8 @@ class TestCassandraPutItem(TestCassandraBase):
                                             expected_condition_map={1: 1})
 
         keys = {
-            'id': models.Condition.eq(models.AttributeValue.number(1)),
-            'range': models.Condition.eq(models.AttributeValue.str('1'))
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
