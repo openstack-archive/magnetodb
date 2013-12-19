@@ -33,9 +33,6 @@ CONF = magnetodb_api_fake.CONF
 
 
 class BotoIntegrationTest(unittest.TestCase):
-    CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
-                               'etc/magnetodb-test.conf')
-
     PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
                                      'etc/api-paste-test.ini')
 
@@ -223,7 +220,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         storage.select_item(
             IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            attributes_to_get=IgnoreArg(), limit=IgnoreArg(),
+            select_type=IgnoreArg(), limit=IgnoreArg(),
             consistent=IgnoreArg()
         ).AndReturn(
             [

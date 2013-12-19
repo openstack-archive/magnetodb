@@ -21,11 +21,12 @@ from magnetodb.api.amz.dynamodb import parser
 
 class ListTablesDynamoDBAction(DynamoDBAction):
     schema = {
+        "type": "object",
         "properties": {
             parser.Props.EXCLUSIVE_START_TABLE_NAME:  parser.Types.TABLE_NAME,
             parser.Props.LIMIT: {
                 "type": "integer",
-                "minimum": 0,
+                "minimum": 0
             }
         }
     }
