@@ -209,6 +209,21 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.VerifyAll()
 
+    def test_delete_item(self):
+        self.storage_mocker.StubOutWithMock(storage, 'delete_item')
+        storage.delete_item(
+            IgnoreArg(), IgnoreArg(),
+            expected_condition_map=IgnoreArg()).AndReturn(True)
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
+        blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
+        table.delete_item(hash_key=1, range_key="range")
+
+        self.storage_mocker.VerifyAll()
+
     def test_get_item(self):
         self.storage_mocker.StubOutWithMock(storage, 'select_item')
 

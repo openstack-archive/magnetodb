@@ -225,6 +225,12 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         self.assertTrue(resp.Count > 0)
         return resp
 
+    def delete_item(self, table_name, user_id, date_message_id):
+        key = {"user_id": {"S": user_id},
+               "date_message_id": {
+                   "S": date_message_id}}
+        return self.client.delete_item(table_name, key)
+
     def test_scenario(self):
         tname = self.create_table()
         resp = self.describe_table(tname)
@@ -233,5 +239,8 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         res = self.get_item(tname,
                             new_items[0]['user_id']['S'],
                             new_items[0]['date_message_id']['S'])
+        # res = self.client.delete_item(tname,
+        #                               new_items[0]['user_id']['S'],
+        #                               new_items[0]['date_message_id']['S'])
 
         # query = self.query(new_items[0]['user_id']['S'])

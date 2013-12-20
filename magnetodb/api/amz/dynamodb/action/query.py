@@ -143,7 +143,7 @@ class QueryDynamoDBAction(DynamoDBAction):
             for name, value in key_conditions.iteritems()
         }
 
-        # get item
+        # select item
         result = storage.select_item(
             self.context, table_name, indexed_condition_map,
             attributes_to_get=attributes_to_get, limit=limit,
