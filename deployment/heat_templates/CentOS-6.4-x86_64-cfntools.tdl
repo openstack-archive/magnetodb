@@ -1,0 +1,60 @@
+<template>
+  <name>CentOS-6.4-x86_64-cfntools</name>
+  <os>
+    <name>CentOS-6</name>
+    <version>3</version>
+    <arch>x86_64</arch>
+    <install type='iso'>
+      <iso>file:/home/ftp/CentOS-6.4-x86_64-bin-DVD1.iso</iso>
+    </install>
+  </os>
+  <description>CentOS 6.4</description>
+  <commands>
+#    <command name='lockroot'> 
+#passwd -l root
+#    </command>
+    <command name='network-config'>
+cat > /etc/sysconfig/network-scripts/ifcfg-eth0 &lt;&lt; EOF
+DEVICE="eth0"
+BOOTPROTO=dhcp
+NM_CONTROLLED="yes"
+ONBOOT="yes"
+EOF
+    </command>
+    <command name='nozeroconf'>
+echo "NOZEROCONF=yes" >> /etc/sysconfig/network
+    </command>
+    <command name='setpw'>
+useradd test
+echo test:testpass | chpasswd
+echo root:rootpass | chpasswd
+   </command>
+    <command name='packages'>
+yum -y update
+curl -O http://ftp.ps.pl/pub/Linux/fedora-epel/6/i386/epel-release-6-8.noarch.rpm
+rpm -Uvh epel-release-6-8.noarch.rpm
+yum -y install perl python python-setuptools cloud-init python-pip gcc python-devel
+yum -y install mc wget
+yum -y install httpd
+pip-python install argparse 'boto==2.5.2' heat-cfntools
+cfn-create-aws-symlinks --source /usr/bin
+rm -f epel-release-6-8.noarch.rpm
+wget http://192.168.1.1/magnetodb/magnetodb.repo  -O /etc/yum.repos.d/magnetodb.repo 
+yum -y install cassandra20 jdk openstack-magnetodb 
+alternatives --install /usr/bin/java java /usr/java/jdk1.7.0_45/jre/bin/java 20000
+echo `echo |  alternatives --config java | grep 'jdk1.7.0_45' | sed s/"*"/""/g | sed s/"+"/""/ | awk '{ print $1 }'` | alternatives --config java
+    </command>
+    <command name='sshd-config'>
+echo  "test" > /etc/ssh/date
+cp /etc/ssh/sshd_config /etc/ssh/sshd_config.original
+sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
+sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
+    </command>
+    <command name='post-configuration'>
+chmod +x /etc/rc.d/rc.local
+chkconfig --level 345 sshd on
+chkconfig --level 345 httpd on
+rm -rf /etc/udev/rules.d/70-persistent-net.rules
+    </command>
+  </commands>
+</template>
