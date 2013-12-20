@@ -24,7 +24,7 @@ from boto.dynamodb2.layer1 import DynamoDBConnection
 from tempest import exceptions
 
 import logging
-logging.basicConfig(filename="/home/yyekovenko/boto1.log", level=logging.DEBUG)
+logging.basicConfig(filename="/home/dukhlov/boto1.log", level=logging.DEBUG)
 
 import boto
 import boto.ec2
@@ -235,7 +235,8 @@ class APIClientDynamoDB(BotoClientBase):
         # connection to magnetodb on cz lab
         from boto.regioninfo import RegionInfo
         region_info = RegionInfo(name='magnetodb-1',
-                                 endpoint='172.18.169.204',
+                                 # endpoint='172.18.169.204',
+                                 endpoint='localhost',
                                  connection_cls=DynamoDBConnection)
         return region_info.connect(
             aws_access_key_id='',

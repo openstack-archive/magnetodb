@@ -5,3 +5,4 @@ pep8==1.4.5
 testrepository>=0.0.17
 testtools>=0.9.32
 wsgi_intercept
+nose

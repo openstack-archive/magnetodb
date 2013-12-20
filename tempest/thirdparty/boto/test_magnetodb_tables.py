@@ -165,18 +165,19 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         return call_until_true(check, timeout, interval)
 
     def create_table(self):
-        table_name = data_utils.rand_name("EmailSecurity-")
+        name = data_utils.rand_name("EmailSecurity_")
+        table_name = filter(lambda x: x != '-', name)
         table = self._create_email_security_table(table_name)
 
         print table_name
         self.assertEqual(type(table), dict)
-        self.assertEqual(table.TableName, table_name)
-        self.assertEqual(table.TableStatus, "CREATING")
+        self.assertEqual(table["TableName"], table_name)
+        self.assertIn(table["TableStatus"], ["CREATING", "ACTIVE"])
         self.assertTrue(self._wait_for_table_created(table_name))
         return table_name
 
     def put_item(self, table_name):
-        return self._populate_email_security_table(self.table_name, 1, 3)
+        return self._populate_email_security_table(table_name, 1, 3)
         pass
 
     def describe_table(self, table_name):
@@ -184,7 +185,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         print resp
         return resp
 
-    def get_item(self, user_id, date_message_id):
+    def get_item(self, table_name, user_id, date_message_id):
         # todo these data taken from magnetodb. Don't delete (while no scan)
         #key = {"user_id": {"S": "test-tempest-555188452@mail.com"},
         #       "date_message_id": {
@@ -195,7 +196,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                "date_message_id": {
                    "S": date_message_id}}
 
-        resp = self.client.get_item(self.table_name, key=key)
+        resp = self.client.get_item(table_name, key=key)
         return resp
 
     def list_tables(self):
@@ -229,8 +230,8 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         resp = self.describe_table(tname)
         tables = self.list_tables()
         new_items = self.put_item(tname)
-        res = self.get_item(new_items[0]['user_id']['S'],
+        res = self.get_item(tname,
+                            new_items[0]['user_id']['S'],
                             new_items[0]['date_message_id']['S'])
 
-        query = self.query(new_items[0]['user_id']['S'])
-
+        # query = self.query(new_items[0]['user_id']['S'])
