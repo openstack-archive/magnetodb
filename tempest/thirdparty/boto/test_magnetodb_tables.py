@@ -25,8 +25,8 @@ from tempest.thirdparty.boto.test import MagnetoDBTestCase
 
 class MagnetoDBTablesTest(MagnetoDBTestCase):
 
-    table_name = "yyekovenko_table1"
-    #table_name = "EmailSecurity--tempest-489078663"
+    table_name = "yyekovenko_table1" # magnetodb
+    #table_name = "EmailSecurity--tempest-489078663" # dynamodb
 
     def _create_email_security_table(self, table_name):
         key_schema = [
@@ -112,6 +112,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         # TODO bug workaround
         expected = {}
 
+        new_items = []
         for _ in range(usercount):
             email = "%s@mail.com" % data_utils.rand_name()
             emails.append(email)
@@ -127,7 +128,9 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                     "from_header": {"S": choice(from_headers)},
                     "to_header": {"S": choice(to_headers)},
                 }
+                new_items.append(item)
                 resp = self.client.put_item(table_name, item, expected=expected)
+        return new_items
 
     def _populate_email_security_table2(self, table_name, usercount, itemcount):
         from boto.dynamodb2.table import Table
@@ -161,48 +164,51 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         return call_until_true(check, timeout, interval)
 
-    def test_create_table(self):
-
+    def create_table(self):
         table_name = data_utils.rand_name("EmailSecurity-")
         table = self._create_email_security_table(table_name)
-        #
+
         print table_name
         self.assertEqual(type(table), dict)
         self.assertEqual(table.TableName, table_name)
         self.assertEqual(table.TableStatus, "CREATING")
-        #
         self.assertTrue(self._wait_for_table_created(table_name))
+        return table_name
 
-    def test_put_item(self):
-        #table_name = "EmailSecurity--tempest-489078663"
-        self._populate_email_security_table(self.table_name, 1, 3)
+    def put_item(self, table_name):
+        return self._populate_email_security_table(self.table_name, 1, 3)
         pass
 
-    def test_describe_table(self):
-        resp = self.client.describe_table(self.table_name)
+    def describe_table(self, table_name):
+        resp = self.client.describe_table(table_name)
         print resp
+        return resp
 
-    def test_get_item(self):
+    def get_item(self, user_id, date_message_id):
         # todo these data taken from magnetodb. Don't delete (while no scan)
-        key = {"user_id": {"S": "test-tempest-555188452@mail.com"},
+        #key = {"user_id": {"S": "test-tempest-555188452@mail.com"},
+        #       "date_message_id": {
+        #           "S": "2013-12-01T16:00:00.000001#"
+        #                "4807956f-9c0b-407e-8cdb-e6357015e5d0"}}
+
+        key = {"user_id": {"S": user_id},
                "date_message_id": {
-                   "S": "2013-12-01T16:00:00.000001#"
-                        "4807956f-9c0b-407e-8cdb-e6357015e5d0"}}
+                   "S": date_message_id}}
 
         resp = self.client.get_item(self.table_name, key=key)
-        print resp
-        pass
+        return resp
 
-    def test_list_tables(self):
+    def list_tables(self):
         resp = self.client.list_tables()
-        print resp
+        return resp
 
-    def test_query(self):
+    def query(self, user_id):
 
         key_conditions = {
             "user_id": {
                 "AttributeValueList": [
-                    {"S": "test-tempest-1967233908@mail.com"}
+                    #{"S": "test-tempest-1967233908@mail.com"}
+                    {"S": user_id}
                 ],
                 "ComparisonOperator": "EQ"},
             "date_message_id": {
@@ -215,7 +221,16 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         }
         resp = self.client.query(table_name=self.table_name,
                                  key_conditions=key_conditions)
-
         self.assertTrue(resp.Count > 0)
-        for i in resp.Items:
-            print i
+        return resp
+
+    def test_scenario(self):
+        tname = self.create_table()
+        resp = self.describe_table(tname)
+        tables = self.list_tables()
+        new_items = self.put_item(tname)
+        res = self.get_item(new_items[0]['user_id']['S'],
+                            new_items[0]['date_message_id']['S'])
+
+        query = self.query(new_items[0]['user_id']['S'])
+
