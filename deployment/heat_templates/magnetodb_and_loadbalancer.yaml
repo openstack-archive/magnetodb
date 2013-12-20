@@ -26,7 +26,7 @@ resources:
   server1 :
     type: OS::Nova::Server
     properties:
-      name: 2-Server1
+      name: Server1
       image: {Ref: image}
       flavor: {Ref: flavor}
       key_name: {Ref: key_name}
@@ -39,13 +39,15 @@ resources:
             sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
             sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
             sed -i s/"pipeline = tokenauth contextwrapper magnetodb_app"/"pipeline = contextwrapper magnetodb_app"/g /etc/magnetodb/api-paste.ini
-            sed -i s/'"contact_points": \["localhost"\]'/'"contact_points": \["cassandra1_fixed_ips,cassandra2_fixed_ips,cassandra3_fixed_ips"\]'/g /etc/magnetodb/magnetodb.conf
+            sed -i s/'"contact_points": \["localhost"\]'/'"contact_points": \["cassandra1_fixed_ips","cassandra2_fixed_ips","cassandra3_fixed_ips"\]'/g /etc/magnetodb/magnetodb.conf
             echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
             echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
             echo cassandra3_fixed_ips cassandra3 >> /etc/hosts
             echo cassandra1_fixed_ips >> /root/cassandra_data
             echo cassandra2_fixed_ips >> /root/cassandra_data
             echo cassandra3_fixed_ips >> /root/cassandra_data
+            test -f /etc/yum.repos.d/cicd.repo &&  rm -f /etc/yum.repos.d/cicd.repo;  wget http://172.18.169.206/magnetodb-repo/cicd.repo -O /etc/yum.repos.d/cicd.repo
+            yum clean all && yum -y update openstack-magnetodb
             /etc/init.d/openstack-magnetodb-api start
             /etc/init.d/sshd restart
             chkconfig openstack-magnetodb-api on
@@ -56,7 +58,7 @@ resources:
   server2 :
     type: OS::Nova::Server
     properties:
-      name: 2-Server2
+      name: Server2
       image: {Ref: image}
       flavor: {Ref: flavor}
       key_name: {Ref: key_name}
@@ -69,13 +71,15 @@ resources:
             sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
             sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
             sed -i s/"pipeline = tokenauth contextwrapper magnetodb_app"/"pipeline = contextwrapper magnetodb_app"/g /etc/magnetodb/api-paste.ini
-            sed -i s/'"contact_points": \["localhost"\]'/'"contact_points": \["cassandra1_fixed_ips,cassandra2_fixed_ips,cassandra3_fixed_ips"\]'/g /etc/magnetodb/magnetodb.conf
+            sed -i s/'"contact_points": \["localhost"\]'/'"contact_points": \["cassandra1_fixed_ips","cassandra2_fixed_ips","cassandra3_fixed_ips"\]'/g /etc/magnetodb/magnetodb.conf
             echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
             echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
             echo cassandra3_fixed_ips cassandra3 >> /etc/hosts
             echo cassandra1_fixed_ips >> /root/cassandra_data
             echo cassandra2_fixed_ips >> /root/cassandra_data
             echo cassandra3_fixed_ips >> /root/cassandra_data
+            test -f /etc/yum.repos.d/cicd.repo &&  rm -f /etc/yum.repos.d/cicd.repo;  wget http://172.18.169.206/magnetodb-repo/cicd.repo -O /etc/yum.repos.d/cicd.repo
+            yum clean all && yum -y update openstack-magnetodb
             /etc/init.d/openstack-magnetodb-api start
             /etc/init.d/sshd restart
             chkconfig openstack-magnetodb-api on
@@ -106,7 +110,7 @@ resources:
   cassandra1 :
     type: OS::Nova::Server
     properties:
-      name: 2-Cassandra1
+      name: Cassandra1
       image: {Ref: image}
       flavor: {Ref: flavor}
       key_name: {Ref: key_name}
@@ -145,7 +149,7 @@ resources:
   cassandra2 :
     type: OS::Nova::Server
     properties:
-      name: 2-Cassandra2
+      name: Cassandra2
       image: {Ref: image}
       flavor: {Ref: flavor}
       key_name: {Ref: key_name}
@@ -184,7 +188,7 @@ resources:
   cassandra3 :
     type: OS::Nova::Server
     properties:
-      name: 2-Cassandra3
+      name: Cassandra3
       image: {Ref: image}
       flavor: {Ref: flavor}
       key_name: {Ref: key_name}
