@@ -168,14 +168,17 @@ class CassandraStorageImpl():
                 self.SYSTEM_COLUMN_HASH_INDEX_NAME)
 
         except Exception as e:
-            LOG.error("Table {} creation failed. Cleaning up...".format(
+            LOG.error("Table {} creation failed.".format(
                 table_schema.table_name))
-
-            try:
-                self.delete_table(context, table_schema.table_name)
-            except Exception:
-                LOG.error("Failed table {} was not deleted".format(
-                    table_schema.table_name))
+            LOG.error(e.message)
+            # LOG.error("Table {} creation failed. Cleaning up...".format(
+            #     table_schema.table_name))
+            #
+            # try:
+            #     self.delete_table(context, table_schema.table_name)
+            # except Exception:
+            #     LOG.error("Failed table {} was not deleted".format(
+            #         table_schema.table_name))
 
             raise e
 
