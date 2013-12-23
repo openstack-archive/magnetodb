@@ -218,8 +218,6 @@ class BotoIntegrationTest(unittest.TestCase):
 
         table = Table('test_table', connection=self.DYNAMODB_CON)
 
-        blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
-        blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
         table.delete_item(hash_key=1, range_key="range")
 
         self.storage_mocker.VerifyAll()
