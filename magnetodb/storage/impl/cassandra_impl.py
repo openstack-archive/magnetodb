@@ -677,12 +677,14 @@ class CassandraStorageImpl():
         else:
             assert False, "Value wasn't formatted for cql query"
 
-    def select_item(self, context, table_name, indexed_condition_map,
-                    select_type=None, limit=None, consistent=True,
+    def select_item(self, context, table_name, index_name,
+                    indexed_condition_map, select_type=None, limit=None,
+                    exclusive_start_key=None, consistent=True,
                     order_type=None):
         """
         @param context: current request context
         @param table_name: String, name of table to get item from
+        @param index_name: String, name of index to search with
         @param indexed_condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be selected
@@ -690,17 +692,18 @@ class CassandraStorageImpl():
                     will be returned. If not specified, default will be used:
                         SelectType.all() for query on table and
                         SelectType.all_projected() for query on index
-
         @param limit: maximum count of returned values
+        @param exclusive_start_key: key attribute names to AttributeValue
+                    instance
         @param consistent: define is operation consistent or not (by default it
                     is not consistent)
-        @param order_type: defines order of returned rows
+        @param order_type: defines order of returned rows, if 'None' - default
+                    order will be used
 
         @return list of attribute name to AttributeValue mappings
 
         @raise BackendInteractionException
         """
-
         select_type = select_type or models.SelectType.all()
 
         select = 'COUNT(*)' if select_type.is_count else '*'
@@ -751,7 +754,7 @@ class CassandraStorageImpl():
         rows = self._execute_query(query)
 
         if select_type.is_count:
-            return [{'count': models.AttributeValue.number(rows[0]['count'])}]
+            return rows[0]['count']
 
         # process results
 

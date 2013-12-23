@@ -84,13 +84,22 @@ class QueryDynamoDBAction(DynamoDBAction):
     def __call__(self):
         table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
-        # get attributes_to_get
+        # parse select_type
         attributes_to_get = self.action_params.get(
             parser.Props.ATTRIBUTES_TO_GET, None
         )
-
         if attributes_to_get is not None:
             attributes_to_get = frozenset(attributes_to_get)
+
+        select = self.action_params.get(
+            parser.Props.SELECT, None
+        )
+
+        index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
+
+        select_type = parser.Parser.parse_select_type(select,
+                                                      attributes_to_get,
+                                                      index_name)
 
         # parse exclusive_start_key_attributes
         exclusive_start_key_attributes = self.action_params.get(
@@ -103,18 +112,19 @@ class QueryDynamoDBAction(DynamoDBAction):
                 )
             )
 
-        #index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
+        # parse indexed_condition_map
+        key_conditions = parser.Parser.parse_query_attribute_conditions(
+            self.action_params.get(parser.Props.KEY_CONDITIONS, None)
+        )
 
-        key_conditions = self.action_params.get(parser.Props.KEY_CONDITIONS,
-                                                None)
-        if key_conditions is not None:
-            key_conditions = parser.Parser.parse_attribute_conditions(
-                key_conditions
-            )
+        indexed_condition_map = {
+            name: models.IndexedCondition.eq(value)
+            for name, value in key_conditions.iteritems()
+        }
 
         # TODO(dukhlov):
         # it would be nice to validate given table_name, key_attributes and
-        # attributes_to_get  to schema expectation
+        # attributes_to_get to schema expectation
 
         consistent_read = self.action_params.get(
             parser.Props.CONSISTENT_READ, False
@@ -137,24 +147,25 @@ class QueryDynamoDBAction(DynamoDBAction):
             models.ORDER_TYPE_DESC
         )
 
-        # format conditions to get item
-        indexed_condition_map = {
-            name: models.IndexedCondition.eq(value)
-            for name, value in key_conditions.iteritems()
-        }
-
         # select item
         result = storage.select_item(
-            self.context, table_name, indexed_condition_map,
-            attributes_to_get=attributes_to_get, limit=limit,
-            consistent=consistent_read, order_type=order_type)
-
-        assert len(result) == 1
+            self.context, table_name, index_name, indexed_condition_map,
+            select_type=select_type, limit=limit, consistent=consistent_read,
+            order_type=order_type
+        )
 
         # format response
-        response = {
-            parser.Props.ITEM: parser.Parser.format_item_attributes(result[0])
-        }
+        if select_type.type == models.SelectType.SELECT_TYPE_COUNT:
+            response = {
+                parser.Props.COUNT: result
+            }
+        else:
+            response = {
+                parser.Props.COUNT: len(result),
+                parser.Props.ITEMS: [
+                    parser.Parser.format_item_attributes(row) for row in result
+                ]
+            }
 
         if (return_consumed_capacity !=
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
