@@ -22,9 +22,9 @@ from magnetodb.storage import models
 from magnetodb.common import exception
 
 
-class PutItemDynamoDBAction(DynamoDBAction):
+class DeleteItemDynamoDBAction(DynamoDBAction):
     schema = {
-        "required": [parser.Props.ITEM,
+        "required": [parser.Props.KEY,
                      parser.Props.TABLE_NAME],
         "properties": {
             parser.Props.EXPECTED: {
@@ -54,7 +54,7 @@ class PutItemDynamoDBAction(DynamoDBAction):
                 }
             },
 
-            parser.Props.ITEM: {
+            parser.Props.KEY: {
                 "type": "object",
                 "patternProperties": {
                     parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
@@ -87,8 +87,8 @@ class PutItemDynamoDBAction(DynamoDBAction):
         )
 
         # parse item
-        item_attributes = parser.Parser.parse_item_attributes(
-            self.action_params[parser.Props.ITEM]
+        key_attributes = parser.Parser.parse_item_attributes(
+            self.action_params[parser.Props.KEY]
         )
 
         # parse return_values param
@@ -108,10 +108,9 @@ class PutItemDynamoDBAction(DynamoDBAction):
         )
 
         # put item
-        result = storage.put_item(
+        result = storage.delete_item(
             self.context,
-            models.PutItemRequest(table_name, item_attributes),
-            if_not_exist=False,
+            models.DeleteItemRequest(table_name, key_attributes),
             expected_condition_map=expected_item_conditions)
 
         if not result:
@@ -121,8 +120,11 @@ class PutItemDynamoDBAction(DynamoDBAction):
         response = {}
 
         if return_values != parser.Values.RETURN_VALUES_NONE:
+            # TODO(dukhlov):
+            # It is needed to return all deleted item attributes
+            #
             response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(item_attributes)
+                parser.Parser.format_item_attributes(key_attributes)
             )
 
         if (return_item_collection_metrics !=

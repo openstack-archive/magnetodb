@@ -19,6 +19,7 @@ from magnetodb.api.amz.dynamodb.action import describe_table
 from magnetodb.api.amz.dynamodb.action import delete_table
 from magnetodb.api.amz.dynamodb.action import put_item
 from magnetodb.api.amz.dynamodb.action import get_item
+from magnetodb.api.amz.dynamodb.action import delete_item
 
 capabilities = {
     'ListTables': list_tables.ListTablesDynamoDBAction,
@@ -26,5 +27,7 @@ capabilities = {
     'CreateTable': create_table.CreateTableDynamoDBAction,
     'DeleteTable': delete_table.DeleteTableDynamoDBAction,
     'PutItem': put_item.PutItemDynamoDBAction,
-    'GetItem': get_item.GetItemDynamoDBAction
+    'GetItem': get_item.GetItemDynamoDBAction,
+    'DeleteItem': delete_item.DeleteItemDynamoDBAction
+
 }

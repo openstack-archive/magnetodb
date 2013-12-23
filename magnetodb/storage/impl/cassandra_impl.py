@@ -123,7 +123,7 @@ class CassandraStorageImpl():
         """
 
         query = "CREATE TABLE \"{}\".\"{}\" (".format(context.tenant,
-                                              table_schema.table_name)
+                                                      table_schema.table_name)
 
         for attr_def in table_schema.attribute_defs:
             query += "\"{}\" {},".format(
@@ -131,7 +131,8 @@ class CassandraStorageImpl():
                 self.STORAGE_TO_CASSANDRA_TYPES[attr_def.type])
 
         query += "\"{}\" map<text, blob>,".format(self.SYSTEM_COLUMN_ATTRS)
-        query += "\"{}\" map<text, text>,".format(self.SYSTEM_COLUMN_ATTR_TYPES)
+        query += "\"{}\" map<text, text>,".format(
+            self.SYSTEM_COLUMN_ATTR_TYPES)
         query += "\"{}\" set<text>,".format(self.SYSTEM_COLUMN_ATTR_EXIST)
 
         prefixed_attrs = [self.USER_COLUMN_PREFIX + name
