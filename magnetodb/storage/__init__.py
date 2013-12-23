@@ -186,6 +186,7 @@ def select_item(context, table_name, indexed_condition_map, select_type=None,
 
     @raise BackendInteractionException
     """
-    return __get_storage_impl().select_item(context, table_name, index_name,
-                                            indexed_condition_map, select_type,
-                                            limit, consistent, order_type)
+    return __get_storage_impl().select_item(
+        context, table_name, indexed_condition_map, select_type,
+        index_name, limit, consistent, order_type
+    )
