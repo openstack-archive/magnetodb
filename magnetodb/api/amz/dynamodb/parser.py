@@ -102,6 +102,10 @@ class Props():
     EXCLUSIVE_START_KEY = "ExclusiveStartKey"
     KEY_CONDITIONS = "KeyConditions"
     SCAN_INDEX_FORWARD = "ScanIndexForward"
+    SELECT = "SELECT"
+
+    COUNT = "COUNT"
+    ITEMS = "ITEMS"
 
 
 class Values():
@@ -678,6 +682,27 @@ class Parser():
         return consumed_capacity
 
     @classmethod
+    def parse_select_type(cls, select, attributes_to_get,
+                          select_on_index=False):
+        if select is None or select == Values.SPECIFIC_ATTRIBUTES:
+            assert attributes_to_get
+            return models.SelectType.specified_attributes(attributes_to_get)
+
+        assert not attributes_to_get
+
+        if select == Values.ALL_ATTRIBUTES:
+            return models.SelectType.all()
+
+        if select == Values.ALL_PROJECTED_ATTRIBUTES:
+            assert select_on_index
+            return models.SelectType.all_projected()
+
+        if select == Values.COUNT:
+            return models.SelectType.count()
+
+        assert False, "Select type wasn't recognized"
+
+    @classmethod
     def parse_query_attribute_conditions(
             cls, attribute_conditions_json):
         attribute_conditions = {}
@@ -719,8 +744,15 @@ class Parser():
                 )
             elif dynamodb_condition_type == Values.BEGINS_WITH:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = models.IndexedCondition.le(
-                    condition_args[0]
+                attribute_conditions[attr_name] = (
+                    models.IndexedCondition.begins_with(condition_args[0])
+                )
+            elif dynamodb_condition_type == Values.BETWEEN:
+                assert len(condition_args) == 2
+                assert condition_args[0].type == condition_args[1].type
+                attribute_conditions[attr_name] = (
+                    models.IndexedCondition.btw(condition_args[0],
+                                                condition_args[1])
                 )
 
         return attribute_conditions

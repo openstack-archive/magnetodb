@@ -712,8 +712,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             self.context, self.table_name, indexed_cond,
             models.SelectType.count())
 
-        self.assertEqual(1, len(result))
-        self.assertEqual(1, result[0]['count'].value)
+        self.assertEqual(1, result)
 
 
 class TestCassandraUpdateItem(TestCassandraBase):

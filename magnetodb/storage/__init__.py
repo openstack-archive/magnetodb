@@ -161,8 +161,8 @@ def update_item(context, table_name, key_attribute_map, attribute_action_map,
                                             expected_condition_map)
 
 
-def select_item(context, table_name, indexed_condition_map,
-                select_type=None, limit=None,
+def select_item(context, table_name, indexed_condition_map, select_type=None,
+                index_name=None, limit=None, exclusive_start_key=None,
                 consistent=True, order_type=None):
     """
     @param context: current request context
@@ -174,7 +174,9 @@ def select_item(context, table_name, indexed_condition_map,
                 returned. If not specified, default will be used:
                     SelectType.all() for query on table and
                     SelectType.all_projected() for query on index
+    @param index_name: String, name of index to search with
     @param limit: maximum count of returned values
+    @param exclusive_start_key: key attribute names to AttributeValue instance
     @param consistent: define is operation consistent or not (by default it is
                 not consistent)
     @param order_type: defines order of returned rows, if 'None' - default
@@ -184,7 +186,7 @@ def select_item(context, table_name, indexed_condition_map,
 
     @raise BackendInteractionException
     """
-    return __get_storage_impl().select_item(context, table_name,
-                                            indexed_condition_map,
-                                            select_type,
-                                            limit, consistent, order_type)
+    return __get_storage_impl().select_item(
+        context, table_name, indexed_condition_map, select_type,
+        index_name, limit, consistent, order_type
+    )
