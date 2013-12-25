@@ -8,7 +8,7 @@ class LoadTest1(FunkLoadTestCase):
 
     use_magneto = True
     if use_magneto:
-        table_name = "yyekovenko_table1"
+        table_name = "testtempest1663303952"
     else:
         table_name = 'EmailSecurity--tempest-489078663'
 
@@ -40,20 +40,20 @@ class LoadTest1(FunkLoadTestCase):
         self.assertTrue(resp['Table']['TableName'] == self.table_name)
 
     def test_load_list_tables(self):
-        resp = self.conn.list_tables()
-        self.assertTrue()
+        self.conn.list_tables()
 
     def test_load_get_item(self):
         if self.use_magneto:
-            key = {"user_id": {"S": "test-tempest-555188452@mail.com"},
+            key = {"user_id": {"S": "test-tempest-1537133273@mail.com"},
                    "date_message_id": {
-                       "S": "2013-12-01T16:00:00.000001#"
-                            "4807956f-9c0b-407e-8cdb-e6357015e5d0"}}
-        else:
-            key = {"user_id": {"S": "test-tempest-1967233908@mail.com"},
-                   "date_message_id": {
-                       "S": "2013-12-01T16:00:00.000001#"
-                            "052fc4fd-6260-4e80-a6db-57b3af184fdc"}}
+                       'S': '2013-12-07T16:00:00.000001#'
+                            'bd5a32f8-adda-4925-ab7d-103b0fc19d96'}
+                   }
+        #else:
+        #    key = {"user_id": {"S": "test-tempest-1967233908@mail.com"},
+        #           "date_message_id": {
+        #               "S": "2013-12-01T16:00:00.000001#"
+        #                    "052fc4fd-6260-4e80-a6db-57b3af184fdc"}}
 
         resp = self.conn.get_item(table_name=self.table_name,
                                   key=key)

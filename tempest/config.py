@@ -476,12 +476,21 @@ BotoGroup = [
     cfg.StrOpt('s3_url',
                default="http://localhost:8080",
                help="S3 URL"),
+    cfg.StrOpt('magnetodb_url',
+               default="http://localhost:8080",
+               help="MagnetoDB URL"),
+    cfg.StrOpt('region',
+               default='',
+               help="The key-value-storage region name to use. If empty, the "
+                    "value of identity.region is used instead. If no such "
+                    "region is found in the service catalog, the first found "
+                    "one is used."),
     cfg.StrOpt('aws_secret',
-               default="test",
+               default=None,
                help="AWS Secret Key",
                secret=True),
     cfg.StrOpt('aws_access',
-               default="test",
+               default=None,
                help="AWS Access Key"),
     cfg.StrOpt('s3_materials_path',
                default="/opt/stack/devstack/files/images/"
@@ -500,7 +509,7 @@ BotoGroup = [
                default="m1.tiny",
                help="Instance type"),
     cfg.IntOpt('http_socket_timeout',
-               default=60,
+               default=180,
                help="boto Http socket timeout"),
     cfg.IntOpt('num_retries',
                default=1,
@@ -622,9 +631,12 @@ DebugGroup = [
 class TempestConfig:
     """Provides OpenStack configuration information."""
 
-    DEFAULT_CONFIG_DIR = os.path.join(
-        os.path.abspath(os.path.dirname(os.path.dirname(__file__))),
-        "etc")
+    # TODO(yyekovenko) Temporary change of path to file
+    #DEFAULT_CONFIG_DIR = os.path.join(
+    #    os.path.abspath(os.path.dirname(os.path.dirname(__file__))),
+    #    "etc")
+
+    DEFAULT_CONFIG_DIR = os.path.dirname(__file__)
 
     DEFAULT_CONFIG_FILE = "tempest.conf"
 
