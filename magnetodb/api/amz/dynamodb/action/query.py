@@ -113,14 +113,9 @@ class QueryDynamoDBAction(DynamoDBAction):
             )
 
         # parse indexed_condition_map
-        key_conditions = parser.Parser.parse_query_attribute_conditions(
+        indexed_condition_map = parser.Parser.parse_query_attribute_conditions(
             self.action_params.get(parser.Props.KEY_CONDITIONS, None)
         )
-
-        indexed_condition_map = {
-            name: models.IndexedCondition.eq(value)
-            for name, value in key_conditions.iteritems()
-        }
 
         # TODO(dukhlov):
         # it would be nice to validate given table_name, key_attributes and
