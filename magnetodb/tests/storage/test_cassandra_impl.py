@@ -845,6 +845,41 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self.assertEqual(1, result)
 
+    def test_select_item_exclusive_key(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        exclusive_start_key = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('0')
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name,
+            exclusive_start_key=exclusive_start_key)
+
+        self.assertEqual(1, len(result))
+        self._validate_data(result[0])
+
+    def test_select_item_exclusive_key_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        exclusive_start_key = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name,
+            exclusive_start_key=exclusive_start_key)
+
+        self.assertEqual(0, len(result))
+
 
 class TestCassandraUpdateItem(TestCassandraBase):
     def test_update_item_put_str(self):
