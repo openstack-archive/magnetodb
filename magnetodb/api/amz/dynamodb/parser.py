@@ -111,10 +111,6 @@ class Props():
     ITEMS = "Items"
     LAST_EVALUATED_KEY = "LastEvaluatedKey"
 
-    ITEMS = "Items"
-    LAST_EVALUATED_KEY = "LastEvaluatedKey"
-    COUNT = "Count"
-
 
 class Values():
     ATTRIBUTE_TYPE_STRING = TYPE_STRING
