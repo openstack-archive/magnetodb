@@ -94,6 +94,9 @@ class Props():
     CONSISTENT_READ = "ConsistentRead"
     KEY = "Key"
 
+    EXCLUSIVE_START_KEY = "ExclusiveStartKey"
+    SCAN_FILTER = "ScanFilter"
+    SELECT = "Select"
     SEGMENT = "Segment"
     TOTAL_SEGMENTS = "TotalSegments"
     ATTRIBUTE_VALUE_LIST = "AttributeValueList"
@@ -106,6 +109,10 @@ class Props():
 
     COUNT = "COUNT"
     ITEMS = "ITEMS"
+
+    ITEMS = "Items"
+    LAST_EVALUATED_KEY = "LastEvaluatedKey"
+    COUNT = "Count"
 
 
 class Values():

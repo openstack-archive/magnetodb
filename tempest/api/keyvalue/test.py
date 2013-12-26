@@ -28,83 +28,83 @@ from boto import s3
 import keystoneclient.exceptions
 
 import tempest.clients
-#from tempest.common.utils.file_utils import have_effective_read_access
+from tempest.common.utils.file_utils import have_effective_read_access
 import tempest.config
 from tempest import exceptions
 from tempest.openstack.common import log as logging
 import tempest.test
-from tempest.thirdparty.boto.utils.wait import re_search_wait
-from tempest.thirdparty.boto.utils.wait import state_wait
-from tempest.thirdparty.boto.utils.wait import wait_exception
+from tempest.api.keyvalue.utils.wait import re_search_wait
+from tempest.api.keyvalue.utils.wait import state_wait
+from tempest.api.keyvalue.utils.wait import wait_exception
 
 
 LOG = logging.getLogger(__name__)
 
 
-#def decision_maker():
-#    A_I_IMAGES_READY = True  # ari,ami,aki
-#    S3_CAN_CONNECT_ERROR = None
-#    EC2_CAN_CONNECT_ERROR = None
-#    secret_matcher = re.compile("[A-Za-z0-9+/]{32,}")  # 40 in other system
-#    id_matcher = re.compile("[A-Za-z0-9]{20,}")
-#
-#    def all_read(*args):
-#        return all(map(have_effective_read_access, args))
-#
-#    config = tempest.config.TempestConfig()
-#    materials_path = config.boto.s3_materials_path
-#    ami_path = materials_path + os.sep + config.boto.ami_manifest
-#    aki_path = materials_path + os.sep + config.boto.aki_manifest
-#    ari_path = materials_path + os.sep + config.boto.ari_manifest
-#
-#    A_I_IMAGES_READY = all_read(ami_path, aki_path, ari_path)
-#    boto_logger = logging.getLogger('boto')
-#    level = boto_logger.logger.level
-#    boto_logger.logger.setLevel(orig_logging.CRITICAL)  # suppress logging
-#                                                        # for these
-#
-#    def _cred_sub_check(connection_data):
-#        if not id_matcher.match(connection_data["aws_access_key_id"]):
-#            raise Exception("Invalid AWS access Key")
-#        if not secret_matcher.match(connection_data["aws_secret_access_key"]):
-#            raise Exception("Invalid AWS secret Key")
-#        raise Exception("Unknown (Authentication?) Error")
-#    openstack = tempest.clients.Manager()
-#    try:
-#        if urlparse.urlparse(config.boto.ec2_url).hostname is None:
-#            raise Exception("Failed to get hostname from the ec2_url")
-#        ec2client = openstack.ec2api_client
-#        try:
-#            ec2client.get_all_regions()
-#        except exception.BotoServerError as exc:
-#                if exc.error_code is None:
-#                    raise Exception("EC2 target does not looks EC2 service")
-#                _cred_sub_check(ec2client.connection_data)
-#
-#    except keystoneclient.exceptions.Unauthorized:
-#        EC2_CAN_CONNECT_ERROR = "AWS credentials not set," +\
-#                                " faild to get them even by keystoneclient"
-#    except Exception as exc:
-#        EC2_CAN_CONNECT_ERROR = str(exc)
-#
-#    try:
-#        if urlparse.urlparse(config.boto.s3_url).hostname is None:
-#            raise Exception("Failed to get hostname from the s3_url")
-#        s3client = openstack.s3_client
-#        try:
-#            s3client.get_bucket("^INVALID*#()@INVALID.")
-#        except exception.BotoServerError as exc:
-#            if exc.status == 403:
-#                _cred_sub_check(s3client.connection_data)
-#    except Exception as exc:
-#        S3_CAN_CONNECT_ERROR = str(exc)
-#    except keystoneclient.exceptions.Unauthorized:
-#        S3_CAN_CONNECT_ERROR = "AWS credentials not set," +\
-#                               " faild to get them even by keystoneclient"
-#    boto_logger.logger.setLevel(level)
-#    return {'A_I_IMAGES_READY': A_I_IMAGES_READY,
-#            'S3_CAN_CONNECT_ERROR': S3_CAN_CONNECT_ERROR,
-#            'EC2_CAN_CONNECT_ERROR': EC2_CAN_CONNECT_ERROR}
+def decision_maker():
+    A_I_IMAGES_READY = True  # ari,ami,aki
+    S3_CAN_CONNECT_ERROR = None
+    EC2_CAN_CONNECT_ERROR = None
+    secret_matcher = re.compile("[A-Za-z0-9+/]{32,}")  # 40 in other system
+    id_matcher = re.compile("[A-Za-z0-9]{20,}")
+
+    def all_read(*args):
+        return all(map(have_effective_read_access, args))
+
+    config = tempest.config.TempestConfig()
+    materials_path = config.boto.s3_materials_path
+    ami_path = materials_path + os.sep + config.boto.ami_manifest
+    aki_path = materials_path + os.sep + config.boto.aki_manifest
+    ari_path = materials_path + os.sep + config.boto.ari_manifest
+
+    A_I_IMAGES_READY = all_read(ami_path, aki_path, ari_path)
+    boto_logger = logging.getLogger('boto')
+    level = boto_logger.logger.level
+    boto_logger.logger.setLevel(orig_logging.CRITICAL)  # suppress logging
+                                                        # for these
+
+    def _cred_sub_check(connection_data):
+        if not id_matcher.match(connection_data["aws_access_key_id"]):
+            raise Exception("Invalid AWS access Key")
+        if not secret_matcher.match(connection_data["aws_secret_access_key"]):
+            raise Exception("Invalid AWS secret Key")
+        raise Exception("Unknown (Authentication?) Error")
+    openstack = tempest.clients.Manager()
+    try:
+        if urlparse.urlparse(config.boto.ec2_url).hostname is None:
+            raise Exception("Failed to get hostname from the ec2_url")
+        ec2client = openstack.ec2api_client
+        try:
+            ec2client.get_all_regions()
+        except exception.BotoServerError as exc:
+                if exc.error_code is None:
+                    raise Exception("EC2 target does not looks EC2 service")
+                _cred_sub_check(ec2client.connection_data)
+
+    except keystoneclient.exceptions.Unauthorized:
+        EC2_CAN_CONNECT_ERROR = "AWS credentials not set," +\
+                                " faild to get them even by keystoneclient"
+    except Exception as exc:
+        EC2_CAN_CONNECT_ERROR = str(exc)
+
+    try:
+        if urlparse.urlparse(config.boto.s3_url).hostname is None:
+            raise Exception("Failed to get hostname from the s3_url")
+        s3client = openstack.s3_client
+        try:
+            s3client.get_bucket("^INVALID*#()@INVALID.")
+        except exception.BotoServerError as exc:
+            if exc.status == 403:
+                _cred_sub_check(s3client.connection_data)
+    except Exception as exc:
+        S3_CAN_CONNECT_ERROR = str(exc)
+    except keystoneclient.exceptions.Unauthorized:
+        S3_CAN_CONNECT_ERROR = "AWS credentials not set," +\
+                               " faild to get them even by keystoneclient"
+    boto_logger.logger.setLevel(level)
+    return {'A_I_IMAGES_READY': A_I_IMAGES_READY,
+            'S3_CAN_CONNECT_ERROR': S3_CAN_CONNECT_ERROR,
+            'EC2_CAN_CONNECT_ERROR': EC2_CAN_CONNECT_ERROR}
 
 
 class BotoExceptionMatcher(object):
@@ -197,19 +197,19 @@ class BotoTestCase(tempest.test.BaseTestCase):
     @classmethod
     def setUpClass(cls):
         super(BotoTestCase, cls).setUpClass()
-        #cls.conclusion = decision_maker()
-        # The trash contains cleanup functions and paramaters in tuples
+        cls.conclusion = decision_maker()
+        # The trash contains cleanup functions and parameters in tuples
         # (function, *args, **kwargs)
         cls._resource_trash_bin = {}
         cls._sequence = -1
-        #if (hasattr(cls, "EC2") and
-        #    cls.conclusion['EC2_CAN_CONNECT_ERROR'] is not None):
-        #    raise cls.skipException("EC2 " + cls.__name__ + ": " +
-        #                            cls.conclusion['EC2_CAN_CONNECT_ERROR'])
-        #if (hasattr(cls, "S3") and
-        #    cls.conclusion['S3_CAN_CONNECT_ERROR'] is not None):
-        #    raise cls.skipException("S3 " + cls.__name__ + ": " +
-        #                            cls.conclusion['S3_CAN_CONNECT_ERROR'])
+        if (hasattr(cls, "EC2") and
+                cls.conclusion['EC2_CAN_CONNECT_ERROR'] is not None):
+            raise cls.skipException("EC2 " + cls.__name__ + ": " +
+                                    cls.conclusion['EC2_CAN_CONNECT_ERROR'])
+        if (hasattr(cls, "S3") and
+                cls.conclusion['S3_CAN_CONNECT_ERROR'] is not None):
+            raise cls.skipException("S3 " + cls.__name__ + ": " +
+                                    cls.conclusion['S3_CAN_CONNECT_ERROR'])
 
     @classmethod
     def addResourceCleanUp(cls, function, *args, **kwargs):
@@ -387,8 +387,9 @@ class BotoTestCase(tempest.test.BaseTestCase):
         def _address_delete():
             # NOTE(afazekas): the filter gives back IP
             # even if it is not associated to my tenant
-            if (address.public_ip not in map(lambda a: a.public_ip,
-                self.ec2_client.get_all_addresses())):
+            if (address.public_ip not in map(
+                    lambda a: a.public_ip,
+                    self.ec2_client.get_all_addresses())):
                     return "DELETED"
             return "NOTDELETED"
 
@@ -669,15 +670,3 @@ for code in (('InternalError', 500),
             ('SlowDown', 503)):
     _add_matcher_class(BotoTestCase.s3_error_code.server,
                        code, base=ServerError)
-
-
-class MagnetoDBTestCase(BotoTestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        super(MagnetoDBTestCase, cls).setUpClass()
-        cls.os = tempest.clients.Manager()
-        cls.client = cls.os.dynamodb_client
-        # todo(yyekovenko) not sure yet if this error handling mechamizm needed
-        #cls.ec = cls.ec2_error_code
-
