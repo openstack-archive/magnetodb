@@ -24,13 +24,13 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
     # smoke
     def test_table_create_list_delete(self):
         tname = rand_name().replace('-', '')
-        rck = self.addResourceCleanUp(self.client.delete_table, tname)
         table = self.client.create_table(self.smoke_attrs,
                                          tname,
                                          self.smoke_schema,
                                          self.smoke_throughput,
                                          self.smoke_lsi,
                                          self.smoke_gsi)
+        rck = self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(type(table), dict)
         # TODO(yyekovenko) Later should be changed to just "CREATING" (async)
         self.assertIn(table["TableStatus"], ["CREATING", "ACTIVE"])
