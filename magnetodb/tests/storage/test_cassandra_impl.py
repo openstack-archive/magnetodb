@@ -474,8 +474,8 @@ class TestCassandraSelectItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_attr(self):
         self._create_table()
@@ -704,8 +704,8 @@ class TestCassandraSelectItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_between2(self):
         self._create_table()
@@ -725,8 +725,8 @@ class TestCassandraSelectItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_between_negative(self):
         self._create_table()
@@ -745,7 +745,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
 
     def test_select_item_begins_with(self):
         self._create_table()
@@ -764,8 +764,8 @@ class TestCassandraSelectItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_begins_with2(self):
         self._create_table()
@@ -784,8 +784,8 @@ class TestCassandraSelectItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self.assertIn('11', result[0]['range'].value)
+        self.assertEqual(1, result.count)
+        self.assertIn('11', result.items[0]['range'].value)
 
     def test_select_item_begins_with_negative(self):
         self._create_table()
@@ -803,7 +803,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
 
     def test_select_with_limit(self):
         self._create_table()
@@ -860,8 +860,8 @@ class TestCassandraSelectItem(TestCassandraBase):
             self.context, self.table_name,
             exclusive_start_key=exclusive_start_key)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_exclusive_key_negative(self):
         self._create_table()
@@ -878,7 +878,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             self.context, self.table_name,
             exclusive_start_key=exclusive_start_key)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
 
 
 class TestCassandraUpdateItem(TestCassandraBase):
