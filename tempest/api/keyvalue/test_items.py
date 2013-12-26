@@ -17,7 +17,6 @@
 
 from tempest.api.keyvalue.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
-from tempest.common.utils.data_utils import rand_uuid
 from tempest.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -28,22 +27,22 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
     def test_item_put_get_delete(self):
 
         tname = rand_name().replace('-', '')
-        self.client.create_table(self.attrs,
+        self.client.create_table(self.smoke_attrs,
                                  tname,
-                                 self.schema,
-                                 self.throughput,
-                                 self.lsi,
-                                 self.gsi)
+                                 self.smoke_schema,
+                                 self.smoke_throughput,
+                                 self.smoke_lsi,
+                                 self.smoke_gsi)
         self.assertTrue(self.wait_for_table_active(tname))
         self.addResourceCleanUp(self.client.delete_table, tname)
 
-        item = self.build_spam_item('a@mail.com', '2013-12-07T16:00:00.000001',
-                                    rand_uuid(), 'b@mail.com', 'c@mail.com')
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     'message text', 'John', '10')
         resp = self.client.put_item(tname, item)
         self.assertDictEqual(resp, {})
 
-        key = {'user_id': item['user_id'],
-               'date_message_id': item['date_message_id']}
+        key = {self.hashkey: item[self.hashkey],
+               self.rangekey: item[self.rangekey]}
 
         resp = self.client.get_item(tname, key)
         self.assertDictEqual(item, resp['Item'])
