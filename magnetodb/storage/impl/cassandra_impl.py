@@ -718,6 +718,14 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
+        schema = self.describe_table(context, table_name)
+        hash_name = schema.key_attributes[0]
+
+        try:
+            range_name = schema.key_attributes[1]
+        except IndexError:
+            range_name = None
+
         select_type = select_type or models.SelectType.all()
 
         select = 'COUNT(*)' if select_type.is_count else '*'
@@ -727,18 +735,27 @@ class CassandraStorageImpl():
 
         indexed_condition_map = indexed_condition_map or {}
 
+        exclusive_start_key = exclusive_start_key or {}
+
+        exclusive_range_cond = None
+
+        for key, val in exclusive_start_key.iteritems():
+            if key == hash_name:
+                indexed_condition_map[key] = models.Condition.eq(val)
+            elif key == range_name:
+                exclusive_range_cond = self._condition_as_string(
+                    range_name, models.IndexedCondition.gt(val))
+
         where = self._conditions_as_string(indexed_condition_map)
+
+        if exclusive_range_cond:
+            if where:
+                where += ' AND ' + exclusive_range_cond
+            else:
+                where = exclusive_range_cond
 
         if where:
             query += " WHERE " + where
-
-        schema = self.describe_table(context, table_name)
-        hash_name = schema.key_attributes[0]
-
-        try:
-            range_name = schema.key_attributes[1]
-        except IndexError:
-            range_name = None
 
         add_filtering, add_system_hash = self._add_filtering_and_sys_hash(
             schema, indexed_condition_map)
