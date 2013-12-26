@@ -182,7 +182,7 @@ def select_item(context, table_name, indexed_condition_map, select_type=None,
     @param order_type: defines order of returned rows, if 'None' - default
                 order will be used
 
-    @return list of attribute name to AttributeValue mappings
+    @return SelectResult instance
 
     @raise BackendInteractionException
     """

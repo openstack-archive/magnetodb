@@ -713,7 +713,7 @@ class CassandraStorageImpl():
         @param order_type: defines order of returned rows, if 'None' - default
                     order will be used
 
-        @return list of attribute name to AttributeValue mappings
+        @return SelectResult instance
 
         @raise BackendInteractionException
         """
@@ -772,7 +772,7 @@ class CassandraStorageImpl():
         rows = self._execute_query(query)
 
         if select_type.is_count:
-            return rows[0]['count']
+            return models.SelectResult(count=rows[0]['count'])
 
         # process results
 
@@ -809,131 +809,15 @@ class CassandraStorageImpl():
 
             result.append(record)
 
-        return result
+        count = len(result)
+        if limit and count == limit:
+            last_evaluated_key = {
+                hash_name: result[-1][hash_name],
+                range_name: result[-1][range_name]
+            }
+        else:
+            last_evaluated_key = None
 
-    def scan(self, context, table_name, condition_map, attributes_to_get=None,
-             limit=None, exclusive_start_key=None, consistent=False):
-        """
-        @param context: current request context
-        @param table_name: String, name of table to get item from
-        @param condition_map: indexed attribute name to
-                    IndexedCondition instance mapping. It defines rows
-                    set to be selected
-        @param limit: maximum count of returned values
-        @param exclusive_start_key: key attribute names to AttributeValue
-                    instance
-        @param consistent: define is operation consistent or not (by default it
-                    is not consistent)
-
-        @return list of attribute name to AttributeValue mappings
-
-        @raise BackendInteractionException
-        """
-
-        condition_map = condition_map or {}
-
-        key_conditions = {}
-        #TODO ikhudoshyn: fill key_conditions
-
-        selected = self.select_item(context, table_name, key_conditions,
-                                    models.SelectType.all(), limit=limit,
-                                    consistent=consistent,
-                                    exclusive_start_key=exclusive_start_key)
-
-        filtered = filter(
-            lambda row: self._conditions_satisfied(
-                row, condition_map),
-            selected)
-
-        if attributes_to_get:
-            for row in filtered:
-                for attr in row.keys():
-                    if not attr in attributes_to_get:
-                        del row[attr]
-
-        return filtered
-
-    @staticmethod
-    def _add_filtering_and_sys_hash(schema, condition_map={}):
-
-        condition_map = condition_map or {}
-
-        hash_name = schema.key_attributes[0]
-
-        if hash_name in condition_map:
-            assert (condition_map[hash_name].type
-                    == models.Condition.CONDITION_TYPE_EQUAL)
-
-        try:
-            range_name = schema.key_attributes[1]
-        except IndexError:
-            range_name = None
-
-        non_pk_attrs = [
-            key
-            for key in condition_map.iterkeys()
-            if key != hash_name and key != range_name
-        ]
-
-        non_pk_attrs_count = len(non_pk_attrs)
-
-        if non_pk_attrs_count == 0:
-            return False, False
-
-        indexed_attrs = [
-            ind_def.attribute_to_index
-            for ind_def in schema.index_defs
-        ]
-
-        has_one_indexed_eq = any(
-            [(attr in indexed_attrs) and
-             (condition_map[attr].type ==
-              models.Condition.CONDITION_TYPE_EQUAL)
-             for attr in non_pk_attrs])
-
-        add_sys_hash = not has_one_indexed_eq
-        add_filtering = non_pk_attrs_count > 1 or add_sys_hash
-
-        return add_filtering, add_sys_hash
-
-    def _conditions_satisfied(self, row, cond_map={}):
-        cond_map = cond_map or {}
-        return all([self._condition_satisfied(row.get(attr, None), cond)
-                    for attr, cond in cond_map.iteritems()])
-
-    @staticmethod
-    def _condition_satisfied(attr_val, cond):
-        if not attr_val:
-            return False
-
-        if cond.type == models.Condition.CONDITION_TYPE_EQUAL:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value == cond.arg.value)
-
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_LESS:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value < cond.arg.value)
-
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value <= cond.arg.value)
-
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_GREATER:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value > cond.arg.value)
-
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value >= cond.arg.value)
-
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_BETWEEN:
-            first, second = cond.arg
-            return (attr_val.type == first.type and
-                    second.type == first.type and
-                    first.value <= attr_val.value <= second.value)
-
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value.startswith(cond.arg.value))
-
-        return False
+        return models.SelectResult(items=result,
+                                   last_evaluated_key=last_evaluated_key,
+                                   count=count)
