@@ -33,10 +33,10 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         rck = self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(type(table), dict)
         # TODO(yyekovenko) Later should be changed to just "CREATING" (async)
-        self.assertIn(table["TableStatus"], ["CREATING", "ACTIVE"])
-        self.assertEqual(table["TableName"], tname)
+        self.assertIn(table['TableDescription']['TableStatus'],
+                      ['CREATING', 'ACTIVE'])
+        self.assertEqual(table['TableDescription']['TableName'], tname)
         self.assertTrue(self.wait_for_table_active(tname))
-        self.assertEqual(table["TableStatus"], "ACTIVE")
 
         tables = self.client.list_tables()
         self.assertIn(tname, tables['TableNames'])
@@ -47,6 +47,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         res = self.client.delete_table(tname)
         # TODO(yyekovenko) Later should be changed to just "DELETING" (async)
-        self.assertIn(res['Table']['TableStatus'], ['DELETING', 'ACTIVE'])
+        self.assertIn(res['TableDescription']['TableStatus'],
+                      ['DELETING', 'ACTIVE'])
         self.assertTrue(self.wait_for_table_deleted(tname))
         self.cancelResourceCleanUp(rck)
