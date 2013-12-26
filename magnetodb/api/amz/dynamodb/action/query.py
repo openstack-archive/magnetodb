@@ -57,7 +57,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                         "properties": {
                             parser.Props.ATTRIBUTE_VALUE_LIST: {
                                 "type": "array",
-                                "items": parser.ITEM_VALUE
+                                "items": parser.Types.ITEM_VALUE
                             },
                             parser.Props.COMPARISON_OPERATOR: (
                                 parser.Types.QUERY_OPERATOR
@@ -149,21 +149,22 @@ class QueryDynamoDBAction(DynamoDBAction):
 
         # select item
         result = storage.select_item(
-            self.context, table_name, index_name, indexed_condition_map,
-            select_type=select_type, limit=limit, consistent=consistent_read,
-            order_type=order_type
+            self.context, table_name, indexed_condition_map,
+            select_type=select_type, index_name=index_name, limit=limit,
+            consistent=consistent_read, order_type=order_type
         )
 
         # format response
         if select_type.type == models.SelectType.SELECT_TYPE_COUNT:
             response = {
-                parser.Props.COUNT: result
+                parser.Props.COUNT: result.items
             }
         else:
             response = {
-                parser.Props.COUNT: len(result),
+                parser.Props.COUNT: len(result.items),
                 parser.Props.ITEMS: [
-                    parser.Parser.format_item_attributes(row) for row in result
+                    parser.Parser.format_item_attributes(row)
+                    for row in result.items
                 ]
             }
 
@@ -175,4 +176,9 @@ class QueryDynamoDBAction(DynamoDBAction):
                 )
             )
 
+        if limit == len(result.items):
+            response[parser.Props.LAST_EVALUATED_TABLE_NAME] = (
+                parser.Parser.format_item_attributes(result.last_evaluated_key)
+
+            )
         return response

@@ -713,7 +713,7 @@ class CassandraStorageImpl():
         @param order_type: defines order of returned rows, if 'None' - default
                     order will be used
 
-        @return list of attribute name to AttributeValue mappings
+        @return SelectResult instance
 
         @raise BackendInteractionException
         """
@@ -789,7 +789,7 @@ class CassandraStorageImpl():
         rows = self._execute_query(query)
 
         if select_type.is_count:
-            return rows[0]['count']
+            return models.SelectResult(count=rows[0]['count'])
 
         # process results
 
@@ -826,7 +826,18 @@ class CassandraStorageImpl():
 
             result.append(record)
 
-        return result
+        count = len(result)
+        if limit and count == limit:
+            last_evaluated_key = {
+                hash_name: result[-1][hash_name],
+                range_name: result[-1][range_name]
+            }
+        else:
+            last_evaluated_key = None
+
+        return models.SelectResult(items=result,
+                                   last_evaluated_key=last_evaluated_key,
+                                   count=count)
 
     def scan(self, context, table_name, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None, consistent=False):
@@ -939,7 +950,8 @@ class CassandraStorageImpl():
             return (attr_val.type == cond.arg.type and
                     attr_val.value > cond.arg.value)
 
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL:
+        if (cond.type ==
+                models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL):
             return (attr_val.type == cond.arg.type and
                     attr_val.value >= cond.arg.value)
 

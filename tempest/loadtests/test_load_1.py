@@ -114,7 +114,7 @@ class LoadTest1(FunkLoadTestCase):
             "message_id": {"S": message_id},
             "from_header": {"S": from_header},
             "to_header": {"S": to_header},
-            }
+        }
 
     def populate_spam_table(self, table_name, usercount, itemcount):
 
