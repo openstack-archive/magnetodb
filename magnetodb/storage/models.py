@@ -492,7 +492,6 @@ class SelectResult(object):
         self._count = count
         self._last_evaluated_key = last_evaluated_key
 
-
     @property
     def items(self):
         return self._items

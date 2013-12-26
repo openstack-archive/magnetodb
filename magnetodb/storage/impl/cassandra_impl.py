@@ -950,7 +950,8 @@ class CassandraStorageImpl():
             return (attr_val.type == cond.arg.type and
                     attr_val.value > cond.arg.value)
 
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL:
+        if (cond.type ==
+                models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL):
             return (attr_val.type == cond.arg.type and
                     attr_val.value >= cond.arg.value)
 

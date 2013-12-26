@@ -191,6 +191,7 @@ def select_item(context, table_name, indexed_condition_map, select_type=None,
         index_name, limit, consistent, order_type
     )
 
+
 def scan(context, table_name, condition_map, attributes_to_get=None,
          limit=None, exclusive_start_key=None,
          consistent=False):
@@ -213,7 +214,7 @@ def scan(context, table_name, condition_map, attributes_to_get=None,
     """
     return __get_storage_impl().scan(
         context, table_name, condition_map,
-        attributes_to_get= attributes_to_get,
+        attributes_to_get=attributes_to_get,
         limit=limit, exclusive_start_key=exclusive_start_key,
         consistent=consistent
     )
