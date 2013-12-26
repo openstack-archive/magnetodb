@@ -1995,3 +1995,17 @@ class TestCassandraPutItem(TestCassandraBase):
             self.context, self.table_name, key_condition)
 
         self.assertEquals([put], result.items)
+
+
+class TestCassandraScan(TestCassandraBase):
+
+    def test_scan(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, {})
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])

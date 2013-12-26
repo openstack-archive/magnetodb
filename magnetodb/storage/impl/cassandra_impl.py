@@ -762,16 +762,22 @@ class CassandraStorageImpl():
 
         indexed_condition_map = indexed_condition_map or {}
 
-        exclusive_start_key = exclusive_start_key or {}
-
         exclusive_range_cond = None
 
-        for key, val in exclusive_start_key.iteritems():
-            if key == hash_name:
-                indexed_condition_map[key] = models.Condition.eq(val)
-            elif key == range_name:
-                exclusive_range_cond = self._condition_as_string(
-                    range_name, models.IndexedCondition.gt(val))
+        if exclusive_start_key:
+            if range_name in exclusive_start_key:
+                    exclusive_range_cond = self._condition_as_string(
+                        range_name, models.IndexedCondition.gt(
+                            exclusive_start_key[range_name]))
+
+                    indexed_condition_map[hash_name] = models.Condition.eq(
+                        exclusive_start_key[hash_name])
+
+            else:
+                exclusive_range_cond = 'token({})>token({})'.format(
+                    hash_name,
+                    self._encode_predefined_attr_value(
+                        exclusive_start_key[hash_name]))
 
         where = self._conditions_as_string(indexed_condition_map)
 
@@ -895,16 +901,24 @@ class CassandraStorageImpl():
                                     consistent=consistent,
                                     exclusive_start_key=exclusive_start_key)
 
-        filtered = filter(
-            lambda row: self._conditions_satisfied(
-                row, condition_map),
-            selected)
+        if selected.items:
+            filtered_items = filter(
+                lambda item: self._conditions_satisfied(
+                    item, condition_map),
+                selected.items)
+        else:
+            filtered_items = []
 
-        if attributes_to_get:
-            for row in filtered:
-                for attr in row.keys():
+        filtered = models.SelectResult(
+            items=filtered_items,
+            last_evaluated_key=selected.last_evaluated_key,
+            count=selected.count)
+
+        if attributes_to_get and filtered.items:
+            for item in filtered.items:
+                for attr in item.keys():
                     if not attr in attributes_to_get:
-                        del row[attr]
+                        del item[attr]
 
         return filtered
 
