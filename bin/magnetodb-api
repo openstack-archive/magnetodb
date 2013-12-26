@@ -50,7 +50,6 @@ if __name__ == '__main__':
         app = pastedeploy.paste_deploy_app(api_paste_config_file,
                                            PRODUCT_NAME, {})
 
-
         from magnetodb.openstack.common import service
         from magnetodb.openstack.common import wsgi
 
