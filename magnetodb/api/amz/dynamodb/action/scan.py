@@ -90,9 +90,7 @@ class ScanDynamoDBAction(DynamoDBAction):
         select = self.action_params.get(
             parser.Props.SELECT, None)
 
-        assert attrs_to_get or select != parser.Values.SPECIFIC_ATTRIBUTES
-
-        select_type = self._select_type(select, attrs_to_get)
+        select_type = parser.Parser.parse_select_type(select, attrs_to_get)
 
         limit = self.action_params.get(parser.Props.LIMIT, None)
 
@@ -146,13 +144,3 @@ class ScanDynamoDBAction(DynamoDBAction):
             )
 
         return response
-
-    def _select_type(self, attributes, select):
-        if select == parser.Values.COUNT:
-            return models.SelectType.count()
-        elif select == parser.Values.SPECIFIC_ATTRIBUTES:
-            return models.SelectType.specified_attributes(attributes)
-        elif select == parser.Values.ALL_PROJECTED_ATTRIBUTES:
-            return models.SelectType.all_projected()
-        else:
-            return models.SelectType.all()
