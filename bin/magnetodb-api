@@ -28,12 +28,13 @@ possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
 if os.path.exists(os.path.join(possible_topdir, PRODUCT_NAME, '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
+from magnetodb import storage
+
 from magnetodb.common import config
+
 from magnetodb.openstack.common import gettextutils
 from magnetodb.openstack.common import log
 from magnetodb.openstack.common import pastedeploy
-from magnetodb.openstack.common import service
-from magnetodb.openstack.common import wsgi
 
 gettextutils.install(PRODUCT_NAME, lazy=False)
 
@@ -42,13 +43,18 @@ CONF = config.CONF
 if __name__ == '__main__':
     config.parse_args(sys.argv)
     log.setup(PRODUCT_NAME)
+    storage.setup()
 
     try:
         api_paste_config_file = CONF.find_file(CONF.api_paste_config)
         app = pastedeploy.paste_deploy_app(api_paste_config_file,
                                            PRODUCT_NAME, {})
-        server = wsgi.Service(app, host=CONF.bind_host, port=CONF.bind_port)
 
+
+        from magnetodb.openstack.common import service
+        from magnetodb.openstack.common import wsgi
+
+        server = wsgi.Service(app, host=CONF.bind_host, port=CONF.bind_port)
         launcher = service.launch(server, workers=CONF.magnetodb_api_workers)
         launcher.wait()
     except RuntimeError as error:
