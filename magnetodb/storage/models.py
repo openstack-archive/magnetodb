@@ -241,12 +241,19 @@ class IndexedCondition(Condition):
     CONDITION_TYPE_LESS_OR_EQUAL = "less_or_equal"
     CONDITION_TYPE_GREATER = "greater"
     CONDITION_TYPE_GREATER_OR_EQUAL = "greater_or_equal"
+
     CONDITION_TYPE_BETWEEN = "between"
     CONDITION_TYPE_BEGINS_WITH = "begins_with"
 
+    CONDITION_TYPE_IN = "in"
+    CONDITION_TYPE_CONTAINS = "contains"
+    CONDITION_TYPE_NOT_CONTAINS = "not_contains"
+    CONDITION_TYPE_NOT_EQUAL = "not_equal"
+
     _allowed_types = {Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_LESS,
                       CONDITION_TYPE_LESS_OR_EQUAL, CONDITION_TYPE_GREATER,
-                      CONDITION_TYPE_GREATER_OR_EQUAL}
+                      CONDITION_TYPE_GREATER_OR_EQUAL, CONDITION_TYPE_BETWEEN,
+                      CONDITION_TYPE_BEGINS_WITH}
 
     @classmethod
     def lt(cls, condition_arg):
@@ -460,6 +467,42 @@ class IndexDefinition(ModelBase):
     @property
     def projected_attributes(self):
         return self._projected_attributes
+
+
+class SelectResult(object):
+
+    def __init__(self, items=None, last_evaluated_key=None, count=None):
+        """
+        @param items: list of attribute name to AttributeValue mappings
+        @param last_evaluated_key: attribute name to AttributeValue mapping,
+                    which defines last evaluated key
+        """
+
+        assert not (not items and last_evaluated_key), (
+            "last_evaluated_key was specified, but items was not"
+        )
+
+        if count is None:
+            assert items is not None
+            count = len(items)
+        else:
+            assert (items is None) or (count == len(items))
+
+        self._items = items
+        self._count = count
+        self._last_evaluated_key = last_evaluated_key
+
+    @property
+    def items(self):
+        return self._items
+
+    @property
+    def count(self):
+        return self._count
+
+    @property
+    def last_evaluated_key(self):
+        return self._last_evaluated_key
 
 
 class TableSchema(ModelBase):

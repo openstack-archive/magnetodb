@@ -218,8 +218,6 @@ class BotoIntegrationTest(unittest.TestCase):
 
         table = Table('test_table', connection=self.DYNAMODB_CON)
 
-        blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
-        blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
         table.delete_item(hash_key=1, range_key="range")
 
         self.storage_mocker.VerifyAll()
@@ -238,24 +236,26 @@ class BotoIntegrationTest(unittest.TestCase):
             select_type=IgnoreArg(), limit=IgnoreArg(),
             consistent=IgnoreArg()
         ).AndReturn(
-            [
-                {
-                    "hash_key": models.AttributeValue(
-                        models.ATTRIBUTE_TYPE_NUMBER,
-                        decimal.Decimal(hash_key)
-                    ),
-                    "range_key": models.AttributeValue(
-                        models.ATTRIBUTE_TYPE_STRING, range_key
-                    ),
-                    "value_blob": models.AttributeValue(
-                        models.ATTRIBUTE_TYPE_BLOB, blob_data1
-                    ),
-                    "value_blob_set": models.AttributeValue(
-                        models.ATTRIBUTE_TYPE_BLOB_SET,
-                        {blob_data1, blob_data2}
-                    )
-                }
-            ]
+            models.SelectResult(
+                items=[
+                    {
+                        "hash_key": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_NUMBER,
+                            decimal.Decimal(hash_key)
+                        ),
+                        "range_key": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_STRING, range_key
+                        ),
+                        "value_blob": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_BLOB, blob_data1
+                        ),
+                        "value_blob_set": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_BLOB_SET,
+                            {blob_data1, blob_data2}
+                        )
+                    }
+                ]
+            )
         )
 
         self.storage_mocker.ReplayAll()
@@ -273,5 +273,61 @@ class BotoIntegrationTest(unittest.TestCase):
         }
 
         self.assertDictEqual(expected_item, dict(item.items()))
+
+        self.storage_mocker.VerifyAll()
+
+    def test_select_item(self):
+        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+
+        blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
+        blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
+
+        hash_key = "4.5621201231232132132132132132132142354E126"
+        range_key = "range"
+
+        storage.select_item(
+            IgnoreArg(), IgnoreArg(), IgnoreArg(),
+            select_type=IgnoreArg(), index_name=IgnoreArg(), limit=IgnoreArg(),
+            order_type=IgnoreArg(), consistent=IgnoreArg()
+        ).AndReturn(
+            models.SelectResult(
+                items=[
+                    {
+                        "hash_key": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_NUMBER,
+                            decimal.Decimal(hash_key)
+                        ),
+                        "range_key": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_STRING, range_key
+                        ),
+                        "value_blob": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_BLOB, blob_data1
+                        ),
+                        "value_blob_set": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_BLOB_SET,
+                            {blob_data1, blob_data2}
+                        )
+                    }
+                ]
+            )
+        )
+
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        items = list(table.query(consistent=False, hash_key__eq=1))
+
+        expected_item = {
+            "hash_key": decimal.Decimal(hash_key),
+            "range_key": range_key,
+            "value_blob": types.Binary(blob_data1),
+            "value_blob_set": {types.Binary(blob_data1),
+                               types.Binary(blob_data2)}
+        }
+
+        self.assertEqual(len(items), 1)
+
+        self.assertDictEqual(expected_item, dict(items[0].items()))
 
         self.storage_mocker.VerifyAll()

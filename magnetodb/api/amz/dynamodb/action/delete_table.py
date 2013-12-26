@@ -38,7 +38,7 @@ class DeleteTableDynamoDBAction(DynamoDBAction):
         #TODO (isviridov): fill ITEM_COUNT, TABLE_SIZE_BYTES,
         # CREATION_DATE_TIME with real data
         return {
-            Props.TABLE: {
+            Props.TABLE_DESCRIPTION: {
                 Props.ATTRIBUTE_DEFINITIONS: (
                     map(Parser.format_attribute_definition,
                         table_schema.attribute_defs)

@@ -161,8 +161,8 @@ def update_item(context, table_name, key_attribute_map, attribute_action_map,
                                             expected_condition_map)
 
 
-def select_item(context, table_name, indexed_condition_map,
-                select_type=None, limit=None,
+def select_item(context, table_name, indexed_condition_map, select_type=None,
+                index_name=None, limit=None, exclusive_start_key=None,
                 consistent=True, order_type=None):
     """
     @param context: current request context
@@ -174,17 +174,47 @@ def select_item(context, table_name, indexed_condition_map,
                 returned. If not specified, default will be used:
                     SelectType.all() for query on table and
                     SelectType.all_projected() for query on index
+    @param index_name: String, name of index to search with
     @param limit: maximum count of returned values
+    @param exclusive_start_key: key attribute names to AttributeValue instance
     @param consistent: define is operation consistent or not (by default it is
                 not consistent)
     @param order_type: defines order of returned rows, if 'None' - default
                 order will be used
 
+    @return SelectResult instance
+
+    @raise BackendInteractionException
+    """
+    return __get_storage_impl().select_item(
+        context, table_name, indexed_condition_map, select_type,
+        index_name, limit, consistent, order_type
+    )
+
+
+def scan(context, table_name, condition_map, attributes_to_get=None,
+         limit=None, exclusive_start_key=None,
+         consistent=False):
+    """
+    @param context: current request context
+    @param table_name: String, name of table to get item from
+    @param condition_map: attribute name to
+                IndexedCondition instance mapping. It defines rows
+                set to be selected
+    @param attributes_to_get: list of attribute names to be included in result.
+                if None, all attributes will be included
+    @param limit: maximum count of returned values
+    @param exclusive_start_key: key attribute names to AttributeValue instance
+    @param consistent: define is operation consistent or not (by default it is
+                not consistent)
+
     @return list of attribute name to AttributeValue mappings
 
     @raise BackendInteractionException
     """
-    return __get_storage_impl().select_item(context, table_name,
-                                            indexed_condition_map,
-                                            select_type,
-                                            limit, consistent, order_type)
+    return __get_storage_impl().scan(
+        context, table_name, condition_map,
+        attributes_to_get=attributes_to_get,
+        limit=limit, exclusive_start_key=exclusive_start_key,
+        consistent=consistent
+    )

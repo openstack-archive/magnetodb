@@ -81,27 +81,29 @@ class CreateTableDynamoDBAction(DynamoDBAction):
         storage.create_table(self.context, table_schema)
 
         return {
-            parser.Props.ATTRIBUTE_DEFINITIONS: (
-                parser.Parser.format_attribute_definitions(
-                    attribute_definitions
-                )
-            ),
-            parser.Props.CREATION_DATE_TIME: 0,
-            parser.Props.ITEM_COUNT: 0,
-            parser.Props.KEY_SCHEMA: (
-                parser.Parser.format_key_schema(
-                    key_attrs
-                )
-            ),
-            parser.Props.LOCAL_SECONDARY_INDEXES: (
-                parser.Parser.format_local_secondary_indexes(
-                    key_attrs[0], indexed_attr_names
-                )
-            ),
-            parser.Props.PROVISIONED_THROUGHPUT: (
-                parser.Values.PROVISIONED_THROUGHPUT_DUMMY
-            ),
-            parser.Props.TABLE_NAME: table_name,
-            parser.Props.TABLE_STATUS: parser.Values.TABLE_STATUS_ACTIVE,
-            parser.Props.TABLE_SIZE_BYTES: 0
+            parser.Props.TABLE_DESCRIPTION: {
+                parser.Props.ATTRIBUTE_DEFINITIONS: (
+                    parser.Parser.format_attribute_definitions(
+                        attribute_definitions
+                    )
+                ),
+                parser.Props.CREATION_DATE_TIME: 0,
+                parser.Props.ITEM_COUNT: 0,
+                parser.Props.KEY_SCHEMA: (
+                    parser.Parser.format_key_schema(
+                        key_attrs
+                    )
+                ),
+                parser.Props.LOCAL_SECONDARY_INDEXES: (
+                    parser.Parser.format_local_secondary_indexes(
+                        key_attrs[0], indexed_attr_names
+                    )
+                ),
+                parser.Props.PROVISIONED_THROUGHPUT: (
+                    parser.Values.PROVISIONED_THROUGHPUT_DUMMY
+                ),
+                parser.Props.TABLE_NAME: table_name,
+                parser.Props.TABLE_STATUS: parser.Values.TABLE_STATUS_ACTIVE,
+                parser.Props.TABLE_SIZE_BYTES: 0
+            }
         }
