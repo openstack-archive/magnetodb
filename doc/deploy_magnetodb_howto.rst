@@ -4,7 +4,7 @@ MagnetoDB deployment HOWTO
 Scope
 =====
 
-The document below describes how to deploy MagnetoDB POC on CentOS 6.4
+The document below describes how to deploy MagnetoDB POC on  Mirantis OpenStack.
 
 
 Overview
@@ -20,6 +20,7 @@ Minimal MagnetoDB installation contains of 5 VMs
 Steps to deploy MagnetDB are:
 
 - build MagnetoDB rpm package and all dependencies including python 2.7
+- create repository for built packages and make it accessable via http. 
 - build image with Cassandra and MagnetoDB included.
 - Deploy image built on previous step on Mirantis OpenStack with heat tool
 
@@ -131,6 +132,7 @@ Create repository
 
 Please pay attention - baseurl depends on your http server configuration
 Now you have repository with magnetodb and all requirements.
+Repository is used during image build and must be accessable. 
 
 
 Build image with MagnetoDB
@@ -143,7 +145,7 @@ Below you can see steps how to create this image:
 - Copy template **deployment/heat_templates/CentOS-6.4-x86_64-cfntools.tdl** to JEOS templates folder
 - Please pay attention: you need to change in template the following lines:
 
-  - path to repository file from http://192.168.1.1/magnetodb/magnetodb.repo to your repo path
+  - path to repository file from http://192.168.1.1/magnetodb/magnetodb.repo to your repo path (configured on previous step)
 
   - you need to change passwords for “root” and “test” users.
 
