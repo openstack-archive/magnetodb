@@ -509,7 +509,7 @@ BotoGroup = [
                default="m1.tiny",
                help="Instance type"),
     cfg.IntOpt('http_socket_timeout',
-               default=180,
+               default=10,
                help="boto Http socket timeout"),
     cfg.IntOpt('num_retries',
                default=1,

@@ -27,7 +27,6 @@ from tempest import exceptions
 DynamoDBConnection.NumberRetries = 0
 
 import boto
-import boto.s3.connection
 
 
 class BotoClientBase(object):
