@@ -3,7 +3,7 @@ MagnetoDB deployment HOWTO
 
 
 Overview
-=============
+========
 
 This  document describes how to install MagnetoDB on Mirantis OpenStack.
 
@@ -22,9 +22,8 @@ Steps to deploy MagnetDB are:
 You'll need CentOS 6.4 to build rpm packages. Mirantis OpenStack may be deployed over Ubuntu or CentOS.
 Not tested on other OpenStack distributions. 
 
-Packaging
-=========
-
+Building RPMs
+=============
 
 MagnetoDB runtime dependency list
 ---------------------------------
@@ -46,64 +45,53 @@ MagnetoDB runtime dependency list
 
 All spec files for dependencies are included into MagnetoDB distribution (deployment/centos/dependency-specs folder) or can be installed from base or epel CentOS repositories.
 
-
-Python 2.7
-----------
-
-Please build rpm for 2.7 python from  https://git.gitorious.org/pkg-python27/pkg-python27.git 
-Packages of python 2.7 do not replace python 2.6 so it is 100% safe for other python-based software and python 2.7 can be used simultaneously with python 2.6
-
-
-How to build dependencies
--------------------------
+Building RPMs for dependencies
+------------------------------
 
 To build dependencies you’ll need to do the following steps:
 
-- enable epel repo:
+- Enable epel repo:
   
   - **wget http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm**
   
   - **rpm -ivh epel-release-6-8.noarch.rpm**
   
-- install rpmbuild tool
+- Install rpmbuild tool
 
-- install creatrepo tool
-
-- install and configure any http-server (apache, nginx etc)
-
-- build rpm for dependencies:
+- Build rpm for dependencies:
   
-  - download source code from https://pypi.python.org and put into SOURCE folder
+  - download source code from https://pypi.python.org and put into SOURCE folder (Source code for python 2.7 is available at
+    https://git.gitorious.org/pkg-python27/pkg-python27.git.
+    Packages of python 2.7 do not replace python 2.6 so it is 100% safe
+    for other python-based software and python 2.7 can be used simultaneously with python 2.6)
   
   - build rpm: rpmbuild -ba <spec.file>
   
   - if any unsatisfied requirements you’ll get notification - please install all packages  using yum tool and rum rpmbuild again.
 
-How to build MagnetoDB package
-------------------------------
+Building RPM for MagnetoDB
+--------------------------
 
-- go to magnetodb folder
+- Go to magnetodb folder
 
-- run **PBR_VERSION=0.0.1 python.setup.py sdist** command to get tar.gz file with source code
+- Run **PBR_VERSION=0.0.1 python.setup.py sdist** command to get tar.gz file with source code
 
-- copy **dist/magnetodb-0.0.1.tar.gz** to **SOURCE** folder of rpmbuild tree
+- Copy **dist/magnetodb-0.0.1.tar.gz** to **SOURCE** folder of rpmbuild tree
 
-- copy **deployment/centos/magnetodb-specs/openstack-magnetodb-api** file to **SOURCE** folder of rpmbuild tree
+- Copy **deployment/centos/magnetodb-specs/openstack-magnetodb-api** file to **SOURCE** folder of rpmbuild tree
 
-- run **rpmbuild -ba  deployment/centos/magnetodb-specs/openstack-magnetodb.spec** command
+- Run **rpmbuild -ba  deployment/centos/magnetodb-specs/openstack-magnetodb.spec** command
 
 You can get more details about rpm packages from “How to create RPM” document:  https://fedoraproject.org/wiki/How_to_create_an_RPM_package?rd=PackageMaintainers/CreatingPackageHowTo
 
 
- 
+Creating repository
+===================
 
+- Install creatrepo tool
 
-Create repository
------------------
-
-
-- Configure your http-server to make www-root accessible.
-  E.g. /var/www/html/magnetodb-repo
+- Install and configure any http-server (apache, nginx etc)to make www-root accessible,
+  e.g. /var/www/html/magnetodb-repo
 
 - Copy all rpms for dependencies and magnetodb rpm in this folder
 
@@ -130,8 +118,8 @@ Now you have repository with magnetodb and all requirements.
 Repository is used during image build and must be accessable. 
 
 
-Build image with MagnetoDB
-==========================
+Building image with MagnetoDB
+=============================
 
 For  deployment we use pre-created image with CentOS and MagnetoDB on it.
 Below you can see steps how to create this image:
