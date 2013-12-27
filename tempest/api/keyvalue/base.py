@@ -20,8 +20,9 @@
 import tempest.clients
 import tempest.config
 import tempest.test
-from tempest.openstack.common import log as logging
 from tempest.api.keyvalue import test
+from tempest.common.utils import data_utils
+from tempest.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -65,10 +66,11 @@ class MagnetoDBTestCase(test.BotoTestCase):
         cls.smoke_throughput = {'ReadCapacityUnits': 1,
                                 'WriteCapacityUnits': 1}
 
-    def wait_for_table_active(self, table_name, timeout=120, interval=3):
+    @classmethod
+    def wait_for_table_active(cls, table_name, timeout=120, interval=3):
         # TODO(yyekovenko) Add condition if creation failed?
         def check():
-            resp = self.client.describe_table(table_name)
+            resp = cls.client.describe_table(table_name)
             if "Table" in resp and "TableStatus" in resp["Table"]:
                 return resp["Table"]["TableStatus"] == "ACTIVE"
 
@@ -89,3 +91,17 @@ class MagnetoDBTestCase(test.BotoTestCase):
             "last_posted_by": {"S": last_posted_by},
             "replies": {"N": replies},
         }
+
+    def populate_smoke_table(self, table_name, keycount, count_per_key):
+        new_items = []
+        for _ in range(keycount):
+            forum = 'forum%s' % data_utils.rand_int_id()
+            for i in range(count_per_key):
+                item = self.build_smoke_item(forum,
+                                             'subject%s' % i,
+                                             data_utils.rand_name(),
+                                             data_utils.rand_uuid(),
+                                             str(data_utils.rand_int_id()))
+                self.client.put_item(table_name, item)
+                new_items.append(item)
+        return new_items

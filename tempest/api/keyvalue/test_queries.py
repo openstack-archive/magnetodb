@@ -21,20 +21,25 @@ from tempest.common.utils.data_utils import rand_name
 
 class MagnetoDBQueriesTest(MagnetoDBTestCase):
 
-    def test_query(self):
-        tname = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs,
-                                 tname,
-                                 self.smoke_schema,
-                                 self.smoke_throughput,
-                                 self.smoke_lsi,
-                                 self.smoke_gsi)
-        self.assertTrue(self.wait_for_table_active(tname))
-        self.addResourceCleanUp(self.client.delete_table, tname)
+    tname = None
 
+    def setUp(self):
+        super(MagnetoDBQueriesTest, self).setUp()
+        if self.tname is None:
+            self.tname = rand_name().replace('-', '')
+            self.client.create_table(self.smoke_attrs,
+                                     self.tname,
+                                     self.smoke_schema,
+                                     self.smoke_throughput,
+                                     self.smoke_lsi,
+                                     self.smoke_gsi)
+            self.assertTrue(self.wait_for_table_active(self.tname))
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
+
+    def test_query(self):
         item = self.build_smoke_item('forum1', 'subject2',
                                      'message text', 'John', '10')
-        self.client.put_item(tname, item)
+        self.client.put_item(self.tname, item)
 
         key_conditions = {
             'forum': {
@@ -46,6 +51,30 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                 'ComparisonOperator': 'BEGINS_WITH'
             }
         }
-        resp = self.client.query(table_name=tname,
+        resp = self.client.query(table_name=self.tname,
                                  key_conditions=key_conditions)
-        self.assertTrue(resp["Count"] > 0)
+        self.assertTrue(resp['Count'] > 0)
+
+    def test_query_limit(self):
+        items = self.populate_smoke_table(self.tname, 1, 10)
+
+        key_conditions = {
+            'forum': {
+                'AttributeValueList': [items[0]['forum']],
+                'ComparisonOperator': 'EQ'
+            },
+            'subject': {
+                'AttributeValueList': [{'S': 'subject'}],
+                'ComparisonOperator': 'BEGINS_WITH'
+            }
+        }
+
+        resp1 = self.client.query(table_name=self.tname,
+                                  key_conditions=key_conditions,
+                                  limit=2)
+        last = resp1['LastEvaluatedTableName']
+
+        # query remaining
+        resp2 = self.client.query(table_name=self.tname,
+                                  key_conditions=key_conditions,
+                                  exclusive_start_key=last)

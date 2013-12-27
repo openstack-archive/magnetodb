@@ -39,13 +39,13 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         item = self.build_smoke_item('forum1', 'subject2',
                                      'message text', 'John', '10')
         resp = self.client.put_item(tname, item)
-        self.assertDictEqual(resp, {})
+        self.assertEqual(resp, {})
 
         key = {self.hashkey: item[self.hashkey],
                self.rangekey: item[self.rangekey]}
 
         resp = self.client.get_item(tname, key)
-        self.assertDictEqual(item, resp['Item'])
+        self.assertEqual(item, resp['Item'])
 
         ## TODO(yyekovenko) ###########################################
         LOG.debug("UpdateItem action not implemented yet.")
@@ -63,5 +63,5 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         ##############################################################
 
         resp = self.client.delete_item(tname, key)
-        self.assertDictEqual(resp, {})
-        self.assertDictEqual(self.client.get_item(tname, key), {})
+        self.assertEqual(resp, {})
+        self.assertEqual(self.client.get_item(tname, key), {})

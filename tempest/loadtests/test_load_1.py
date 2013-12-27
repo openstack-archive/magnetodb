@@ -151,6 +151,7 @@ class LoadTest1(FunkLoadTestCase):
         self.conn.list_tables()
 
     def test_load_get_item(self):
+
         self.user_id = 'user@mail.com'
         self.date_message_id = '2013-12-31#123456'
         self.key = {'user_id': {'S': self.user_id},
