@@ -1,11 +1,6 @@
 MagnetoDB deployment HOWTO
 ===========================
 
-Scope
-=====
-
-The document below describes how to deploy MagnetoDB POC on  Mirantis OpenStack.
-
 
 Overview
 =============
@@ -22,7 +17,7 @@ Steps to deploy MagnetDB are:
 - build MagnetoDB rpm package and all dependencies including python 2.7
 - create repository for built packages and make it accessable via http. 
 - build image with Cassandra and MagnetoDB included.
-- Deploy image built on previous step on Mirantis OpenStack with heat tool
+- deploy image built on previous step on Mirantis OpenStack with heat tool
 
 You'll need CentOS 6.4 to build rpm packages. Mirantis OpenStack may be deployed over Ubuntu or CentOS.
 Not tested on other OpenStack distributions. 
