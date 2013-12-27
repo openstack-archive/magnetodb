@@ -48,4 +48,4 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         }
         resp = self.client.query(table_name=tname,
                                  key_conditions=key_conditions)
-        self.assertTrue(resp.Count > 0)
+        self.assertTrue(resp["Count"] > 0)

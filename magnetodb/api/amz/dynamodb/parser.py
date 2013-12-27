@@ -735,9 +735,9 @@ class Parser():
 
             if dynamodb_condition_type == Values.EQ:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.IndexedCondition.eq(condition_args[0])
-                ]
+                attribute_conditions[attr_name] = models.IndexedCondition.eq(
+                    condition_args[0]
+                )
             elif dynamodb_condition_type == Values.GT:
                 assert len(condition_args) == 1
                 attribute_conditions[attr_name] = models.IndexedCondition.gt(
