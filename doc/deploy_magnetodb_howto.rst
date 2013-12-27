@@ -6,12 +6,25 @@ Scope
 
 The document below describes how to deploy MagnetoDB POC on CentOS 6.4
 
-Prerequisites
+
+Overview
 =============
 
-- python2.7
-- Cassandra 2.0.2 and Oracle JDK 1.7 or higher
+This  document describes how to install MagnetoDB on Mirantis OpenStack.
 
+Minimal MagnetoDB installation contains of 5 VMs
+
+- 2 MagnetoDB  instances installed on CentOS pre-build image
+- 3 Cassandra nodes installed on CentOs 6.4 pre-build image (database backend)
+
+Steps to deploy MagnetDB are:
+
+- build MagnetoDB rpm package and all dependencies including python 2.7
+- build image with Cassandra and MagnetoDB included.
+- Deploy image built on previous step on Mirantis OpenStack with heat tool
+
+You'll need CentOS 6.4 to build rpm packages. Mirantis OpenStack may be deployed over Ubuntu or CentOS.
+Not tested on other OpenStack distributions. 
 
 Packaging
 =========
