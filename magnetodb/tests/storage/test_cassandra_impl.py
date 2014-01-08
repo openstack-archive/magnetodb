@@ -184,7 +184,7 @@ class TestCassandraBase(unittest.TestCase):
         query = "SELECT * FROM {}.{}".format(keyspace, table_name)
         return self.SESSION.execute(query)
 
-    def _insert_data(self, range_value=1):
+    def _insert_data(self, range_value=1, id_value=1):
         query = "UPDATE {}.{} SET ".format(self.keyspace, self.table_name)
 
         for field in self.test_data_predefined_fields:
@@ -204,9 +204,10 @@ class TestCassandraBase(unittest.TestCase):
             query += ("system_attr_exist = system_attr_exist + {{'{}'}},"
                       .format(name))
 
-        query += 'system_hash = 1'
+        query += 'system_hash = {}'.format(id_value)
 
-        query += " WHERE user_id = 1 AND user_range='{}'".format(range_value)
+        query += " WHERE user_id = {} AND user_range='{}'".format(
+            id_value, range_value)
 
         self.SESSION.execute(query)
 
@@ -862,6 +863,33 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
+
+    def test_select_item_exclusive_key2(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+        self._insert_data(id_value=2)
+
+        exclusive_start_key = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('0')
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, limit=1,
+            exclusive_start_key=exclusive_start_key)
+
+        exclusive_start_key2 = {
+            'id': models.AttributeValue.number(2),
+            'range': models.AttributeValue.str('0')
+        }
+
+        result2 = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, limit=1,
+            exclusive_start_key=exclusive_start_key2)
+
+        self.assertTrue(result.count == 1 or result2.count == 1)
 
     def test_select_item_exclusive_key_negative(self):
         self._create_table()
@@ -2009,3 +2037,49 @@ class TestCassandraScan(TestCassandraBase):
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
+
+    def test_paging(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+        self._insert_data(2)
+        self._insert_data(3)
+        self._insert_data(1, 2)
+        self._insert_data(2, 2)
+
+        last_evaluated_key = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('2')
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, {},
+            exclusive_start_key=last_evaluated_key,
+            limit=2)
+
+        last_evaluated_key2 = {
+            'id': models.AttributeValue.number(2),
+            'range': models.AttributeValue.str('1')
+        }
+
+        result2 = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, {},
+            exclusive_start_key=last_evaluated_key2,
+            limit=2)
+
+        if result.count == 2:
+            self.assertTrue(result.items[0]['id'].value == 1 and
+                            result.items[0]['range'].value == '3')
+
+            self.assertTrue(result.items[1]['id'].value == 2 and
+                            result.items[1]['range'].value == '1')
+
+        elif result2.count == 2:
+            self.assertTrue(result2.items[0]['id'].value == 2 and
+                            result2.items[0]['range'].value == '2')
+
+            self.assertTrue(result2.items[1]['id'].value == 1 and
+                            result2.items[1]['range'].value == '1')
+
+        else:
+            self.fail()

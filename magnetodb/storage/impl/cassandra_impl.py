@@ -775,7 +775,7 @@ class CassandraStorageImpl():
 
             else:
                 exclusive_range_cond = 'token({})>token({})'.format(
-                    hash_name,
+                    self.USER_COLUMN_PREFIX + hash_name,
                     self._encode_predefined_attr_value(
                         exclusive_start_key[hash_name]))
 
@@ -861,10 +861,10 @@ class CassandraStorageImpl():
 
         count = len(result)
         if limit and count == limit:
-            last_evaluated_key = {
-                hash_name: result[-1][hash_name],
-                range_name: result[-1][range_name]
-            }
+            last_evaluated_key = {hash_name: result[-1][hash_name]}
+
+            if range_name:
+                last_evaluated_key[range_name] = result[-1][range_name]
         else:
             last_evaluated_key = None
 
@@ -894,12 +894,50 @@ class CassandraStorageImpl():
         condition_map = condition_map or {}
 
         key_conditions = {}
-        #TODO ikhudoshyn: fill key_conditions
+
+        schema = self.describe_table(context, table_name)
+        hash_name = schema.key_attributes[0]
+
+        try:
+            range_name = schema.key_attributes[1]
+        except IndexError:
+            range_name = None
+
+        if (hash_name in condition_map
+            and condition_map[hash_name].type ==
+                models.Condition.CONDITION_TYPE_EQUAL):
+
+            key_conditions[hash_name] = condition_map[hash_name]
+
+            if (range_name and range_name in condition_map
+                and condition_map[range_name].type in
+                    models.IndexedCondition._allowed_types):
+
+                key_conditions[range_name] = condition_map[range_name]
 
         selected = self.select_item(context, table_name, key_conditions,
                                     models.SelectType.all(), limit=limit,
                                     consistent=consistent,
                                     exclusive_start_key=exclusive_start_key)
+
+        if (range_name and exclusive_start_key
+                and range_name in exclusive_start_key
+                and (not limit or limit > selected.count)):
+
+            del exclusive_start_key[range_name]
+
+            limit2 = limit - selected.count if limit else None
+
+            selected2 = self.select_item(context, table_name, key_conditions,
+                                         models.SelectType.all(), limit=limit2,
+                                         consistent=consistent,
+                                         exclusive_start_key=exclusive_start_key)
+
+            selected = models.SelectResult(
+                items=selected.items + selected2.items,
+                last_evaluated_key=selected2.last_evaluated_key,
+                count=selected.count + selected2.count
+            )
 
         if selected.items:
             filtered_items = filter(
