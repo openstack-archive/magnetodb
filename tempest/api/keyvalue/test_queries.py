@@ -72,9 +72,13 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         resp1 = self.client.query(table_name=self.tname,
                                   key_conditions=key_conditions,
                                   limit=2)
+        self.assertEqual(resp1['Count'], 2)
         last = resp1['LastEvaluatedTableName']
-
-        # query remaining
+        # query remaining records
         resp2 = self.client.query(table_name=self.tname,
                                   key_conditions=key_conditions,
                                   exclusive_start_key=last)
+        self.assertEqual(resp2['Count'], 8)
+        self.assertNotIn(resp1['Items'][0], resp2['Items'])
+        self.assertNotIn(resp1['Items'][1], resp2['Items'])
+
