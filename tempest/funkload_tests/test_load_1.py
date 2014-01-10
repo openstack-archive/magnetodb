@@ -53,7 +53,7 @@ class LoadTest1(FunkLoadTestCase):
             "ReadCapacityUnits": 1,
             "WriteCapacityUnits": 1
         }
-        cls.table_name = 'load_spam_table'
+        cls.table_name = rand_name().replace('-', '')
 
         cls.connection_data = {
             'aws_access_key_id': '',
