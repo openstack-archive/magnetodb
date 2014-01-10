@@ -13,11 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.openstack.common.middleware import context as context_middleware
+from magnetodb.common import wsgi
 from magnetodb.openstack.common import context
 
 
-class ContextMiddleware(context_middleware.ContextMiddleware):
+class ContextMiddleware(wsgi.Middleware):
+    def __init__(self, app, options):
+        self.options = options
+        super(ContextMiddleware, self).__init__(app)
 
     def make_context(self, *args, **kwargs):
         """
@@ -34,6 +37,15 @@ class ContextMiddleware(context_middleware.ContextMiddleware):
                                       user=user_id,
                                       tenant=tenant_id,
                                       is_admin=is_admin)
+
+    def process_request(self, req):
+        """
+        Extract any authentication information in the request and
+        construct an appropriate context from it.
+        """
+        # Use the default empty context, with admin turned on for
+        # backwards compatibility
+        req.context = self.make_context(is_admin=True)
 
     @classmethod
     def factory_method(cls, global_config, **local_config):

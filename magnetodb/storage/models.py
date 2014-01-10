@@ -19,6 +19,9 @@ class ModelBase(object):
 
     _data_fields = []
 
+    def __init__(self):
+        self.__hash = None
+
     def __setitem__(self, key, value):
         setattr(self, key, value)
 
@@ -36,10 +39,13 @@ class ModelBase(object):
         return not self == other
 
     def __hash__(self):
-        fields_as_list = []
-        for field in self._data_fields:
-            fields_as_list.append(self[field])
-        return hash(tuple(fields_as_list))
+        if not self.__hash:
+            fields_as_list = []
+            for field in self._data_fields:
+                fields_as_list.append(self[field])
+                self.__hash = hash(tuple(fields_as_list))
+
+        return self.__hash
 
 
 class AttributeType(ModelBase):
@@ -57,6 +63,8 @@ class AttributeType(ModelBase):
     _data_fields = ['element_type', 'collection_type']
 
     def __init__(self, element_type, collection_type=None):
+        super(AttributeType, self).__init__()
+
         assert element_type in self._allowed_types, (
             "Attribute type '%s' isn't allowed" % element_type
         )
@@ -96,6 +104,8 @@ class AttributeDefinition(ModelBase):
     _data_fields = ['name', 'type']
 
     def __init__(self, attr_name, attr_type):
+        super(AttributeDefinition, self).__init__()
+
         self._name = attr_name
         self._type = attr_type
 
@@ -113,6 +123,8 @@ class AttributeValue(ModelBase):
     _data_fields = ['value', 'type']
 
     def __init__(self, attr_type, attr_value):
+        super(AttributeValue, self).__init__()
+
         self._type = attr_type
 
         if attr_type == ATTRIBUTE_TYPE_STRING:
@@ -449,6 +461,9 @@ class IndexDefinition(ModelBase):
         @param projected_attributes: set of non key attribute names to be
                     projected. If 'None' - all attributes will be projected
         """
+
+        super(IndexDefinition, self).__init__()
+
         self._index_name = index_name
         self._attribute_to_index = attribute_to_index
         self._projected_attributes = (
@@ -523,6 +538,9 @@ class TableSchema(ModelBase):
         @param index_defs: set of IndexDefinition which defines indexes on
                     table attributes
         """
+
+        super(TableSchema, self).__init__()
+        
         self._table_name = table_name
         self._attribute_defs = attribute_defs
         self._key_attributes = key_attributes

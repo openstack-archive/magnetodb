@@ -59,8 +59,6 @@ class CassandraStorageImpl():
         SYSTEM_COLUMN_HASH + "_internal_index"
     )
 
-    __schemas = {}
-
     def __init__(self, contact_points=("127.0.0.1",),
                  port=9042,
                  compression=True,
@@ -162,6 +160,14 @@ class CassandraStorageImpl():
         try:
             self._execute_query(query)
 
+            LOG.debug("Create Table CQL request executed. "
+                      "Waiting for schema agreement...")
+
+            self.cluster.control_connection.refresh_schema(
+                keyspace=context.tenant, table=table_schema.table_name)
+
+            LOG.debug("Waiting for schema agreement... Done")
+
             for index_def in table_schema.index_defs:
                 self._create_index(context, table_schema.table_name,
                                    self.USER_COLUMN_PREFIX +
@@ -221,29 +227,39 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
-        try:
-            ks = self.__schemas[context.tenant]
-        except KeyError:
-            self.__schemas[context.tenant] = {}
-            ks = {}
+        schema_refreshed = False
 
-        try:
-            return ks[table_name]
-        except KeyError:
-            # just proceed with schema retrieval
-            pass
+        while True:
+            try:
+                keyspace_meta = self.cluster.metadata.keyspaces[context.tenant]
+                break
+            except KeyError:
+                if schema_refreshed:
+                    raise BackendInteractionException(
+                        "Tenant '{}' does not exist".format(context.tenant)
+                    )
+                else:
 
-        try:
-            keyspace_meta = self.cluster.metadata.keyspaces[context.tenant]
-        except KeyError:
-            raise BackendInteractionException(
-                "Tenant '{}' does not exist".format(context.tenant))
+                    self.cluster.control_connection.refresh_schema(
+                        keyspace=context.tenant
+                    )
+                    schema_refreshed = True
 
-        try:
-            table_meta = keyspace_meta.tables[table_name]
-        except KeyError:
-            raise BackendInteractionException(
-                "Table '{}' does not exist".format(table_name))
+        while True:
+            try:
+                table_meta = keyspace_meta.tables[table_name]
+                break
+            except KeyError:
+                if schema_refreshed:
+                    raise BackendInteractionException(
+                        "Table '{}' does not exist".format(table_name)
+                    )
+                else:
+                    self.cluster.control_connection.refresh_schema(
+                        keyspace=context.tenant, table=table_name
+                    )
+                    schema_refreshed = True
+
 
         prefix_len = len(self.USER_COLUMN_PREFIX)
 
@@ -273,8 +289,6 @@ class CassandraStorageImpl():
 
         table_schema = models.TableSchema(table_meta.name, attr_defs,
                                           key_attrs, index_defs)
-
-        self.__schemas[context.tenant][table_name] = table_schema
 
         return table_schema
 

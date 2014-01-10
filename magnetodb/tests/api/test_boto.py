@@ -28,13 +28,12 @@ from magnetodb.storage import models
 from magnetodb import storage
 from mox import Mox, IgnoreArg
 
-
 CONF = magnetodb_api_fake.CONF
 
+DynamoDBConnection.NumberRetries = 0
 
 class BotoIntegrationTest(unittest.TestCase):
-    PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
-                                     'etc/api-paste-test.ini')
+    PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste.ini')
 
     @classmethod
     def setUpClass(cls):
@@ -52,13 +51,7 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.UnsetStubs()
 
     @staticmethod
-    def connect_boto_dynamodb(host=None, port=None):
-        if not host:
-            host = CONF.bind_host
-
-        if not port:
-            port = CONF.bind_port
-
+    def connect_boto_dynamodb(host="localhost", port=8080):
         endpoint = '{}:{}'.format(host, port)
         region = RegionInfo(name='test_server', endpoint=endpoint,
                             connection_cls=DynamoDBConnection)
