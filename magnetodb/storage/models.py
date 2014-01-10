@@ -12,11 +12,15 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import decimal
 
 
 class ModelBase(object):
 
     _data_fields = []
+
+    def __init__(self):
+        self.__hash = None
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
@@ -35,10 +39,13 @@ class ModelBase(object):
         return not self == other
 
     def __hash__(self):
-        fields_as_list = []
-        for field in self._data_fields:
-            fields_as_list.append(self[field])
-        return hash(tuple(fields_as_list))
+        if not self.__hash:
+            fields_as_list = []
+            for field in self._data_fields:
+                fields_as_list.append(self[field])
+                self.__hash = hash(tuple(fields_as_list))
+
+        return self.__hash
 
 
 class AttributeType(ModelBase):
@@ -53,15 +60,17 @@ class AttributeType(ModelBase):
 
     _allowed_collection_types = {None, COLLECTION_TYPE_SET}
 
-    _data_fields = ['element_type', '_collection_type']
+    _data_fields = ['element_type', 'collection_type']
 
     def __init__(self, element_type, collection_type=None):
+        super(AttributeType, self).__init__()
+
         assert element_type in self._allowed_types, (
-            "Attribute type '%s' is't allowed" % element_type
+            "Attribute type '%s' isn't allowed" % element_type
         )
 
         assert collection_type in self._allowed_collection_types, (
-            "Attribute type collection '%s' is't allowed" % collection_type
+            "Attribute type collection '%s' isn't allowed" % collection_type
         )
 
         self._element_type = element_type
@@ -95,6 +104,8 @@ class AttributeDefinition(ModelBase):
     _data_fields = ['name', 'type']
 
     def __init__(self, attr_name, attr_type):
+        super(AttributeDefinition, self).__init__()
+
         self._name = attr_name
         self._type = attr_type
 
@@ -112,8 +123,24 @@ class AttributeValue(ModelBase):
     _data_fields = ['value', 'type']
 
     def __init__(self, attr_type, attr_value):
+        super(AttributeValue, self).__init__()
+
         self._type = attr_type
-        self._value = attr_value
+
+        if attr_type == ATTRIBUTE_TYPE_STRING:
+            self._value = self.__create_str(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_NUMBER:
+            self._value = self.__create_number(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_BLOB:
+            self._value = self.__create_blob(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_STRING_SET:
+            self._value = self.__create_str_set(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_NUMBER_SET:
+            self._value = self.__create_number_set(attr_value)
+        elif attr_type == ATTRIBUTE_TYPE_BLOB_SET:
+            self._value = self.__create_blob_set(attr_value)
+        else:
+            assert False, "Attribute type wasn't recognized"
 
     @property
     def value(self):
@@ -122,7 +149,6 @@ class AttributeValue(ModelBase):
     @property
     def type(self):
         return self._type
-
 
     @property
     def is_str(self):
@@ -145,32 +171,55 @@ class AttributeValue(ModelBase):
         return self._type == ATTRIBUTE_TYPE_BLOB_SET
 
     @classmethod
+    def __create_str(cls, str_value):
+        assert isinstance(str_value, (str, unicode))
+        return str_value
+
+    @classmethod
+    def __create_number(cls, number_value):
+        return decimal.Decimal(number_value)
+
+    @classmethod
+    def __create_blob(cls, blob_value):
+        assert isinstance(blob_value, (str, unicode))
+        return blob_value
+
+    @classmethod
+    def __create_str_set(cls, str_set_value):
+        return frozenset(map(cls.__create_str, str_set_value))
+
+    @classmethod
+    def __create_number_set(cls, number_set_value):
+        return frozenset(map(cls.__create_number, number_set_value))
+
+    @classmethod
+    def __create_blob_set(cls, blob_set_value):
+        return frozenset(map(cls.__create_blob, blob_set_value))
+
+    @classmethod
     def str(cls, str_value):
         assert isinstance(str_value, (str, unicode))
         return cls(ATTRIBUTE_TYPE_STRING, str_value)
 
     @classmethod
     def blob(cls, blob_value):
-        assert isinstance(blob_value, (str, unicode))
         return cls(ATTRIBUTE_TYPE_BLOB, blob_value)
 
     @classmethod
     def number(cls, number_value):
-        return cls(ATTRIBUTE_TYPE_NUMBER, decimal.Decimal(number_value))
+        return cls(ATTRIBUTE_TYPE_NUMBER, number_value)
 
     @classmethod
-    def str_set(cls, str_value):
-        assert isinstance(str_value, (str, unicode))
-        return cls(ATTRIBUTE_TYPE_STRING_SET, str_value)
+    def str_set(cls, string_set_value):
+        return cls(ATTRIBUTE_TYPE_STRING_SET, string_set_value)
 
     @classmethod
-    def blob_set(cls, blob_value):
-        assert isinstance(blob_value, (str, unicode))
-        return cls(ATTRIBUTE_TYPE_BLOB_SET, blob_value)
+    def blob_set(cls, blob_set_value):
+        return cls(ATTRIBUTE_TYPE_BLOB_SET, blob_set_value)
 
     @classmethod
-    def number_set(cls, number_value):
-        return cls(ATTRIBUTE_TYPE_NUMBER_SET, decimal.Decimal(number_value))
+    def number_set(cls, number_set_value):
+        return cls(ATTRIBUTE_TYPE_NUMBER_SET, number_set_value)
 
 
 class Condition(object):
@@ -180,7 +229,7 @@ class Condition(object):
 
     def __init__(self, condition_type, condition_arg):
         assert condition_type in self._allowed_types, (
-            "Condition type '%s' is't allowed" % condition_type
+            "Condition type '%s' isn't allowed" % condition_type
         )
 
         self._condition_type = condition_type
@@ -204,12 +253,19 @@ class IndexedCondition(Condition):
     CONDITION_TYPE_LESS_OR_EQUAL = "less_or_equal"
     CONDITION_TYPE_GREATER = "greater"
     CONDITION_TYPE_GREATER_OR_EQUAL = "greater_or_equal"
+
     CONDITION_TYPE_BETWEEN = "between"
     CONDITION_TYPE_BEGINS_WITH = "begins_with"
 
+    CONDITION_TYPE_IN = "in"
+    CONDITION_TYPE_CONTAINS = "contains"
+    CONDITION_TYPE_NOT_CONTAINS = "not_contains"
+    CONDITION_TYPE_NOT_EQUAL = "not_equal"
+
     _allowed_types = {Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_LESS,
                       CONDITION_TYPE_LESS_OR_EQUAL, CONDITION_TYPE_GREATER,
-                      CONDITION_TYPE_GREATER_OR_EQUAL}
+                      CONDITION_TYPE_GREATER_OR_EQUAL, CONDITION_TYPE_BETWEEN,
+                      CONDITION_TYPE_BEGINS_WITH}
 
     @classmethod
     def lt(cls, condition_arg):
@@ -258,11 +314,11 @@ class SelectType(object):
     SELECT_TYPE_COUNT = "count"
 
     _allowed_types = {SELECT_TYPE_ALL, SELECT_TYPE_ALL_PROJECTED,
-                      SELECT_TYPE_SPECIFIED}
+                      SELECT_TYPE_SPECIFIED, SELECT_TYPE_COUNT}
 
     def __init__(self, select_type, attributes=None):
         assert select_type in self._allowed_types, (
-            "Select type '%s' is't allowed" % select_type
+            "Select type '%s' isn't allowed" % select_type
         )
 
         self._select_type = select_type
@@ -291,6 +347,22 @@ class SelectType(object):
     @classmethod
     def specified_attributes(cls, attributes):
         return cls(cls.SELECT_TYPE_ALL_PROJECTED, frozenset(attributes))
+
+    @property
+    def is_count(self):
+        return self._select_type == self.SELECT_TYPE_COUNT
+
+    @property
+    def is_all(self):
+        return self._select_type == self.SELECT_TYPE_ALL
+
+    @property
+    def is_all_projected(self):
+        return self._select_type == self.SELECT_TYPE_ALL_PROJECTED
+
+    @property
+    def is_specified(self):
+        return self._select_type == self.SELECT_TYPE_SPECIFIED
 
 
 class WriteItemBatchableRequest(object):
@@ -389,6 +461,9 @@ class IndexDefinition(ModelBase):
         @param projected_attributes: set of non key attribute names to be
                     projected. If 'None' - all attributes will be projected
         """
+
+        super(IndexDefinition, self).__init__()
+
         self._index_name = index_name
         self._attribute_to_index = attribute_to_index
         self._projected_attributes = (
@@ -409,6 +484,42 @@ class IndexDefinition(ModelBase):
         return self._projected_attributes
 
 
+class SelectResult(object):
+
+    def __init__(self, items=None, last_evaluated_key=None, count=None):
+        """
+        @param items: list of attribute name to AttributeValue mappings
+        @param last_evaluated_key: attribute name to AttributeValue mapping,
+                    which defines last evaluated key
+        """
+
+        assert not (not items and last_evaluated_key), (
+            "last_evaluated_key was specified, but items was not"
+        )
+
+        if count is None:
+            assert items is not None
+            count = len(items)
+        else:
+            assert (items is None) or (count == len(items))
+
+        self._items = items
+        self._count = count
+        self._last_evaluated_key = last_evaluated_key
+
+    @property
+    def items(self):
+        return self._items
+
+    @property
+    def count(self):
+        return self._count
+
+    @property
+    def last_evaluated_key(self):
+        return self._last_evaluated_key
+
+
 class TableSchema(ModelBase):
     _data_fields = ['table_name', 'attribute_defs', 'key_attributes',
                     'index_defs']
@@ -427,6 +538,9 @@ class TableSchema(ModelBase):
         @param index_defs: set of IndexDefinition which defines indexes on
                     table attributes
         """
+
+        super(TableSchema, self).__init__()
+        
         self._table_name = table_name
         self._attribute_defs = attribute_defs
         self._key_attributes = key_attributes

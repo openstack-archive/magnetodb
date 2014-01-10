@@ -16,6 +16,9 @@
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb import parser
 
+from magnetodb import storage
+from magnetodb.storage import models
+
 
 class ScanDynamoDBAction(DynamoDBAction):
     schema = {
@@ -63,7 +66,6 @@ class ScanDynamoDBAction(DynamoDBAction):
             parser.Props.SEGMENT: {
                 "type": "integer",
                 "minimum": 0,
-                # "maximum": TOTAL_SEGMENT - 1
             },
 
             parser.Props.SELECT: parser.Types.SELECT,
@@ -79,4 +81,66 @@ class ScanDynamoDBAction(DynamoDBAction):
     }
 
     def __call__(self):
-        raise NotImplementedError
+        #TODO ikhudoshyn: table_name may be index name
+        table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
+
+        attrs_to_get = self.action_params.get(
+            parser.Props.ATTRIBUTES_TO_GET, None)
+
+        select = self.action_params.get(
+            parser.Props.SELECT, None)
+
+        select_type = parser.Parser.parse_select_type(select, attrs_to_get)
+
+        limit = self.action_params.get(parser.Props.LIMIT, None)
+
+        return_consumed_capacity = self.action_params.get(
+            parser.Props.RETURN_CONSUMED_CAPACITY,
+            parser.Values.RETURN_CONSUMED_CAPACITY_NONE
+        )
+
+        exclusive_start_key = self.action_params.get(
+            parser.Props.EXCLUSIVE_START_KEY, None
+        )
+
+        exclusive_start_key = parser.Parser.parse_item_attributes(
+            exclusive_start_key) if exclusive_start_key else None
+
+        scan_filter = self.action_params.get(
+            parser.Props.SCAN_FILTER, None
+        )
+
+        segment = self.action_params.get(parser.Props.SEGMENT, 0)
+        total_segments = self.action_params.get(parser.Props.TOTAL_SEGMENTS, 1)
+
+        assert segment < total_segments
+
+        condition_map = None
+
+        result = storage.scan(
+            self.context, table_name, condition_map,
+            attributes_to_get=attrs_to_get, limit=limit,
+            exclusive_start_key=exclusive_start_key)
+
+        response = {}
+
+        if select_type.is_count:
+            response[parser.Props.COUNT] = result
+        else:
+            response[parser.Props.ITEMS] = [
+                parser.Parser.format_item_attributes(row)
+                for row in result]
+
+            response[parser.Props.COUNT] = len(response)
+
+            response[parser.Props.LAST_EVALUATED_KEY] = None
+
+        if (return_consumed_capacity !=
+                parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
+            response[parser.Props.CONSUMED_CAPACITY] = (
+                parser.Parser.format_consumed_capacity(
+                    return_consumed_capacity, None
+                )
+            )
+
+        return response

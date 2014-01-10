@@ -15,8 +15,8 @@
 
 import os
 
-PROJECT_NAME = 'magnetodb'
-
+from magnetodb.common import config, PROJECT_NAME
+from magnetodb.openstack.common import log
 
 def get_root_source(start_search_path, root_dir_name):
     cur_path = os.path.abspath(start_search_path)
@@ -30,10 +30,4 @@ def get_root_source(start_search_path, root_dir_name):
 PROJECT_ROOT_DIR = get_root_source(__file__, PROJECT_NAME)
 
 CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
-                           'etc/magnetodb-test.conf')
-
-from magnetodb.common import config
-from magnetodb.openstack.common import log
-
-config.parse_args(argv=[], default_config_files=[CONFIG_FILE])
-log.setup(PROJECT_NAME)
+                           'etc/magnetodb-api-test.conf')

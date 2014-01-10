@@ -287,7 +287,11 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+            {
+                'id': models.AttributeValue.number(1),
+                'range': models.AttributeValue.str('1')
+            }
+        )
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req)
@@ -304,7 +308,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(1), 'range': models.Condition.eq('2')})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('2')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req)
@@ -314,7 +319,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual(1, len(all))
         self.assertEqual(1, all[0]['user_id'])
 
-    @unittest.skip("conditional updates noy yet implemented")
+    @unittest.skip("conditional updates not yet implemented")
     def test_delete_item_if_exists(self):
         self._create_table()
         self._create_index()
@@ -335,7 +340,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req, expected)
@@ -365,7 +371,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req, expected)
@@ -396,7 +403,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req, expected)
@@ -426,7 +434,8 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         del_req = models.DeleteItemRequest(
             self.table_name,
-            {'id': models.Condition.eq(1), 'range': models.Condition.eq('1')})
+            {'id': models.AttributeValue.number(1),
+             'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
             self.context, del_req, expected)
@@ -445,14 +454,28 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.Condition.eq('1')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_select_item_no_condition(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_attr(self):
         self._create_table()
@@ -460,19 +483,21 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.Condition.eq('1')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond,
             models.SelectType.specified_attributes(['fstr'])
         )
 
-        self.assertEqual(1, len(result))
+        self.assertEqual(1, result.count)
         self.assertEqual(
             {'fstr': models.AttributeValue(
                 models.ATTRIBUTE_TYPE_STRING, 'fstr')},
-            result[0])
+            result.items[0])
 
     def test_select_item_negative(self):
         self._create_table()
@@ -480,13 +505,15 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.Condition.eq('2')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('2'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
 
     def test_select_item_less(self):
         self._create_table()
@@ -494,14 +521,16 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.lt('2')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.lt(models.AttributeValue.str('2'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_less_negative(self):
         self._create_table()
@@ -509,13 +538,15 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.lt('1')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.lt(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
 
     def test_select_item_less_eq(self):
         self._create_table()
@@ -523,14 +554,16 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.le('1')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.le(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_less_eq_negative(self):
         self._create_table()
@@ -538,13 +571,15 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.le('0')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.le(models.AttributeValue.str('0'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
 
     def test_select_item_greater(self):
         self._create_table()
@@ -552,14 +587,16 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.gt('0')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.gt(models.AttributeValue.str('0'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_greater_negative(self):
         self._create_table()
@@ -567,13 +604,15 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.gt('1')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.gt(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
 
     def test_select_item_greater_eq(self):
         self._create_table()
@@ -581,14 +620,16 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.ge('1')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.ge(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_greater_eq_negative(self):
         self._create_table()
@@ -596,13 +637,15 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.ge('2')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.ge(models.AttributeValue.str('2'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
 
     def test_select_item_indexed(self):
         self._create_table()
@@ -610,15 +653,19 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.Condition.eq('1'),
-                        'indexed': models.IndexedCondition.le('ind')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1')),
+            'indexed': models.IndexedCondition.le(
+                models.AttributeValue.str('ind')
+            )
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(1, len(result))
-        self._validate_data(result[0])
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
 
     def test_select_item_indexed_negative(self):
         self._create_table()
@@ -626,14 +673,137 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.Condition.eq('1'),
-                        'indexed': models.IndexedCondition.lt('ind')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1')),
+            'indexed': models.IndexedCondition.lt(
+                models.AttributeValue.str('ind')
+            )
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result.count)
+
+    def test_select_item_between(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data(0)
+        self._insert_data(1)
+        self._insert_data(3)
+
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.btw(
+                models.AttributeValue.str('1'),
+                models.AttributeValue.str('2'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_select_item_between2(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data(-1)
+        self._insert_data(1)
+        self._insert_data(2)
+
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.btw(
+                models.AttributeValue.str('0'),
+                models.AttributeValue.str('1'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_select_item_between_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data(1)
+        self._insert_data(4)
+
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.btw(
+                models.AttributeValue.str('2'),
+                models.AttributeValue.str('3'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(0, result.count)
+
+    def test_select_item_begins_with(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data(0)
+        self._insert_data(1)
+        self._insert_data(2)
+
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.begins_with(
+                models.AttributeValue.str('1'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_select_item_begins_with2(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data(0)
+        self._insert_data(11)
+        self._insert_data(2)
+
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.begins_with(
+                models.AttributeValue.str('1'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(1, result.count)
+        self.assertIn('11', result.items[0]['range'].value)
+
+    def test_select_item_begins_with_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data(0)
+        self._insert_data(2)
+
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.begins_with(
+                models.AttributeValue.str('1'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond)
+
+        self.assertEqual(0, result.count)
 
     def test_select_with_limit(self):
         self._create_table()
@@ -641,18 +811,74 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._insert_data()
         self._insert_data(2)
 
-        indexed_cond = {'id': models.Condition.eq(1),
-                        'range': models.IndexedCondition.ge('1')}
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.ge(
+                models.AttributeValue.str('1')
+            )
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond)
 
-        self.assertEqual(2, len(result))
+        self.assertEqual(2, result.count)
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond, limit=1)
 
-        self.assertEqual(1, len(result))
+        self.assertEqual(1, result.count)
+
+    def test_select_count(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.count())
+
+        self.assertEqual(1, result.count)
+
+    def test_select_item_exclusive_key(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        exclusive_start_key = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('0')
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name,
+            exclusive_start_key=exclusive_start_key)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_select_item_exclusive_key_negative(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data()
+
+        exclusive_start_key = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name,
+            exclusive_start_key=exclusive_start_key)
+
+        self.assertEqual(0, result.count)
 
 
 class TestCassandraUpdateItem(TestCassandraBase):
@@ -661,8 +887,10 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'str': models.UpdateItemAction(
@@ -682,18 +910,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['str'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_STRING, 'new')
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_number(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'numbr': models.UpdateItemAction(
@@ -713,18 +948,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['numbr'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_NUMBER, 42)
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_blob(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'blb': models.UpdateItemAction(
@@ -744,18 +986,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['blb'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_BLOB, 'new')
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_set_str(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'set_string': models.UpdateItemAction(
@@ -776,18 +1025,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['set_string'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_STRING_SET, {'new'})
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_set_number(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'set_number': models.UpdateItemAction(
@@ -807,18 +1063,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['set_number'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_NUMBER_SET, {42})
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_set_blob(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'set_blob': models.UpdateItemAction(
@@ -839,18 +1102,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['set_blob'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_BLOB_SET, {'new'})
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_str(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'fstr': models.UpdateItemAction(
@@ -870,18 +1140,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['fstr'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_STRING, 'new')
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_number(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'fnum': models.UpdateItemAction(
@@ -901,18 +1178,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['fnum'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_NUMBER, 42)
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_blob(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'fblb': models.UpdateItemAction(
@@ -932,18 +1216,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['fblb'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_BLOB, 'new')
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_set_str(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'fsstr': models.UpdateItemAction(
@@ -964,18 +1255,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['fsstr'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_STRING_SET, {'new1', 'new2'})
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_set_number(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'fsnum': models.UpdateItemAction(
@@ -996,18 +1294,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['fsnum'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_NUMBER_SET, {42, 43})
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_set_blob(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'fsblb': models.UpdateItemAction(
@@ -1028,18 +1333,25 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected['fsblb'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_BLOB_SET, {'new1', 'new2'})
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
     def test_update_item_delete(self):
         self._create_table()
         self._create_index()
         self._insert_data()
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        keys = {
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1')
+        }
 
         actions = {
             'str': models.UpdateItemAction(
@@ -1060,10 +1372,15 @@ class TestCassandraUpdateItem(TestCassandraBase):
         del expected['str']
         del expected['fstr']
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+        keys_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
-        self.assertEquals([expected], result)
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEquals([expected], result.items)
 
 
 class TestCassandraPutItem(TestCassandraBase):
@@ -1081,57 +1398,63 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_number(self):
         self._create_table()
         self._create_index()
 
         put = {
-            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
-            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
-            'numbr': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 42),
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1'),
+            'number': models.AttributeValue.number(42),
         }
 
         put_request = models.PutItemRequest(self.table_name, put)
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_blob(self):
         self._create_table()
         self._create_index()
 
         put = {
-            'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
-            'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
-            'blb': models.AttributeValue(models.ATTRIBUTE_TYPE_BLOB, 'blob'),
+            'id': models.AttributeValue.number(1),
+            'range': models.AttributeValue.str('1'),
+            'blb': models.AttributeValue.blob('blob'),
         }
 
         put_request = models.PutItemRequest(self.table_name, put)
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_set_str(self):
         self._create_table()
@@ -1148,13 +1471,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_set_number(self):
         self._create_table()
@@ -1171,13 +1496,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_set_blob(self):
         self._create_table()
@@ -1194,13 +1521,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_str(self):
         self._create_table()
@@ -1216,13 +1545,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_number(self):
         self._create_table()
@@ -1238,13 +1569,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_blob(self):
         self._create_table()
@@ -1260,13 +1593,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_set_str(self):
         self._create_table()
@@ -1283,13 +1618,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_set_number(self):
         self._create_table()
@@ -1306,13 +1643,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_set_blob(self):
         self._create_table()
@@ -1329,13 +1668,15 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_str(self):
@@ -1353,13 +1694,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_number(self):
@@ -1377,13 +1720,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_blob(self):
@@ -1401,13 +1746,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_set_str(self):
@@ -1426,13 +1773,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_set_number(self):
@@ -1451,13 +1800,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_set_blob(self):
@@ -1476,13 +1827,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_dynamic_str(self):
@@ -1500,13 +1853,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_dynamic_number(self):
@@ -1524,13 +1879,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_dynamic_blob(self):
@@ -1548,13 +1905,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_dynamic_set_str(self):
@@ -1573,13 +1932,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_dynamic_set_number(self):
@@ -1598,13 +1959,15 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)
 
     @unittest.skip("conditional updates noy yet implemented")
     def test_put_item_expected_dynamic_set_blob(self):
@@ -1623,10 +1986,12 @@ class TestCassandraPutItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request,
                                             expected_condition_map={1: 1})
 
-        keys = {'id': models.Condition.eq(1),
-                'range': models.Condition.eq('1')}
+        key_condition = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.Condition.eq(models.AttributeValue.str('1'))
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys)
+            self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result)
+        self.assertEquals([put], result.items)

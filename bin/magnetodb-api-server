@@ -14,44 +14,58 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from magnetodb.common import PROJECT_NAME
 
 import os
 import sys
 
-PRODUCT_NAME = "magnetodb"
 
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
 possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
                                                 os.pardir,
                                                 os.pardir))
-if os.path.exists(os.path.join(possible_topdir, PRODUCT_NAME, '__init__.py')):
+if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
-from magnetodb.common import config
-from magnetodb.openstack.common import gettextutils
+from oslo.config import cfg
 from magnetodb.openstack.common import log
 from magnetodb.openstack.common import pastedeploy
-from magnetodb.openstack.common import service
-from magnetodb.openstack.common import wsgi
 
-gettextutils.install(PRODUCT_NAME, lazy=False)
+CONF = cfg.ConfigOpts()
+common_opts = [
+    cfg.StrOpt('api_paste_config',
+               default="api-paste.ini",
+               help='File name for the paste.deploy config for magnetodb-api'),
 
-CONF = config.CONF
+    cfg.StrOpt('bind_host', default="0.0.0.0"),
+
+    cfg.IntOpt('bind_port', default=80),
+
+    cfg.IntOpt('magnetodb_api_workers', default=None),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(common_opts)
 
 if __name__ == '__main__':
-    config.parse_args(sys.argv)
-    log.setup(PRODUCT_NAME)
+    CONF(project=PROJECT_NAME, prog=sys.argv[0], args=sys.argv[1:])
+    log.setup(PROJECT_NAME)
+
 
     try:
         api_paste_config_file = CONF.find_file(CONF.api_paste_config)
         app = pastedeploy.paste_deploy_app(api_paste_config_file,
-                                           PRODUCT_NAME, {})
-        server = wsgi.Service(app, host=CONF.bind_host, port=CONF.bind_port)
+                                           None, {})
+        from magnetodb.openstack.common import service
+        from magnetodb.openstack.common import wsgi
 
+        server = wsgi.Service(app, host=CONF.bind_host, port=CONF.bind_port)
         launcher = service.launch(server, workers=CONF.magnetodb_api_workers)
+
         launcher.wait()
-    except RuntimeError as error:
+
+    except Exception as error:
         import traceback
         print traceback.format_exc()
         sys.exit("ERROR: %s" % error)

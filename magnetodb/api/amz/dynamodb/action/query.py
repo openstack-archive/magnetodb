@@ -49,11 +49,22 @@ class QueryDynamoDBAction(DynamoDBAction):
                 "pattern": parser.INDEX_NAME_PATTERN
             },
 
-            parser.Props.KEY_CONDITIONS: parser.Types.QUERY_CONDITIONS,
-
-            parser.Props.LIMIT: {
-                "type": "integer",
-                "minimum": 0
+            parser.Props.KEY_CONDITIONS: {
+                "type": "object",
+                "patternProperties": {
+                    parser.ATTRIBUTE_NAME_PATTERN: {
+                        "type": "object",
+                        "properties": {
+                            parser.Props.ATTRIBUTE_VALUE_LIST: {
+                                "type": "array",
+                                "items": parser.Types.ITEM_VALUE
+                            },
+                            parser.Props.COMPARISON_OPERATOR: (
+                                parser.Types.QUERY_OPERATOR
+                            )
+                        }
+                    }
+                }
             },
 
             parser.Props.RETURN_CONSUMED_CAPACITY: (
@@ -73,13 +84,22 @@ class QueryDynamoDBAction(DynamoDBAction):
     def __call__(self):
         table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
-        # get attributes_to_get
+        # parse select_type
         attributes_to_get = self.action_params.get(
             parser.Props.ATTRIBUTES_TO_GET, None
         )
-
         if attributes_to_get is not None:
             attributes_to_get = frozenset(attributes_to_get)
+
+        select = self.action_params.get(
+            parser.Props.SELECT, None
+        )
+
+        index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
+
+        select_type = parser.Parser.parse_select_type(select,
+                                                      attributes_to_get,
+                                                      index_name)
 
         # parse exclusive_start_key_attributes
         exclusive_start_key_attributes = self.action_params.get(
@@ -92,19 +112,14 @@ class QueryDynamoDBAction(DynamoDBAction):
                 )
             )
 
-        index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
-
-        key_conditions = self.action_params.get(parser.Props.KEY_CONDITIONS,
-                                                None)
-        if key_conditions is not None:
-            key_conditions = parser.Parser.parse_attribute_conditions(
-                key_conditions
-            )
-
+        # parse indexed_condition_map
+        indexed_condition_map = parser.Parser.parse_query_attribute_conditions(
+            self.action_params.get(parser.Props.KEY_CONDITIONS, None)
+        )
 
         # TODO(dukhlov):
         # it would be nice to validate given table_name, key_attributes and
-        # attributes_to_get  to schema expectation
+        # attributes_to_get to schema expectation
 
         consistent_read = self.action_params.get(
             parser.Props.CONSISTENT_READ, False
@@ -117,29 +132,36 @@ class QueryDynamoDBAction(DynamoDBAction):
             parser.Values.RETURN_CONSUMED_CAPACITY_NONE
         )
 
-        order_asc =  self.action_params.get(
+        order_asc = self.action_params.get(
             parser.Props.SCAN_INDEX_FORWARD, None
         )
 
+        order_type = (
+            None if order_asc is None else
+            models.ORDER_TYPE_ASC if order_asc else
+            models.ORDER_TYPE_DESC
+        )
 
-        # format conditions to get item
-        indexed_condition_map = {
-            name: models.IndexedCondition.eq(value)
-            for name, value in key_attributes.iteritems()
-        }
-
-        # get item
+        # select item
         result = storage.select_item(
             self.context, table_name, indexed_condition_map,
-            attributes_to_get=attributes_to_get, limit=2,
-            consistent=consistent_read)
-
-        assert len(result) == 1
+            select_type=select_type, index_name=index_name, limit=limit,
+            consistent=consistent_read, order_type=order_type
+        )
 
         # format response
-        response = {
-            parser.Props.ITEM: parser.Parser.format_item_attributes(result[0])
-        }
+        if select_type.type == models.SelectType.SELECT_TYPE_COUNT:
+            response = {
+                parser.Props.COUNT: result.items
+            }
+        else:
+            response = {
+                parser.Props.COUNT: len(result.items),
+                parser.Props.ITEMS: [
+                    parser.Parser.format_item_attributes(row)
+                    for row in result.items
+                ]
+            }
 
         if (return_consumed_capacity !=
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
@@ -149,4 +171,9 @@ class QueryDynamoDBAction(DynamoDBAction):
                 )
             )
 
+        if limit == len(result.items):
+            response[parser.Props.LAST_EVALUATED_TABLE_NAME] = (
+                parser.Parser.format_item_attributes(result.last_evaluated_key)
+
+            )
         return response

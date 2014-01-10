@@ -1,0 +1,279 @@
+heat_template_version: 2013-05-23
+description: |
+  Template which tests neutron load balancing resources
+
+parameters:
+  key_name:
+    type: String
+    Default: "heat_key"
+  flavor:
+    type: String
+    Default: "m1.tiny1"
+  image:
+    type: String
+    Default: "C64cfn_v6"
+  private_subnet_id:
+    type: String
+    Default: "ba1fb022-2f58-44ea-9b8e-0453de72a043"
+  external_network_id:
+    type: String
+    Default: "863abccb-ad5f-4719-aeef-3da9f0c7f194"
+  private_net:
+    type: String
+    Default: 7c7e1cdc-70d0-4bc1-8fad-6510c1b2d7cb
+
+resources:
+  server1 :
+    type: OS::Nova::Server
+    properties:
+      name: Server1
+      image: {Ref: image}
+      flavor: {Ref: flavor}
+      key_name: {Ref: key_name}
+      networks:
+         - uuid: { get_param: private_net }
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
+            sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
+            sed -i s/"pipeline = tokenauth contextwrapper magnetodb_app"/"pipeline = contextwrapper magnetodb_app"/g /etc/magnetodb/api-paste.ini
+            sed -i s/'"contact_points": \["localhost"\]'/'"contact_points": \["cassandra1_fixed_ips","cassandra2_fixed_ips","cassandra3_fixed_ips"\]'/g /etc/magnetodb/magnetodb.conf
+            echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
+            echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
+            echo cassandra3_fixed_ips cassandra3 >> /etc/hosts
+            echo cassandra1_fixed_ips >> /root/cassandra_data
+            echo cassandra2_fixed_ips >> /root/cassandra_data
+            echo cassandra3_fixed_ips >> /root/cassandra_data
+            test -f /etc/yum.repos.d/cicd.repo &&  rm -f /etc/yum.repos.d/cicd.repo;  wget http://172.18.169.206/magnetodb-repo/cicd.repo -O /etc/yum.repos.d/cicd.repo
+            yum clean all && yum -y update openstack-magnetodb
+            /etc/init.d/openstack-magnetodb-api start
+            /etc/init.d/sshd restart
+            chkconfig openstack-magnetodb-api on
+          params:
+            cassandra1_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra1_port", "fixed_ips"] } ] } ] }
+            cassandra2_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra2_port", "fixed_ips"] } ] } ] }
+            cassandra3_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra3_port", "fixed_ips"] } ] } ] }
+  server2 :
+    type: OS::Nova::Server
+    properties:
+      name: Server2
+      image: {Ref: image}
+      flavor: {Ref: flavor}
+      key_name: {Ref: key_name}
+      networks:
+         - uuid: { get_param: private_net }
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
+            sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
+            sed -i s/"pipeline = tokenauth contextwrapper magnetodb_app"/"pipeline = contextwrapper magnetodb_app"/g /etc/magnetodb/api-paste.ini
+            sed -i s/'"contact_points": \["localhost"\]'/'"contact_points": \["cassandra1_fixed_ips","cassandra2_fixed_ips","cassandra3_fixed_ips"\]'/g /etc/magnetodb/magnetodb.conf
+            echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
+            echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
+            echo cassandra3_fixed_ips cassandra3 >> /etc/hosts
+            echo cassandra1_fixed_ips >> /root/cassandra_data
+            echo cassandra2_fixed_ips >> /root/cassandra_data
+            echo cassandra3_fixed_ips >> /root/cassandra_data
+            test -f /etc/yum.repos.d/cicd.repo &&  rm -f /etc/yum.repos.d/cicd.repo;  wget http://172.18.169.206/magnetodb-repo/cicd.repo -O /etc/yum.repos.d/cicd.repo
+            yum clean all && yum -y update openstack-magnetodb
+            /etc/init.d/openstack-magnetodb-api start
+            /etc/init.d/sshd restart
+            chkconfig openstack-magnetodb-api on
+          params:
+            cassandra1_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra1_port", "fixed_ips"] } ] } ] }
+            cassandra2_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra2_port", "fixed_ips"] } ] } ] }
+            cassandra3_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra3_port", "fixed_ips"] } ] } ] }
+
+
+  cassandra1_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_net }
+      fixed_ips: [ { subnet_id: { get_param: private_subnet_id } } ]
+
+  cassandra2_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_net }
+      fixed_ips: [ { subnet_id: { get_param: private_subnet_id } } ]
+
+  cassandra3_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_net }
+      fixed_ips: [ { subnet_id: { get_param: private_subnet_id } } ]
+
+  cassandra1 :
+    type: OS::Nova::Server
+    properties:
+      name: Cassandra1
+      image: {Ref: image}
+      flavor: {Ref: flavor}
+      key_name: {Ref: key_name}
+      networks:
+         - port: { get_resource: cassandra1_port }
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
+            sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
+            /etc/init.d/sshd restart
+            echo serv1_first_addr server1 >> /etc/hosts
+            echo serv2_first_addr server2 >> /etc/hosts
+            echo cassandra1_fixed_ips >> /root/cassandra_data
+            echo cassandra2_fixed_ips >> /root/cassandra_data
+            echo cassandra3_fixed_ips >> /root/cassandra_data
+            echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
+            echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
+            echo cassandra3_fixed_ips cassandra3 >> /etc/hosts
+            sed -i s/'seeds: "127.0.0.1"'/'seeds: "cassandra1_fixed_ips,cassandra3_fixed_ips,cassandra3_fixed_ips"'/ /etc/cassandra/conf/cassandra.yaml
+            sed -i s/"listen_address: localhost"/"listen_address: cassandra1_fixed_ips"/g  /etc/cassandra/conf/cassandra.yaml
+            sed -i s/"rpc_address: localhost"/"rpc_address: cassandra1_fixed_ips"/g  /etc/cassandra/conf/cassandra.yaml
+            /etc/init.d/cassandra  start
+            chkconfig cassandra on
+            echo "CREATE KEYSPACE default_tenant  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };" > /root/create_keyspace.cql
+            sleep 60
+            export CQLSH_HOST=cassandra1_fixed_ips; /usr/bin/cqlsh -f /root/create_keyspace.cql
+          params:
+            serv1_first_addr: { get_attr: [ server1, first_address ] }
+            serv2_first_addr: { get_attr: [ server2, first_address ] }
+            cassandra1_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra1_port", "fixed_ips"] } ] } ] }
+            cassandra2_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra2_port", "fixed_ips"] } ] } ] }
+            cassandra3_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra3_port", "fixed_ips"] } ] } ] }
+
+  cassandra2 :
+    type: OS::Nova::Server
+    properties:
+      name: Cassandra2
+      image: {Ref: image}
+      flavor: {Ref: flavor}
+      key_name: {Ref: key_name}
+      networks:
+         - port: { get_resource: cassandra2_port }
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
+            sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
+            /etc/init.d/sshd restart
+            echo serv1_first_addr server1 >> /etc/hosts
+            echo serv2_first_addr server2 >> /etc/hosts
+            echo cassandra1_fixed_ips >> /root/cassandra_data
+            echo cassandra2_fixed_ips >> /root/cassandra_data
+            echo cassandra3_fixed_ips >> /root/cassandra_data
+            echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
+            echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
+            echo cassandra3_fixed_ips cassandra3 >> /etc/hosts
+            sed -i s/'seeds: "127.0.0.1"'/'seeds: "cassandra1_fixed_ips,cassandra3_fixed_ips,cassandra3_fixed_ips"'/ /etc/cassandra/conf/cassandra.yaml
+            sed -i s/"listen_address: localhost"/"listen_address: cassandra2_fixed_ips"/g  /etc/cassandra/conf/cassandra.yaml
+            sed -i s/"rpc_address: localhost"/"rpc_address: cassandra2_fixed_ips"/g  /etc/cassandra/conf/cassandra.yaml
+            /etc/init.d/cassandra  start
+            chkconfig cassandra on
+            echo "CREATE KEYSPACE default_tenant  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };" > /root/create_keyspace.cql
+            sleep 60
+            export CQLSH_HOST=cassandra2_fixed_ips; /usr/bin/cqlsh -f /root/create_keyspace.cql
+          params:
+            serv1_first_addr: { get_attr: [ server1, first_address ] }
+            serv2_first_addr: { get_attr: [ server2, first_address ] }
+            cassandra1_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra1_port", "fixed_ips"] } ] } ] }
+            cassandra2_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra2_port", "fixed_ips"] } ] } ] }
+            cassandra3_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra3_port", "fixed_ips"] } ] } ] }
+
+  cassandra3 :
+    type: OS::Nova::Server
+    properties:
+      name: Cassandra3
+      image: {Ref: image}
+      flavor: {Ref: flavor}
+      key_name: {Ref: key_name}
+      networks:
+         - port: { get_resource: cassandra3_port }
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
+            sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
+            /etc/init.d/sshd restart
+            echo serv1_first_addr server1 >> /etc/hosts
+            echo serv2_first_addr server2 >> /etc/hosts
+            echo cassandra1_fixed_ips >> /root/cassandra_data
+            echo cassandra2_fixed_ips >> /root/cassandra_data
+            echo cassandra3_fixed_ips >> /root/cassandra_data
+            echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
+            echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
+            echo cassandra3_fixed_ips cassandra3 >> /etc/hosts
+            sed -i s/'seeds: "127.0.0.1"'/'seeds: "cassandra1_fixed_ips,cassandra3_fixed_ips,cassandra3_fixed_ips"'/ /etc/cassandra/conf/cassandra.yaml
+            sed -i s/"listen_address: localhost"/"listen_address: cassandra3_fixed_ips"/g  /etc/cassandra/conf/cassandra.yaml
+            sed -i s/"rpc_address: localhost"/"rpc_address: cassandra3_fixed_ips"/g  /etc/cassandra/conf/cassandra.yaml
+            /etc/init.d/cassandra  start
+            chkconfig cassandra on
+            echo "CREATE KEYSPACE default_tenant  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };" > /root/create_keyspace.cql
+            sleep 60
+            export CQLSH_HOST=cassandra3_fixed_ips; /usr/bin/cqlsh -f /root/create_keyspace.cql
+          params:
+            serv1_first_addr: { get_attr: [ server1, first_address ] }
+            serv2_first_addr: { get_attr: [ server2, first_address ] }
+            cassandra1_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra1_port", "fixed_ips"] } ] } ] }
+            cassandra2_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra2_port", "fixed_ips"] } ] } ] }
+            cassandra3_fixed_ips: {"Fn::Select": [ "ip_address", {"Fn::Select": [ "0", {"Fn::GetAtt": ["cassandra3_port", "fixed_ips"] } ] } ] }
+
+
+
+
+
+  TestHealthMonitor:
+    type: OS::Neutron::HealthMonitor
+    properties:
+      delay: 3
+      type: HTTP
+      timeout: 3
+      max_retries: 3
+      url_path: "/tttttt"
+      expected_codes: "404"
+  TestPool:
+    type: OS::Neutron::Pool
+    properties:
+      lb_method: ROUND_ROBIN
+      protocol: HTTP
+      subnet_id: {Ref: private_subnet_id}
+      monitors:
+      - {Ref: TestHealthMonitor}
+      vip:
+        protocol_port: 8080
+  TestFIP:
+     type: OS::Neutron::FloatingIP
+     properties:
+       floating_network_id: {Ref: external_network_id}
+       port_id:
+         {'Fn::Select': ['port_id', {'Fn::GetAtt': [TestPool, vip]}]}
+  TestLBaaS:
+    type: OS::Neutron::LoadBalancer
+    properties:
+      pool_id: {Ref: TestPool}
+      protocol_port: 8080
+      members:
+      - {Ref: server1}
+      - {Ref: server2}
+
+
+
+outputs:
+  cassandra1:
+    value:  {'Fn::Select': [ 'ip_address', {'Fn::Select': [ '0', {'Fn::GetAtt': [cassandra1_port, fixed_ips] } ] } ] }
+    description: "Cassandra 1 address"
+  cassandra2:
+    value:  {'Fn::Select': [ 'ip_address', {'Fn::Select': [ '0', {'Fn::GetAtt': [cassandra2_port, fixed_ips] } ] } ] }
+    description: "Cassandra 2 address"
+  cassandra3:
+    value:  {'Fn::Select': [ 'ip_address', {'Fn::Select': [ '0', {'Fn::GetAtt': [cassandra3_port, fixed_ips] } ] } ] }
+    description: "Cassandra 3 address"
+  floating_ip_address:
+    value:  { 'Fn::GetAtt': [TestFIP, floating_ip_address] }
+    description: "LB address"

@@ -14,17 +14,39 @@
 #    under the License.
 
 import routes
+import shlex
+
+from magnetodb.openstack.common import gettextutils
+from magnetodb.openstack.common import log
+from magnetodb.common import wsgi
+from magnetodb.common import PROJECT_NAME
+
+from magnetodb import storage
 
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
 
-from magnetodb.openstack.common import wsgi
+from magnetodb.common import config
+
+gettextutils.install(PROJECT_NAME, lazy=False)
 
 
 class MagnetoDBApplication(wsgi.Router):
 
     """API"""
-    def __init__(self):
+    def __init__(self, **options):
+        args = []
+        for k, v in options.iteritems():
+            args.append(k)
+            args.append(v)
+
+        config.parse_args(
+            prog=options.get("program", "magnetodb-api"),
+            args=args
+        )
+        log.setup(PROJECT_NAME)
+        storage.setup()
+
         mapper = routes.Mapper()
         super(MagnetoDBApplication, self).__init__(mapper)
 
@@ -39,4 +61,4 @@ class MagnetoDBApplication(wsgi.Router):
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):
-        return cls()
+        return cls(**local_conf)

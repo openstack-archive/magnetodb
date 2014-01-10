@@ -28,16 +28,12 @@ from magnetodb.storage import models
 from magnetodb import storage
 from mox import Mox, IgnoreArg
 
-
 CONF = magnetodb_api_fake.CONF
 
+DynamoDBConnection.NumberRetries = 0
 
 class BotoIntegrationTest(unittest.TestCase):
-    CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
-                               'etc/magnetodb-test.conf')
-
-    PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR,
-                                     'etc/api-paste-test.ini')
+    PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste.ini')
 
     @classmethod
     def setUpClass(cls):
@@ -55,13 +51,7 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.UnsetStubs()
 
     @staticmethod
-    def connect_boto_dynamodb(host=None, port=None):
-        if not host:
-            host = CONF.bind_host
-
-        if not port:
-            port = CONF.bind_port
-
+    def connect_boto_dynamodb(host="localhost", port=8080):
         endpoint = '{}:{}'.format(host, port)
         region = RegionInfo(name='test_server', endpoint=endpoint,
                             connection_cls=DynamoDBConnection)
@@ -212,6 +202,19 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.VerifyAll()
 
+    def test_delete_item(self):
+        self.storage_mocker.StubOutWithMock(storage, 'delete_item')
+        storage.delete_item(
+            IgnoreArg(), IgnoreArg(),
+            expected_condition_map=IgnoreArg()).AndReturn(True)
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        table.delete_item(hash_key=1, range_key="range")
+
+        self.storage_mocker.VerifyAll()
+
     def test_get_item(self):
         self.storage_mocker.StubOutWithMock(storage, 'select_item')
 
@@ -226,24 +229,26 @@ class BotoIntegrationTest(unittest.TestCase):
             select_type=IgnoreArg(), limit=IgnoreArg(),
             consistent=IgnoreArg()
         ).AndReturn(
-            [
-                {
-                    "hash_key": models.AttributeValue(
-                        models.ATTRIBUTE_TYPE_NUMBER,
-                        decimal.Decimal(hash_key)
-                    ),
-                    "range_key": models.AttributeValue(
-                        models.ATTRIBUTE_TYPE_STRING, range_key
-                    ),
-                    "value_blob": models.AttributeValue(
-                        models.ATTRIBUTE_TYPE_BLOB, blob_data1
-                    ),
-                    "value_blob_set": models.AttributeValue(
-                        models.ATTRIBUTE_TYPE_BLOB_SET,
-                        {blob_data1, blob_data2}
-                    )
-                }
-            ]
+            models.SelectResult(
+                items=[
+                    {
+                        "hash_key": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_NUMBER,
+                            decimal.Decimal(hash_key)
+                        ),
+                        "range_key": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_STRING, range_key
+                        ),
+                        "value_blob": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_BLOB, blob_data1
+                        ),
+                        "value_blob_set": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_BLOB_SET,
+                            {blob_data1, blob_data2}
+                        )
+                    }
+                ]
+            )
         )
 
         self.storage_mocker.ReplayAll()
@@ -261,5 +266,61 @@ class BotoIntegrationTest(unittest.TestCase):
         }
 
         self.assertDictEqual(expected_item, dict(item.items()))
+
+        self.storage_mocker.VerifyAll()
+
+    def test_select_item(self):
+        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+
+        blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
+        blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
+
+        hash_key = "4.5621201231232132132132132132132142354E126"
+        range_key = "range"
+
+        storage.select_item(
+            IgnoreArg(), IgnoreArg(), IgnoreArg(),
+            select_type=IgnoreArg(), index_name=IgnoreArg(), limit=IgnoreArg(),
+            order_type=IgnoreArg(), consistent=IgnoreArg()
+        ).AndReturn(
+            models.SelectResult(
+                items=[
+                    {
+                        "hash_key": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_NUMBER,
+                            decimal.Decimal(hash_key)
+                        ),
+                        "range_key": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_STRING, range_key
+                        ),
+                        "value_blob": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_BLOB, blob_data1
+                        ),
+                        "value_blob_set": models.AttributeValue(
+                            models.ATTRIBUTE_TYPE_BLOB_SET,
+                            {blob_data1, blob_data2}
+                        )
+                    }
+                ]
+            )
+        )
+
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        items = list(table.query(consistent=False, hash_key__eq=1))
+
+        expected_item = {
+            "hash_key": decimal.Decimal(hash_key),
+            "range_key": range_key,
+            "value_blob": types.Binary(blob_data1),
+            "value_blob_set": {types.Binary(blob_data1),
+                               types.Binary(blob_data2)}
+        }
+
+        self.assertEqual(len(items), 1)
+
+        self.assertDictEqual(expected_item, dict(items[0].items()))
 
         self.storage_mocker.VerifyAll()

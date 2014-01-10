@@ -91,11 +91,15 @@ class GetItemDynamoDBAction(DynamoDBAction):
             self.context, table_name, indexed_condition_map,
             select_type=select_type, limit=2, consistent=consistent_read)
 
-        assert len(result) == 1
-
         # format response
+        if result.count == 0:
+            return {}
+
+        assert result.count == 1
+
         response = {
-            parser.Props.ITEM: parser.Parser.format_item_attributes(result[0])
+            parser.Props.ITEM: parser.Parser.format_item_attributes(
+                result.items[0])
         }
 
         if (return_consumed_capacity !=
