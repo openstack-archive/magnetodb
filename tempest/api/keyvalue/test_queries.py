@@ -81,4 +81,3 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         self.assertEqual(resp2['Count'], 8)
         self.assertNotIn(resp1['Items'][0], resp2['Items'])
         self.assertNotIn(resp1['Items'][1], resp2['Items'])
-
