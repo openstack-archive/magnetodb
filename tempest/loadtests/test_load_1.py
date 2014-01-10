@@ -59,7 +59,7 @@ class LoadTest1(FunkLoadTestCase):
             'aws_access_key_id': '',
             'aws_secret_access_key': '',
             'region': 'magnetodb-1',
-            'host': '172.18.169.204',
+            'host': 'localhost',
             'port': '8080',
             'is_secure': False
         }
@@ -74,13 +74,14 @@ class LoadTest1(FunkLoadTestCase):
                                   cls.gsi)
 
         cls.user_id = 'user@mail.com'
-        cls.date_message_id = '2013-12-31#123456'
+        cls.date = message_id = '2013-12-31'
+        cls.message_id = '123456'
+        cls.date_message_id = '{}#{}'.format(cls.date, cls.message_id)
         cls.key = {'user_id': {'S': cls.user_id},
                    'date_message_id': {'S': cls.date_message_id}}
 
-        item = cls.build_spam_item(
-            cls.user_id, cls.date_message_id,
-            '123456', 'from@mail.com', 'to@mail.com')
+        item = cls.build_spam_item(cls.user_id, cls.date_message_id, '123456',
+                                   'from@mail.com', 'to@mail.com')
         cls.conn.put_item(cls.table_name, item)
 
     @classmethod
@@ -107,10 +108,11 @@ class LoadTest1(FunkLoadTestCase):
         self.do_postconditions()
 
     @staticmethod
-    def build_spam_item(user_id, date, message_id, from_header, to_header):
+    def build_spam_item(user_id, date_message_id, message_id,
+                        from_header, to_header):
         return {
             "user_id": {"S": user_id},
-            "date_message_id": {"S": date + "#" + message_id},
+            "date_message_id": {"S": date_message_id},
             "message_id": {"S": message_id},
             "from_header": {"S": from_header},
             "to_header": {"S": to_header},
@@ -151,12 +153,6 @@ class LoadTest1(FunkLoadTestCase):
         self.conn.list_tables()
 
     def test_load_get_item(self):
-
-        self.user_id = 'user@mail.com'
-        self.date_message_id = '2013-12-31#123456'
-        self.key = {'user_id': {'S': self.user_id},
-                    'date_message_id': {'S': self.date_message_id}}
-
         resp = self.conn.get_item(self.table_name, self.key)
         assert "Item" in resp
 

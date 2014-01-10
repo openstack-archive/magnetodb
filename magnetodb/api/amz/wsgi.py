@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.openstack.common import wsgi
+from magnetodb.common import wsgi
 import webob
 
 

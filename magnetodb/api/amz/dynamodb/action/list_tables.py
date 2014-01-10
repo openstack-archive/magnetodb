@@ -46,12 +46,9 @@ class ListTablesDynamoDBAction(DynamoDBAction):
                 limit=limit)
         )
 
-        if table_names:
-            res = {parser.Props.TABLE_NAMES: table_names}
+        res = {parser.Props.TABLE_NAMES: table_names}
 
-            if limit == len(table_names):
+        if table_names and limit == len(table_names):
                 res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
-        else:
-            res = {}
 
         return res

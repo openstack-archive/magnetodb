@@ -15,18 +15,9 @@
 
 from oslo.config import cfg
 
+from magnetodb.common import PROJECT_NAME
 
 common_opts = [
-    cfg.StrOpt('api_paste_config',
-               default="api-paste.ini",
-               help='File name for the paste.deploy config for magnetodb-api'),
-
-    cfg.IntOpt('magnetodb_api_workers', default=None),
-
-    cfg.StrOpt('bind_host', default="0.0.0.0"),
-
-    cfg.IntOpt('bind_port', default=80),
-
     cfg.StrOpt('storage_impl'),
 
     cfg.StrOpt('storage_param', default="{}")
@@ -36,7 +27,8 @@ CONF = cfg.CONF
 CONF.register_opts(common_opts)
 
 
-def parse_args(argv, default_config_files=None):
-    cfg.CONF(args=argv[1:],
-             project='magnetodb',
+def parse_args(prog=None, args=None, default_config_files=None):
+    cfg.CONF(args=args,
+             project=PROJECT_NAME,
+             prog=prog,
              default_config_files=default_config_files)
