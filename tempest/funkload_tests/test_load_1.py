@@ -59,7 +59,7 @@ class LoadTest1(FunkLoadTestCase):
             'aws_access_key_id': '',
             'aws_secret_access_key': '',
             'region': 'magnetodb-1',
-            'host': 'localhost',
+            'host': '172.18.169.204',
             'port': '8080',
             'is_secure': False
         }
@@ -74,14 +74,15 @@ class LoadTest1(FunkLoadTestCase):
                                   cls.gsi)
 
         cls.user_id = 'user@mail.com'
-        cls.date = message_id = '2013-12-31'
+        cls.date = '2013-12-31'
         cls.message_id = '123456'
         cls.date_message_id = '{}#{}'.format(cls.date, cls.message_id)
         cls.key = {'user_id': {'S': cls.user_id},
                    'date_message_id': {'S': cls.date_message_id}}
 
-        item = cls.build_spam_item(cls.user_id, cls.date_message_id, '123456',
-                                   'from@mail.com', 'to@mail.com')
+        item = cls.build_spam_item(cls.user_id, cls.date_message_id,
+                                   cls.message_id, 'from@mail.com',
+                                   'to@mail.com')
         cls.conn.put_item(cls.table_name, item)
 
     @classmethod
