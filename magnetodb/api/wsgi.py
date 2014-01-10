@@ -14,7 +14,6 @@
 #    under the License.
 
 import routes
-import shlex
 
 from magnetodb.openstack.common import gettextutils
 from magnetodb.openstack.common import log

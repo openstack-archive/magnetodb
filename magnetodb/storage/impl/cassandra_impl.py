@@ -260,7 +260,6 @@ class CassandraStorageImpl():
                     )
                     schema_refreshed = True
 
-
         prefix_len = len(self.USER_COLUMN_PREFIX)
 
         user_columns = [val for key, val

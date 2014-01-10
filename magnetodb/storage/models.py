@@ -540,7 +540,7 @@ class TableSchema(ModelBase):
         """
 
         super(TableSchema, self).__init__()
-        
+
         self._table_name = table_name
         self._attribute_defs = attribute_defs
         self._key_attributes = key_attributes
