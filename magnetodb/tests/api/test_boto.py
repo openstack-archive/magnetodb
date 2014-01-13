@@ -30,7 +30,6 @@ from mox import Mox, IgnoreArg
 
 CONF = magnetodb_api_fake.CONF
 
-DynamoDBConnection.NumberRetries = 0
 
 class BotoIntegrationTest(unittest.TestCase):
     PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste.ini')
