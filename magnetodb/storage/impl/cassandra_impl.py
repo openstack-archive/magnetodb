@@ -92,6 +92,7 @@ class CassandraStorageImpl():
             conviction_policy_factory=conviction_policy_factory,
             metrics_enabled=metrics_enabled,
             connection_class=connection_class,
+            ssl_options=ssl_options,
             sockopts=sockopts,
             cql_version=cql_version,
             executor_threads=executor_threads,

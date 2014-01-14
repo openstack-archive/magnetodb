@@ -1,5 +1,6 @@
 cassandra-driver>=1.0.0b7
 gevent
+gunicorn
 iso8601>=0.1.4
 jsonschema>=1.3.0,!=1.4.0
 oslo.config>=1.2.0

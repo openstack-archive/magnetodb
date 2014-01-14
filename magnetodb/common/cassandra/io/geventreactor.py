@@ -1,3 +1,5 @@
+import time
+from cassandra import OperationTimedOut
 import gevent
 from gevent import select, socket
 from gevent.event import Event
@@ -18,7 +20,7 @@ except ImportError:
 from errno import EALREADY, EINPROGRESS, EWOULDBLOCK, EINVAL
 
 from cassandra.connection import (Connection, ResponseWaiter, ConnectionShutdown,
-                                  ConnectionBusy)
+                                  ConnectionBusy, MAX_STREAM_PER_CONNECTION)
 from cassandra.decoder import RegisterMessage
 from cassandra.marshal import int32_unpack
 
@@ -213,31 +215,58 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
         for i in xrange(0, len(data), chunk_size):
             self._write_queue.put(data[i:i+chunk_size])
 
-    def send_msg(self, msg, cb):
+    def send_msg(self, msg, cb, wait_for_id=False):
         if self.is_defunct:
             raise ConnectionShutdown("Connection to %s is defunct" % self.host)
         elif self.is_closed:
             raise ConnectionShutdown("Connection to %s is closed" % self.host)
 
-        try:
-            request_id = self._id_queue.get_nowait()
-        except Queue.EMPTY:
-            raise ConnectionBusy(
-                "Connection to %s is at the max number of requests" % self.host)
+        if not wait_for_id:
+            try:
+                request_id = self._id_queue.get_nowait()
+            except Queue.Empty:
+                raise ConnectionBusy(
+                    "Connection to %s is at the max number of requests" % self.host)
+        else:
+            request_id = self._id_queue.get()
 
         self._callbacks[request_id] = cb
         self.push(msg.to_string(request_id, compression=self.compressor))
         return request_id
 
-    def wait_for_response(self, msg):
-        return self.wait_for_responses(msg)[0]
+    def wait_for_response(self, msg, timeout=None):
+        return self.wait_for_responses(msg, timeout=timeout)[0]
 
-    def wait_for_responses(self, *msgs):
+    def wait_for_responses(self, *msgs, **kwargs):
+        timeout = kwargs.get('timeout')
         waiter = ResponseWaiter(len(msgs))
-        for i, msg in enumerate(msgs):
-            self.send_msg(msg, partial(waiter.got_response, index=i))
 
-        return waiter.deliver()
+        # busy wait for sufficient space on the connection
+        messages_sent = 0
+        while True:
+            needed = len(msgs) - messages_sent
+            with self.lock:
+                available = min(needed, MAX_STREAM_PER_CONNECTION - self.in_flight)
+                self.in_flight += available
+
+            for i in range(messages_sent, messages_sent + available):
+                self.send_msg(msgs[i], partial(waiter.got_response, index=i), wait_for_id=True)
+            messages_sent += available
+
+            if messages_sent == len(msgs):
+                break
+            else:
+                if timeout is not None:
+                    timeout -= 0.01
+                    if timeout <= 0.0:
+                        raise OperationTimedOut()
+                time.sleep(0.01)
+
+        try:
+            return waiter.deliver(timeout)
+        finally:
+            with self.lock:
+                self.in_flight -= len(msgs)
 
     def register_watcher(self, event_type, callback):
         self._push_watchers[event_type].add(callback)
