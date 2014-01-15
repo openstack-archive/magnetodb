@@ -287,6 +287,11 @@ class BotoTestCase(tempest.test.BaseTestCase):
 
     gone_set = set(('_GONE',))
 
+    dynamodb_error_code = BotoExceptionMatcher()
+    dynamodb_error_code.server = ServerError()
+    dynamodb_error_code.client = ClientError()
+
+
     @classmethod
     def get_lfunction_gone(cls, obj):
         """If the object is instance of a well know type returns back with
@@ -669,4 +674,14 @@ for code in (('InternalError', 500),
             ('ServiceUnavailable', 503),
             ('SlowDown', 503)):
     _add_matcher_class(BotoTestCase.s3_error_code.server,
+                       code, base=ServerError)
+
+
+for code in ('ResourceInUseException', 'LimitExceededException'):
+    _add_matcher_class(BotoTestCase.dynamodb_error_code.client,
+                       code, base=ClientError)
+
+
+for code in ('InternalServerError', ):
+    _add_matcher_class(BotoTestCase.dynamodb_error_code.server,
                        code, base=ServerError)
