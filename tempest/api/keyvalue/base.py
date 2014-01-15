@@ -35,19 +35,24 @@ class MagnetoDBTestCase(test.BotoTestCase):
         super(MagnetoDBTestCase, cls).setUpClass()
         cls.os = tempest.clients.Manager()
         cls.client = cls.os.dynamodb_client
-        # todo(yyekovenko) Research boto error handling verification approach
-        #cls.ec = cls.ec2_error_code
+        cls.errors = cls.dynamodb_error_code
 
         # SMOKE TABLE: THREADS
         cls.hashkey = 'forum'
         cls.rangekey = 'subject'
+
         cls.smoke_attrs = [
             {'AttributeName': cls.hashkey, 'AttributeType': 'S'},
-            {'AttributeName': cls.rangekey, 'AttributeType': 'S'},
-            {'AttributeName': 'message', 'AttributeType': 'S'},
-            {'AttributeName': 'last_posted_by', 'AttributeType': 'S'},
-            {'AttributeName': 'replies', 'AttributeType': 'N'},
+            {'AttributeName': cls.rangekey, 'AttributeType': 'S'}
         ]
+        # add this attribute to smoke_attrs if want to create index
+        # TODO(yyekovenko): full list of attrs should be clarified
+        cls.index_attrs = [
+            {'AttributeName': 'last_posted_by', 'AttributeType': 'S'},
+            #{'AttributeName': 'message', 'AttributeType': 'S'},
+            #{'AttributeName': 'replies', 'AttributeType': 'N'}
+        ]
+
         cls.smoke_schema = [
             {'AttributeName': cls.hashkey, 'KeyType': 'HASH'},
             {'AttributeName': cls.rangekey, 'KeyType': 'RANGE'}
@@ -68,7 +73,6 @@ class MagnetoDBTestCase(test.BotoTestCase):
 
     @classmethod
     def wait_for_table_active(cls, table_name, timeout=120, interval=3):
-        # TODO(yyekovenko) Add condition if creation failed?
         def check():
             resp = cls.client.describe_table(table_name)
             if "Table" in resp and "TableStatus" in resp["Table"]:
@@ -82,8 +86,9 @@ class MagnetoDBTestCase(test.BotoTestCase):
 
         return tempest.test.call_until_true(check, timeout, interval)
 
-    def build_smoke_item(self, forum, subject, message,
-                         last_posted_by, replies):
+    @staticmethod
+    def build_smoke_item(forum, subject, message='message_text',
+                         last_posted_by='John', replies='1'):
         return {
             "forum": {"S": forum},
             "subject": {"S": subject},

@@ -88,17 +88,18 @@ class BotoClientBase(object):
 
     def get_connection(self):
         self._config_boto_timeout(self.connection_timeout, self.num_retries)
-        if not all((self.connection_data["aws_access_key_id"],
-                   self.connection_data["aws_secret_access_key"])):
-            if all(self.ks_cred.itervalues()):
-                ec2_cred = self._keystone_aws_get()
-                self.connection_data["aws_access_key_id"] = \
-                    ec2_cred.access
-                self.connection_data["aws_secret_access_key"] = \
-                    ec2_cred.secret
-            else:
-                raise exceptions.InvalidConfiguration(
-                    "Unable to get access and secret keys")
+        # TODO(yyekovenko) Avoid keystone authorization for now
+        #if not all((self.connection_data["aws_access_key_id"],
+        #           self.connection_data["aws_secret_access_key"])):
+        #    if all(self.ks_cred.itervalues()):
+        #        ec2_cred = self._keystone_aws_get()
+        #        self.connection_data["aws_access_key_id"] = \
+        #            ec2_cred.access
+        #        self.connection_data["aws_secret_access_key"] = \
+        #            ec2_cred.secret
+        #    else:
+        #        raise exceptions.InvalidConfiguration(
+        #            "Unable to get access and secret keys")
         return self.connect_method(**self.connection_data)
 
 
