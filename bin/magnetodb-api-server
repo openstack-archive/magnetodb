@@ -48,8 +48,9 @@ CONF.register_opts(common_opts)
 
 if __name__ == '__main__':
     from magnetodb.common import PROJECT_NAME
+    prog_name = os.path.basename(sys.argv[0])
+    CONF(project=PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
 
-    CONF(project=PROJECT_NAME, prog=sys.argv[0], args=sys.argv[1:])
     log.setup(PROJECT_NAME)
 
     try:
