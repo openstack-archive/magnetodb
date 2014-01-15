@@ -17,6 +17,7 @@
 
 from tempest.api.keyvalue.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
+from tempest.test import attr
 
 
 class MagnetoDBQueriesTest(MagnetoDBTestCase):
@@ -30,12 +31,11 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
             self.client.create_table(self.smoke_attrs,
                                      self.tname,
                                      self.smoke_schema,
-                                     self.smoke_throughput,
-                                     self.smoke_lsi,
-                                     self.smoke_gsi)
+                                     self.smoke_throughput)
             self.assertTrue(self.wait_for_table_active(self.tname))
             self.addResourceCleanUp(self.client.delete_table, self.tname)
 
+    @attr(type='smoke')
     def test_query(self):
         item = self.build_smoke_item('forum1', 'subject2',
                                      'message text', 'John', '10')
@@ -73,7 +73,8 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                   key_conditions=key_conditions,
                                   limit=2)
         self.assertEqual(resp1['Count'], 2)
-        last = resp1['LastEvaluatedTableName']
+        # TODO(yyekovenko) Comment added to 1267526: LastEvaluatedKey should be
+        last = resp1['LastEvaluatedTableName']  # ['LastEvaluatedKey']
         # query remaining records
         resp2 = self.client.query(table_name=self.tname,
                                   key_conditions=key_conditions,

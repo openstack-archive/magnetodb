@@ -18,16 +18,18 @@
 from tempest.api.keyvalue.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
 from tempest.openstack.common import log as logging
+from tempest.test import attr
 
 LOG = logging.getLogger(__name__)
 
 
 class MagnetoDBItemsTest(MagnetoDBTestCase):
 
-    def test_item_put_get_delete(self):
+    @attr(type='smoke')
+    def test_put_get_update_delete_item(self):
 
         tname = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs,
+        self.client.create_table(self.smoke_attrs + self.index_attrs,
                                  tname,
                                  self.smoke_schema,
                                  self.smoke_throughput,
@@ -37,7 +39,7 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         self.addResourceCleanUp(self.client.delete_table, tname)
 
         item = self.build_smoke_item('forum1', 'subject2',
-                                     'message text', 'John', '10')
+                                     last_posted_by='John')
         resp = self.client.put_item(tname, item)
         self.assertEqual(resp, {})
 
