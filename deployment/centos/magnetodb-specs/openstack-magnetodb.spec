@@ -28,7 +28,7 @@ Requires:       python-routes >= 1.12.3
 Requires:       python-webob >= 1.2.3, python-webob < 1.3
 Requires:       python27 = 2.7.1
 Requires:       python27-tools = 2.7.1
-Requires:       python-gevent
+Requires:       python27-gevent
 
 
 
