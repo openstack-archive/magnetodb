@@ -17,10 +17,13 @@ from decimal import Decimal
 import json
 import binascii
 
-from cassandra import cluster
+
 from cassandra import decoder
 
+
+from magnetodb.common.cassandra import cluster
 from magnetodb.common.exception import BackendInteractionException
+from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
 
@@ -74,6 +77,9 @@ class CassandraStorageImpl():
                  cql_version=None,
                  executor_threads=2,
                  max_schema_agreement_wait=10):
+
+        if connection_class:
+            connection_class = importutils.import_class(connection_class)
 
         self.cluster = cluster.Cluster(
             contact_points=contact_points,

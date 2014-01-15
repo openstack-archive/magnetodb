@@ -15,7 +15,8 @@
 
 import os
 
-from magnetodb.common import config, PROJECT_NAME
+from magnetodb.common import PROJECT_NAME
+
 
 def get_root_source(start_search_path, root_dir_name):
     cur_path = os.path.abspath(start_search_path)

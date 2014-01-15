@@ -25,7 +25,6 @@ class DynamoDBAction():
     schema = {}
 
     def __init__(self, context, action_params):
-        self.validate_params(action_params)
         self.action_params = action_params
         self.context = context
 
