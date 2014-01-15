@@ -57,9 +57,13 @@ cp %{_builddir}/magnetodb-%{version}/etc/* %{buildroot}%{_sysconfdir}/magnetodb/
 
 chmod +x  %{buildroot}/usr/bin/*
 chmod +x  %{buildroot}%{_initrddir}/openstack-magnetodb-api
+chmod +x  %{buildroot}%{_initrddir}/openstack-magnetodb-api-gunicorn
 
 sed -i s#'/usr/bin/env python'#'/usr/bin/env python27'#g %{buildroot}%{_bindir}/magnetodb-api-server
 sed -i s#'/usr/bin/python'#'/usr/bin/python27'#g %{buildroot}%{_bindir}/magnetodb-api-server
+
+sed -i s#'/usr/bin/env python'#'/usr/bin/env python27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
+sed -i s#'/usr/bin/python'#'/usr/bin/python27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
 
 
 %clean
@@ -80,6 +84,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sun Dec 13 2013 Max Mazur <mmaxur@mirantis.com>
+ - added gunicorn support
+
 * Sun Dec 13 2013 Max Mazur <mmaxur@mirantis.com>
  - For Havanna  (fuel 4.0)
 
