@@ -16,6 +16,7 @@
 #    under the License.
 import os
 import sys
+from paste import deploy
 
 from gevent import monkey
 monkey.patch_all()
@@ -32,20 +33,17 @@ if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
 
 from oslo.config import cfg
 from magnetodb.openstack.common import log
-from magnetodb.openstack.common import pastedeploy
 
 CONF = cfg.ConfigOpts()
 common_opts = [
     cfg.StrOpt('api_paste_config',
-               default="api-paste.ini",
                help='File name for the paste.deploy config for magnetodb-api'),
 
-    cfg.StrOpt('bind_host', default="0.0.0.0"),
+    cfg.StrOpt('bind_host'),
 
-    cfg.IntOpt('bind_port', default=80),
+    cfg.IntOpt('bind_port'),
 ]
 
-CONF = cfg.CONF
 CONF.register_opts(common_opts)
 
 if __name__ == '__main__':
@@ -56,8 +54,7 @@ if __name__ == '__main__':
 
     try:
         api_paste_config_file = CONF.find_file(CONF.api_paste_config)
-        app = pastedeploy.paste_deploy_app(api_paste_config_file,
-                                           None, {})
+        app = deploy.loadapp("config:{}".format(api_paste_config_file))
         server = wsgi.WSGIServer(
             listener=(CONF.bind_host, CONF.bind_port),
             application=app,
