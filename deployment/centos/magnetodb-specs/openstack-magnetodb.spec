@@ -57,7 +57,7 @@ mkdir -p %{buildroot}/etc/init.d
 
 install -p -D -m 755 %{SOURCE1}  %{buildroot}%{_initrddir}/openstack-magnetodb-api
 install -p -D -m 755 %{SOURCE2}  %{buildroot}%{_initrddir}/openstack-magnetodb-api-gunicorn
-install -p -D -m 755 %{SOURCE2}   %{buildroot}%{_bindir}/gunicorn27
+install -p -D -m 755 %{SOURCE3}  %{buildroot}%{_bindir}/gunicorn27
 
 cp %{_builddir}/magnetodb-%{version}/etc/* %{buildroot}%{_sysconfdir}/magnetodb/
 
@@ -90,6 +90,7 @@ rm -rf %{buildroot}
 %dir %{_sysconfdir}/magnetodb
 %config(noreplace) %attr(-, root, root) %{_sysconfdir}/magnetodb/*
 %config(noreplace) %attr(-, root, root) %{_initrddir}/openstack-magnetodb-api
+%config(noreplace) %attr(-, root, root) %{_initrddir}/openstack-magnetodb-api-gunicorn
 
 
 %changelog
