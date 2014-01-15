@@ -12,7 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from paste import deploy
 
 import wsgi_intercept
 from wsgi_intercept import http_client_intercept

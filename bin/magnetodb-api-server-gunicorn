@@ -14,25 +14,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import multiprocessing
 import os
 import sys
-
-from gevent import monkey
-monkey.patch_all()
-
-from gevent import wsgi
-
-# If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
-# it will override what happens to be installed in /usr/(local/)lib/python...
-possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                                os.pardir,
-                                                os.pardir))
-if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
-    sys.path.insert(0, possible_topdir)
-
 from oslo.config import cfg
-from magnetodb.openstack.common import log
-from magnetodb.openstack.common import pastedeploy
 
 CONF = cfg.ConfigOpts()
 common_opts = [
@@ -43,6 +29,9 @@ common_opts = [
     cfg.StrOpt('bind_host', default="0.0.0.0"),
 
     cfg.IntOpt('bind_port', default=80),
+
+    cfg.IntOpt('magnetodb_api_workers',
+               default=multiprocessing.cpu_count()),
 ]
 
 CONF = cfg.CONF
@@ -52,21 +41,16 @@ if __name__ == '__main__':
     from magnetodb.common import PROJECT_NAME
 
     CONF(project=PROJECT_NAME, prog=sys.argv[0], args=sys.argv[1:])
-    log.setup(PROJECT_NAME)
 
-    try:
-        api_paste_config_file = CONF.find_file(CONF.api_paste_config)
-        app = pastedeploy.paste_deploy_app(api_paste_config_file,
-                                           None, {})
-        server = wsgi.WSGIServer(
-            listener=(CONF.bind_host, CONF.bind_port),
-            application=app,
-            log=None
+    api_paste_config_file = CONF.find_file(CONF.api_paste_config)
+
+    os.system(
+        "gunicorn "
+        "--bind {}:{} "
+        "--workers {} "
+        "--worker-class gevent "
+        "--paste {}".format(
+            CONF.bind_host, CONF.bind_port, CONF.magnetodb_api_workers,
+            api_paste_config_file
         )
-
-        server.serve_forever()
-
-    except Exception as error:
-        import traceback
-        print traceback.format_exc()
-        sys.exit("ERROR: %s" % error)
+    )
