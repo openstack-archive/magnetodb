@@ -23,18 +23,15 @@ from oslo.config import cfg
 CONF = cfg.ConfigOpts()
 common_opts = [
     cfg.StrOpt('api_paste_config',
-               default="api-paste.ini",
                help='File name for the paste.deploy config for magnetodb-api'),
 
-    cfg.StrOpt('bind_host', default="0.0.0.0"),
+    cfg.StrOpt('bind_host'),
 
-    cfg.IntOpt('bind_port', default=80),
+    cfg.IntOpt('bind_port'),
 
-    cfg.IntOpt('magnetodb_api_workers',
-               default=multiprocessing.cpu_count()),
+    cfg.IntOpt('magnetodb_api_workers', default=multiprocessing.cpu_count()),
 ]
 
-CONF = cfg.CONF
 CONF.register_opts(common_opts)
 
 if __name__ == '__main__':
