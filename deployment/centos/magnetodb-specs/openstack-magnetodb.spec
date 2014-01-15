@@ -57,7 +57,6 @@ cp %{_builddir}/magnetodb-%{version}/etc/* %{buildroot}%{_sysconfdir}/magnetodb/
 
 chmod +x  %{buildroot}/usr/bin/*
 chmod +x  %{buildroot}%{_initrddir}/openstack-magnetodb-api
-chmod +x  %{buildroot}%{_initrddir}/openstack-magnetodb-api-gunicorn
 
 sed -i s#'/usr/bin/env python'#'/usr/bin/env python27'#g %{buildroot}%{_bindir}/magnetodb-api-server
 sed -i s#'/usr/bin/python'#'/usr/bin/python27'#g %{buildroot}%{_bindir}/magnetodb-api-server
