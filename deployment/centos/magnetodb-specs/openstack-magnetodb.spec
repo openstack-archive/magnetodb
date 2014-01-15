@@ -7,6 +7,8 @@ Group:          Development/Libraries
 License:        Apache 2.0
 Source0:        magnetodb-%{version}.tar.gz
 Source1:        openstack-magnetodb-api
+Source2:        openstack-magnetodb-api-gunicorn
+Source3:        gunicorn27
 BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildRequires:  python-devel, python-setuptools,
 Provides:       %{name} = %{version}-%{release}
@@ -67,6 +69,10 @@ sed -i s#'/usr/bin/env python'#'/usr/bin/env python27'#g %{buildroot}%{_bindir}/
 sed -i s#'/usr/bin/python'#'/usr/bin/python27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
 
 
+# Patching for gunicorn with Python27
+sed -i s#'gunicorn'#'gunicorn27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
+
+
 %clean
 rm -rf %{buildroot}
 
@@ -85,7 +91,7 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Sun Dec 13 2013 Max Mazur <mmaxur@mirantis.com>
+* Wed Jan 15 2014 Max Mazur <mmaxur@mirantis.com>
  - added gunicorn support
 
 * Sun Dec 13 2013 Max Mazur <mmaxur@mirantis.com>
