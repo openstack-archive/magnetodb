@@ -26,6 +26,8 @@ Requires:       python-routes >= 1.12.3
 Requires:       python-webob >= 1.2.3, python-webob < 1.3
 Requires:       python27 = 2.7.1
 Requires:       python27-tools = 2.7.1
+Requires:       python-gevent
+
 
 
 %define debug_package %{nil}
@@ -61,6 +63,9 @@ chmod +x  %{buildroot}%{_initrddir}/openstack-magnetodb-api
 sed -i s#'/usr/bin/env python'#'/usr/bin/env python27'#g %{buildroot}%{_bindir}/magnetodb-api-server
 sed -i s#'/usr/bin/python'#'/usr/bin/python27'#g %{buildroot}%{_bindir}/magnetodb-api-server
 
+sed -i s#'/usr/bin/env python'#'/usr/bin/env python27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
+sed -i s#'/usr/bin/python'#'/usr/bin/python27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
+
 
 %clean
 rm -rf %{buildroot}
@@ -80,6 +85,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sun Dec 13 2013 Max Mazur <mmaxur@mirantis.com>
+ - added gunicorn support
+
 * Sun Dec 13 2013 Max Mazur <mmaxur@mirantis.com>
  - For Havanna  (fuel 4.0)
 
