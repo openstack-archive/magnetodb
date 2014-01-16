@@ -221,6 +221,14 @@ class CassandraStorageImpl():
 
         self._execute_query(query)
 
+        LOG.debug("Delete Table CQL request executed. "
+                  "Waiting for schema agreement...")
+
+        self.cluster.control_connection.refresh_schema(
+            keyspace=context.tenant, table=table_name)
+
+        LOG.debug("Waiting for schema agreement... Done")
+
     def describe_table(self, context, table_name):
         """
         Describes table
