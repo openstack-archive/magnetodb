@@ -2038,6 +2038,147 @@ class TestCassandraScan(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
+    def test_scan_not_equal(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+        self._insert_data(2)
+
+        condition = {
+            'range': models.ScanCondition.neq(models.AttributeValue.str('2'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_scan_contains(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+        self._insert_data(121)
+
+        condition = {
+            'range': models.ScanCondition.contains(models.AttributeValue.str('2'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(1, result.count)
+        self.assertEqual('121', result.items[0]['range'].value)
+
+    def test_scan_not_contains(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+        self._insert_data(22)
+
+        condition = {
+            'range': models.ScanCondition.not_contains(models.AttributeValue.str('2'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_scan_contains_for_set(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        condition = {
+            'set_number': models.ScanCondition.contains(
+                models.AttributeValue.number(2))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_scan_contains_for_set2(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        condition = {
+            'set_number': models.ScanCondition.contains(
+                models.AttributeValue.number(4))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(0, result.count)
+
+    def test_scan_not_contains_for_set(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        condition = {
+            'set_number': models.ScanCondition.not_contains(
+                models.AttributeValue.number(4))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_scan_not_contains_for_set2(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        condition = {
+            'set_number': models.ScanCondition.not_contains(
+                models.AttributeValue.number(2))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(0, result.count)
+
+    def test_scan_in(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        condition = {
+            'range': models.ScanCondition.in_list(
+                models.AttributeValue.str_set({'1', '2'}))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(1, result.count)
+        self._validate_data(result.items[0])
+
+    def test_scan_in_negative(self):
+        self._create_table()
+        self._create_index()
+        self._insert_data()
+
+        condition = {
+            'range': models.ScanCondition.in_list(
+                models.AttributeValue.str_set({'2', '3'}))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.scan(
+            self.context, self.table_name, condition)
+
+        self.assertEqual(0, result.count)
+
     def test_paging(self):
         self._create_table()
         self._create_index()

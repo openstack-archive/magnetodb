@@ -944,19 +944,21 @@ class CassandraStorageImpl():
                 lambda item: self._conditions_satisfied(
                     item, condition_map),
                 selected.items)
+            count = len(filtered_items)
         else:
             filtered_items = []
+            count = selected.count
+
+        if attributes_to_get and filtered_items:
+            for item in filtered_items:
+                for attr in item.keys():
+                    if not attr in attributes_to_get:
+                        del item[attr]
 
         filtered = models.SelectResult(
             items=filtered_items,
             last_evaluated_key=selected.last_evaluated_key,
-            count=selected.count)
-
-        if attributes_to_get and filtered.items:
-            for item in filtered.items:
-                for attr in item.keys():
-                    if not attr in attributes_to_get:
-                        del item[attr]
+            count=count)
 
         return filtered
 
@@ -1043,5 +1045,31 @@ class CassandraStorageImpl():
         if cond.type == models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH:
             return (attr_val.type == cond.arg.type and
                     attr_val.value.startswith(cond.arg.value))
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_EQUAL:
+            return (attr_val.type != cond.arg.type or
+                    attr_val.value != cond.arg.value)
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_CONTAINS:
+            assert not cond.arg.type.collection_type
+            if attr_val.type.element_type != cond.arg.type.element_type:
+                return False
+
+            return cond.arg.value in attr_val.value
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_CONTAINS:
+            assert not cond.arg.type.collection_type
+            if attr_val.type.element_type != cond.arg.type.element_type:
+                return False
+
+            return cond.arg.value not in attr_val.value
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_IN:
+            assert cond.arg.type.collection_type
+            assert not attr_val.type.collection_type
+            if attr_val.type.element_type != cond.arg.type.element_type:
+                return False
+
+            return attr_val.value in cond.arg.value
 
         return False
