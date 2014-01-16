@@ -2154,8 +2154,10 @@ class TestCassandraScan(TestCassandraBase):
         self._insert_data()
 
         condition = {
-            'range': models.ScanCondition.in_list(
-                models.AttributeValue.str_set({'1', '2'}))
+            'range': models.ScanCondition.in_set({
+                models.AttributeValue.str('1'),
+                models.AttributeValue.str('2')
+            })
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
@@ -2170,8 +2172,10 @@ class TestCassandraScan(TestCassandraBase):
         self._insert_data()
 
         condition = {
-            'range': models.ScanCondition.in_list(
-                models.AttributeValue.str_set({'2', '3'}))
+            'range': models.ScanCondition.in_set({
+                models.AttributeValue.str('2'),
+                models.AttributeValue.str('3')
+            })
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(

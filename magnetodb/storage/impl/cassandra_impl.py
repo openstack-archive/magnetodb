@@ -939,6 +939,9 @@ class CassandraStorageImpl():
                 count=selected.count + selected2.count
             )
 
+
+        scanned_count = selected.count
+
         if selected.items:
             filtered_items = filter(
                 lambda item: self._conditions_satisfied(
@@ -955,10 +958,10 @@ class CassandraStorageImpl():
                     if not attr in attributes_to_get:
                         del item[attr]
 
-        filtered = models.SelectResult(
+        filtered = models.ScanResult(
             items=filtered_items,
             last_evaluated_key=selected.last_evaluated_key,
-            count=count)
+            count=count, scanned_count=scanned_count)
 
         return filtered
 
@@ -1065,11 +1068,8 @@ class CassandraStorageImpl():
             return cond.arg.value not in attr_val.value
 
         if cond.type == models.ScanCondition.CONDITION_TYPE_IN:
-            assert cond.arg.type.collection_type
-            assert not attr_val.type.collection_type
-            if attr_val.type.element_type != cond.arg.type.element_type:
-                return False
+            cond_arg = cond.arg or []
 
-            return attr_val.value in cond.arg.value
+            return attr_val in cond_arg
 
         return False

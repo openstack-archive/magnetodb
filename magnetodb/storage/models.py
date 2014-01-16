@@ -315,7 +315,7 @@ class ScanCondition(IndexedCondition):
         return cls(cls.CONDITION_TYPE_NOT_EQUAL, condition_arg)
 
     @classmethod
-    def in_list(cls, condition_arg):
+    def in_set(cls, condition_arg):
         return cls(cls.CONDITION_TYPE_IN, condition_arg)
 
     @classmethod
@@ -552,6 +552,20 @@ class SelectResult(object):
     @property
     def last_evaluated_key(self):
         return self._last_evaluated_key
+
+
+class ScanResult(SelectResult):
+
+    def __init__(self, items=None, last_evaluated_key=None,
+                 count=None, scanned_count=None):
+
+        super(ScanResult, self).__init__(items, last_evaluated_key, count)
+
+        self._scanned_count = scanned_count
+
+    @property
+    def scanned_count(self):
+        return self._scanned_count
 
 
 class TableSchema(ModelBase):

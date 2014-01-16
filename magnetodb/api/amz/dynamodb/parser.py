@@ -108,6 +108,7 @@ class Props():
     SELECT = "Select"
 
     COUNT = "Count"
+    SCANNED_COUNT = "ScannedCount"
     ITEMS = "Items"
     LAST_EVALUATED_KEY = "LastEvaluatedKey"
 
@@ -718,7 +719,7 @@ class Parser():
         assert False, "Select type wasn't recognized"
 
     @classmethod
-    def parse_query_attribute_conditions(
+    def parse_attribute_conditions(
             cls, attribute_conditions_json):
         attribute_conditions = {}
 
@@ -770,5 +771,22 @@ class Parser():
                     models.IndexedCondition.btw(condition_args[0],
                                                 condition_args[1])
                 )
+            elif dynamodb_condition_type == Values.NE:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = models.ScanCondition.neq(
+                    condition_args[0]
+                )
+            elif dynamodb_condition_type == Values.CONTAINS:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = models.ScanCondition.contains(
+                    condition_args[0]
+                )
+            elif dynamodb_condition_type == Values.NOT_CONTAINS:
+                assert len(condition_args) == 1
+                attribute_conditions[attr_name] = (
+                    models.ScanCondition.not_contains(condition_args[0]))
+            elif dynamodb_condition_type == Values.IN:
+                attribute_conditions[attr_name] = (
+                    models.ScanCondition.in_set(condition_args))
 
         return attribute_conditions
