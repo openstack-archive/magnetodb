@@ -762,16 +762,22 @@ class CassandraStorageImpl():
 
         indexed_condition_map = indexed_condition_map or {}
 
-        exclusive_start_key = exclusive_start_key or {}
-
         exclusive_range_cond = None
 
-        for key, val in exclusive_start_key.iteritems():
-            if key == hash_name:
-                indexed_condition_map[key] = models.Condition.eq(val)
-            elif key == range_name:
-                exclusive_range_cond = self._condition_as_string(
-                    range_name, models.IndexedCondition.gt(val))
+        if exclusive_start_key:
+            if range_name in exclusive_start_key:
+                    exclusive_range_cond = self._condition_as_string(
+                        range_name, models.IndexedCondition.gt(
+                            exclusive_start_key[range_name]))
+
+                    indexed_condition_map[hash_name] = models.Condition.eq(
+                        exclusive_start_key[hash_name])
+
+            else:
+                exclusive_range_cond = 'token({})>token({})'.format(
+                    self.USER_COLUMN_PREFIX + hash_name,
+                    self._encode_predefined_attr_value(
+                        exclusive_start_key[hash_name]))
 
         where = self._conditions_as_string(indexed_condition_map)
 
@@ -855,10 +861,10 @@ class CassandraStorageImpl():
 
         count = len(result)
         if limit and count == limit:
-            last_evaluated_key = {
-                hash_name: result[-1][hash_name],
-                range_name: result[-1][range_name]
-            }
+            last_evaluated_key = {hash_name: result[-1][hash_name]}
+
+            if range_name:
+                last_evaluated_key[range_name] = result[-1][range_name]
         else:
             last_evaluated_key = None
 
@@ -888,23 +894,74 @@ class CassandraStorageImpl():
         condition_map = condition_map or {}
 
         key_conditions = {}
-        #TODO ikhudoshyn: fill key_conditions
+
+        schema = self.describe_table(context, table_name)
+        hash_name = schema.key_attributes[0]
+
+        try:
+            range_name = schema.key_attributes[1]
+        except IndexError:
+            range_name = None
+
+        if (hash_name in condition_map
+            and condition_map[hash_name].type ==
+                models.Condition.CONDITION_TYPE_EQUAL):
+
+            key_conditions[hash_name] = condition_map[hash_name]
+
+            if (range_name and range_name in condition_map
+                and condition_map[range_name].type in
+                    models.IndexedCondition._allowed_types):
+
+                key_conditions[range_name] = condition_map[range_name]
 
         selected = self.select_item(context, table_name, key_conditions,
                                     models.SelectType.all(), limit=limit,
                                     consistent=consistent,
                                     exclusive_start_key=exclusive_start_key)
 
-        filtered = filter(
-            lambda row: self._conditions_satisfied(
-                row, condition_map),
-            selected)
+        if (range_name and exclusive_start_key
+                and range_name in exclusive_start_key
+                and (not limit or limit > selected.count)):
 
-        if attributes_to_get:
-            for row in filtered:
-                for attr in row.keys():
+            del exclusive_start_key[range_name]
+
+            limit2 = limit - selected.count if limit else None
+
+            selected2 = self.select_item(context, table_name, key_conditions,
+                                         models.SelectType.all(), limit=limit2,
+                                         consistent=consistent,
+                                         exclusive_start_key=exclusive_start_key)
+
+            selected = models.SelectResult(
+                items=selected.items + selected2.items,
+                last_evaluated_key=selected2.last_evaluated_key,
+                count=selected.count + selected2.count
+            )
+
+
+        scanned_count = selected.count
+
+        if selected.items:
+            filtered_items = filter(
+                lambda item: self._conditions_satisfied(
+                    item, condition_map),
+                selected.items)
+            count = len(filtered_items)
+        else:
+            filtered_items = []
+            count = selected.count
+
+        if attributes_to_get and filtered_items:
+            for item in filtered_items:
+                for attr in item.keys():
                     if not attr in attributes_to_get:
-                        del row[attr]
+                        del item[attr]
+
+        filtered = models.ScanResult(
+            items=filtered_items,
+            last_evaluated_key=selected.last_evaluated_key,
+            count=count, scanned_count=scanned_count)
 
         return filtered
 
@@ -991,5 +1048,28 @@ class CassandraStorageImpl():
         if cond.type == models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH:
             return (attr_val.type == cond.arg.type and
                     attr_val.value.startswith(cond.arg.value))
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_EQUAL:
+            return (attr_val.type != cond.arg.type or
+                    attr_val.value != cond.arg.value)
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_CONTAINS:
+            assert not cond.arg.type.collection_type
+            if attr_val.type.element_type != cond.arg.type.element_type:
+                return False
+
+            return cond.arg.value in attr_val.value
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_CONTAINS:
+            assert not cond.arg.type.collection_type
+            if attr_val.type.element_type != cond.arg.type.element_type:
+                return False
+
+            return cond.arg.value not in attr_val.value
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_IN:
+            cond_arg = cond.arg or []
+
+            return attr_val in cond_arg
 
         return False

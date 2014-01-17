@@ -113,7 +113,7 @@ class QueryDynamoDBAction(DynamoDBAction):
             )
 
         # parse indexed_condition_map
-        indexed_condition_map = parser.Parser.parse_query_attribute_conditions(
+        indexed_condition_map = parser.Parser.parse_attribute_conditions(
             self.action_params.get(parser.Props.KEY_CONDITIONS, None)
         )
 

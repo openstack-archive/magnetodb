@@ -293,6 +293,40 @@ class IndexedCondition(Condition):
         return cls(cls.CONDITION_TYPE_BEGINS_WITH, condition_arg)
 
 
+class ScanCondition(IndexedCondition):
+
+    CONDITION_TYPE_IN = "in"
+    CONDITION_TYPE_CONTAINS = "contains"
+    CONDITION_TYPE_NOT_CONTAINS = "not_contains"
+    CONDITION_TYPE_NOT_EQUAL = "not_equal"
+
+    _allowed_types = {Condition.CONDITION_TYPE_EQUAL,
+                      IndexedCondition.CONDITION_TYPE_LESS,
+                      IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL,
+                      IndexedCondition.CONDITION_TYPE_GREATER,
+                      IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL,
+                      IndexedCondition.CONDITION_TYPE_BETWEEN,
+                      IndexedCondition.CONDITION_TYPE_BEGINS_WITH,
+                      CONDITION_TYPE_IN, CONDITION_TYPE_CONTAINS,
+                      CONDITION_TYPE_NOT_CONTAINS, CONDITION_TYPE_NOT_EQUAL}
+
+    @classmethod
+    def neq(cls, condition_arg):
+        return cls(cls.CONDITION_TYPE_NOT_EQUAL, condition_arg)
+
+    @classmethod
+    def in_set(cls, condition_arg):
+        return cls(cls.CONDITION_TYPE_IN, condition_arg)
+
+    @classmethod
+    def contains(cls, condition_arg):
+        return cls(cls.CONDITION_TYPE_CONTAINS, condition_arg)
+
+    @classmethod
+    def not_contains(cls, condition_arg):
+        return cls(cls.CONDITION_TYPE_NOT_CONTAINS, condition_arg)
+
+
 class ExpectedCondition(Condition):
     CONDITION_TYPE_EXISTS = "exists"
 
@@ -518,6 +552,20 @@ class SelectResult(object):
     @property
     def last_evaluated_key(self):
         return self._last_evaluated_key
+
+
+class ScanResult(SelectResult):
+
+    def __init__(self, items=None, last_evaluated_key=None,
+                 count=None, scanned_count=None):
+
+        super(ScanResult, self).__init__(items, last_evaluated_key, count)
+
+        self._scanned_count = scanned_count
+
+    @property
+    def scanned_count(self):
+        return self._scanned_count
 
 
 class TableSchema(ModelBase):
