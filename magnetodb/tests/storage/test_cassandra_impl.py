@@ -908,6 +908,41 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self.assertEqual(0, result.count)
 
+    def test_select_item_exclusive_key_with_range(self):
+        self._create_table()
+        self._create_index()
+
+        self._insert_data(1)
+        self._insert_data(2)
+        self._insert_data(3)
+        self._insert_data(4)
+        self._insert_data(5)
+
+        indexed_cond = {
+            'id': models.Condition.eq(models.AttributeValue.number(1)),
+            'range': models.IndexedCondition.gt(models.AttributeValue.str('1'))
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond,
+            limit=2)
+
+        self.assertEqual(2, result.count)
+        self.assertEqual('2', result.items[0]['range'].value)
+        self.assertEqual('3', result.items[1]['range'].value)
+
+        last_eval_key = result.last_evaluated_key
+
+        self.assertIsNotNone(last_eval_key)
+
+        result2 = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, indexed_cond,
+            exclusive_start_key=last_eval_key)
+
+        self.assertEqual(2, result2.count)
+        self.assertEqual('4', result2.items[0]['range'].value)
+        self.assertEqual('5', result2.items[1]['range'].value)
+
 
 class TestCassandraUpdateItem(TestCassandraBase):
     def test_update_item_put_str(self):

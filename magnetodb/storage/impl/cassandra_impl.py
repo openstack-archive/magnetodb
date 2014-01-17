@@ -762,30 +762,41 @@ class CassandraStorageImpl():
 
         indexed_condition_map = indexed_condition_map or {}
 
-        exclusive_range_cond = None
+        token_cond = None
+        fixed_range_cond = None
 
         if exclusive_start_key:
             if range_name in exclusive_start_key:
-                    exclusive_range_cond = self._condition_as_string(
-                        range_name, models.IndexedCondition.gt(
-                            exclusive_start_key[range_name]))
 
-                    indexed_condition_map[hash_name] = models.Condition.eq(
-                        exclusive_start_key[hash_name])
+                fixed_range_cond = self._fixed_range_condition(
+                    range_name, indexed_condition_map,
+                    exclusive_start_key)
+
+                indexed_condition_map[hash_name] = models.Condition.eq(
+                    exclusive_start_key[hash_name])
 
             else:
-                exclusive_range_cond = 'token({})>token({})'.format(
+                token_cond = 'token({})>token({})'.format(
                     self.USER_COLUMN_PREFIX + hash_name,
                     self._encode_predefined_attr_value(
                         exclusive_start_key[hash_name]))
 
+                if hash_name in indexed_condition_map:
+                    del indexed_condition_map[hash_name]
+
         where = self._conditions_as_string(indexed_condition_map)
 
-        if exclusive_range_cond:
+        if token_cond:
             if where:
-                where += ' AND ' + exclusive_range_cond
+                where += ' AND ' + token_cond
             else:
-                where = exclusive_range_cond
+                where = token_cond
+
+        if fixed_range_cond:
+            if where:
+                where += ' AND ' + fixed_range_cond
+            else:
+                where = fixed_range_cond
 
         if where:
             query += " WHERE " + where
@@ -871,6 +882,55 @@ class CassandraStorageImpl():
         return models.SelectResult(items=result,
                                    last_evaluated_key=last_evaluated_key,
                                    count=count)
+
+    def _fixed_range_condition(self, range_name,
+                             condition_map, exclusive_start_key):
+
+        if range_name not in exclusive_start_key:
+            return None
+
+        right_cond = None
+
+        if range_name in condition_map:
+            condition = condition_map.pop(range_name)
+
+            if condition.type == models.Condition.CONDITION_TYPE_EQUAL:
+                condition_map[range_name] = condition
+                return None
+
+            elif condition.type in (
+                models.IndexedCondition.CONDITION_TYPE_LESS,
+                models.IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL
+            ):
+
+                right_cond = condition
+
+            elif condition.type == (models.IndexedCondition.
+                                    CONDITION_TYPE_BETWEEN):
+
+                first, second = condition.arg
+
+                right_cond = models.IndexedCondition.le(second)
+
+            elif condition.type == (models.IndexedCondition.
+                                    CONDITION_TYPE_BEGINS_WITH):
+
+                first = condition.arg
+                second_value = first.value[:-1] + chr(ord(first.value[-1]) + 1)
+                second = models.AttributeValue(condition.arg.type, second_value)
+
+                right_cond = models.IndexedCondition.lt(second)
+
+        left_cond = models.IndexedCondition.gt(
+            exclusive_start_key[range_name])
+
+        fixed = self._condition_as_string(range_name, left_cond)
+
+        if right_cond:
+            fixed += ' AND ' + self._condition_as_string(
+                range_name, right_cond)
+
+        return fixed
 
     def scan(self, context, table_name, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None, consistent=False):
