@@ -19,7 +19,7 @@ import os
 import unittest
 
 from magnetodb import storage
-from magnetodb.common.exception import TableDoesntExists
+from magnetodb.common.exception import TableNotExistsException
 from magnetodb.tests import PROJECT_ROOT_DIR
 from magnetodb.tests.fake import magnetodb_api_fake
 from mox import Mox, IgnoreArg
@@ -51,7 +51,7 @@ class APITest(unittest.TestCase):
     def test_describe_unexisting_table(self):
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
-        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(TableDoesntExists)
+        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(TableNotExistsException)
 
         self.storage_mocker.ReplayAll()
 

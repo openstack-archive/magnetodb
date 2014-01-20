@@ -22,7 +22,7 @@ from cassandra import decoder
 
 
 from magnetodb.common.cassandra import cluster
-from magnetodb.common.exception import BackendInteractionException, TableDoesntExists
+from magnetodb.common.exception import BackendInteractionException, TableNotExistsException
 from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
@@ -257,7 +257,7 @@ class CassandraStorageImpl():
                 break
             except KeyError:
                 if schema_refreshed:
-                    raise TableDoesntExists(
+                    raise TableNotExistsException(
                         "Table '{}' does not exist".format(table_name)
                     )
                 else:

@@ -17,7 +17,7 @@
 from magnetodb import storage
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
-from magnetodb.common.exception import ResourceNotFoundException, TableDoesntExists, ValidationException
+from magnetodb.common.exception import ResourceNotFoundException, TableNotExistsException, ValidationException
 
 
 class DescribeTableDynamoDBAction(DynamoDBAction):
@@ -34,7 +34,7 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
 
         try:
             table_schema = storage.describe_table(self.context, table_name)
-        except TableDoesntExists as e:
+        except TableNotExistsException as e:
             raise ResourceNotFoundException(e.message)
 
         if not table_name:

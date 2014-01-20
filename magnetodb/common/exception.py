@@ -52,7 +52,7 @@ class BackendInteractionException(MagnetoError):
     pass
 
 
-class TableDoesntExists(BackendInteractionException):
+class TableNotExistsException(BackendInteractionException):
     pass
 
 

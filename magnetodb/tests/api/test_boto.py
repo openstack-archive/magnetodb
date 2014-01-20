@@ -26,7 +26,7 @@ from boto.dynamodb2 import fields
 from magnetodb.tests.fake import magnetodb_api_fake
 from magnetodb.tests import PROJECT_ROOT_DIR
 from boto.dynamodb2.table import Table
-from magnetodb.common.exception import TableDoesntExists
+from magnetodb.common.exception import TableNotExistsException
 from magnetodb.storage import models
 from magnetodb import storage
 from mox import Mox, IgnoreArg
@@ -135,7 +135,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
-        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(TableDoesntExists)
+        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(TableNotExistsException)
 
         self.storage_mocker.ReplayAll()
 
