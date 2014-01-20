@@ -13,7 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import decimal
+import logging
 import unittest
+from boto.exception import JSONResponseError
 
 import os
 from boto.dynamodb import types
@@ -24,20 +26,31 @@ from boto.dynamodb2 import fields
 from magnetodb.tests.fake import magnetodb_api_fake
 from magnetodb.tests import PROJECT_ROOT_DIR
 from boto.dynamodb2.table import Table
+from magnetodb.common.exception import TableDoesntExists
 from magnetodb.storage import models
 from magnetodb import storage
 from mox import Mox, IgnoreArg
+
+
 
 CONF = magnetodb_api_fake.CONF
 
 
 class BotoIntegrationTest(unittest.TestCase):
+    """
+    The integration test with boto client https://github.com/boto/boto
+    """
+
     PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste.ini')
 
     @classmethod
     def setUpClass(cls):
         magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE)
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
+
+        #enabling boto logging
+        log = logging.getLogger('boto')
+        log.setLevel(logging.DEBUG)
 
     @classmethod
     def tearDownClass(cls):
@@ -117,6 +130,22 @@ class BotoIntegrationTest(unittest.TestCase):
                     "AttributeType": "S"
                 }
             ], table_description['Table']['AttributeDefinitions'])
+
+    def test_describe_unexisting_table(self):
+
+        self.storage_mocker.StubOutWithMock(storage, 'describe_table')
+
+        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(TableDoesntExists)
+
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table1', connection=self.DYNAMODB_CON)
+
+        try:
+            table_description = table.describe()
+        except JSONResponseError as e:
+            self.assertEqual(e.body['__type'],'com.amazonaws.dynamodb.v20111205#ResourceNotFoundException')
+            self.assertEqual(e.body['message'],'The resource which is being requested does not exist.')
 
     def test_delete_table(self):
         self.storage_mocker.StubOutWithMock(storage, 'delete_table')
