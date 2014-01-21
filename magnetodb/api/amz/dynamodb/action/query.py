@@ -172,7 +172,7 @@ class QueryDynamoDBAction(DynamoDBAction):
             )
 
         if limit == len(result.items):
-            response[parser.Props.LAST_EVALUATED_TABLE_NAME] = (
+            response[parser.Props.LAST_EVALUATED_KEY] = (
                 parser.Parser.format_item_attributes(result.last_evaluated_key)
 
             )
