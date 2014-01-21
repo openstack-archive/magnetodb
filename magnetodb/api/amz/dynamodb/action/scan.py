@@ -134,14 +134,18 @@ class ScanDynamoDBAction(DynamoDBAction):
                 parser.Parser.format_item_attributes(row)
                 for row in result]
 
-            response[parser.Props.LAST_EVALUATED_KEY] = None
-
         if (return_consumed_capacity !=
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
             response[parser.Props.CONSUMED_CAPACITY] = (
                 parser.Parser.format_consumed_capacity(
                     return_consumed_capacity, None
                 )
+            )
+
+        if result.last_evaluated_key:
+            response[parser.Props.LAST_EVALUATED_KEY] = (
+                parser.Parser.format_item_attributes(result.last_evaluated_key)
+
             )
 
         return response

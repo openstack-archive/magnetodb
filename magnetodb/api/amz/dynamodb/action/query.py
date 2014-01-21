@@ -146,7 +146,8 @@ class QueryDynamoDBAction(DynamoDBAction):
         result = storage.select_item(
             self.context, table_name, indexed_condition_map,
             select_type=select_type, index_name=index_name, limit=limit,
-            consistent=consistent_read, order_type=order_type
+            consistent=consistent_read, order_type=order_type,
+            exclusive_start_key=exclusive_start_key_attributes
         )
 
         # format response
@@ -172,7 +173,7 @@ class QueryDynamoDBAction(DynamoDBAction):
             )
 
         if limit == len(result.items):
-            response[parser.Props.LAST_EVALUATED_TABLE_NAME] = (
+            response[parser.Props.LAST_EVALUATED_KEY] = (
                 parser.Parser.format_item_attributes(result.last_evaluated_key)
 
             )
