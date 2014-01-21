@@ -41,7 +41,7 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         resp = self.client.put_item(tname, item)
-        self.assertEqual(resp, {})
+        self.assertEqual({}, resp)
 
         key = {self.hashkey: item[self.hashkey],
                self.rangekey: item[self.rangekey]}
@@ -65,5 +65,6 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         ##############################################################
 
         resp = self.client.delete_item(tname, key)
-        self.assertEqual(resp, {})
-        self.assertEqual(self.client.get_item(tname, key), {})
+        self.assertEqual({}, resp)
+        self.assertEqual({}, self.client.get_item(tname, key,
+                                                  consistent_read=True))
