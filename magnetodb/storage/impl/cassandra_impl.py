@@ -62,6 +62,32 @@ class CassandraStorageImpl():
         SYSTEM_COLUMN_HASH + "_internal_index"
     )
 
+
+    __table_schema_cache = {}
+
+    @classmethod
+    def _save_table_schema_to_cache(cls, tenant, table_name, schema):
+        tenant_tables_cache = cls.__table_schema_cache.get(tenant)
+        if tenant_tables_cache is None:
+            tenant_tables_cache = {}
+            cls.__table_schema_cache[tenant] = tenant_tables_cache
+        tenant_tables_cache[table_name] = schema
+
+    @classmethod
+    def _get_table_schema_from_cache(cls, tenant, table_name,):
+        tenant_tables_cache = cls.__table_schema_cache.get(tenant)
+        if tenant_tables_cache is None:
+            return None
+        return tenant_tables_cache.get(table_name)
+
+    @classmethod
+    def _remove_table_schema_from_cache(cls, tenant, table_name):
+        tenant_tables_cache = cls.__table_schema_cache.get(tenant)
+        if tenant_tables_cache is None:
+            return None
+
+        return tenant_tables_cache.pop(table_name, None)
+
     def __init__(self, contact_points=("127.0.0.1",),
                  port=9042,
                  compression=True,
@@ -96,11 +122,22 @@ class CassandraStorageImpl():
             sockopts=sockopts,
             cql_version=cql_version,
             executor_threads=executor_threads,
-            max_schema_agreement_wait=max_schema_agreement_wait
+            max_schema_agreement_wait=max_schema_agreement_wait,
+            schema_change_listeners=(self.schema_change_listener,)
         )
 
         self.session = self.cluster.connect()
         self.session.row_factory = decoder.dict_factory
+
+    def schema_change_listener(self, event):
+        tenant = event.get('keyspace')
+        table_name = event.get('table')
+
+        if (tenant is None) or (table_name is None):
+            return
+
+        if event['change_type'] == "DROPPED":
+            self._remove_table_schema_from_cache(tenant, table_name)
 
     def _execute_query(self, query):
         try:
@@ -274,6 +311,11 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
+        table_schema = self._get_table_schema_from_cache(context.tenant,
+                                                         table_name)
+        if table_schema:
+            return table_schema
+
         keyspace_meta = self.cluster.metadata.keyspaces.get(context.tenant)
 
         if keyspace_meta is None:
@@ -315,6 +357,9 @@ class CassandraStorageImpl():
 
         table_schema = models.TableSchema(table_meta.name, attr_defs,
                                           key_attrs, index_defs)
+
+        self._save_table_schema_to_cache(context.tenant, table_name,
+                                         table_schema)
 
         return table_schema
 

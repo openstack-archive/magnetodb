@@ -254,7 +254,8 @@ class Cluster(object):
                  sockopts=None,
                  cql_version=None,
                  executor_threads=2,
-                 max_schema_agreement_wait=10):
+                 max_schema_agreement_wait=10,
+                 schema_change_listeners=None):
         """
         Any of the mutable Cluster attributes may be set as keyword arguments
         to the constructor.
@@ -332,6 +333,8 @@ class Cluster(object):
 
         if self.metrics_enabled:
             self.metrics = Metrics(weakref.proxy(self))
+
+        self._schema_change_listeners = schema_change_listeners
 
         self.control_connection = ControlConnection(self)
 
@@ -1473,6 +1476,10 @@ class ControlConnection(object):
             self._cluster.executor.submit(self.refresh_schema, keyspace)
         elif event['change_type'] == "UPDATED":
             self._cluster.executor.submit(self.refresh_schema, keyspace, table)
+
+        for listener in self._cluster._schema_change_listeners:
+            listener(event)
+
 
     def wait_for_schema_agreement(self, connection=None):
         # Each schema change typically generates two schema refreshes, one
