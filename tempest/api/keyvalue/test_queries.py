@@ -22,18 +22,15 @@ from tempest.test import attr
 
 class MagnetoDBQueriesTest(MagnetoDBTestCase):
 
-    tname = None
-
-    def setUp(self):
-        super(MagnetoDBQueriesTest, self).setUp()
-        if self.tname is None:
-            self.tname = rand_name().replace('-', '')
-            self.client.create_table(self.smoke_attrs,
-                                     self.tname,
-                                     self.smoke_schema,
-                                     self.smoke_throughput)
-            self.assertTrue(self.wait_for_table_active(self.tname))
-            self.addResourceCleanUp(self.client.delete_table, self.tname)
+    @classmethod
+    def setUpClass(cls):
+        super(MagnetoDBQueriesTest, cls).setUpClass()
+        cls.tname = rand_name().replace('-', '')
+        cls.client.create_table(cls.smoke_attrs,
+                                cls.tname,
+                                cls.smoke_schema,
+                                cls.smoke_throughput)
+        cls.addResourceCleanUp(cls.client.delete_table, cls.tname)
 
     @attr(type='smoke')
     def test_query(self):
@@ -72,13 +69,12 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         resp1 = self.client.query(table_name=self.tname,
                                   key_conditions=key_conditions,
                                   limit=2)
-        self.assertEqual(resp1['Count'], 2)
-
+        self.assertEqual(2, resp1['Count'])
         last = resp1['LastEvaluatedKey']
         # query remaining records
         resp2 = self.client.query(table_name=self.tname,
                                   key_conditions=key_conditions,
                                   exclusive_start_key=last)
-        self.assertEqual(resp2['Count'], 8)
+        self.assertEqual(8, resp2['Count'])
         self.assertNotIn(resp1['Items'][0], resp2['Items'])
         self.assertNotIn(resp1['Items'][1], resp2['Items'])
