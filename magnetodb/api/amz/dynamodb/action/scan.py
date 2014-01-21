@@ -110,30 +110,29 @@ class ScanDynamoDBAction(DynamoDBAction):
             parser.Props.SCAN_FILTER, None
         )
 
+        condition_map = parser.Parser.parse_attribute_conditions(
+            scan_filter
+        )
+
         segment = self.action_params.get(parser.Props.SEGMENT, 0)
         total_segments = self.action_params.get(parser.Props.TOTAL_SEGMENTS, 1)
 
         assert segment < total_segments
-
-        condition_map = None
 
         result = storage.scan(
             self.context, table_name, condition_map,
             attributes_to_get=attrs_to_get, limit=limit,
             exclusive_start_key=exclusive_start_key)
 
-        response = {}
+        response = {
+            parser.Props.COUNT: result.count,
+            parser.Props.SCANNED_COUNT: result.scanned_count
+        }
 
-        if select_type.is_count:
-            response[parser.Props.COUNT] = result
-        else:
+        if not select_type.is_count:
             response[parser.Props.ITEMS] = [
                 parser.Parser.format_item_attributes(row)
                 for row in result]
-
-            response[parser.Props.COUNT] = len(response)
-
-            response[parser.Props.LAST_EVALUATED_KEY] = None
 
         if (return_consumed_capacity !=
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
@@ -141,6 +140,12 @@ class ScanDynamoDBAction(DynamoDBAction):
                 parser.Parser.format_consumed_capacity(
                     return_consumed_capacity, None
                 )
+            )
+
+        if result.last_evaluated_key:
+            response[parser.Props.LAST_EVALUATED_KEY] = (
+                parser.Parser.format_item_attributes(result.last_evaluated_key)
+
             )
 
         return response

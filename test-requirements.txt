@@ -7,3 +7,4 @@ testtools>=0.9.32
 wsgi_intercept
 nose
 funkload
+testresources

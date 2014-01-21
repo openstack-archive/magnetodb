@@ -14,25 +14,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import multiprocessing
 import os
 import sys
-from paste import deploy
-
-from gevent import monkey
-monkey.patch_all()
-
-from gevent import wsgi
-
-# If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
-# it will override what happens to be installed in /usr/(local/)lib/python...
-possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                                os.pardir,
-                                                os.pardir))
-if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
-    sys.path.insert(0, possible_topdir)
-
 from oslo.config import cfg
-from magnetodb.openstack.common import log
 
 CONF = cfg.ConfigOpts()
 common_opts = [
@@ -42,6 +28,8 @@ common_opts = [
     cfg.StrOpt('bind_host'),
 
     cfg.IntOpt('bind_port'),
+
+    cfg.IntOpt('magnetodb_api_workers', default=multiprocessing.cpu_count()),
 ]
 
 CONF.register_opts(common_opts)
@@ -51,20 +39,15 @@ if __name__ == '__main__':
     prog_name = os.path.basename(sys.argv[0])
     CONF(project=PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
 
-    log.setup(PROJECT_NAME)
+    api_paste_config_file = CONF.find_file(CONF.api_paste_config)
 
-    try:
-        api_paste_config_file = CONF.find_file(CONF.api_paste_config)
-        app = deploy.loadapp("config:{}".format(api_paste_config_file))
-        server = wsgi.WSGIServer(
-            listener=(CONF.bind_host, CONF.bind_port),
-            application=app,
-            log=None
+    os.system(
+        "gunicorn "
+        "--bind {}:{} "
+        "--workers {} "
+        "--worker-class gevent "
+        "--paste {}".format(
+            CONF.bind_host, CONF.bind_port, CONF.magnetodb_api_workers,
+            api_paste_config_file
         )
-
-        server.serve_forever()
-
-    except Exception as error:
-        import traceback
-        print traceback.format_exc()
-        sys.exit("ERROR: %s" % error)
+    )

@@ -14,10 +14,10 @@
 #    under the License.
 
 
+from magnetodb import storage
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
-
-from magnetodb import storage
+from magnetodb.common.exception import ResourceNotFoundException, TableNotExistsException, ValidationException
 
 
 class DescribeTableDynamoDBAction(DynamoDBAction):
@@ -32,12 +32,13 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
 
         table_name = self.action_params.get(Props.TABLE_NAME, None)
 
-        table_schema = storage.describe_table(self.context, table_name)
+        try:
+            table_schema = storage.describe_table(self.context, table_name)
+        except TableNotExistsException as e:
+            raise ResourceNotFoundException(e.message)
 
         if not table_name:
-#           TODO (isviridov) implement the table not found
-#           scenario should be ResourceNotFoundException HTTP status 400
-            raise NotImplementedError()
+            raise ValidationException(message='Table name is not defined')
         else:
             return {Props.TABLE: {
                 Props.ATTRIBUTE_DEFINITIONS: (

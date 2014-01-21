@@ -7,6 +7,8 @@ Group:          Development/Libraries
 License:        Apache 2.0
 Source0:        magnetodb-%{version}.tar.gz
 Source1:        openstack-magnetodb-api
+Source2:        openstack-magnetodb-api-gunicorn
+Source3:        gunicorn27
 BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildRequires:  python-devel, python-setuptools,
 Provides:       %{name} = %{version}-%{release}
@@ -26,6 +28,8 @@ Requires:       python-routes >= 1.12.3
 Requires:       python-webob >= 1.2.3, python-webob < 1.3
 Requires:       python27 = 2.7.1
 Requires:       python27-tools = 2.7.1
+Requires:       python27-gevent
+
 
 
 %define debug_package %{nil}
@@ -52,6 +56,8 @@ mkdir -p %{buildroot}/etc/magnetodb/
 mkdir -p %{buildroot}/etc/init.d
 
 install -p -D -m 755 %{SOURCE1}  %{buildroot}%{_initrddir}/openstack-magnetodb-api
+install -p -D -m 755 %{SOURCE2}  %{buildroot}%{_initrddir}/openstack-magnetodb-api-gunicorn
+install -p -D -m 755 %{SOURCE3}  %{buildroot}%{_bindir}/gunicorn27
 
 cp %{_builddir}/magnetodb-%{version}/etc/* %{buildroot}%{_sysconfdir}/magnetodb/
 
@@ -60,6 +66,13 @@ chmod +x  %{buildroot}%{_initrddir}/openstack-magnetodb-api
 
 sed -i s#'/usr/bin/env python'#'/usr/bin/env python27'#g %{buildroot}%{_bindir}/magnetodb-api-server
 sed -i s#'/usr/bin/python'#'/usr/bin/python27'#g %{buildroot}%{_bindir}/magnetodb-api-server
+
+sed -i s#'/usr/bin/env python'#'/usr/bin/env python27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
+sed -i s#'/usr/bin/python'#'/usr/bin/python27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
+
+
+# Patching for gunicorn with Python27
+sed -i s#'gunicorn'#'gunicorn27'#g %{buildroot}%{_bindir}/magnetodb-api-server-gunicorn
 
 
 %clean
@@ -77,9 +90,13 @@ rm -rf %{buildroot}
 %dir %{_sysconfdir}/magnetodb
 %config(noreplace) %attr(-, root, root) %{_sysconfdir}/magnetodb/*
 %config(noreplace) %attr(-, root, root) %{_initrddir}/openstack-magnetodb-api
+%config(noreplace) %attr(-, root, root) %{_initrddir}/openstack-magnetodb-api-gunicorn
 
 
 %changelog
+* Wed Jan 15 2014 Max Mazur <mmaxur@mirantis.com>
+ - added gunicorn support
+
 * Sun Dec 13 2013 Max Mazur <mmaxur@mirantis.com>
  - For Havanna  (fuel 4.0)
 

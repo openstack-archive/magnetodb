@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import string
+import shlex
 import routes
 
 from magnetodb.openstack.common import gettextutils
@@ -34,14 +36,13 @@ class MagnetoDBApplication(wsgi.Router):
 
     """API"""
     def __init__(self, **options):
-        args = []
-        for k, v in options.iteritems():
-            args.append(k)
-            args.append(v)
+        oslo_config_args = options.get("oslo_config_args")
+        s = string.Template(oslo_config_args)
+        oslo_config_args = shlex.split(s.substitute(**options))
 
         config.parse_args(
             prog=options.get("program", "magnetodb-api"),
-            args=args
+            args=oslo_config_args
         )
         log.setup(PROJECT_NAME)
         storage.setup()
@@ -60,4 +61,4 @@ class MagnetoDBApplication(wsgi.Router):
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):
-        return cls(**local_conf)
+        return cls(**dict(global_conf.items() + local_conf.items()))

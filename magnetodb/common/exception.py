@@ -17,6 +17,10 @@ import re
 from magnetodb.openstack.common import exception as openstack_exception
 from magnetodb.openstack.common import log as logging
 
+from webob.exc import HTTPException
+from webob.response import Response
+
+
 LOG = logging.getLogger(__name__)
 
 
@@ -48,6 +52,10 @@ class BackendInteractionException(MagnetoError):
     pass
 
 
+class TableNotExistsException(BackendInteractionException):
+    pass
+
+
 class ValidationException(FrontendInteractionException):
     pass
 
@@ -58,3 +66,36 @@ class ServiceUnavailableException(FrontendInteractionException):
 
 class ConditionalCheckFailedException(FrontendInteractionException):
     pass
+
+
+class AWSErrorResponseException(HTTPException, Response):
+    """ Base Exception for rendering to AWS DynamoDB error
+    JSON http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html
+    """
+    response_message = 'The server encountered an internal error trying to fulfill the request.'
+    error_code = 'InternalServerError'
+    status = '500'
+
+    def __init__(self, message='Exception'):
+        Response.__init__(self, status=self.status)
+        Exception.__init__(self, message)
+
+    def __call__(self, environ, start_response):
+        response_headers = [('Content-type','application/x-amz-json-1.0')]
+        start_response(self.status,response_headers)
+        return '{"__type":"com.amazonaws.dynamodb.v20111205#'+self.error_code+'","message":"'+ self.response_message +'"}'
+
+
+class BadRequestException(AWSErrorResponseException):
+    """ Base class for all errors with HTTP status code 400"""
+    status = '400'
+
+
+class ResourceNotFoundException(BadRequestException):
+    response_message = 'The resource which is being requested does not exist.'
+    error_code = 'ResourceNotFoundException'
+
+
+class ValidationException(BadRequestException):
+    response_message = 'One or more required parameter values were missing.'
+    error_code = 'ValidationException'

@@ -17,10 +17,13 @@ from decimal import Decimal
 import json
 import binascii
 
-from cassandra import cluster
+
 from cassandra import decoder
 
-from magnetodb.common.exception import BackendInteractionException
+
+from magnetodb.common.cassandra import cluster
+from magnetodb.common.exception import BackendInteractionException, TableNotExistsException
+from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
 
@@ -74,6 +77,9 @@ class CassandraStorageImpl():
                  cql_version=None,
                  executor_threads=2,
                  max_schema_agreement_wait=10):
+
+        if connection_class:
+            connection_class = importutils.import_class(connection_class)
 
         self.cluster = cluster.Cluster(
             contact_points=contact_points,
@@ -215,6 +221,14 @@ class CassandraStorageImpl():
 
         self._execute_query(query)
 
+        LOG.debug("Delete Table CQL request executed. "
+                  "Waiting for schema agreement...")
+
+        self.cluster.control_connection.refresh_schema(
+            keyspace=context.tenant, table=table_name)
+
+        LOG.debug("Waiting for schema agreement... Done")
+
     def describe_table(self, context, table_name):
         """
         Describes table
@@ -251,7 +265,7 @@ class CassandraStorageImpl():
                 break
             except KeyError:
                 if schema_refreshed:
-                    raise BackendInteractionException(
+                    raise TableNotExistsException(
                         "Table '{}' does not exist".format(table_name)
                     )
                 else:
@@ -748,24 +762,41 @@ class CassandraStorageImpl():
 
         indexed_condition_map = indexed_condition_map or {}
 
-        exclusive_start_key = exclusive_start_key or {}
+        token_cond = None
+        fixed_range_cond = None
 
-        exclusive_range_cond = None
+        if exclusive_start_key:
+            if range_name in exclusive_start_key:
 
-        for key, val in exclusive_start_key.iteritems():
-            if key == hash_name:
-                indexed_condition_map[key] = models.Condition.eq(val)
-            elif key == range_name:
-                exclusive_range_cond = self._condition_as_string(
-                    range_name, models.IndexedCondition.gt(val))
+                fixed_range_cond = self._fixed_range_condition(
+                    range_name, indexed_condition_map,
+                    exclusive_start_key)
+
+                indexed_condition_map[hash_name] = models.Condition.eq(
+                    exclusive_start_key[hash_name])
+
+            else:
+                token_cond = 'token({})>token({})'.format(
+                    self.USER_COLUMN_PREFIX + hash_name,
+                    self._encode_predefined_attr_value(
+                        exclusive_start_key[hash_name]))
+
+                if hash_name in indexed_condition_map:
+                    del indexed_condition_map[hash_name]
 
         where = self._conditions_as_string(indexed_condition_map)
 
-        if exclusive_range_cond:
+        if token_cond:
             if where:
-                where += ' AND ' + exclusive_range_cond
+                where += ' AND ' + token_cond
             else:
-                where = exclusive_range_cond
+                where = token_cond
+
+        if fixed_range_cond:
+            if where:
+                where += ' AND ' + fixed_range_cond
+            else:
+                where = fixed_range_cond
 
         if where:
             query += " WHERE " + where
@@ -841,16 +872,65 @@ class CassandraStorageImpl():
 
         count = len(result)
         if limit and count == limit:
-            last_evaluated_key = {
-                hash_name: result[-1][hash_name],
-                range_name: result[-1][range_name]
-            }
+            last_evaluated_key = {hash_name: result[-1][hash_name]}
+
+            if range_name:
+                last_evaluated_key[range_name] = result[-1][range_name]
         else:
             last_evaluated_key = None
 
         return models.SelectResult(items=result,
                                    last_evaluated_key=last_evaluated_key,
                                    count=count)
+
+    def _fixed_range_condition(self, range_name,
+                             condition_map, exclusive_start_key):
+
+        if range_name not in exclusive_start_key:
+            return None
+
+        right_cond = None
+
+        if range_name in condition_map:
+            condition = condition_map.pop(range_name)
+
+            if condition.type == models.Condition.CONDITION_TYPE_EQUAL:
+                condition_map[range_name] = condition
+                return None
+
+            elif condition.type in (
+                models.IndexedCondition.CONDITION_TYPE_LESS,
+                models.IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL
+            ):
+
+                right_cond = condition
+
+            elif condition.type == (models.IndexedCondition.
+                                    CONDITION_TYPE_BETWEEN):
+
+                first, second = condition.arg
+
+                right_cond = models.IndexedCondition.le(second)
+
+            elif condition.type == (models.IndexedCondition.
+                                    CONDITION_TYPE_BEGINS_WITH):
+
+                first = condition.arg
+                second_value = first.value[:-1] + chr(ord(first.value[-1]) + 1)
+                second = models.AttributeValue(condition.arg.type, second_value)
+
+                right_cond = models.IndexedCondition.lt(second)
+
+        left_cond = models.IndexedCondition.gt(
+            exclusive_start_key[range_name])
+
+        fixed = self._condition_as_string(range_name, left_cond)
+
+        if right_cond:
+            fixed += ' AND ' + self._condition_as_string(
+                range_name, right_cond)
+
+        return fixed
 
     def scan(self, context, table_name, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None, consistent=False):
@@ -874,23 +954,74 @@ class CassandraStorageImpl():
         condition_map = condition_map or {}
 
         key_conditions = {}
-        #TODO ikhudoshyn: fill key_conditions
+
+        schema = self.describe_table(context, table_name)
+        hash_name = schema.key_attributes[0]
+
+        try:
+            range_name = schema.key_attributes[1]
+        except IndexError:
+            range_name = None
+
+        if (hash_name in condition_map
+            and condition_map[hash_name].type ==
+                models.Condition.CONDITION_TYPE_EQUAL):
+
+            key_conditions[hash_name] = condition_map[hash_name]
+
+            if (range_name and range_name in condition_map
+                and condition_map[range_name].type in
+                    models.IndexedCondition._allowed_types):
+
+                key_conditions[range_name] = condition_map[range_name]
 
         selected = self.select_item(context, table_name, key_conditions,
                                     models.SelectType.all(), limit=limit,
                                     consistent=consistent,
                                     exclusive_start_key=exclusive_start_key)
 
-        filtered = filter(
-            lambda row: self._conditions_satisfied(
-                row, condition_map),
-            selected)
+        if (range_name and exclusive_start_key
+                and range_name in exclusive_start_key
+                and (not limit or limit > selected.count)):
 
-        if attributes_to_get:
-            for row in filtered:
-                for attr in row.keys():
+            del exclusive_start_key[range_name]
+
+            limit2 = limit - selected.count if limit else None
+
+            selected2 = self.select_item(context, table_name, key_conditions,
+                                         models.SelectType.all(), limit=limit2,
+                                         consistent=consistent,
+                                         exclusive_start_key=exclusive_start_key)
+
+            selected = models.SelectResult(
+                items=selected.items + selected2.items,
+                last_evaluated_key=selected2.last_evaluated_key,
+                count=selected.count + selected2.count
+            )
+
+
+        scanned_count = selected.count
+
+        if selected.items:
+            filtered_items = filter(
+                lambda item: self._conditions_satisfied(
+                    item, condition_map),
+                selected.items)
+            count = len(filtered_items)
+        else:
+            filtered_items = []
+            count = selected.count
+
+        if attributes_to_get and filtered_items:
+            for item in filtered_items:
+                for attr in item.keys():
                     if not attr in attributes_to_get:
-                        del row[attr]
+                        del item[attr]
+
+        filtered = models.ScanResult(
+            items=filtered_items,
+            last_evaluated_key=selected.last_evaluated_key,
+            count=count, scanned_count=scanned_count)
 
         return filtered
 
@@ -977,5 +1108,28 @@ class CassandraStorageImpl():
         if cond.type == models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH:
             return (attr_val.type == cond.arg.type and
                     attr_val.value.startswith(cond.arg.value))
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_EQUAL:
+            return (attr_val.type != cond.arg.type or
+                    attr_val.value != cond.arg.value)
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_CONTAINS:
+            assert not cond.arg.type.collection_type
+            if attr_val.type.element_type != cond.arg.type.element_type:
+                return False
+
+            return cond.arg.value in attr_val.value
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_CONTAINS:
+            assert not cond.arg.type.collection_type
+            if attr_val.type.element_type != cond.arg.type.element_type:
+                return False
+
+            return cond.arg.value not in attr_val.value
+
+        if cond.type == models.ScanCondition.CONDITION_TYPE_IN:
+            cond_arg = cond.arg or []
+
+            return attr_val in cond_arg
 
         return False

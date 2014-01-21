@@ -1,28 +1,28 @@
 #!/bin/sh
 #
-# openstack-magnetodb-api  OpenStack MagnetoDB API Server
+# openstack-magnetodb-api-gunicorn  OpenStack MagnetoDB API Server
 #
 # chkconfig:   - 98 02
-# description:  OpenStack MagnetoDB API Server
+# description:  OpenStack MagnetoDB API Server (with gunicorn)
 
 . /etc/rc.d/init.d/functions
+
 
 export PYTHONPATH=/usr/lib/python2.7/site-packages/:/usr/lib64/python2.7/site-packages/:/usr/lib/python2.6/site-packages/:/usr/lib64/python2.6/site-packages/:${PYTHONPATH}
 
 
 
-
-prog=magnetodb-api-server
+prog=magnetodb-api-server-gunicorn
 exec=`which $prog`
 pidfile="/var/run/$prog.pid"
-
+config_file=/etc/magnetodb/magnetodb-api-server-gunicorn.conf
 lockfile=/var/lock/subsys/$prog
 
 start() {
     [ -x $exec ] || exit 5
     echo -n $"Starting $prog: "
     #daemon --user root --pidfile $pidfile "$exec &>/dev/null & echo \$! > $pidfile"
-    daemon --user root --pidfile $pidfile "$exec &>/var/log/magnetodb/magnetodb.stdout & echo \$! > $pidfile"
+    daemon --user root --pidfile $pidfile "$exec --config-file=${config_file}&>/var/log/magnetodb/magnetodb-gunicorn.stdout & echo \$! > $pidfile"
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile

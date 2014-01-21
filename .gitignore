@@ -11,3 +11,4 @@ AUTHORS
 ChangeLog
 magnetodb.egg*
 *py*.egg
+tempest/api/keyvalue/nosetests.xml
