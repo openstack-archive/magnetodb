@@ -73,8 +73,8 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                   key_conditions=key_conditions,
                                   limit=2)
         self.assertEqual(resp1['Count'], 2)
-        # TODO(yyekovenko) Comment added to 1267526: LastEvaluatedKey should be
-        last = resp1['LastEvaluatedTableName']  # ['LastEvaluatedKey']
+
+        last = resp1['LastEvaluatedKey']
         # query remaining records
         resp2 = self.client.query(table_name=self.tname,
                                   key_conditions=key_conditions,
