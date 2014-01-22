@@ -106,7 +106,7 @@ class ScanDynamoDBAction(DynamoDBAction):
             exclusive_start_key) if exclusive_start_key else None
 
         scan_filter = self.action_params.get(
-            parser.Props.SCAN_FILTER, None
+            parser.Props.SCAN_FILTER, {}
         )
 
         condition_map = parser.Parser.parse_attribute_conditions(
@@ -131,7 +131,7 @@ class ScanDynamoDBAction(DynamoDBAction):
         if not select_type.is_count:
             response[parser.Props.ITEMS] = [
                 parser.Parser.format_item_attributes(row)
-                for row in result]
+                for row in result.items]
 
         if (return_consumed_capacity !=
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
