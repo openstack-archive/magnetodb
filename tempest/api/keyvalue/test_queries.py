@@ -30,13 +30,13 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                 cls.tname,
                                 cls.smoke_schema,
                                 cls.smoke_throughput)
+        cls.wait_for_table_active(cls.tname)
         cls.addResourceCleanUp(cls.client.delete_table, cls.tname)
 
     @attr(type='smoke')
     def test_query(self):
-        item = self.build_smoke_item('forum1', 'subject2',
-                                     'message text', 'John', '10')
-        self.client.put_item(self.tname, item)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
 
         key_conditions = {
             'forum': {
