@@ -1629,13 +1629,13 @@ class _Scheduler(object):
             time.sleep(0.1)
 
 
-def refresh_schema_and_set_result(keyspace, table, control_conn, response_future):
-    try:
-        control_conn.refresh_schema(keyspace, table)
-    except Exception:
-        log.exception("Exception refreshing schema in response to schema change:")
-    finally:
-        response_future._set_final_result(None)
+# def refresh_schema_and_set_result(keyspace, table, control_conn, response_future):
+    # try:
+    #     control_conn.refresh_schema(keyspace, table)
+    # except Exception:
+    #     log.exception("Exception refreshing schema in response to schema change:")
+    # finally:
+    #     response_future._set_final_result(None)
 
 
 _NO_RESULT_YET = object()
@@ -1771,12 +1771,13 @@ class ResponseFuture(object):
                 elif response.kind == ResultMessage.KIND_SCHEMA_CHANGE:
                     # refresh the schema before responding, but do it in another
                     # thread instead of the event loop thread
-                    self.session.submit(
-                        refresh_schema_and_set_result,
-                        response.results['keyspace'],
-                        response.results['table'],
-                        self.session.cluster.control_connection,
-                        self)
+                    # self.session.submit(
+                    #     refresh_schema_and_set_result,
+                    #     response.results['keyspace'],
+                    #     response.results['table'],
+                    #     self.session.cluster.control_connection,
+                    #     self)
+                    self._set_final_result(None)
                 else:
                     results = getattr(response, 'results', None)
                     if results is not None and response.kind == ResultMessage.KIND_ROWS:
