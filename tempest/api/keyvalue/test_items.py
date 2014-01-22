@@ -24,44 +24,44 @@ LOG = logging.getLogger(__name__)
 
 
 class MagnetoDBItemsTest(MagnetoDBTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(MagnetoDBItemsTest, cls).setUpClass()
+        cls.tname = rand_name().replace('-', '')
+        cls.client.create_table(cls.smoke_attrs + cls.index_attrs,
+                                cls.tname,
+                                cls.smoke_schema,
+                                cls.smoke_throughput,
+                                cls.smoke_lsi,
+                                cls.smoke_gsi)
+        cls.wait_for_table_active(cls.tname)
+        cls.addResourceCleanUp(cls.client.delete_table, cls.tname)
 
     @attr(type='smoke')
     def test_put_get_update_delete_item(self):
-
-        tname = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 tname,
-                                 self.smoke_schema,
-                                 self.smoke_throughput,
-                                 self.smoke_lsi,
-                                 self.smoke_gsi)
-        self.assertTrue(self.wait_for_table_active(tname))
-        self.addResourceCleanUp(self.client.delete_table, tname)
-
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
-        resp = self.client.put_item(tname, item)
+        resp = self.client.put_item(self.tname, item)
         self.assertEqual({}, resp)
 
         key = {self.hashkey: item[self.hashkey],
                self.rangekey: item[self.rangekey]}
 
-        resp = self.client.get_item(tname, key)
+        resp = self.client.get_item(self.tname, key)
         self.assertEqual(item, resp['Item'])
 
-        ## update item
         attribute_updates = {
-           'from_header': {
-               'Value': {'S': 'updated'},
-               'Action': 'PUT'}
+            'last_posted_by': {
+                'Value': {'S': 'John Doe'},
+                'Action': 'PUT'
+            }
         }
-        resp = self.client.update_item(tname, key, attribute_updates)
-        # self.assertEqual('?', '?')
-        resp = self.client.get_item(tname, key)
-        self.assertEqual(resp['Item']['from_header'], {'S': 'updated'})
-        ##############################################################
-
-        resp = self.client.delete_item(tname, key)
+        resp = self.client.update_item(self.tname, key, attribute_updates)
         self.assertEqual({}, resp)
-        self.assertEqual({}, self.client.get_item(tname, key,
+        resp = self.client.get_item(self.tname, key)
+        self.assertEqual(resp['Item']['last_posted_by'], {'S': 'John Doe'})
+
+        resp = self.client.delete_item(self.tname, key)
+        self.assertEqual({}, resp)
+        self.assertEqual({}, self.client.get_item(self.tname, key,
                                                   consistent_read=True))
