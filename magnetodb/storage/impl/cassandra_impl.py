@@ -154,16 +154,16 @@ class CassandraStorageImpl():
 
     def _wait_for_table_status(self, tenant, table_name, expected_exists,
                                indexed_column_names=None):
-        keyspace_meta = self.cluster.metadata.keyspaces.get(tenant)
-
-        if keyspace_meta is None:
-            raise BackendInteractionException(
-                "Tenant '{}' does not exist".format(tenant)
-            )
-
         LOG.debug("Start waiting for table status changing...")
 
         while True:
+            keyspace_meta = self.cluster.metadata.keyspaces.get(tenant)
+
+            if keyspace_meta is None:
+                raise BackendInteractionException(
+                    "Tenant '{}' does not exist".format(tenant)
+                )
+
             table_meta = keyspace_meta.tables.get(table_name)
             if expected_exists == (table_meta is not None):
                 if table_meta is None or not indexed_column_names:
