@@ -178,12 +178,12 @@ class CassandraStorageImpl():
             LOG.debug("Table status isn't correct"
                       "(expected_exists: %s, table_meta: %s)."
                       " Wait and check again" %
-                      expected_exists, table_meta)
+                      (expected_exists, table_meta))
             time.sleep(1)
 
         LOG.debug("Table status is correct"
                   "(expected_exists: %s, table_meta: %s)" %
-                  expected_exists, table_meta)
+                  (expected_exists, table_meta))
 
     def create_table(self, context, table_schema):
         """
