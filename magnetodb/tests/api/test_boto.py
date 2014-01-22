@@ -32,7 +32,6 @@ from magnetodb import storage
 from mox import Mox, IgnoreArg
 
 
-
 CONF = magnetodb_api_fake.CONF
 
 
@@ -350,5 +349,62 @@ class BotoIntegrationTest(unittest.TestCase):
         self.assertEqual(len(items), 1)
 
         self.assertDictEqual(expected_item, dict(items[0].items()))
+
+        self.storage_mocker.VerifyAll()
+
+    def test_update_item(self):
+        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+
+        hash_key = "4.5621201231232132132132132132132142354E126"
+        range_key = "range"
+
+        storage.select_item(
+            IgnoreArg(), IgnoreArg(), IgnoreArg(),
+            select_type=IgnoreArg(), limit=IgnoreArg(),
+            consistent=IgnoreArg()
+        ).AndReturn(
+            models.SelectResult(
+                items=[
+                    {
+                        "hash_key": models.AttributeValue.number(hash_key),
+                        "range_key": models.AttributeValue.str(range_key),
+                        "attr_value": models.AttributeValue.str('val')
+                    }
+                ]
+            )
+        )
+
+        self.storage_mocker.StubOutWithMock(storage, 'describe_table')
+
+        storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
+            models.TableSchema(
+                'test_table',
+                {
+                    models.AttributeDefinition(
+                        'hash_key', models.ATTRIBUTE_TYPE_NUMBER),
+                    models.AttributeDefinition(
+                        'range_key', models.ATTRIBUTE_TYPE_STRING)
+                },
+                ['hash_key', 'range_key'],
+                {}
+            )
+        )
+
+        self.storage_mocker.StubOutWithMock(storage, 'update_item')
+        storage.update_item(
+            IgnoreArg(), IgnoreArg(),
+            key_attribute_map=IgnoreArg(),
+            attribute_action_map=IgnoreArg(),
+            expected_condition_map=IgnoreArg()).AndReturn(True)
+
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        item = table.get_item(consistent=False, hash_key=1, range_key="range")
+
+        item['attr_value'] = 'updated'
+
+        item.partial_save()
 
         self.storage_mocker.VerifyAll()

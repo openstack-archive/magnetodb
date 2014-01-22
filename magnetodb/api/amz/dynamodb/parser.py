@@ -112,6 +112,9 @@ class Props():
     ITEMS = "Items"
     LAST_EVALUATED_KEY = "LastEvaluatedKey"
 
+    ATTRIBUTE_UPDATES = "AttributeUpdates"
+    ACTION = "Action"
+
 
 class Values():
     ATTRIBUTE_TYPE_STRING = TYPE_STRING
@@ -127,6 +130,10 @@ class Values():
     PROJECTION_TYPE_KEYS_ONLY = "KEYS_ONLY"
     PROJECTION_TYPE_INCLUDE = "INCLUDE"
     PROJECTION_TYPE_ALL = "ALL"
+
+    ACTION_TYPE_PUT = "PUT"
+    ACTION_TYPE_ADD = "ADD"
+    ACTION_TYPE_DELETE = "DELETE"
 
     PROVISIONED_THROUGHPUT_DUMMY = {
         "LastDecreaseDateTime": 0,
@@ -203,6 +210,13 @@ class Types():
     KEY_TYPE = {
         "type": "string",
         "enum": [Values.KEY_TYPE_HASH, Values.KEY_TYPE_RANGE]
+    }
+
+    ACTION_TYPE = {
+        "type": "string",
+        "enum": [Values.ACTION_TYPE_PUT,
+                 Values.ACTION_TYPE_ADD,
+                 Values.ACTION_TYPE_DELETE]
     }
 
     INDEX_NAME = {
@@ -629,19 +643,12 @@ class Parser():
 
         for (attr_name, dynamodb_condition) in (
                 expected_attribute_conditions_json.iteritems()):
-            assert len(dynamodb_condition) == 1
-            (dynamodb_condition_type, dynamodb_condition_value) = (
-                dynamodb_condition.items()[0]
-            )
-            if dynamodb_condition_type == Props.EXISTS:
-                assert isinstance(dynamodb_condition_value, bool)
-                expected_attribute_conditions[attr_name] = (
-                    models.ExpectedCondition.exists()
-                    if dynamodb_condition_value else
-                    models.ExpectedCondition.not_exists()
-                )
-            elif dynamodb_condition_type == Props.VALUE:
+
+            if Props.VALUE in dynamodb_condition:
+                dynamodb_condition_value = dynamodb_condition[Props.VALUE]
+
                 assert len(dynamodb_condition_value) == 1
+
                 (dynamodb_attr_type, dynamodb_attr_value) = (
                     dynamodb_condition_value.items()[0]
                 )
@@ -652,6 +659,18 @@ class Parser():
                         )
                     )
                 )
+
+            elif Props.EXISTS in dynamodb_condition:
+                dynamodb_condition_value = dynamodb_condition[Props.EXISTS]
+
+                assert isinstance(dynamodb_condition_value, bool)
+
+                expected_attribute_conditions[attr_name] = (
+                    models.ExpectedCondition.exists()
+                    if dynamodb_condition_value else
+                    models.ExpectedCondition.not_exists()
+                )
+
         return expected_attribute_conditions
 
     @staticmethod
@@ -778,9 +797,8 @@ class Parser():
                 )
             elif dynamodb_condition_type == Values.CONTAINS:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = models.ScanCondition.contains(
-                    condition_args[0]
-                )
+                attribute_conditions[attr_name] = (
+                    models.ScanCondition.contains(condition_args[0]))
             elif dynamodb_condition_type == Values.NOT_CONTAINS:
                 assert len(condition_args) == 1
                 attribute_conditions[attr_name] = (
@@ -790,3 +808,34 @@ class Parser():
                     models.ScanCondition.in_set(condition_args))
 
         return attribute_conditions
+
+    @classmethod
+    def parse_attribute_updates(cls, attribute_updates_json):
+        attribute_updates = {}
+        attribute_updates_json = attribute_updates_json or {}
+
+        for attr, attr_update_json in attribute_updates_json.iteritems():
+            action_type = attr_update_json[Props.ACTION]
+
+            if action_type == Values.ACTION_TYPE_ADD:
+                action = models.UpdateItemAction.UPDATE_ACTION_ADD
+            elif action_type == Values.ACTION_TYPE_DELETE:
+                action = models.UpdateItemAction.UPDATE_ACTION_DELETE
+            elif action_type == Values.ACTION_TYPE_PUT:
+                action = models.UpdateItemAction.UPDATE_ACTION_PUT
+
+            dynamodb_value = attr_update_json[Props.VALUE]
+
+            assert len(dynamodb_value) == 1
+            (dynamodb_attr_type, dynamodb_attr_value) = (
+                dynamodb_value.items()[0]
+            )
+
+            value = cls.decode_attr_value(
+                dynamodb_attr_type, dynamodb_attr_value)
+
+            update_action = models.UpdateItemAction(action, value)
+
+            attribute_updates[attr] = update_action
+
+        return attribute_updates

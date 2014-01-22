@@ -49,19 +49,16 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         resp = self.client.get_item(tname, key)
         self.assertEqual(item, resp['Item'])
 
-        ## TODO(yyekovenko) ###########################################
-        LOG.debug("UpdateItem action not implemented yet.")
-
         ## update item
-        #attribute_updates = {
-        #    'from_header': {
-        #        'Value': {'S': 'updated'},
-        #        'Action': 'PUT'}
-        #}
-        #resp = self.client.update_item(tname, key, attribute_updates)
-        #self.assertEqual('?', '?')
-        #resp = self.client.get_item(tname, key)
-        #self.assertEqual(resp['Item']['from_header'], 'updated')
+        attribute_updates = {
+           'from_header': {
+               'Value': {'S': 'updated'},
+               'Action': 'PUT'}
+        }
+        resp = self.client.update_item(tname, key, attribute_updates)
+        # self.assertEqual('?', '?')
+        resp = self.client.get_item(tname, key)
+        self.assertEqual(resp['Item']['from_header'], {'S': 'updated'})
         ##############################################################
 
         resp = self.client.delete_item(tname, key)
