@@ -20,7 +20,6 @@ import time
 
 from cassandra import decoder
 
-
 from magnetodb.common.cassandra import cluster
 from magnetodb.common.exception import BackendInteractionException, TableNotExistsException
 from magnetodb.openstack.common import importutils
@@ -31,7 +30,6 @@ LOG = logging.getLogger(__name__)
 
 
 class CassandraStorageImpl():
-
     STORAGE_TO_CASSANDRA_TYPES = {
         models.ATTRIBUTE_TYPE_STRING: 'text',
         models.ATTRIBUTE_TYPE_NUMBER: 'decimal',
@@ -61,7 +59,6 @@ class CassandraStorageImpl():
     SYSTEM_COLUMN_HASH_INDEX_NAME = (
         SYSTEM_COLUMN_HASH + "_internal_index"
     )
-
 
     __table_schema_cache = {}
 
@@ -130,6 +127,8 @@ class CassandraStorageImpl():
         self.session.row_factory = decoder.dict_factory
 
     def schema_change_listener(self, event):
+        LOG.debug("Schema change event captured: %s" % event)
+
         tenant = event.get('keyspace')
         table_name = event.get('table')
 
@@ -162,6 +161,8 @@ class CassandraStorageImpl():
                 "Tenant '{}' does not exist".format(tenant)
             )
 
+        LOG.debug("Start waiting for table status changing...")
+
         while True:
             table_meta = keyspace_meta.tables.get(table_name)
             if expected_exists == (table_meta is not None):
@@ -174,10 +175,15 @@ class CassandraStorageImpl():
                         break
                 else:
                     break
-
+            LOG.debug("Table status isn't correct"
+                      "(expected_exists: %s, table_meta: %s)."
+                      " Wait and check again" %
+                      expected_exists, table_meta)
             time.sleep(1)
 
-
+        LOG.debug("Table status is correct"
+                  "(expected_exists: %s, table_meta: %s)" %
+                  expected_exists, table_meta)
 
     def create_table(self, context, table_schema):
         """
@@ -571,7 +577,7 @@ class CassandraStorageImpl():
             val2 = self._encode_predefined_attr_value(second)
             return " {} >= {} AND {} <= {}".format(name, val1, name, val2)
         elif (condition.type ==
-              models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH):
+                  models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH):
             first = condition.arg
             second = first.value[:-1] + chr(ord(first.value[-1]) + 1)
             second = models.AttributeValue(condition.arg.type, second)
@@ -934,7 +940,7 @@ class CassandraStorageImpl():
                                    count=count)
 
     def _fixed_range_condition(self, range_name,
-                             condition_map, exclusive_start_key):
+                               condition_map, exclusive_start_key):
 
         if range_name not in exclusive_start_key:
             return None
@@ -967,7 +973,8 @@ class CassandraStorageImpl():
 
                 first = condition.arg
                 second_value = first.value[:-1] + chr(ord(first.value[-1]) + 1)
-                second = models.AttributeValue(condition.arg.type, second_value)
+                second = models.AttributeValue(condition.arg.type,
+                                               second_value)
 
                 right_cond = models.IndexedCondition.lt(second)
 
@@ -1022,7 +1029,6 @@ class CassandraStorageImpl():
             if (range_name and range_name in condition_map
                 and condition_map[range_name].type in
                     models.IndexedCondition._allowed_types):
-
                 key_conditions[range_name] = condition_map[range_name]
 
         selected = self.select_item(context, table_name, key_conditions,
@@ -1031,9 +1037,8 @@ class CassandraStorageImpl():
                                     exclusive_start_key=exclusive_start_key)
 
         if (range_name and exclusive_start_key
-                and range_name in exclusive_start_key
-                and (not limit or limit > selected.count)):
-
+            and range_name in exclusive_start_key
+            and (not limit or limit > selected.count)):
             del exclusive_start_key[range_name]
 
             limit2 = limit - selected.count if limit else None
@@ -1048,7 +1053,6 @@ class CassandraStorageImpl():
                 last_evaluated_key=selected2.last_evaluated_key,
                 count=selected.count + selected2.count
             )
-
 
         scanned_count = selected.count
 
