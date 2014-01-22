@@ -752,7 +752,7 @@ class Parser():
             condition_args = map(
                 lambda attr_value: cls.decode_attr_value(
                     *attr_value.items()[0]),
-                dynamodb_condition[Props.ATTRIBUTE_VALUE_LIST]
+                dynamodb_condition.get(Props.ATTRIBUTE_VALUE_LIST, {})
             )
 
             if dynamodb_condition_type == Values.EQ:
@@ -808,6 +808,12 @@ class Parser():
             elif dynamodb_condition_type == Values.IN:
                 attribute_conditions[attr_name] = (
                     models.ScanCondition.in_set(condition_args))
+            elif dynamodb_condition_type == Values.NULL:
+                attribute_conditions[attr_name] = (
+                    models.ExpectedCondition.not_exists())
+            elif dynamodb_condition_type == Values.NOT_NULL:
+                attribute_conditions[attr_name] = (
+                    models.ExpectedCondition.exists())
 
         return attribute_conditions
 
