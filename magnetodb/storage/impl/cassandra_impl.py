@@ -16,10 +16,9 @@
 from decimal import Decimal
 import json
 import binascii
-
+import time
 
 from cassandra import decoder
-
 
 from magnetodb.common.cassandra import cluster
 from magnetodb.common.exception import BackendInteractionException
@@ -63,6 +62,31 @@ class CassandraStorageImpl():
         SYSTEM_COLUMN_HASH + "_internal_index"
     )
 
+    __table_schema_cache = {}
+
+    @classmethod
+    def _save_table_schema_to_cache(cls, tenant, table_name, schema):
+        tenant_tables_cache = cls.__table_schema_cache.get(tenant)
+        if tenant_tables_cache is None:
+            tenant_tables_cache = {}
+            cls.__table_schema_cache[tenant] = tenant_tables_cache
+        tenant_tables_cache[table_name] = schema
+
+    @classmethod
+    def _get_table_schema_from_cache(cls, tenant, table_name,):
+        tenant_tables_cache = cls.__table_schema_cache.get(tenant)
+        if tenant_tables_cache is None:
+            return None
+        return tenant_tables_cache.get(table_name)
+
+    @classmethod
+    def _remove_table_schema_from_cache(cls, tenant, table_name):
+        tenant_tables_cache = cls.__table_schema_cache.get(tenant)
+        if tenant_tables_cache is None:
+            return None
+
+        return tenant_tables_cache.pop(table_name, None)
+
     def __init__(self, contact_points=("127.0.0.1",),
                  port=9042,
                  compression=True,
@@ -97,11 +121,24 @@ class CassandraStorageImpl():
             sockopts=sockopts,
             cql_version=cql_version,
             executor_threads=executor_threads,
-            max_schema_agreement_wait=max_schema_agreement_wait
+            max_schema_agreement_wait=max_schema_agreement_wait,
+            schema_change_listeners=(self.schema_change_listener,)
         )
 
         self.session = self.cluster.connect()
         self.session.row_factory = decoder.dict_factory
+
+    def schema_change_listener(self, event):
+        LOG.debug("Schema change event captured: %s" % event)
+
+        tenant = event.get('keyspace')
+        table_name = event.get('table')
+
+        if (tenant is None) or (table_name is None):
+            return
+
+        if event['change_type'] == "DROPPED":
+            self._remove_table_schema_from_cache(tenant, table_name)
 
     def _execute_query(self, query, consistent=True):
         try:
@@ -120,6 +157,39 @@ class CassandraStorageImpl():
     @staticmethod
     def _quote_strings(strings):
         return map(lambda attr: "\"{}\"".format(attr), strings)
+
+    def _wait_for_table_status(self, tenant, table_name, expected_exists,
+                               indexed_column_names=None):
+        LOG.debug("Start waiting for table status changing...")
+
+        while True:
+            keyspace_meta = self.cluster.metadata.keyspaces.get(tenant)
+
+            if keyspace_meta is None:
+                raise BackendInteractionException(
+                    "Tenant '{}' does not exist".format(tenant)
+                )
+
+            table_meta = keyspace_meta.tables.get(table_name)
+            if expected_exists == (table_meta is not None):
+                if table_meta is None or not indexed_column_names:
+                    break
+
+                for indexed_column in indexed_column_names:
+                    column = table_meta.columns.get(indexed_column)
+                    if not column.index:
+                        break
+                else:
+                    break
+            LOG.debug("Table status isn't correct"
+                      "(expected_exists: %s, table_meta: %s)."
+                      " Wait and check again" %
+                      (expected_exists, table_meta))
+            time.sleep(1)
+
+        LOG.debug("Table status is correct"
+                  "(expected_exists: %s, table_meta: %s)" %
+                  (expected_exists, table_meta))
 
     def create_table(self, context, table_schema):
         """
@@ -174,8 +244,9 @@ class CassandraStorageImpl():
             LOG.debug("Create Table CQL request executed. "
                       "Waiting for schema agreement...")
 
-            self.cluster.control_connection.refresh_schema(
-                keyspace=context.tenant, table=table_schema.table_name)
+            self._wait_for_table_status(tenant=context.tenant,
+                                        table_name=table_schema.table_name,
+                                        expected_exists=True)
 
             LOG.debug("Waiting for schema agreement... Done")
 
@@ -213,6 +284,11 @@ class CassandraStorageImpl():
 
         self._execute_query(query)
 
+        self._wait_for_table_status(tenant=context.tenant,
+                                    table_name=table_name,
+                                    expected_exists=True,
+                                    indexed_column_names=(indexed_attr,))
+
     def delete_table(self, context, table_name):
         """
         Creates table
@@ -229,8 +305,9 @@ class CassandraStorageImpl():
         LOG.debug("Delete Table CQL request executed. "
                   "Waiting for schema agreement...")
 
-        self.cluster.control_connection.refresh_schema(
-            keyspace=context.tenant, table=table_name)
+        self._wait_for_table_status(tenant=context.tenant,
+                                    table_name=table_name,
+                                    expected_exists=False)
 
         LOG.debug("Waiting for schema agreement... Done")
 
@@ -246,38 +323,23 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
-        schema_refreshed = False
+        table_schema = self._get_table_schema_from_cache(context.tenant,
+                                                         table_name)
+        if table_schema:
+            return table_schema
 
-        while True:
-            try:
-                keyspace_meta = self.cluster.metadata.keyspaces[context.tenant]
-                break
-            except KeyError:
-                if schema_refreshed:
-                    raise BackendInteractionException(
-                        "Tenant '{}' does not exist".format(context.tenant)
-                    )
-                else:
+        keyspace_meta = self.cluster.metadata.keyspaces.get(context.tenant)
 
-                    self.cluster.control_connection.refresh_schema(
-                        keyspace=context.tenant
-                    )
-                    schema_refreshed = True
+        if keyspace_meta is None:
+            raise BackendInteractionException(
+                "Tenant '{}' does not exist".format(context.tenant)
+            )
 
-        while True:
-            try:
-                table_meta = keyspace_meta.tables[table_name]
-                break
-            except KeyError:
-                if schema_refreshed:
-                    raise TableNotExistsException(
-                        "Table '{}' does not exist".format(table_name)
-                    )
-                else:
-                    self.cluster.control_connection.refresh_schema(
-                        keyspace=context.tenant, table=table_name
-                    )
-                    schema_refreshed = True
+        table_meta = keyspace_meta.tables.get(table_name)
+        if table_meta is None:
+            raise TableNotExistsException(
+                "Table '{}' does not exist".format(table_name)
+            )
 
         prefix_len = len(self.USER_COLUMN_PREFIX)
 
@@ -308,6 +370,9 @@ class CassandraStorageImpl():
         table_schema = models.TableSchema(table_meta.name, attr_defs,
                                           key_attrs, index_defs)
 
+        self._save_table_schema_to_cache(context.tenant, table_name,
+                                         table_schema)
+
         return table_schema
 
     def list_tables(self, context, exclusive_start_table_name=None,
@@ -336,14 +401,6 @@ class CassandraStorageImpl():
         tables = self._execute_query(query)
 
         return [row['columnfamily_name'] for row in tables]
-
-    def _indexed_attrs(self, context, table):
-        schema = self.describe_table(context, table)
-        return schema.indexed_attrs
-
-    def _predefined_attrs(self, context, table):
-        schema = self.describe_table(context, table)
-        return [attr.name for attr in schema.attribute_defs]
 
     def put_item(self, context, put_request, if_not_exist=False,
                  expected_condition_map=None):

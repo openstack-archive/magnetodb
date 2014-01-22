@@ -254,7 +254,8 @@ class Cluster(object):
                  sockopts=None,
                  cql_version=None,
                  executor_threads=2,
-                 max_schema_agreement_wait=10):
+                 max_schema_agreement_wait=10,
+                 schema_change_listeners=None):
         """
         Any of the mutable Cluster attributes may be set as keyword arguments
         to the constructor.
@@ -332,6 +333,8 @@ class Cluster(object):
 
         if self.metrics_enabled:
             self.metrics = Metrics(weakref.proxy(self))
+
+        self._schema_change_listeners = schema_change_listeners
 
         self.control_connection = ControlConnection(self)
 
@@ -1474,6 +1477,10 @@ class ControlConnection(object):
         elif event['change_type'] == "UPDATED":
             self._cluster.executor.submit(self.refresh_schema, keyspace, table)
 
+        for listener in self._cluster._schema_change_listeners:
+            listener(event)
+
+
     def wait_for_schema_agreement(self, connection=None):
         # Each schema change typically generates two schema refreshes, one
         # from the response type and one from the pushed notification. Holding
@@ -1622,13 +1629,13 @@ class _Scheduler(object):
             time.sleep(0.1)
 
 
-def refresh_schema_and_set_result(keyspace, table, control_conn, response_future):
-    try:
-        control_conn.refresh_schema(keyspace, table)
-    except Exception:
-        log.exception("Exception refreshing schema in response to schema change:")
-    finally:
-        response_future._set_final_result(None)
+# def refresh_schema_and_set_result(keyspace, table, control_conn, response_future):
+    # try:
+    #     control_conn.refresh_schema(keyspace, table)
+    # except Exception:
+    #     log.exception("Exception refreshing schema in response to schema change:")
+    # finally:
+    #     response_future._set_final_result(None)
 
 
 _NO_RESULT_YET = object()
@@ -1764,12 +1771,13 @@ class ResponseFuture(object):
                 elif response.kind == ResultMessage.KIND_SCHEMA_CHANGE:
                     # refresh the schema before responding, but do it in another
                     # thread instead of the event loop thread
-                    self.session.submit(
-                        refresh_schema_and_set_result,
-                        response.results['keyspace'],
-                        response.results['table'],
-                        self.session.cluster.control_connection,
-                        self)
+                    # self.session.submit(
+                    #     refresh_schema_and_set_result,
+                    #     response.results['keyspace'],
+                    #     response.results['table'],
+                    #     self.session.cluster.control_connection,
+                    #     self)
+                    self._set_final_result(None)
                 else:
                     results = getattr(response, 'results', None)
                     if results is not None and response.kind == ResultMessage.KIND_ROWS:
