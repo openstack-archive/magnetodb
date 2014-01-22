@@ -103,8 +103,12 @@ class CassandraStorageImpl():
         self.session = self.cluster.connect()
         self.session.row_factory = decoder.dict_factory
 
-    def _execute_query(self, query):
+    def _execute_query(self, query, consistent=True):
         try:
+            if consistent:
+                query = cluster.SimpleStatement(query)
+                query.consistency_level = cluster.ConsistencyLevel.QUORUM
+
             LOG.debug("Executing query {}".format(query))
             return self.session.execute(query)
         except Exception as e:
@@ -831,11 +835,7 @@ class CassandraStorageImpl():
         if add_filtering:
             query += " ALLOW FILTERING"
 
-        if consistent:
-            query = cluster.SimpleStatement(query)
-            query.consistency_level = cluster.ConsistencyLevel.QUORUM
-
-        rows = self._execute_query(query)
+        rows = self._execute_query(query, consistent)
 
         if select_type.is_count:
             return models.SelectResult(count=rows[0]['count'])
