@@ -22,19 +22,129 @@ from tempest.test import attr
 
 class MagnetoDBScanTest(MagnetoDBTestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        super(MagnetoDBScanTest, cls).setUpClass()
-        cls.tname = rand_name().replace('-', '')
-        cls.client.create_table(cls.smoke_attrs,
-                                cls.tname,
-                                cls.smoke_schema,
-                                cls.smoke_throughput)
-        cls.addResourceCleanUp(cls.client.delete_table, cls.tname)
+    def setUp(self):
+        super(MagnetoDBScanTest, self).setUp()
+        self.tname = rand_name().replace('-', '')
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema,
+                                 self.smoke_throughput)
+        self.wait_for_table_active(self.tname)
+        self.rck = self.addResourceCleanUp(self.client.delete_table,
+                                           self.tname)
+
+    def tearDown(self):
+        super(MagnetoDBScanTest, self).tearDown()
+        self.client.delete_table(self.tname)
+        self.assertTrue(self.wait_for_table_deleted(self.tname))
+        self.cancelResourceCleanUp(self.rck)
+
+    def _verify_scan_response(self, response, table_name,
+                              attributes_to_get=None, limit=None,
+                              select=None, scan_filter=None,
+                              exclusive_start_key=None,
+                              return_consumed_capacity=None,
+                              total_segments=None, segment=None):
+        """
+        The method implements common verifications of response format.
+
+        More specific verifications should be implemented in the test-cases
+        explicitly.
+        """
+        if return_consumed_capacity is None:
+            self.assertNotIn('ConsumedCapacity', response)
+        self.assertIn('ScannedCount', response)
+        self.assertIn('Count', response)
+        self.assertEqual(select == 'COUNT', 'Items' not in response)
+        if select != 'COUNT':
+            self.assertEqual(response['Count'], len(response['Items']))
+        if limit is None:
+            self.assertNotIn('LastEvaluatedKey', response)
 
     @attr(type='smoke')
     def test_scan(self):
-        item = self.build_smoke_item('forum1', 'subject2')
-        self.client.put_item(self.tname, item)
+        item = self.put_smoke_item(self.tname, 'forum1', 'subject2')
         resp = self.client.scan(table_name=self.tname)
-        self.assertTrue(resp['Count'] > 0)
+        self._verify_scan_response(resp, self.tname)
+        self.assertEqual(1, resp['Count'])
+        self.assertEqual(item, resp['Items'][0])
+
+    def test_scan_limit_scanfilter(self):
+        """
+        Verifies the scan operation processes all existing items,
+        filters appropriate ones and stops scanning if the limit reached.
+        """
+        exp_scanned_count = 2 * 10
+        exp_count = 10
+        limit = 5
+        items = self.populate_smoke_table(self.tname, 2, exp_count)
+
+        scanfilter = {
+            'forum': {
+                'AttributeValueList': [items[0]['forum']],
+                'ComparisonOperator': 'EQ'
+            },
+            'message': {
+                'ComparisonOperator': 'NOT_NULL'
+            }
+        }
+        resp1 = self.client.scan(self.tname, scan_filter=scanfilter,
+                                 limit=limit)
+
+        self._verify_scan_response(response=resp1, table_name=self.tname,
+                                   limit=limit, scan_filter=scanfilter)
+        self.assertEqual(limit, resp1['ScannedCount'])
+        count1 = resp1['Count']
+        last_key = resp1['LastEvaluatedKey']
+
+        resp2 = self.client.scan(self.tname, scan_filter=scanfilter,
+                                 exclusive_start_key=last_key)
+        self.assertEqual(exp_scanned_count - limit, resp2['ScannedCount'])
+        count2 = resp2['Count']
+        self.assertEqual(exp_count, count1 + count2)
+        for item in resp1['Items']:
+            self.assertNotIn(item, resp2['Items'])
+
+    def test_scan_attr_to_get_select(self):
+        """
+        Test the AttributesToGet cases:
+        - AttributesToGet: non-key attr, not used in filer
+        - nonexistent attribute
+
+        Test Select cases?
+        """
+        item1 = self.put_smoke_item(self.tname, 'forum', 'subject',
+                                    'filtered', 'John')
+        self.put_smoke_item(self.tname, 'forum', 'subject', 'skipped', 'Alex')
+
+        attrs_to_get = ['last_posted_by', 'nonexistent_attr']
+        scanfilter = {
+            'message': {
+                'AttributeValueList': ['item should be filtered'],
+                'ComparisonOperator': 'CONTAINS'
+            }
+        }
+
+        resp1 = self.client.scan(self.tname, scan_filter=scanfilter,
+                                 attributes_to_get=attrs_to_get)
+        self.assertEqual(1, resp1['Count'])
+
+        exp_items = [{'last_posted_by': item1['last_posted_by']}]
+        self.assertEqual(exp_items, resp1['Items'])
+
+        # If Select=SPECIFIC_ATTRIBUTES and AttributesToGet are specified,
+        # result should be equivalent to specifying AttributesToGet without
+        # specifying any value for Select.
+        resp2 = self.client.scan(self.tname, scan_filter=scanfilter,
+                                 attributes_to_get=attrs_to_get,
+                                 select='SPECIFIC_ATTRIBUTES')
+        self.assertEqual(resp1, resp2)
+
+        # verify results if Select set to get all attributes
+        resp3 = self.client.scan(self.tname, scan_filter=scanfilter,
+                                 select='ALL_ATTRIBUTES')
+        self.assertEqual([item1], resp3['Items'])
+
+    #def test_scan_comsumed_capacity(self):
+    #    pass
+
