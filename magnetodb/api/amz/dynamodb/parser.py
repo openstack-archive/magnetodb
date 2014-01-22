@@ -742,6 +742,8 @@ class Parser():
             cls, attribute_conditions_json):
         attribute_conditions = {}
 
+        attribute_conditions_json = attribute_conditions_json or {}
+
         for (attr_name, dynamodb_condition) in (
                 attribute_conditions_json.iteritems()):
             dynamodb_condition_type = (
