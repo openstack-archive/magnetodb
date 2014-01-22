@@ -1141,6 +1141,10 @@ class CassandraStorageImpl():
 
     @staticmethod
     def _condition_satisfied(attr_val, cond):
+
+        if cond.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
+            return cond.arg == bool(attr_val)
+
         if not attr_val:
             return False
 
