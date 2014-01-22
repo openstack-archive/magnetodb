@@ -21,7 +21,8 @@ import time
 from cassandra import decoder
 
 from magnetodb.common.cassandra import cluster
-from magnetodb.common.exception import BackendInteractionException, TableNotExistsException
+from magnetodb.common.exception import BackendInteractionException
+from magnetodb.common.exception import TableNotExistsException
 from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
@@ -30,6 +31,7 @@ LOG = logging.getLogger(__name__)
 
 
 class CassandraStorageImpl():
+
     STORAGE_TO_CASSANDRA_TYPES = {
         models.ATTRIBUTE_TYPE_STRING: 'text',
         models.ATTRIBUTE_TYPE_NUMBER: 'decimal',
@@ -138,8 +140,12 @@ class CassandraStorageImpl():
         if event['change_type'] == "DROPPED":
             self._remove_table_schema_from_cache(tenant, table_name)
 
-    def _execute_query(self, query):
+    def _execute_query(self, query, consistent=True):
         try:
+            if consistent:
+                query = cluster.SimpleStatement(query)
+                query.consistency_level = cluster.ConsistencyLevel.QUORUM
+
             LOG.debug("Executing query {}".format(query))
             return self.session.execute(query)
         except Exception as e:
@@ -577,7 +583,7 @@ class CassandraStorageImpl():
             val2 = self._encode_predefined_attr_value(second)
             return " {} >= {} AND {} <= {}".format(name, val1, name, val2)
         elif (condition.type ==
-                  models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH):
+              models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH):
             first = condition.arg
             second = first.value[:-1] + chr(ord(first.value[-1]) + 1)
             second = models.AttributeValue(condition.arg.type, second)
@@ -631,6 +637,8 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
+        attribute_action_map = attribute_action_map or {}
+
         schema = self.describe_table(context, table_name)
         set_clause = self._updates_as_string(
             schema, key_attribute_map, attribute_action_map)
@@ -646,6 +654,8 @@ class CassandraStorageImpl():
             query += " IF {}".format(if_clause)
 
         self._execute_query(query)
+
+        return True
 
     def _updates_as_string(self, schema, key_attribute_map, update_map):
         predefined_attrs = [attr.name for attr in schema.attribute_defs]
@@ -882,11 +892,7 @@ class CassandraStorageImpl():
         if add_filtering:
             query += " ALLOW FILTERING"
 
-        if consistent:
-            query = cluster.SimpleStatement(query)
-            query.consistency_level = cluster.ConsistencyLevel.QUORUM
-
-        rows = self._execute_query(query)
+        rows = self._execute_query(query, consistent)
 
         if select_type.is_count:
             return models.SelectResult(count=rows[0]['count'])
@@ -972,9 +978,10 @@ class CassandraStorageImpl():
                                     CONDITION_TYPE_BEGINS_WITH):
 
                 first = condition.arg
-                second_value = first.value[:-1] + chr(ord(first.value[-1]) + 1)
-                second = models.AttributeValue(condition.arg.type,
-                                               second_value)
+                second_value = first.value[:-1] + chr(
+                    ord(first.value[-1]) + 1)
+                second = models.AttributeValue(
+                    condition.arg.type, second_value)
 
                 right_cond = models.IndexedCondition.lt(second)
 
@@ -1029,6 +1036,7 @@ class CassandraStorageImpl():
             if (range_name and range_name in condition_map
                 and condition_map[range_name].type in
                     models.IndexedCondition._allowed_types):
+
                 key_conditions[range_name] = condition_map[range_name]
 
         selected = self.select_item(context, table_name, key_conditions,
@@ -1037,16 +1045,18 @@ class CassandraStorageImpl():
                                     exclusive_start_key=exclusive_start_key)
 
         if (range_name and exclusive_start_key
-            and range_name in exclusive_start_key
-            and (not limit or limit > selected.count)):
+                and range_name in exclusive_start_key
+                and (not limit or limit > selected.count)):
+
             del exclusive_start_key[range_name]
 
             limit2 = limit - selected.count if limit else None
 
-            selected2 = self.select_item(context, table_name, key_conditions,
-                                         models.SelectType.all(), limit=limit2,
-                                         consistent=consistent,
-                                         exclusive_start_key=exclusive_start_key)
+            selected2 = self.select_item(
+                context, table_name, key_conditions,
+                models.SelectType.all(), limit=limit2,
+                consistent=consistent,
+                exclusive_start_key=exclusive_start_key)
 
             selected = models.SelectResult(
                 items=selected.items + selected2.items,
