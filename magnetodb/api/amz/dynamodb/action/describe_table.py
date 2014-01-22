@@ -17,7 +17,9 @@
 from magnetodb import storage
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
-from magnetodb.common.exception import ResourceNotFoundException, TableNotExistsException, ValidationException
+from magnetodb.common.exception import ResourceNotFoundException
+from magnetodb.common.exception import TableNotExistsException
+from magnetodb.common.exception import ValidationException
 
 
 class DescribeTableDynamoDBAction(DynamoDBAction):
