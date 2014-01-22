@@ -2096,7 +2096,8 @@ class TestCassandraScan(TestCassandraBase):
         self._insert_data(121)
 
         condition = {
-            'range': models.ScanCondition.contains(models.AttributeValue.str('2'))
+            'range': models.ScanCondition.contains(
+                models.AttributeValue.str('2'))
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
@@ -2112,7 +2113,8 @@ class TestCassandraScan(TestCassandraBase):
         self._insert_data(22)
 
         condition = {
-            'range': models.ScanCondition.not_contains(models.AttributeValue.str('2'))
+            'range': models.ScanCondition.not_contains(
+                models.AttributeValue.str('2'))
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(

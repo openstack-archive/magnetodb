@@ -524,7 +524,8 @@ class CassandraStorageImpl():
             first, second = condition.arg
             val1 = self._encode_predefined_attr_value(first)
             val2 = self._encode_predefined_attr_value(second)
-            return " {} >= {} AND {} <= {}".format(name, val1, name, val2)
+            return " \"{}\" >= {} AND \"{}\" <= {}".format(
+                name, val1, name, val2)
         elif (condition.type ==
               models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH):
             first = condition.arg
@@ -532,10 +533,11 @@ class CassandraStorageImpl():
             second = models.AttributeValue(condition.arg.type, second)
             val1 = self._encode_predefined_attr_value(first)
             val2 = self._encode_predefined_attr_value(second)
-            return " {} >= {} AND {} < {}".format(name, val1, name, val2)
+            return " \"{}\" >= {} AND \"{}\" < {}".format(
+                name, val1, name, val2)
         else:
             op = self.CONDITION_TO_OP[condition.type]
-            return name + op + self._encode_predefined_attr_value(
+            return '"' + name + '"' + op + self._encode_predefined_attr_value(
                 condition.arg
             )
 
@@ -785,7 +787,7 @@ class CassandraStorageImpl():
                     exclusive_start_key[hash_name])
 
             else:
-                token_cond = 'token({})>token({})'.format(
+                token_cond = 'token(\"{}\")>token({})'.format(
                     self.USER_COLUMN_PREFIX + hash_name,
                     self._encode_predefined_attr_value(
                         exclusive_start_key[hash_name]))
