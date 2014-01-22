@@ -39,7 +39,7 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
         self.assertTrue(self.wait_for_table_deleted(self.tname))
         self.cancelResourceCleanUp(self.rck)
 
-    def _verify_scan_response(self, response, table_name,
+    def _verify_scan_response(self, response,
                               attributes_to_get=None, limit=None,
                               select=None, scan_filter=None,
                               exclusive_start_key=None,
@@ -65,7 +65,7 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
     def test_scan(self):
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2')
         resp = self.client.scan(table_name=self.tname)
-        self._verify_scan_response(resp, self.tname)
+        self._verify_scan_response(resp)
         self.assertEqual(1, resp['Count'])
         self.assertEqual(item, resp['Items'][0])
 
@@ -91,8 +91,8 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
         resp1 = self.client.scan(self.tname, scan_filter=scanfilter,
                                  limit=limit)
 
-        self._verify_scan_response(response=resp1, table_name=self.tname,
-                                   limit=limit, scan_filter=scanfilter)
+        self._verify_scan_response(response=resp1, limit=limit,
+                                   scan_filter=scanfilter)
         self.assertEqual(limit, resp1['ScannedCount'])
         count1 = resp1['Count']
         last_key = resp1['LastEvaluatedKey']
@@ -107,20 +107,21 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
 
     def test_scan_attr_to_get_select(self):
         """
-        Test the AttributesToGet cases:
-        - AttributesToGet: non-key attr, not used in filer
-        - nonexistent attribute
-
-        Test Select cases?
+        Test the cases:
+          - AttributesToGet contains non-key attr not used in filter;
+          - AttributesToGet contains nonexistent attr;
+          - Select=SPECIFIC_ATTRIBUTES and AttributesToGet specified;
+          - Select=ALL_ATTRIBUTES;
+          - Select=COUNT.
         """
-        item1 = self.put_smoke_item(self.tname, 'forum', 'subject',
+        item1 = self.put_smoke_item(self.tname, 'forum', 'subject1',
                                     'filtered', 'John')
-        self.put_smoke_item(self.tname, 'forum', 'subject', 'skipped', 'Alex')
+        self.put_smoke_item(self.tname, 'forum', 'subject2', 'skipped', 'Alex')
 
         attrs_to_get = ['last_posted_by', 'nonexistent_attr']
         scanfilter = {
             'message': {
-                'AttributeValueList': ['item should be filtered'],
+                'AttributeValueList': [{'S': 'filter'}],
                 'ComparisonOperator': 'CONTAINS'
             }
         }
@@ -145,6 +146,10 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
                                  select='ALL_ATTRIBUTES')
         self.assertEqual([item1], resp3['Items'])
 
-    #def test_scan_comsumed_capacity(self):
+        resp4 = self.client.scan(self.tname, select='COUNT')
+        self._verify_scan_response(resp4, select='COUNT')
+        self.assertEqual(2, resp4['Count'])
+
+    #def test_scan_consumed_capacity(self):
     #    pass
 
