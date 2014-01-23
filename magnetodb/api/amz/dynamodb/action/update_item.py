@@ -82,98 +82,107 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
     }
 
     def __call__(self):
-        table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
+        try:
+            table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
-        # parse expected item conditions
-        expected_item_conditions = (
-            parser.Parser.parse_expected_attribute_conditions(
-                self.action_params.get(parser.Props.EXPECTED, {})
-            )
-        )
-
-        #parse attribute updates
-        attribute_updates = parser.Parser.parse_attribute_updates(
-            self.action_params.get(parser.Props.ATTRIBUTE_UPDATES, {})
-        )
-
-        # parse key
-        key_attributes = parser.Parser.parse_item_attributes(
-            self.action_params[parser.Props.KEY]
-        )
-
-        # parse return_values param
-        return_values = self.action_params.get(
-            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
-        )
-
-        # parse return_item_collection_metrics
-        return_item_collection_metrics = self.action_params.get(
-            parser.Props.RETURN_ITEM_COLLECTION_METRICS,
-            parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE
-        )
-
-        return_consumed_capacity = self.action_params.get(
-            parser.Props.RETURN_CONSUMED_CAPACITY,
-            parser.Values.RETURN_CONSUMED_CAPACITY_NONE
-        )
-
-        select_result = None
-
-        indexed_condition_map_for_select = {
-            name: models.IndexedCondition.eq(value)
-            for name, value in key_attributes.iteritems()
-        }
-
-        if return_values in (parser.Values.RETURN_VALUES_UPDATED_OLD,
-                             parser.Values.RETURN_VALUES_ALL_OLD):
-
-            select_result = storage.select_item(
-                self.context, table_name,
-                indexed_condition_map_for_select)
-
-        # update item
-        result = storage.update_item(
-            self.context,
-            table_name,
-            key_attribute_map=key_attributes,
-            attribute_action_map=attribute_updates,
-            expected_condition_map=expected_item_conditions)
-
-        if not result:
-            raise exception.ResourceNotFoundException()
-
-        if return_values in (parser.Values.RETURN_VALUES_UPDATED_NEW,
-                             parser.Values.RETURN_VALUES_ALL_NEW):
-
-            select_result = storage.select_item(
-                self.context, table_name,
-                indexed_condition_map_for_select)
-
-        # format response
-        response = {}
-
-        if return_values != parser.Values.RETURN_VALUES_NONE:
-            response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(select_result.items[0]))
-
-        if (return_item_collection_metrics !=
-                parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE):
-            response[parser.Props.ITEM_COLLECTION_METRICS] = {
-                parser.Props.ITEM_COLLECTION_KEY: {
-                    parser.Parser.format_item_attributes(
-                        models.AttributeValue(models.ATTRIBUTE_TYPE_STRING,
-                                              "key")
-                    )
-                },
-                parser.Props.SIZE_ESTIMATED_RANGE_GB: [0]
-            }
-
-        if (return_consumed_capacity !=
-                parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
-            response[parser.Props.CONSUMED_CAPACITY] = (
-                parser.Parser.format_consumed_capacity(
-                    return_consumed_capacity, None
+            # parse expected item conditions
+            expected_item_conditions = (
+                parser.Parser.parse_expected_attribute_conditions(
+                    self.action_params.get(parser.Props.EXPECTED, {})
                 )
             )
 
-        return response
+            #parse attribute updates
+            attribute_updates = parser.Parser.parse_attribute_updates(
+                self.action_params.get(parser.Props.ATTRIBUTE_UPDATES, {})
+            )
+
+            # parse key
+            key_attributes = parser.Parser.parse_item_attributes(
+                self.action_params[parser.Props.KEY]
+            )
+
+            # parse return_values param
+            return_values = self.action_params.get(
+                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+            )
+
+            # parse return_item_collection_metrics
+            return_item_collection_metrics = self.action_params.get(
+                parser.Props.RETURN_ITEM_COLLECTION_METRICS,
+                parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE
+            )
+
+            return_consumed_capacity = self.action_params.get(
+                parser.Props.RETURN_CONSUMED_CAPACITY,
+                parser.Values.RETURN_CONSUMED_CAPACITY_NONE
+            )
+
+            select_result = None
+
+            indexed_condition_map_for_select = {
+                name: models.IndexedCondition.eq(value)
+                for name, value in key_attributes.iteritems()
+            }
+        except Exception:
+            raise exception.ValidationException()
+
+        try:
+
+            if return_values in (parser.Values.RETURN_VALUES_UPDATED_OLD,
+                                 parser.Values.RETURN_VALUES_ALL_OLD):
+
+                select_result = storage.select_item(
+                    self.context, table_name,
+                    indexed_condition_map_for_select)
+
+            # update item
+            result = storage.update_item(
+                self.context,
+                table_name,
+                key_attribute_map=key_attributes,
+                attribute_action_map=attribute_updates,
+                expected_condition_map=expected_item_conditions)
+
+            if not result:
+                raise exception.AWSErrorResponseException()
+
+            if return_values in (parser.Values.RETURN_VALUES_UPDATED_NEW,
+                                 parser.Values.RETURN_VALUES_ALL_NEW):
+
+                select_result = storage.select_item(
+                    self.context, table_name,
+                    indexed_condition_map_for_select)
+
+            # format response
+            response = {}
+
+            if return_values != parser.Values.RETURN_VALUES_NONE:
+                response[parser.Props.ATTRIBUTES] = (
+                    parser.Parser.format_item_attributes(select_result.items[0]))
+
+            if (return_item_collection_metrics !=
+                    parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE):
+                response[parser.Props.ITEM_COLLECTION_METRICS] = {
+                    parser.Props.ITEM_COLLECTION_KEY: {
+                        parser.Parser.format_item_attributes(
+                            models.AttributeValue(models.ATTRIBUTE_TYPE_STRING,
+                                                  "key")
+                        )
+                    },
+                    parser.Props.SIZE_ESTIMATED_RANGE_GB: [0]
+                }
+
+            if (return_consumed_capacity !=
+                    parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
+                response[parser.Props.CONSUMED_CAPACITY] = (
+                    parser.Parser.format_consumed_capacity(
+                        return_consumed_capacity, None
+                    )
+                )
+
+            return response
+        except exception.AWSErrorResponseException as e:
+            raise e
+        except Exception:
+            raise exception.AWSErrorResponseException()

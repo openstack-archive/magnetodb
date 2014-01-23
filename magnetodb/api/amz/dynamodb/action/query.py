@@ -17,6 +17,7 @@ from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
+from magnetodb.common import exception
 from magnetodb.storage import models
 
 
@@ -82,99 +83,107 @@ class QueryDynamoDBAction(DynamoDBAction):
     }
 
     def __call__(self):
-        table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
+        try:
+            table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
-        # parse select_type
-        attributes_to_get = self.action_params.get(
-            parser.Props.ATTRIBUTES_TO_GET, None
-        )
-        if attributes_to_get is not None:
-            attributes_to_get = frozenset(attributes_to_get)
+            # parse select_type
+            attributes_to_get = self.action_params.get(
+                parser.Props.ATTRIBUTES_TO_GET, None
+            )
+            if attributes_to_get is not None:
+                attributes_to_get = frozenset(attributes_to_get)
 
-        select = self.action_params.get(
-            parser.Props.SELECT, None
-        )
+            select = self.action_params.get(
+                parser.Props.SELECT, None
+            )
 
-        index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
+            index_name = self.action_params.get(parser.Props.INDEX_NAME, None)
 
-        select_type = parser.Parser.parse_select_type(select,
-                                                      attributes_to_get,
-                                                      index_name)
+            select_type = parser.Parser.parse_select_type(select,
+                                                          attributes_to_get,
+                                                          index_name)
 
-        # parse exclusive_start_key_attributes
-        exclusive_start_key_attributes = self.action_params.get(
-            parser.Props.EXCLUSIVE_START_KEY, None
-        )
-        if exclusive_start_key_attributes is not None:
-            exclusive_start_key_attributes = (
-                parser.Parser.parse_item_attributes(
-                    exclusive_start_key_attributes
+            # parse exclusive_start_key_attributes
+            exclusive_start_key_attributes = self.action_params.get(
+                parser.Props.EXCLUSIVE_START_KEY, None
+            )
+            if exclusive_start_key_attributes is not None:
+                exclusive_start_key_attributes = (
+                    parser.Parser.parse_item_attributes(
+                        exclusive_start_key_attributes
+                    )
                 )
+
+            # parse indexed_condition_map
+            indexed_condition_map = parser.Parser.parse_attribute_conditions(
+                self.action_params.get(parser.Props.KEY_CONDITIONS, None)
             )
 
-        # parse indexed_condition_map
-        indexed_condition_map = parser.Parser.parse_attribute_conditions(
-            self.action_params.get(parser.Props.KEY_CONDITIONS, None)
-        )
+            # TODO(dukhlov):
+            # it would be nice to validate given table_name, key_attributes and
+            # attributes_to_get to schema expectation
 
-        # TODO(dukhlov):
-        # it would be nice to validate given table_name, key_attributes and
-        # attributes_to_get to schema expectation
+            consistent_read = self.action_params.get(
+                parser.Props.CONSISTENT_READ, False
+            )
 
-        consistent_read = self.action_params.get(
-            parser.Props.CONSISTENT_READ, False
-        )
+            limit = self.action_params.get(parser.Props.LIMIT, None)
 
-        limit = self.action_params.get(parser.Props.LIMIT, None)
+            return_consumed_capacity = self.action_params.get(
+                parser.Props.RETURN_CONSUMED_CAPACITY,
+                parser.Values.RETURN_CONSUMED_CAPACITY_NONE
+            )
 
-        return_consumed_capacity = self.action_params.get(
-            parser.Props.RETURN_CONSUMED_CAPACITY,
-            parser.Values.RETURN_CONSUMED_CAPACITY_NONE
-        )
+            order_asc = self.action_params.get(
+                parser.Props.SCAN_INDEX_FORWARD, None
+            )
 
-        order_asc = self.action_params.get(
-            parser.Props.SCAN_INDEX_FORWARD, None
-        )
+            order_type = (
+                None if order_asc is None else
+                models.ORDER_TYPE_ASC if order_asc else
+                models.ORDER_TYPE_DESC
+            )
+        except Exception:
+            raise exception.ValidationException()
 
-        order_type = (
-            None if order_asc is None else
-            models.ORDER_TYPE_ASC if order_asc else
-            models.ORDER_TYPE_DESC
-        )
+        try:
+            # select item
+            result = storage.select_item(
+                self.context, table_name, indexed_condition_map,
+                select_type=select_type, index_name=index_name, limit=limit,
+                consistent=consistent_read, order_type=order_type,
+                exclusive_start_key=exclusive_start_key_attributes
+            )
 
-        # select item
-        result = storage.select_item(
-            self.context, table_name, indexed_condition_map,
-            select_type=select_type, index_name=index_name, limit=limit,
-            consistent=consistent_read, order_type=order_type,
-            exclusive_start_key=exclusive_start_key_attributes
-        )
+            # format response
+            if select_type.type == models.SelectType.SELECT_TYPE_COUNT:
+                response = {
+                    parser.Props.COUNT: result.items
+                }
+            else:
+                response = {
+                    parser.Props.COUNT: len(result.items),
+                    parser.Props.ITEMS: [
+                        parser.Parser.format_item_attributes(row)
+                        for row in result.items
+                    ]
+                }
 
-        # format response
-        if select_type.type == models.SelectType.SELECT_TYPE_COUNT:
-            response = {
-                parser.Props.COUNT: result.items
-            }
-        else:
-            response = {
-                parser.Props.COUNT: len(result.items),
-                parser.Props.ITEMS: [
-                    parser.Parser.format_item_attributes(row)
-                    for row in result.items
-                ]
-            }
-
-        if (return_consumed_capacity !=
-                parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
-            response[parser.Props.CONSUMED_CAPACITY] = (
-                parser.Parser.format_consumed_capacity(
-                    return_consumed_capacity, None
+            if (return_consumed_capacity !=
+                    parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
+                response[parser.Props.CONSUMED_CAPACITY] = (
+                    parser.Parser.format_consumed_capacity(
+                        return_consumed_capacity, None
+                    )
                 )
-            )
 
-        if limit == len(result.items):
-            response[parser.Props.LAST_EVALUATED_KEY] = (
-                parser.Parser.format_item_attributes(result.last_evaluated_key)
+            if limit == len(result.items):
+                response[parser.Props.LAST_EVALUATED_KEY] = (
+                    parser.Parser.format_item_attributes(result.last_evaluated_key)
 
-            )
-        return response
+                )
+            return response
+        except exception.AWSErrorResponseException as e:
+            raise e
+        except Exception:
+            raise exception.AWSErrorResponseException()

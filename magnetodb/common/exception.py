@@ -56,10 +56,6 @@ class TableNotExistsException(BackendInteractionException):
     pass
 
 
-class ValidationException(FrontendInteractionException):
-    pass
-
-
 class ServiceUnavailableException(FrontendInteractionException):
     pass
 
