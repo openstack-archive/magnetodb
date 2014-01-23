@@ -18,6 +18,7 @@ from magnetodb import storage
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb import parser
 
+from magnetodb.common import exception
 
 class ListTablesDynamoDBAction(DynamoDBAction):
     schema = {
@@ -39,16 +40,21 @@ class ListTablesDynamoDBAction(DynamoDBAction):
 
         limit = self.action_params.get(parser.Props.LIMIT, None)
 
-        table_names = (
-            storage.list_tables(
-                self.context,
-                exclusive_start_table_name=exclusive_start_table_name,
-                limit=limit)
-        )
+        try:
+            table_names = (
+                storage.list_tables(
+                    self.context,
+                    exclusive_start_table_name=exclusive_start_table_name,
+                    limit=limit)
+            )
 
-        res = {parser.Props.TABLE_NAMES: table_names}
+            res = {parser.Props.TABLE_NAMES: table_names}
 
-        if table_names and limit == len(table_names):
-                res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
+            if table_names and limit == len(table_names):
+                    res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
 
-        return res
+            return res
+        except exception.AWSErrorResponseException as e:
+            raise e
+        except Exception:
+            raise exception.AWSErrorResponseException()

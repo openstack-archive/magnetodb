@@ -77,74 +77,85 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
     }
 
     def __call__(self):
-        table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
+        try:
+            table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
-        # parse expected item conditions
-        expected_item_conditions = (
-            parser.Parser.parse_expected_attribute_conditions(
-                self.action_params.get(parser.Props.EXPECTED, {})
+            # parse expected item conditions
+            expected_item_conditions = (
+                parser.Parser.parse_expected_attribute_conditions(
+                    self.action_params.get(parser.Props.EXPECTED, {})
+                )
             )
-        )
 
-        # parse item
-        key_attributes = parser.Parser.parse_item_attributes(
-            self.action_params[parser.Props.KEY]
-        )
+            # parse item
+            key_attributes = parser.Parser.parse_item_attributes(
+                self.action_params[parser.Props.KEY]
+            )
 
-        # parse return_values param
-        return_values = self.action_params.get(
-            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
-        )
+            # parse return_values param
+            return_values = self.action_params.get(
+                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+            )
 
-        # parse return_item_collection_metrics
-        return_item_collection_metrics = self.action_params.get(
-            parser.Props.RETURN_ITEM_COLLECTION_METRICS,
-            parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE
-        )
+            # parse return_item_collection_metrics
+            return_item_collection_metrics = self.action_params.get(
+                parser.Props.RETURN_ITEM_COLLECTION_METRICS,
+                parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE
+            )
 
-        return_consumed_capacity = self.action_params.get(
-            parser.Props.RETURN_CONSUMED_CAPACITY,
-            parser.Values.RETURN_CONSUMED_CAPACITY_NONE
-        )
+            return_consumed_capacity = self.action_params.get(
+                parser.Props.RETURN_CONSUMED_CAPACITY,
+                parser.Values.RETURN_CONSUMED_CAPACITY_NONE
+            )
+        except Exception:
+            raise exception.ValidationException()
 
-        # put item
-        result = storage.delete_item(
-            self.context,
-            models.DeleteItemRequest(table_name, key_attributes),
-            expected_condition_map=expected_item_conditions)
+        try:
+            # put item
+            result = storage.delete_item(
+                self.context,
+                models.DeleteItemRequest(table_name, key_attributes),
+                expected_condition_map=expected_item_conditions)
+        except exception.AWSErrorResponseException as e:
+            raise e
+        except Exception:
+            raise exception.AWSErrorResponseException()
 
         if not result:
-            raise exception.ConditionalCheckFailedException()
+            raise exception.AWSErrorResponseException()
 
         # format response
         response = {}
 
-        if return_values != parser.Values.RETURN_VALUES_NONE:
-            # TODO(dukhlov):
-            # It is needed to return all deleted item attributes
-            #
-            response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(key_attributes)
-            )
-
-        if (return_item_collection_metrics !=
-                parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE):
-            response[parser.Props.ITEM_COLLECTION_METRICS] = {
-                parser.Props.ITEM_COLLECTION_KEY: {
-                    parser.Parser.format_item_attributes(
-                        models.AttributeValue(models.ATTRIBUTE_TYPE_STRING,
-                                              "key")
-                    )
-                },
-                parser.Props.SIZE_ESTIMATED_RANGE_GB: [0]
-            }
-
-        if (return_consumed_capacity !=
-                parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
-            response[parser.Props.CONSUMED_CAPACITY] = (
-                parser.Parser.format_consumed_capacity(
-                    return_consumed_capacity, None
+        try:
+            if return_values != parser.Values.RETURN_VALUES_NONE:
+                # TODO(dukhlov):
+                # It is needed to return all deleted item attributes
+                #
+                response[parser.Props.ATTRIBUTES] = (
+                    parser.Parser.format_item_attributes(key_attributes)
                 )
-            )
 
-        return response
+            if (return_item_collection_metrics !=
+                    parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE):
+                response[parser.Props.ITEM_COLLECTION_METRICS] = {
+                    parser.Props.ITEM_COLLECTION_KEY: {
+                        parser.Parser.format_item_attributes(
+                            models.AttributeValue(models.ATTRIBUTE_TYPE_STRING,
+                                                  "key")
+                        )
+                    },
+                    parser.Props.SIZE_ESTIMATED_RANGE_GB: [0]
+                }
+
+            if (return_consumed_capacity !=
+                    parser.Values.RETURN_CONSUMED_CAPACITY_NONE):
+                response[parser.Props.CONSUMED_CAPACITY] = (
+                    parser.Parser.format_consumed_capacity(
+                        return_consumed_capacity, None
+                    )
+                )
+
+            return response
+        except Exception:
+            raise exception.AWSErrorResponseException()
