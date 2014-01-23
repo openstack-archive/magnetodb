@@ -58,7 +58,7 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         }
         resp = self.client.update_item(self.tname, key, attribute_updates)
         self.assertEqual({}, resp)
-        resp = self.client.get_item(self.tname, key)
+        resp = self.client.get_item(self.tname, key, consistent_read=True)
         self.assertEqual(resp['Item']['last_posted_by'], {'S': 'John Doe'})
 
         resp = self.client.delete_item(self.tname, key)

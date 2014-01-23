@@ -149,7 +149,3 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
         resp4 = self.client.scan(self.tname, select='COUNT')
         self._verify_scan_response(resp4, select='COUNT')
         self.assertEqual(2, resp4['Count'])
-
-    #def test_scan_consumed_capacity(self):
-    #    pass
-
