@@ -130,10 +130,6 @@ class APIClientDynamoDB(BotoClientBase):
                                 "region": region
                                 }
 
-        #self.connection_data = {"aws_access_key_id": 'AKIAJYSWRFSAI4E7RVOA',
-        #                        "aws_secret_access_key": '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'
-        #}
-
     ALLOWED_METHODS = set(('create_table', 'delete_table', 'list_tables',
                            'update_table', 'describe_table',
                            'batch_get_item', 'batch_write_item',
