@@ -85,6 +85,11 @@ class CreateTableDynamoDBAction(DynamoDBAction):
             raise exception.ValidationException()
 
         try:
+            existing_tables = storage.list_tables(self.context)
+
+            if table_name in existing_tables:
+                raise exception.ResourceInUseException()
+
             # creating table
             storage.create_table(self.context, table_schema)
 

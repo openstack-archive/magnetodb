@@ -95,3 +95,8 @@ class ResourceNotFoundException(BadRequestException):
 class ValidationException(BadRequestException):
     response_message = 'One or more required parameter values were missing.'
     error_code = 'ValidationException'
+
+
+class ResourceInUseException(BadRequestException):
+    response_message = 'The resource which you are attempting to change is in use.'
+    error_code = 'ResourceInUseException'

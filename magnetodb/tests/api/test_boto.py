@@ -204,6 +204,67 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.VerifyAll()
 
+    def test_create_table_duplicate(self):
+        self.storage_mocker.StubOutWithMock(storage, 'create_table')
+        self.storage_mocker.StubOutWithMock(storage, 'list_tables')
+        storage.list_tables(IgnoreArg()).AndReturn([])
+        storage.create_table(IgnoreArg(), IgnoreArg())
+        storage.list_tables(IgnoreArg()).AndReturn(['test'])
+
+        self.storage_mocker.ReplayAll()
+
+        Table.create(
+            "test",
+            schema=[
+                fields.HashKey('hash', data_type=schema_types.NUMBER),
+                fields.RangeKey('range', data_type=schema_types.STRING)
+            ],
+            throughput={
+                'read': 20,
+                'write': 10,
+            },
+            indexes=[
+                fields.KeysOnlyIndex(
+                    'index_name',
+                    parts=[
+                        fields.RangeKey('indexed_field',
+                                        data_type=schema_types.STRING)
+                    ]
+                )
+            ],
+            connection=self.DYNAMODB_CON
+        )
+
+        try:
+            Table.create(
+                "test",
+                schema=[
+                    fields.HashKey('hash', data_type=schema_types.NUMBER),
+                    fields.RangeKey('range', data_type=schema_types.STRING)
+                ],
+                throughput={
+                    'read': 20,
+                    'write': 10,
+                },
+                indexes=[
+                    fields.KeysOnlyIndex(
+                        'index_name',
+                        parts=[
+                            fields.RangeKey('indexed_field',
+                                            data_type=schema_types.STRING)
+                        ]
+                    )
+                ],
+                connection=self.DYNAMODB_CON
+            )
+
+            self.fail()
+        except JSONResponseError as e:
+            self.assertEqual('ResourceInUseException', e.error_code)
+            self.storage_mocker.VerifyAll()
+        except Exception as e:
+            self.fail()
+
     def test_put_item(self):
         self.storage_mocker.StubOutWithMock(storage, 'put_item')
         storage.put_item(
