@@ -522,10 +522,6 @@ class SelectResult(object):
                     which defines last evaluated key
         """
 
-        assert not (not items and last_evaluated_key), (
-            "last_evaluated_key was specified, but items was not"
-        )
-
         if count is None:
             assert items is not None
             count = len(items)
