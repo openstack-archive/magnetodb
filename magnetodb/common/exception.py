@@ -56,6 +56,10 @@ class TableNotExistsException(BackendInteractionException):
     pass
 
 
+class TableAlreadyExistsException(BackendInteractionException):
+    pass
+
+
 class ServiceUnavailableException(FrontendInteractionException):
     pass
 
