@@ -19,10 +19,12 @@ import binascii
 import time
 
 from cassandra import decoder
+from cassandra import AlreadyExists
 
 from magnetodb.common.cassandra import cluster
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.common.exception import TableNotExistsException
+from magnetodb.common.exception import TableAlreadyExistsException
 from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
@@ -148,6 +150,10 @@ class CassandraStorageImpl():
 
             LOG.debug("Executing query {}".format(query))
             return self.session.execute(query)
+        except AlreadyExists as e:
+            msg = "Error executing query {}:{}".format(query, e.message)
+            LOG.error(msg)
+            raise TableAlreadyExistsException(msg)
         except Exception as e:
             msg = "Error executing query {}:{}".format(query, e.message)
             LOG.error(msg)
