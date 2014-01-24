@@ -25,6 +25,7 @@ from boto.dynamodb2 import fields
 from magnetodb.tests.fake import magnetodb_api_fake
 from boto.dynamodb2.table import Table
 from magnetodb.common.exception import TableNotExistsException
+from magnetodb.common.exception import TableAlreadyExistsException
 from magnetodb.storage import models
 from magnetodb import storage
 from mox import Mox, IgnoreArg
@@ -141,7 +142,7 @@ class BotoIntegrationTest(unittest.TestCase):
         table = Table('test_table1', connection=self.DYNAMODB_CON)
 
         try:
-            table_description = table.describe()
+            table.describe()
         except JSONResponseError as e:
             self.assertEqual(
                 e.body['__type'],
@@ -211,11 +212,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def test_create_table_duplicate(self):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
-        self.storage_mocker.StubOutWithMock(storage, 'list_tables')
-        storage.list_tables(IgnoreArg()).AndReturn([])
         storage.create_table(IgnoreArg(), IgnoreArg())
-        storage.list_tables(IgnoreArg()).AndReturn(['test'])
-
+        storage.create_table(
+            IgnoreArg(), IgnoreArg()
+        ).AndRaise(TableAlreadyExistsException)
         self.storage_mocker.ReplayAll()
 
         Table.create(

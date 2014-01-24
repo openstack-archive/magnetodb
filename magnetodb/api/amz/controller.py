@@ -34,14 +34,14 @@ class AmzDynamoDBApiController():
         service_capabilities = self.capabilities.get(service_name, None)
 
         if service_capabilities is None:
-            raise exception.ServiceUnavailableException(
+            raise exception.BadRequestException(
                 "Service '%s' isn't supported" % service_name)
 
         target_capabilities = service_capabilities.get(api_version, None)
 
         if target_capabilities is None:
             raise (
-                exception.ServiceUnavailableException(
+                exception.BadRequestException(
                     "Service '%s' doesn't support API version '%s'" %
                     (service_name, api_version))
             )

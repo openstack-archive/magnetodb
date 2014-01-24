@@ -40,4 +40,3 @@ def setup_global_env(program=None, args=None):
     storage.setup()
 
     __setup_complete = True
-

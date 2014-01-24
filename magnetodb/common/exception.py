@@ -44,10 +44,6 @@ class MagnetoError(openstack_exception.OpenstackException):
         super(MagnetoError, self).__init__(**kwargs)
 
 
-class FrontendInteractionException(MagnetoError):
-    pass
-
-
 class BackendInteractionException(MagnetoError):
     pass
 
@@ -57,14 +53,6 @@ class TableNotExistsException(BackendInteractionException):
 
 
 class TableAlreadyExistsException(BackendInteractionException):
-    pass
-
-
-class ServiceUnavailableException(FrontendInteractionException):
-    pass
-
-
-class ConditionalCheckFailedException(FrontendInteractionException):
     pass
 
 
