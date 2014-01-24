@@ -159,7 +159,9 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
 
             if return_values != parser.Values.RETURN_VALUES_NONE:
                 response[parser.Props.ATTRIBUTES] = (
-                    parser.Parser.format_item_attributes(select_result.items[0]))
+                    parser.Parser.format_item_attributes(
+                        select_result.items[0])
+                )
 
             if (return_item_collection_metrics !=
                     parser.Values.RETURN_ITEM_COLLECTION_METRICS_NONE):

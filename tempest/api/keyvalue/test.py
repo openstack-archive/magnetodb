@@ -306,7 +306,6 @@ class BotoTestCase(tempest.test.BaseTestCase):
     dynamodb_error_code.server = ServerError()
     dynamodb_error_code.client = ClientError()
 
-
     @classmethod
     def get_lfunction_gone(cls, obj):
         """If the object is instance of a well know type returns back with

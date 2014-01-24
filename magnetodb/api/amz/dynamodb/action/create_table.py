@@ -117,8 +117,9 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                     parser.Props.TABLE_SIZE_BYTES: 0
                 }
             }
+        except exception.TableAlreadyExistsException:
+            raise exception.ResourceInUseException()
         except exception.AWSErrorResponseException as e:
             raise e
         except Exception:
             raise exception.AWSErrorResponseException()
-

@@ -179,8 +179,8 @@ class QueryDynamoDBAction(DynamoDBAction):
 
             if limit == len(result.items):
                 response[parser.Props.LAST_EVALUATED_KEY] = (
-                    parser.Parser.format_item_attributes(result.last_evaluated_key)
-
+                    parser.Parser.format_item_attributes(
+                        result.last_evaluated_key)
                 )
             return response
         except exception.AWSErrorResponseException as e:
