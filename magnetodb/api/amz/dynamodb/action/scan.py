@@ -116,7 +116,9 @@ class ScanDynamoDBAction(DynamoDBAction):
             )
 
             segment = self.action_params.get(parser.Props.SEGMENT, 0)
-            total_segments = self.action_params.get(parser.Props.TOTAL_SEGMENTS, 1)
+            total_segments = self.action_params.get(
+                parser.Props.TOTAL_SEGMENTS, 1
+            )
 
             assert segment < total_segments
         except Exception:
@@ -148,8 +150,9 @@ class ScanDynamoDBAction(DynamoDBAction):
 
             if result.last_evaluated_key:
                 response[parser.Props.LAST_EVALUATED_KEY] = (
-                    parser.Parser.format_item_attributes(result.last_evaluated_key)
-
+                    parser.Parser.format_item_attributes(
+                        result.last_evaluated_key
+                    )
                 )
 
             return response

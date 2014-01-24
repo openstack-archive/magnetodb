@@ -129,4 +129,3 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         new_tables = [n for n in self.client.list_tables()['TableNames']
                       if n == tname]
         self.assertEqual(1, len(new_tables))
-

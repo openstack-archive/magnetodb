@@ -70,9 +70,13 @@ class ConditionalCheckFailedException(FrontendInteractionException):
 
 class AWSErrorResponseException(HTTPException, Response):
     """ Base Exception for rendering to AWS DynamoDB error
-    JSON http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html
+    JSON http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/
+                                                            ErrorHandling.html
     """
-    response_message = 'The server encountered an internal error trying to fulfill the request.'
+    response_message = (
+        "The server encountered an internal error"
+        " trying to fulfill the request."
+    )
     error_code = 'InternalServerError'
     status = '500'
 
@@ -81,9 +85,12 @@ class AWSErrorResponseException(HTTPException, Response):
         Exception.__init__(self, message)
 
     def __call__(self, environ, start_response):
-        response_headers = [('Content-type','application/x-amz-json-1.0')]
-        start_response(self.status,response_headers)
-        return '{"__type":"com.amazonaws.dynamodb.v20111205#'+self.error_code+'","message":"'+ self.response_message +'"}'
+        response_headers = [('Content-type', 'application/x-amz-json-1.0')]
+        start_response(self.status, response_headers)
+        return (
+            '{{"__type":"com.amazonaws.dynamodb.v20111205#{}","message":"{}"}}'
+            .format(self.error_code, self.response_message)
+        )
 
 
 class BadRequestException(AWSErrorResponseException):
@@ -102,5 +109,7 @@ class ValidationException(BadRequestException):
 
 
 class ResourceInUseException(BadRequestException):
-    response_message = 'The resource which you are attempting to change is in use.'
+    response_message = (
+        'The resource which you are attempting to change is in use.'
+    )
     error_code = 'ResourceInUseException'

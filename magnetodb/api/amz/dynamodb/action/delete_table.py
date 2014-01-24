@@ -70,4 +70,3 @@ class DeleteTableDynamoDBAction(DynamoDBAction):
             raise e
         except Exception:
             raise exception.AWSErrorResponseException()
-
