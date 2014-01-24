@@ -20,6 +20,7 @@ from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb.common import exception
 
+
 class ListTablesDynamoDBAction(DynamoDBAction):
     schema = {
         "type": "object",
@@ -51,7 +52,7 @@ class ListTablesDynamoDBAction(DynamoDBAction):
             res = {parser.Props.TABLE_NAMES: table_names}
 
             if table_names and limit == len(table_names):
-                    res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
+                res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
 
             return res
         except exception.AWSErrorResponseException as e:

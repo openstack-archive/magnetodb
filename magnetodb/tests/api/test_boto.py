@@ -31,6 +31,8 @@ from magnetodb.storage import models
 from magnetodb import storage
 from mox import Mox, IgnoreArg
 
+DynamoDBConnection.NumberRetries = 0
+
 
 CONF = magnetodb_api_fake.CONF
 
@@ -74,9 +76,9 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def test_list_table(self):
         self.storage_mocker.StubOutWithMock(storage, "list_tables")
-        storage.list_tables(IgnoreArg(),
-                            exclusive_start_table_name=None, limit=None) \
-            .AndReturn(['table1', 'table2'])
+        storage.list_tables(
+            IgnoreArg(), exclusive_start_table_name=None, limit=None
+        ).AndReturn(['table1', 'table2'])
 
         self.storage_mocker.ReplayAll()
         self.assertEqual({'TableNames': ['table1', 'table2']},
@@ -134,17 +136,24 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
-        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(TableNotExistsException)
+        storage.describe_table(
+            IgnoreArg(), 'test_table1'
+        ).AndRaise(TableNotExistsException)
 
         self.storage_mocker.ReplayAll()
 
         table = Table('test_table1', connection=self.DYNAMODB_CON)
 
         try:
-            table_description = table.describe()
+            table.describe()
         except JSONResponseError as e:
-            self.assertEqual(e.body['__type'],'com.amazonaws.dynamodb.v20111205#ResourceNotFoundException')
-            self.assertEqual(e.body['message'],'The resource which is being requested does not exist.')
+            self.assertEqual(
+                e.body['__type'],
+                'com.amazonaws.dynamodb.v20111205#ResourceNotFoundException')
+
+            self.assertEqual(
+                e.body['message'],
+                'The resource which is being requested does not exist.')
 
     def test_delete_table(self):
         self.storage_mocker.StubOutWithMock(storage, 'delete_table')
@@ -369,7 +378,8 @@ class BotoIntegrationTest(unittest.TestCase):
         storage.select_item(
             IgnoreArg(), IgnoreArg(), IgnoreArg(),
             select_type=IgnoreArg(), index_name=IgnoreArg(), limit=IgnoreArg(),
-            order_type=IgnoreArg(), consistent=IgnoreArg()
+            exclusive_start_key=IgnoreArg(), consistent=IgnoreArg(),
+            order_type=IgnoreArg(),
         ).AndReturn(
             models.SelectResult(
                 items=[

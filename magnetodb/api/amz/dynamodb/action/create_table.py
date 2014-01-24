@@ -126,4 +126,3 @@ class CreateTableDynamoDBAction(DynamoDBAction):
             raise e
         except Exception:
             raise exception.AWSErrorResponseException()
-

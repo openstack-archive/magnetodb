@@ -15,12 +15,10 @@
 
 import httplib
 import json
-import os
 import unittest
 
 from magnetodb import storage
 from magnetodb.common.exception import TableNotExistsException
-from magnetodb.tests import PROJECT_ROOT_DIR
 from magnetodb.tests.fake import magnetodb_api_fake
 from mox import Mox, IgnoreArg
 
@@ -32,16 +30,6 @@ class APITest(unittest.TestCase):
     The test for low level API calls
     """
 
-    PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste.ini')
-
-    @classmethod
-    def setUpClass(cls):
-        magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE)
-
-    @classmethod
-    def tearDownClass(cls):
-        magnetodb_api_fake.stop_fake_magnetodb_api()
-
     def setUp(self):
         self.storage_mocker = Mox()
 
@@ -51,7 +39,9 @@ class APITest(unittest.TestCase):
     def test_describe_unexisting_table(self):
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
-        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(TableNotExistsException)
+        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(
+            TableNotExistsException
+        )
 
         self.storage_mocker.ReplayAll()
 
@@ -60,15 +50,23 @@ class APITest(unittest.TestCase):
                    'X-Amz-Target': 'DynamoDB_20120810.DescribeTable'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        conn.request("POST", "/", body='{"TableName": "test_table1"}', headers=headers)
+        conn.request("POST", "/", body='{"TableName": "test_table1"}',
+                     headers=headers)
 
         response = conn.getresponse()
 
         json_response = response.read()
         response_model = json.loads(json_response)
 
-        self.assertEqual(response_model['__type'], 'com.amazonaws.dynamodb.v20111205#ResourceNotFoundException')
-        self.assertEqual(response_model['message'], 'The resource which is being requested does not exist.')
+        self.assertEqual(
+            response_model['__type'],
+            'com.amazonaws.dynamodb.v20111205#ResourceNotFoundException')
+
+        self.assertEqual(
+            response_model['message'],
+            'The resource which is being requested does not exist.')
+
         self.assertEqual(400, response.status)
 
-        self.assertEqual(response.getheader('Content-Type'), 'application/x-amz-json-1.0')
+        self.assertEqual(
+            response.getheader('Content-Type'), 'application/x-amz-json-1.0')
