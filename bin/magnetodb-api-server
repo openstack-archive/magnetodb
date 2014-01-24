@@ -32,7 +32,6 @@ if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
 from oslo.config import cfg
-from magnetodb.openstack.common import log
 
 CONF = cfg.ConfigOpts()
 common_opts = [
@@ -50,8 +49,6 @@ if __name__ == '__main__':
     from magnetodb.common import PROJECT_NAME
     prog_name = os.path.basename(sys.argv[0])
     CONF(project=PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
-
-    log.setup(PROJECT_NAME)
 
     try:
         api_paste_config_file = CONF.find_file(CONF.api_paste_config)

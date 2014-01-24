@@ -22,13 +22,19 @@ from magnetodb.common.exception import TableNotExistsException
 from magnetodb.tests.fake import magnetodb_api_fake
 from mox import Mox, IgnoreArg
 
-CONF = magnetodb_api_fake.CONF
-
 
 class APITest(unittest.TestCase):
     """
     The test for low level API calls
     """
+
+    @classmethod
+    def setUpClass(cls):
+        magnetodb_api_fake.run_fake_magnetodb_api()
+
+    @classmethod
+    def tearDownClass(cls):
+        magnetodb_api_fake.stop_fake_magnetodb_api()
 
     def setUp(self):
         self.storage_mocker = Mox()
