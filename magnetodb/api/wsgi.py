@@ -12,41 +12,21 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-import string
 import shlex
+import string
+
 import routes
 
-from magnetodb.openstack.common import gettextutils
-from magnetodb.openstack.common import log
-from magnetodb.common import wsgi
-from magnetodb.common import PROJECT_NAME
-
-from magnetodb import storage
+from magnetodb.common import wsgi, setup_global_env, is_global_env_ready
 
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
-
-from magnetodb.common import config
-
-gettextutils.install(PROJECT_NAME, lazy=False)
 
 
 class MagnetoDBApplication(wsgi.Router):
 
     """API"""
-    def __init__(self, **options):
-        oslo_config_args = options.get("oslo_config_args")
-        s = string.Template(oslo_config_args)
-        oslo_config_args = shlex.split(s.substitute(**options))
-
-        config.parse_args(
-            prog=options.get("program", "magnetodb-api"),
-            args=oslo_config_args
-        )
-        log.setup(PROJECT_NAME)
-        storage.setup()
-
+    def __init__(self):
         mapper = routes.Mapper()
         super(MagnetoDBApplication, self).__init__(mapper)
 
@@ -61,4 +41,14 @@ class MagnetoDBApplication(wsgi.Router):
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):
-        return cls(**dict(global_conf.items() + local_conf.items()))
+        if not is_global_env_ready():
+            options = dict(global_conf.items() + local_conf.items())
+            oslo_config_args = options.get("oslo_config_args")
+            s = string.Template(oslo_config_args)
+            oslo_config_args = shlex.split(s.substitute(**options))
+
+            setup_global_env(
+                program=options.get("program", "magnetodb-api"),
+                args=oslo_config_args
+            )
+        return cls()

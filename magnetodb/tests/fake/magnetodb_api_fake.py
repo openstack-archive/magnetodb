@@ -12,20 +12,20 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import os
+from paste import deploy
 
 import wsgi_intercept
 from wsgi_intercept import http_client_intercept
 
-from magnetodb.common import config
+from magnetodb.tests import PROJECT_ROOT_DIR
 
-CONF = config.CONF
+PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste.ini')
 
 
-def run_fake_magnetodb_api(paste_conf_file, app_name=None):
-    from magnetodb.openstack.common import pastedeploy
-
+def run_fake_magnetodb_api():
     http_client_intercept.install()
-    app = pastedeploy.paste_deploy_app(paste_conf_file, app_name, {})
+    app = deploy.loadapp("config:{}".format(PASTE_CONFIG_FILE))
     wsgi_intercept.add_wsgi_intercept("localhost", 8080, lambda: app)
 
 

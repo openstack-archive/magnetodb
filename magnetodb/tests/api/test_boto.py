@@ -17,24 +17,21 @@ import logging
 import unittest
 from boto.exception import JSONResponseError
 
-import os
 from boto.dynamodb import types
 from boto.dynamodb2 import RegionInfo
 from boto.dynamodb2.layer1 import DynamoDBConnection
 from boto.dynamodb2 import types as schema_types
 from boto.dynamodb2 import fields
 from magnetodb.tests.fake import magnetodb_api_fake
-from magnetodb.tests import PROJECT_ROOT_DIR
 from boto.dynamodb2.table import Table
 from magnetodb.common.exception import TableNotExistsException
 from magnetodb.storage import models
 from magnetodb import storage
 from mox import Mox, IgnoreArg
 
+from magnetodb.common.config import CONF
+
 DynamoDBConnection.NumberRetries = 0
-
-
-CONF = magnetodb_api_fake.CONF
 
 
 class BotoIntegrationTest(unittest.TestCase):
@@ -42,16 +39,15 @@ class BotoIntegrationTest(unittest.TestCase):
     The integration test with boto client https://github.com/boto/boto
     """
 
-    PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste.ini')
-
     @classmethod
     def setUpClass(cls):
-        magnetodb_api_fake.run_fake_magnetodb_api(cls.PASTE_CONFIG_FILE)
+        magnetodb_api_fake.run_fake_magnetodb_api()
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
 
         #enabling boto logging
-        log = logging.getLogger('boto')
-        log.setLevel(logging.DEBUG)
+        if CONF.debug:
+            log = logging.getLogger('boto')
+            log.setLevel(logging.DEBUG)
 
     @classmethod
     def tearDownClass(cls):
@@ -145,7 +141,7 @@ class BotoIntegrationTest(unittest.TestCase):
         table = Table('test_table1', connection=self.DYNAMODB_CON)
 
         try:
-            table.describe()
+            table_description = table.describe()
         except JSONResponseError as e:
             self.assertEqual(
                 e.body['__type'],
