@@ -80,10 +80,6 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
         items = self.populate_smoke_table(self.tname, 2, exp_count)
 
         scanfilter = {
-            'forum': {
-                'AttributeValueList': [items[0]['forum']],
-                'ComparisonOperator': 'EQ'
-            },
             'message': {
                 'ComparisonOperator': 'NOT_NULL'
             }
@@ -101,7 +97,7 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
                                  exclusive_start_key=last_key)
         self.assertEqual(exp_scanned_count - limit, resp2['ScannedCount'])
         count2 = resp2['Count']
-        self.assertEqual(exp_count, count1 + count2)
+        self.assertEqual(exp_scanned_count, count1 + count2)
         for item in resp1['Items']:
             self.assertNotIn(item, resp2['Items'])
 
