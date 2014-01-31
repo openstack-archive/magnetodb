@@ -126,13 +126,13 @@ class TestCassandraBase(unittest.TestCase):
         query = "CREATE KEYSPACE {} WITH replication".format(keyspace)
         query += " = {'class':'SimpleStrategy', 'replication_factor':1}"
 
-        cls.SESSION.execute(query, timeout=60)
+        cls.SESSION.execute(query, timeout=300)
 
     @classmethod
     def _drop_keyspace(cls, keyspace):
         query = ("DROP KEYSPACE {}".format(keyspace))
 
-        cls.SESSION.execute(query, timeout=60)
+        cls.SESSION.execute(query, timeout=300)
 
     def _get_table_names(self, keyspace=None):
         keyspace = keyspace or self.keyspace
