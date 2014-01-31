@@ -1,4 +1,4 @@
-cassandra-driver>=1.0.0b7
+cassandra-driver>=1.0.0
 gevent
 gunicorn
 iso8601>=0.1.4

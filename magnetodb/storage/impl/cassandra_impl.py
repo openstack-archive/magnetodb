@@ -103,7 +103,11 @@ class CassandraStorageImpl():
                  sockopts=None,
                  cql_version=None,
                  executor_threads=2,
-                 max_schema_agreement_wait=10):
+                 max_schema_agreement_wait=10,
+                 control_connection_timeout=2.0,
+                 query_timeout=10.0):
+
+        self._query_timeout = query_timeout
 
         if connection_class:
             connection_class = importutils.import_class(connection_class)
@@ -124,6 +128,7 @@ class CassandraStorageImpl():
             cql_version=cql_version,
             executor_threads=executor_threads,
             max_schema_agreement_wait=max_schema_agreement_wait,
+            control_connection_timeout=control_connection_timeout,
             schema_change_listeners=(self.schema_change_listener,)
         )
 
@@ -142,14 +147,15 @@ class CassandraStorageImpl():
         if event['change_type'] == "DROPPED":
             self._remove_table_schema_from_cache(tenant, table_name)
 
-    def _execute_query(self, query, consistent=True):
+    def _execute_query(self, query, consistent=False):
         try:
             if consistent:
-                query = cluster.SimpleStatement(query)
-                query.consistency_level = cluster.ConsistencyLevel.QUORUM
+                query = cluster.SimpleStatement(
+                    query, consistency_level=cluster.ConsistencyLevel.QUORUM
+                )
 
             LOG.debug("Executing query {}".format(query))
-            return self.session.execute(query)
+            return self.session.execute(query, timeout=self._query_timeout)
         except AlreadyExists as e:
             msg = "Error executing query {}:{}".format(query, e.message)
             LOG.error(msg)
@@ -404,7 +410,7 @@ class CassandraStorageImpl():
         if limit:
             query += " LIMIT {}".format(limit)
 
-        tables = self._execute_query(query)
+        tables = self._execute_query(query, consistent=True)
 
         return [row['columnfamily_name'] for row in tables]
 
@@ -570,7 +576,7 @@ class CassandraStorageImpl():
 
             query += " IF " + if_clause
 
-        self._execute_query(query)
+        self._execute_query(query, consistent=True)
 
         return True
 
@@ -661,7 +667,7 @@ class CassandraStorageImpl():
             if_clause = self._conditions_as_string(expected_condition_map)
             query += " IF {}".format(if_clause)
 
-        self._execute_query(query)
+        self._execute_query(query, consistent=True)
 
         return True
 

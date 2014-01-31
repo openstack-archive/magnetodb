@@ -47,15 +47,19 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
 
     @classmethod
     def factory(cls, *args, **kwargs):
+        timeout = kwargs.pop('timeout', 5.0)
         conn = cls(*args, **kwargs)
-        conn.connected_event.wait()
+        conn.connected_event.wait(timeout)
         if conn.last_error:
             raise conn.last_error
+        elif not conn.connected_event.is_set():
+            conn.close()
+            raise OperationTimedOut("Timed out creating connection")
         else:
             return conn
 
     def __init__(self, *args, **kwargs):
-        super(GeventConnection, self).__init__(*args, **kwargs)
+        Connection.__init__(self, *args, **kwargs)
 
         self.connected_event = Event()
         self._iobuf = StringIO()
@@ -65,7 +69,11 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
         self._push_watchers = defaultdict(set)
 
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.settimeout(1.0)
+        if self.ssl_options:
+            if not ssl:
+                raise Exception("This version of Python was not compiled with SSL support")
+            self._socket = ssl.wrap_socket(self._socket, **self.ssl_options)
+        self._socket.settimeout(1.0)  # TODO potentially make this value configurable
         self._socket.connect((self.host, self.port))
 
         if self.sockopts:
@@ -77,11 +85,12 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
         self._send_options_message()
 
     def close(self):
-        if self.is_closed:
-            return
-        self.is_closed = True
+        with self.lock:
+            if self.is_closed:
+                return
+            self.is_closed = True
 
-        log.debug("Closing connection to %s" % (self.host,))
+        log.debug("Closing connection (%s) to %s", id(self), self.host)
         if self._read_watcher:
             self._read_watcher.kill()
         if self._write_watcher:
@@ -96,23 +105,19 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
             self._error_all_callbacks(
                 ConnectionShutdown("Connection to %s was closed" % self.host))
 
-    def __del__(self):
-        try:
-            self.close()
-        except TypeError:
-            pass
-
     def defunct(self, exc):
-        if self.is_defunct:
-            return
-        self.is_defunct = True
+        with self.lock:
+            if self.is_defunct or self.is_closed:
+                return
+            self.is_defunct = True
 
         trace = traceback.format_exc(exc)
         if trace != "None":
-            log.debug("Defuncting connection to %s: %s\n%s",
-                      self.host, exc, traceback.format_exc(exc))
+            log.debug("Defuncting connection (%s) to %s: %s\n%s",
+                      id(self), self.host, exc, traceback.format_exc(exc))
         else:
-            log.debug("Defuncting connection to %s: %s", self.host, exc)
+            log.debug("Defuncting connection (%s) to %s: %s",
+                      id(self), self.host, exc)
 
         self.last_error = exc
         self._error_all_callbacks(exc)
@@ -120,9 +125,17 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
         return exc
 
     def _error_all_callbacks(self, exc):
+        with self.lock:
+            callbacks = self._callbacks
+            self._callbacks = {}
         new_exc = ConnectionShutdown(str(exc))
-        for cb in self._callbacks.values():
-            cb(new_exc)
+        for cb in callbacks.values():
+            try:
+                cb(new_exc)
+            except Exception:
+                log.warn("Ignoring unhandled exception while erroring callbacks for a "
+                         "failed connection (%s) to host %s:",
+                         id(self), self.host, exc_info=True)
 
     def handle_error(self):
         self.defunct(sys.exc_info()[1])
@@ -204,6 +217,7 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
                 self.close()
 
     def handle_pushed(self, response):
+        log.debug("Message pushed from server: %r", response)
         for cb in self._push_watchers.get(response.event_type, []):
             try:
                 cb(response.event_args)
@@ -239,7 +253,7 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
 
     def wait_for_responses(self, *msgs, **kwargs):
         timeout = kwargs.get('timeout')
-        waiter = ResponseWaiter(len(msgs))
+        waiter = ResponseWaiter(self, len(msgs))
 
         # busy wait for sufficient space on the connection
         messages_sent = 0
@@ -264,9 +278,11 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
 
         try:
             return waiter.deliver(timeout)
-        finally:
-            with self.lock:
-                self.in_flight -= len(msgs)
+        except OperationTimedOut:
+            raise
+        except Exception, exc:
+            self.defunct(exc)
+            raise
 
     def register_watcher(self, event_type, callback):
         self._push_watchers[event_type].add(callback)
