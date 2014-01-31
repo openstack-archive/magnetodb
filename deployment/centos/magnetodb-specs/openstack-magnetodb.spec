@@ -14,7 +14,7 @@ BuildRequires:  python-devel, python-setuptools,
 Provides:       %{name} = %{version}-%{release}
 Summary:        openstack-magnetodb
 BuildArch:      noarch
-Requires:       python-cassandradriver >= 1.0.0b7
+Requires:       python-cassandradriver = 1.0.0
 Requires:       python-eventlet >= 0.13
 Requires:       python-iso8601 >= 0.1.4
 Requires:       python-jsonschema >= 1.3.0, python-jsonschema <= 1.4.0
