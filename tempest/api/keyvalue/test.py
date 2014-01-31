@@ -126,7 +126,7 @@ class BotoExceptionMatcher(object):
                    (exc.error_code, self.CODE_RE)
 
         if hasattr(self, 'MESSAGE'):
-            exc_message = jsonutils.loads(exc.message)['message']
+            exc_message = exc.message
             if exc_message != self.MESSAGE:
                 return ("Error message (%s) does not match "
                         "the expected value \"%s\"") % (exc_message,
