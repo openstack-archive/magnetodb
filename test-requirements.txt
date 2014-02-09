@@ -8,3 +8,4 @@ wsgi_intercept
 nose
 funkload
 testresources
+discover
