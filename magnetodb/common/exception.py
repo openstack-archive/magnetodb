@@ -101,3 +101,29 @@ class ResourceInUseException(BadRequestException):
         'The resource which you are attempting to change is in use.'
     )
     error_code = 'ResourceInUseException'
+
+
+class IncompleteSignatureError(BadRequestException):
+    response_message = (
+        'The request signature does not conform to AWS standards.'
+    )
+    error_code = 'IncompleteSignature'
+
+
+class AccessDeniedError(AWSErrorResponseException):
+    """ Base class for all errors with HTTP status code 403"""
+    status = '403'
+    response_message = 'User is not authorized to perform action'
+    error_code = 'AccessDenied'
+
+
+class InvalidClientTokenIdError(AccessDeniedError):
+    response_message = 'The certificate or AWS Key ID provided does not exist'
+    error_code = 'InvalidClientTokenId'
+
+
+class SignatureError(AccessDeniedError):
+    response_message = (
+        'The request signature calculated does not match the provided one'
+    )
+    error_code = 'SignatureError'
