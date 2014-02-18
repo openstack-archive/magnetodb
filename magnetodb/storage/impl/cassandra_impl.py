@@ -54,12 +54,22 @@ class CassandraStorageImpl():
         models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL: '>=',
     }
 
-    USER_COLUMN_PREFIX = 'user_'
-    SYSTEM_COLUMN_PREFIX = 'system_'
+    USER_PREFIX = 'user_'
+    SYSTEM_PREFIX = 'system_'
+
+    USER_TABLE_PREFIX = USER_PREFIX
+    SYSTEM_TABLE_PREFIX = SYSTEM_PREFIX
+
+    SYSTEM_TABLE_SCHEMA_STATUS = SYSTEM_TABLE_PREFIX + "table_schema_status"
+
+    USER_COLUMN_PREFIX = USER_PREFIX
+    SYSTEM_COLUMN_PREFIX = SYSTEM_PREFIX
+
     SYSTEM_COLUMN_ATTRS = SYSTEM_COLUMN_PREFIX + 'attrs'
     SYSTEM_COLUMN_ATTR_TYPES = SYSTEM_COLUMN_PREFIX + 'attr_types'
     SYSTEM_COLUMN_ATTR_EXIST = SYSTEM_COLUMN_PREFIX + 'attr_exist'
     SYSTEM_COLUMN_HASH = SYSTEM_COLUMN_PREFIX + 'hash'
+
     SYSTEM_COLUMN_HASH_INDEX_NAME = (
         SYSTEM_COLUMN_HASH + "_internal_index"
     )
@@ -166,20 +176,16 @@ class CassandraStorageImpl():
             raise BackendInteractionException(
                 msg)
 
-    @staticmethod
-    def _quote_strings(strings):
-        return map(lambda attr: "\"{}\"".format(attr), strings)
-
-    def _wait_for_table_status(self, tenant, table_name, expected_exists,
-                               indexed_column_names=None):
+    def _wait_for_table_status(self, keyspace_name, table_name,
+                               expected_exists, indexed_column_names=None):
         LOG.debug("Start waiting for table status changing...")
 
         while True:
-            keyspace_meta = self.cluster.metadata.keyspaces.get(tenant)
+            keyspace_meta = self.cluster.metadata.keyspaces.get(keyspace_name)
 
             if keyspace_meta is None:
                 raise BackendInteractionException(
-                    "Tenant '{}' does not exist".format(tenant)
+                    "Keyspace '{}' does not exist".format(keyspace_name)
                 )
 
             table_meta = keyspace_meta.tables.get(table_name)
@@ -213,42 +219,54 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
-        query = "CREATE TABLE \"{}\".\"{}\" (".format(context.tenant,
-                                                      table_schema.table_name)
+        cas_table_name = self.USER_TABLE_PREFIX + table_schema.table_name
 
-        for attr_def in table_schema.attribute_defs:
-            query += "\"{}\" {},".format(
-                self.USER_COLUMN_PREFIX + attr_def.name,
-                self.STORAGE_TO_CASSANDRA_TYPES[attr_def.type])
-
-        query += "\"{}\" map<text, blob>,".format(self.SYSTEM_COLUMN_ATTRS)
-        query += "\"{}\" map<text, text>,".format(
-            self.SYSTEM_COLUMN_ATTR_TYPES)
-        query += "\"{}\" set<text>,".format(self.SYSTEM_COLUMN_ATTR_EXIST)
-
-        prefixed_attrs = [self.USER_COLUMN_PREFIX + name
-                          for name in table_schema.key_attributes]
+        user_columns = [
+            "\"{}{}\" {}".format(
+                self.USER_COLUMN_PREFIX, attr_def.name,
+                self.STORAGE_TO_CASSANDRA_TYPES[attr_def.type]
+            )
+            for attr_def in table_schema.attribute_defs
+        ]
 
         hash_name = table_schema.key_attributes[0]
-        hash_type = [attr.type
-                     for attr in table_schema.attribute_defs
-                     if attr.name == hash_name][0]
+        hash_type = [
+            attr.type for attr in table_schema.attribute_defs
+            if attr.name == hash_name
+        ][0]
 
         cassandra_hash_type = self.STORAGE_TO_CASSANDRA_TYPES[hash_type]
 
-        query += "{} {},".format(self.SYSTEM_COLUMN_HASH, cassandra_hash_type)
+        key_attrs = [
+            "\"{}{}\"".format(self.USER_COLUMN_PREFIX, name)
+            for name in table_schema.key_attributes
+        ]
 
-        key_count = len(prefixed_attrs)
+        key_count = len(key_attrs)
 
         if key_count < 1 or key_count > 2:
             raise BackendInteractionException(
                 "Expected 1 or 2 key attribute(s). Found {}: {}".format(
                     key_count, table_schema.key_attributes))
 
-        primary_key = ','.join(self._quote_strings(prefixed_attrs))
-        query += "PRIMARY KEY ({})".format(primary_key)
-
-        query += ")"
+        query = (
+            "CREATE TABLE \"{}\".\"{}\" ("
+            " {},"
+            " \"{}\" map<text, blob>,"
+            " \"{}\" map<text, text>,"
+            " \"{}\" set<text>,"
+            " {} {},"
+            " PRIMARY KEY ({})"
+            ")".format(
+                context.tenant, cas_table_name,
+                ",".join(user_columns),
+                self.SYSTEM_COLUMN_ATTRS,
+                self.SYSTEM_COLUMN_ATTR_TYPES,
+                self.SYSTEM_COLUMN_ATTR_EXIST,
+                self.SYSTEM_COLUMN_HASH, cassandra_hash_type,
+                ','.join(key_attrs)
+            )
+        )
 
         try:
             self._execute_query(query)
@@ -256,20 +274,20 @@ class CassandraStorageImpl():
             LOG.debug("Create Table CQL request executed. "
                       "Waiting for schema agreement...")
 
-            self._wait_for_table_status(tenant=context.tenant,
-                                        table_name=table_schema.table_name,
+            self._wait_for_table_status(keyspace_name=context.tenant,
+                                        table_name=cas_table_name,
                                         expected_exists=True)
 
             LOG.debug("Waiting for schema agreement... Done")
 
             for index_def in table_schema.index_defs:
-                self._create_index(context, table_schema.table_name,
+                self._create_index(context.tenant, cas_table_name,
                                    self.USER_COLUMN_PREFIX +
                                    index_def.attribute_to_index,
                                    index_def.index_name)
 
             self._create_index(
-                context, table_schema.table_name, self.SYSTEM_COLUMN_HASH,
+                context.tenant, cas_table_name, self.SYSTEM_COLUMN_HASH,
                 self.SYSTEM_COLUMN_HASH_INDEX_NAME)
 
         except Exception as e:
@@ -287,16 +305,17 @@ class CassandraStorageImpl():
 
             raise e
 
-    def _create_index(self, context, table_name, indexed_attr, index_name=""):
+    def _create_index(self, keyspace_name, table_name, indexed_attr,
+                      index_name=""):
         if index_name:
             index_name = "_".join((table_name, index_name))
 
         query = "CREATE INDEX {} ON \"{}\".\"{}\" (\"{}\")".format(
-            index_name, context.tenant, table_name, indexed_attr)
+            index_name, keyspace_name, table_name, indexed_attr)
 
         self._execute_query(query)
 
-        self._wait_for_table_status(tenant=context.tenant,
+        self._wait_for_table_status(keyspace_name=keyspace_name,
                                     table_name=table_name,
                                     expected_exists=True,
                                     indexed_column_names=(indexed_attr,))
@@ -310,15 +329,18 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        query = "DROP TABLE \"{}\".\"{}\"".format(context.tenant, table_name)
+        cas_table_name = self.USER_TABLE_PREFIX + table_name
+
+        query = "DROP TABLE \"{}\".\"{}\"".format(context.tenant,
+                                                  cas_table_name)
 
         self._execute_query(query)
 
         LOG.debug("Delete Table CQL request executed. "
                   "Waiting for schema agreement...")
 
-        self._wait_for_table_status(tenant=context.tenant,
-                                    table_name=table_name,
+        self._wait_for_table_status(keyspace_name=context.tenant,
+                                    table_name=cas_table_name,
                                     expected_exists=False)
 
         LOG.debug("Waiting for schema agreement... Done")
@@ -344,13 +366,14 @@ class CassandraStorageImpl():
 
         if keyspace_meta is None:
             raise BackendInteractionException(
-                "Tenant '{}' does not exist".format(context.tenant)
+                "Keyspace '{}' does not exist".format(context.tenant)
             )
 
-        table_meta = keyspace_meta.tables.get(table_name)
+        cas_table_name = self.USER_TABLE_PREFIX + table_name
+        table_meta = keyspace_meta.tables.get(cas_table_name)
         if table_meta is None:
             raise TableNotExistsException(
-                "Table '{}' does not exist".format(table_name)
+                "Table '{}' does not exist".format(cas_table_name)
             )
 
         prefix_len = len(self.USER_COLUMN_PREFIX)
@@ -379,7 +402,7 @@ class CassandraStorageImpl():
             range_key_name = table_meta.clustering_key[0].name[prefix_len:]
             key_attrs.append(range_key_name)
 
-        table_schema = models.TableSchema(table_meta.name, attr_defs,
+        table_schema = models.TableSchema(table_name, attr_defs,
                                           key_attrs, index_defs)
 
         self._save_table_schema_to_cache(context.tenant, table_name,
@@ -398,21 +421,29 @@ class CassandraStorageImpl():
         @raise BackendInteractionException
         """
 
-        query = "SELECT \"columnfamily_name\""
-        query += " FROM \"system\".\"schema_columnfamilies\""
-
-        query += " WHERE \"keyspace_name\" = '{}'".format(context.tenant)
+        query_builder = [
+            "SELECT \"columnfamily_name\"",
+            " FROM \"system\".\"schema_columnfamilies\"",
+            " WHERE \"keyspace_name\"='", context.tenant, "'"
+        ]
 
         if exclusive_start_table_name:
-            query += " AND \"columnfamily_name\" > '{}'".format(
-                exclusive_start_table_name)
+            query_builder += (
+                " AND \"columnfamily_name\" > '",
+                exclusive_start_table_name, "'"
+            )
 
         if limit:
-            query += " LIMIT {}".format(limit)
+            query_builder += (
+                " AND \"columnfamily_name\" > '",
+                exclusive_start_table_name, "'"
+            )
+            query_builder += (" LIMIT ", str(limit))
 
-        tables = self._execute_query(query, consistent=True)
+        tables = self._execute_query("".join(query_builder), consistent=True)
 
-        return [row['columnfamily_name'] for row in tables]
+        return [row['columnfamily_name'][len(self.USER_TABLE_PREFIX):]
+                for row in tables]
 
     def put_item(self, context, put_request, if_not_exist=False,
                  expected_condition_map=None):
@@ -434,106 +465,126 @@ class CassandraStorageImpl():
         """
 
         schema = self.describe_table(context, put_request.table_name)
-        predefined_attrs = [attr.name for attr in schema.attribute_defs]
-        key_attrs = schema.key_attributes
-        attr_map = put_request.attribute_map
+        key_attr_names = schema.key_attributes
+        put_attr_map = put_request.attribute_map
 
-        dynamic_values = self._put_dynamic_values(attr_map, predefined_attrs)
-        types = self._put_types(attr_map)
-        exists = self._put_exists(attr_map)
+        types = self._put_types(put_attr_map)
+        exists = self._put_exists(put_attr_map)
 
-        hash_name = schema.key_attributes[0]
-        hash_value = self._encode_predefined_attr_value(attr_map[hash_name])
+        hash_key_name = key_attr_names[0]
+        encoded_hash_key_value = self._encode_predefined_attr_value(
+            put_attr_map[hash_key_name]
+        )
+
+        not_processed_predefined_attr_names = set()
+        for attr in schema.attribute_defs:
+            not_processed_predefined_attr_names.add(attr.name)
 
         if expected_condition_map:
-            attrs = attr_map.keys()
-            non_key_attrs = [
-                attr for attr in predefined_attrs if attr not in key_attrs]
-            unset_attrs = [
-                attr for attr in predefined_attrs if attr not in attrs]
-            set_clause = ''
+            query_builder = [
+                "UPDATE \"", context.tenant, "\".\"", self.USER_TABLE_PREFIX,
+                put_request.table_name, "\" SET "]
 
-            for attr, val in attr_map.iteritems():
-                if attr in non_key_attrs:
-                    set_clause += '\"{}\" = {},'.format(
-                        self.USER_COLUMN_PREFIX + attr,
-                        self._encode_value(val, True))
-                elif attr in unset_attrs:
-                    set_clause += '\"{}\" = null,'.format(
-                        self.USER_COLUMN_PREFIX + attr)
+            dynamic_attr_names = []
+            dynamic_attr_values = []
+            for name, val in put_attr_map.iteritems():
+                if name in key_attr_names:
+                    not_processed_predefined_attr_names.remove(name)
+                elif name in not_processed_predefined_attr_names:
+                    query_builder += (
+                        "\"", self.USER_COLUMN_PREFIX, name, "\"=", val, ","
+                    )
+                    not_processed_predefined_attr_names.remove(name)
+                else:
+                    dynamic_attr_names.append(name)
+                    dynamic_attr_values.append(
+                        self._encode_dynamic_attr_value(val)
+                    )
 
-            set_clause += '\"{}\" = {{{}}},'.format(
-                self.SYSTEM_COLUMN_ATTRS, dynamic_values
+            query_builder.append("{")
+            dynamic_value_iter = iter(dynamic_attr_values)
+            for name in dynamic_attr_names:
+                query_builder += (
+                    "'", name, "':" + dynamic_value_iter.next(), ","
+                )
+            query_builder.pop()
+            query_builder.append("}, ")
+
+            for name in not_processed_predefined_attr_names:
+                query_builder += (
+                    "\"", self.USER_COLUMN_PREFIX, name, "\"=null,"
+                )
+
+            query_builder += (
+                self.SYSTEM_COLUMN_ATTR_TYPES, "={", types, "},",
+                self.SYSTEM_COLUMN_ATTR_EXIST, "={", exists, "},",
+                self.SYSTEM_COLUMN_HASH, "=", encoded_hash_key_value,
+                " WHERE ", self.USER_COLUMN_PREFIX, hash_key_name, "=",
+                encoded_hash_key_value
             )
 
-            set_clause += '\"{}\" = {{{}}},'.format(
-                self.SYSTEM_COLUMN_ATTR_TYPES, types
-            )
+            if key_attr_names == 2:
+                range_key_name = key_attr_names[1]
+                encoded_range_key_value = self._encode_predefined_attr_value(
+                    put_attr_map[range_key_name]
+                )
 
-            set_clause += '\"{}\" = {{{}}},'.format(
-                self.SYSTEM_COLUMN_ATTR_EXIST, exists
-            )
-
-            set_clause += '\"{}\" = {}'.format(
-                self.SYSTEM_COLUMN_HASH, hash_value
-            )
-
-            where = ' AND '.join((
-                '\"{}\" = {}'.format(
-                    self.USER_COLUMN_PREFIX + attr,
-                    self._encode_value(val, True))
-                for attr, val in attr_map.iteritems()
-                if attr in key_attrs
-            ))
-
-            query = 'UPDATE \"{}\".\"{}\" SET {} WHERE {}'.format(
-                context.tenant, put_request.table_name, set_clause, where
-            )
+                query_builder += (
+                    " AND ", self.USER_COLUMN_PREFIX, range_key_name, "=",
+                    encoded_range_key_value
+                )
 
             if_clause = self._conditions_as_string(expected_condition_map)
-            query += " IF {}".format(if_clause)
+            query_builder += (" IF ", if_clause)
 
-            self.session.execute(query)
+            self._execute_query("".join(query_builder), consistent=True)
         else:
-            attrs = ''
-            values = ''
+            query_builder = [
+                "INSERT INTO \"", context.tenant, "\".\"",
+                self.USER_TABLE_PREFIX, put_request.table_name, "\" ("
+            ]
+            attr_values = []
+            dynamic_attr_names = []
+            dynamic_attr_values = []
+            for name, val in put_attr_map.iteritems():
+                if name in not_processed_predefined_attr_names:
+                    query_builder += (
+                        "\"", self.USER_COLUMN_PREFIX, name, "\","
+                    )
+                    attr_values.append(self._encode_predefined_attr_value(val))
+                    not_processed_predefined_attr_names.remove(name)
+                else:
+                    dynamic_attr_names.append(name)
+                    dynamic_attr_values.append(
+                        self._encode_dynamic_attr_value(val)
+                    )
 
-            for attr, val in attr_map.iteritems():
-                if attr in predefined_attrs:
-                    attrs += '\"{}\",'.format(self.USER_COLUMN_PREFIX + attr)
-                    values += self._encode_value(val, True) + ','
+            query_builder += (
+                self.SYSTEM_COLUMN_ATTRS, ",",
+                self.SYSTEM_COLUMN_ATTR_TYPES, ",",
+                self.SYSTEM_COLUMN_ATTR_EXIST, ",",
+                self.SYSTEM_COLUMN_HASH,
+                ") VALUES("
+            )
 
-            attrs += ','.join((
-                self.SYSTEM_COLUMN_ATTRS,
-                self.SYSTEM_COLUMN_ATTR_TYPES,
-                self.SYSTEM_COLUMN_ATTR_EXIST,
-                self.SYSTEM_COLUMN_HASH
-            ))
+            for attr_value in attr_values:
+                query_builder += (attr_value, ",")
 
-            values += ','.join((
-                '{{{}}}'.format(dynamic_values),
-                '{{{}}}'.format(types),
-                '{{{}}}'.format(exists),
-                hash_value
-            ))
+            query_builder.append("{")
+            dynamic_value_iter = iter(dynamic_attr_values)
+            for name in dynamic_attr_names:
+                query_builder += ("'", name, "':" + dynamic_value_iter.next())
 
-            query = 'INSERT INTO \"{}\".\"{}\" ({}) VALUES ({})'.format(
-                context.tenant, put_request.table_name, attrs, values)
-
+            query_builder += (
+                "},{", types, "},{" + exists + "},", encoded_hash_key_value
+            )
+            query_builder.append(")")
             if if_not_exist:
-                query += ' IF NOT EXISTS'
+                query_builder.append(" IF NOT EXISTS")
 
-            self.session.execute(query)
+            self._execute_query("".join(query_builder), consistent=True)
 
         return True
-
-    def _put_dynamic_values(self, attribute_map, predefined_attrs):
-        return ','.join((
-            "'{}':{}".format(attr, self._encode_value(val, False))
-            for attr, val
-            in attribute_map.iteritems()
-            if not attr in predefined_attrs
-        ))
 
     def _put_types(self, attribute_map):
         return ','.join((
@@ -564,8 +615,8 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        query = "DELETE FROM \"{}\".\"{}\" WHERE ".format(
-            context.tenant, delete_request.table_name)
+        query = "DELETE FROM \"{}\".\"{}{}\" WHERE ".format(
+            context.tenant, self.USER_TABLE_PREFIX, delete_request.table_name)
 
         where = self._primary_key_as_string(delete_request.key_attribute_map)
 
@@ -659,8 +710,9 @@ class CassandraStorageImpl():
 
         where = self._primary_key_as_string(key_attribute_map)
 
-        query = "UPDATE \"{}\".\"{}\" SET {} WHERE {}".format(
-            context.tenant, table_name, set_clause, where
+        query = "UPDATE \"{}\".\"{}{}\" SET {} WHERE {}".format(
+            context.tenant, self.USER_TABLE_PREFIX, table_name,
+            set_clause, where
         )
 
         if expected_condition_map:
@@ -716,22 +768,20 @@ class CassandraStorageImpl():
                 self.SYSTEM_COLUMN_ATTR_EXIST,
                 self.SYSTEM_COLUMN_ATTR_EXIST, attr)
 
-            value = self._encode_value(update.value, is_predefined)
+            value = (
+                self._encode_predefined_attr_value(update.value)
+                if is_predefined else
+                self._encode_dynamic_attr_value(update.value)
+            )
 
         op = '='
         value_update = "{} {} {}".format(name, op, value)
 
         return ", ".join((value_update, type_update, exists))
 
-    def _encode_value(self, attr_value, is_predefined):
+    def _encode_predefined_attr_value(self, attr_value):
         if attr_value is None:
             return 'null'
-        elif is_predefined:
-            return self._encode_predefined_attr_value(attr_value)
-        else:
-            return self._encode_dynamic_attr_value(attr_value)
-
-    def _encode_predefined_attr_value(self, attr_value):
         if attr_value.type.collection_type:
             values = ','.join(map(
                 lambda el: self._encode_single_value_as_predefined_attr(
@@ -756,6 +806,9 @@ class CassandraStorageImpl():
             assert False, "Value wasn't formatted for cql query"
 
     def _encode_dynamic_attr_value(self, attr_value):
+        if attr_value is None:
+            return 'null'
+
         val = attr_value.value
         if attr_value.type.collection_type:
             val = map(
@@ -837,8 +890,10 @@ class CassandraStorageImpl():
 
         select = 'COUNT(*)' if select_type.is_count else '*'
 
-        query = "SELECT {} FROM \"{}\".\"{}\" ".format(
-            select, context.tenant, table_name)
+        query_builder = [
+            "SELECT ", select, " FROM \"", context.tenant, "\".\"",
+            self.USER_TABLE_PREFIX, table_name, "\""
+        ]
 
         indexed_condition_map = indexed_condition_map or {}
 
@@ -879,7 +934,7 @@ class CassandraStorageImpl():
                 where = fixed_range_cond
 
         if where:
-            query += " WHERE " + where
+            query_builder += (" WHERE ", where)
 
         add_filtering, add_system_hash = self._add_filtering_and_sys_hash(
             schema, indexed_condition_map)
@@ -889,24 +944,26 @@ class CassandraStorageImpl():
                 indexed_condition_map[hash_name].arg
             )
 
-            query += " AND \"{}\"={}".format(
-                self.SYSTEM_COLUMN_HASH, hash_value)
+            query_builder += (
+                " AND \"", self.SYSTEM_COLUMN_HASH, "\"=", hash_value
+            )
 
         #add limit
         if limit:
-            query += " LIMIT {}".format(limit)
+            query_builder += (" LIMIT ", str(limit))
 
         #add ordering
         if order_type and range_name:
-            query += " ORDER BY \"{}\" {}".format(
-                self.USER_COLUMN_PREFIX + range_name, order_type
+            query_builder += (
+                " ORDER BY \"", self.USER_COLUMN_PREFIX, range_name, "\" ",
+                order_type
             )
 
         #add allow filtering
         if add_filtering:
-            query += " ALLOW FILTERING"
+            query_builder.append(" ALLOW FILTERING")
 
-        rows = self._execute_query(query, consistent)
+        rows = self._execute_query("".join(query_builder), consistent)
 
         if select_type.is_count:
             return models.SelectResult(count=rows[0]['count'])

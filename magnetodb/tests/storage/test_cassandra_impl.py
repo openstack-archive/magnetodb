@@ -139,12 +139,12 @@ class TestCassandraBase(unittest.TestCase):
 
         ks = self.CLUSTER.metadata.keyspaces[keyspace]
 
-        return ks.tables.keys()
+        return [k[len("user_"):] for k in ks.tables.keys()]
 
     def _create_table(self, keyspace=None, table_name=None):
         keyspace = keyspace or self.keyspace
         table_name = table_name or self.table_name
-        query = "CREATE TABLE {}.{} (".format(keyspace, table_name)
+        query = "CREATE TABLE {}.user_{} (".format(keyspace, table_name)
 
         for field in self.test_data_keys:
             name, typ, _, _ = field
@@ -171,24 +171,24 @@ class TestCassandraBase(unittest.TestCase):
         if index_name:
             index_name = "_".join((table_name, index_name))
 
-        query = "CREATE INDEX {} ON {}.{} ({})".format(
+        query = "CREATE INDEX {} ON {}.user_{} ({})".format(
             index_name, keyspace, table_name, attr)
         self.SESSION.execute(query)
 
     def _drop_table(self, keyspace=None, table_name=None):
         keyspace = keyspace or self.keyspace
         table_name = None or self.table_name
-        query = "DROP TABLE IF EXISTS {}.{}".format(keyspace, table_name)
-        self.SESSION.execute_async(query)
+        query = "DROP TABLE IF EXISTS {}.user_{}".format(keyspace, table_name)
+        self.SESSION.execute(query)
 
     def _select_all(self, keyspace=None, table_name=None):
         keyspace = keyspace or self.keyspace
         table_name = table_name or self.table_name
-        query = "SELECT * FROM {}.{}".format(keyspace, table_name)
+        query = "SELECT * FROM {}.user_{}".format(keyspace, table_name)
         return self.SESSION.execute(query)
 
     def _insert_data(self, range_value=1, id_value=1):
-        query = "UPDATE {}.{} SET ".format(self.keyspace, self.table_name)
+        query = "UPDATE {}.user_{} SET ".format(self.keyspace, self.table_name)
 
         for field in self.test_data_predefined_fields:
             name, typ, sval, _ = field
