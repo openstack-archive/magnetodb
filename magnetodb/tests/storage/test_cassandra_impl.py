@@ -16,14 +16,17 @@
 import unittest
 import uuid
 
-from cassandra import cluster
+from magnetodb.common.cassandra import cluster
 from cassandra import decoder
 
 from magnetodb.storage import models
 from magnetodb.storage.impl import cassandra_impl as impl
 
 
-TEST_CONNECTION = {'contact_points': ("localhost",)}
+TEST_CONNECTION = {
+    'contact_points': ("localhost",),
+    'control_connection_timeout': 60
+}
 
 
 class FakeContext(object):
@@ -123,13 +126,13 @@ class TestCassandraBase(unittest.TestCase):
         query = "CREATE KEYSPACE {} WITH replication".format(keyspace)
         query += " = {'class':'SimpleStrategy', 'replication_factor':1}"
 
-        cls.SESSION.execute(query)
+        cls.SESSION.execute(query, timeout=300)
 
     @classmethod
     def _drop_keyspace(cls, keyspace):
         query = ("DROP KEYSPACE {}".format(keyspace))
 
-        cls.SESSION.execute(query)
+        cls.SESSION.execute(query, timeout=300)
 
     def _get_table_names(self, keyspace=None):
         keyspace = keyspace or self.keyspace
@@ -176,7 +179,7 @@ class TestCassandraBase(unittest.TestCase):
         keyspace = keyspace or self.keyspace
         table_name = None or self.table_name
         query = "DROP TABLE IF EXISTS {}.{}".format(keyspace, table_name)
-        self.SESSION.execute(query)
+        self.SESSION.execute_async(query)
 
     def _select_all(self, keyspace=None, table_name=None):
         keyspace = keyspace or self.keyspace

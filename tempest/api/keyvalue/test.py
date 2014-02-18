@@ -31,6 +31,7 @@ import tempest.clients
 from tempest.common.utils.file_utils import have_effective_read_access
 import tempest.config
 from tempest import exceptions
+from tempest.openstack.common import jsonutils
 from tempest.openstack.common import log as logging
 import tempest.test
 from tempest.api.keyvalue.utils.wait import re_search_wait
@@ -116,14 +117,20 @@ class BotoExceptionMatcher(object):
             return "%r not an BotoServerError instance" % exc
         LOG.info("Status: %s , error_code: %s", exc.status, exc.error_code)
         if re.match(self.STATUS_RE, str(exc.status)) is None:
-            return ("Status code (%s) does not match"
+            return ("Status code (%s) does not match "
                     "the expected re pattern \"%s\""
                     % (exc.status, self.STATUS_RE))
         if re.match(self.CODE_RE, str(exc.error_code)) is None:
-            return ("Error code (%s) does not match" +
+            return ("Error code (%s) does not match " +
                     "the expected re pattern \"%s\"") %\
                    (exc.error_code, self.CODE_RE)
 
+        if hasattr(self, 'MESSAGE'):
+            exc_message = exc.message
+            if exc_message != self.MESSAGE:
+                return ("Error message (%s) does not match "
+                        "the expected value \"%s\"") % (exc_message,
+                                                        self.MESSAGE)
 
 class ClientError(BotoExceptionMatcher):
     STATUS_RE = r'4\d\d'
@@ -140,9 +147,14 @@ def _add_matcher_class(error_cls, error_data, base=BotoExceptionMatcher):
     """
     # in error_code just literal and '.' characters expected
     if not isinstance(error_data, basestring):
-        (error_code, status_code) = map(str, error_data)
+        if len(error_data) == 2:
+            (error_code, status_code) = map(str, error_data)
+            error_message = None
+        else:  # magnetodb case
+            (error_code, status_code, error_message) = map(str, error_data)
     else:
         status_code = None
+        error_message = None
         error_code = error_data
     parts = error_code.split('.')
     basematch = ""
@@ -160,8 +172,11 @@ def _add_matcher_class(error_cls, error_data, base=BotoExceptionMatcher):
         basematch += part + "[.]"
         if not hasattr(add_cls, part):
             cls_dict = {"CODE_RE": match}
-            if leaf and status_code is not None:
-                cls_dict["STATUS_RE"] = status_code
+            if leaf:
+                if status_code is not None:
+                    cls_dict["STATUS_RE"] = status_code
+                if error_message is not None:
+                    cls_dict['MESSAGE'] = error_message
             cls = type(part, (base, ), cls_dict)
             setattr(add_cls, part, cls())
             add_cls = cls
@@ -676,11 +691,17 @@ for code in (('InternalError', 500),
                        code, base=ServerError)
 
 
-for code in ('ResourceInUseException', 'LimitExceededException'):
+for code in (
+    ('ResourceInUseException', 400, 'The resource which you are '
+                                    'attempting to change is in use.'),
+    ('LimitExceededException', 400, 'Too many operations for a '
+                                    'given subscriber.'), ):
     _add_matcher_class(BotoTestCase.dynamodb_error_code.client,
                        code, base=ClientError)
 
 
-for code in ('InternalServerError', ):
+for code in (
+    ('InternalServerError', 500, 'The server encountered an internal error '
+                                 'trying to fulfill the request.'), ):
     _add_matcher_class(BotoTestCase.dynamodb_error_code.server,
                        code, base=ServerError)
