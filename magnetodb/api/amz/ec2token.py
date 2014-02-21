@@ -56,21 +56,10 @@ class EC2Token(wsgi.Middleware):
         self.application = app
 
     def _conf_get(self, name):
-        # try config from paste-deploy first
-        if name in self.conf:
-            return self.conf[name]
-        else:
-            return cfg.CONF.ec2authtoken[name]
+        return self.conf.get(name, None)
 
     def _conf_get_auth_uri(self):
-        auth_uri = self._conf_get('auth_uri')
-        if auth_uri:
-            return auth_uri
-        else:
-            # Import auth_token to have keystone_authtoken settings setup.
-            # We can use the auth_uri from the keystone_authtoken section
-            importutils.import_module('keystoneclient.middleware.auth_token')
-            return cfg.CONF.keystone_authtoken['auth_uri']
+        return self._conf_get('auth_uri')
 
     @staticmethod
     def _conf_get_keystone_ec2_uri(auth_uri):
