@@ -77,7 +77,7 @@ class MagnetoDBScanTest(MagnetoDBTestCase):
         exp_scanned_count = 2 * 10
         exp_count = 10
         limit = 5
-        items = self.populate_smoke_table(self.tname, 2, exp_count)
+        self.populate_smoke_table(self.tname, 2, exp_count)
 
         scanfilter = {
             'message': {

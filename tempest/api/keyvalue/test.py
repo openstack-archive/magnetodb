@@ -31,7 +31,6 @@ import tempest.clients
 from tempest.common.utils.file_utils import have_effective_read_access
 import tempest.config
 from tempest import exceptions
-from tempest.openstack.common import jsonutils
 from tempest.openstack.common import log as logging
 import tempest.test
 from tempest.api.keyvalue.utils.wait import re_search_wait
@@ -131,6 +130,7 @@ class BotoExceptionMatcher(object):
                 return ("Error message (%s) does not match "
                         "the expected value \"%s\"") % (exc_message,
                                                         self.MESSAGE)
+
 
 class ClientError(BotoExceptionMatcher):
     STATUS_RE = r'4\d\d'
