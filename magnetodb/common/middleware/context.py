@@ -49,7 +49,7 @@ class ContextMiddleware(wsgi.Middleware):
         # Use the default empty context, with admin turned on for
         # backwards compatibility
         user_id = req.headers.get('X-Auth-User', None)
-        tenant_id = req.headers.get('X-Tenant-Id', None) 
+        tenant_id = req.headers.get('X-Tenant-Id', None)
         req.context = self.make_context(is_admin=True,
                                         user_id=user_id,
                                         tenant_id=tenant_id)
@@ -60,4 +60,4 @@ class ContextMiddleware(wsgi.Middleware):
 
     @staticmethod
     def tenant_id_to_keyspace_name(tenant_id):
-        return 'ks' + filter(lambda x: x != '-', tenant_id)[:30]
+        return filter(lambda x: x != '-', tenant_id)[:30]

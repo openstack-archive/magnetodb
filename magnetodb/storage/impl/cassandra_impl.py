@@ -32,7 +32,7 @@ from magnetodb.storage import models
 LOG = logging.getLogger(__name__)
 
 
-class CassandraStorageImpl():
+class CassandraStorageImpl(object):
 
     STORAGE_TO_CASSANDRA_TYPES = {
         models.ATTRIBUTE_TYPE_STRING: 'text',
@@ -222,18 +222,16 @@ class CassandraStorageImpl():
         cas_table_name = self.USER_TABLE_PREFIX + table_schema.table_name
 
         user_columns = [
-            "\"{}{}\" {}".format(
-                self.USER_COLUMN_PREFIX, attr_def.name,
-                self.STORAGE_TO_CASSANDRA_TYPES[attr_def.type]
+            '"{}{}" {}'.format(
+                self.USER_COLUMN_PREFIX, attr_name,
+                self.STORAGE_TO_CASSANDRA_TYPES[attr_type]
             )
-            for attr_def in table_schema.attribute_defs
+            for attr_name, attr_type in
+            table_schema.attribute_type_map.iteritems()
         ]
 
         hash_name = table_schema.key_attributes[0]
-        hash_type = [
-            attr.type for attr in table_schema.attribute_defs
-            if attr.name == hash_name
-        ][0]
+        hash_type = table_schema.attribute_type_map[hash_name]
 
         cassandra_hash_type = self.STORAGE_TO_CASSANDRA_TYPES[hash_type]
 
@@ -280,11 +278,12 @@ class CassandraStorageImpl():
 
             LOG.debug("Waiting for schema agreement... Done")
 
-            for index_def in table_schema.index_defs:
+            for index_name, index_def in (
+                    table_schema.index_def_map.iteritems()):
                 self._create_index(context.tenant, cas_table_name,
                                    self.USER_COLUMN_PREFIX +
                                    index_def.attribute_to_index,
-                                   index_def.index_name)
+                                   index_name)
 
             self._create_index(
                 context.tenant, cas_table_name, self.SYSTEM_COLUMN_HASH,
@@ -382,16 +381,16 @@ class CassandraStorageImpl():
                         in table_meta.columns.iteritems()
                         if key.startswith(self.USER_COLUMN_PREFIX)]
 
-        attr_defs = set()
-        index_defs = set()
+        attribute_type_map = {}
+        index_def_map = {}
 
         for column in user_columns:
             name = column.name[prefix_len:]
             storage_type = self.CASSANDRA_TO_STORAGE_TYPES[column.typestring]
-            attr_defs.add(models.AttributeDefinition(name, storage_type))
+            attribute_type_map[name] = storage_type
             if column.index:
-                index_defs.add(models.IndexDefinition(
-                    column.index.name[len(table_name) + 1:], name)
+                index_def_map[column.index.name[len(table_name) + 1:]] = (
+                    models.IndexDefinition(name)
                 )
 
         hash_key_name = table_meta.partition_key[0].name[prefix_len:]
@@ -402,8 +401,8 @@ class CassandraStorageImpl():
             range_key_name = table_meta.clustering_key[0].name[prefix_len:]
             key_attrs.append(range_key_name)
 
-        table_schema = models.TableSchema(table_name, attr_defs,
-                                          key_attrs, index_defs)
+        table_schema = models.TableSchema(table_name, attribute_type_map,
+                                          key_attrs, index_def_map)
 
         self._save_table_schema_to_cache(context.tenant, table_name,
                                          table_schema)
@@ -422,20 +421,20 @@ class CassandraStorageImpl():
         """
 
         query_builder = [
-            "SELECT \"columnfamily_name\"",
-            " FROM \"system\".\"schema_columnfamilies\"",
-            " WHERE \"keyspace_name\"='", context.tenant, "'"
+            "SELECT columnfamily_name",
+            " FROM system.schema_columnfamilies",
+            " WHERE keyspace_name='", context.tenant, "'"
         ]
 
         if exclusive_start_table_name:
             query_builder += (
-                " AND \"columnfamily_name\" > '",
+                " AND columnfamily_name > '",
                 exclusive_start_table_name, "'"
             )
 
         if limit:
             query_builder += (
-                " AND \"columnfamily_name\" > '",
+                " AND columnfamily_name > '",
                 exclusive_start_table_name, "'"
             )
             query_builder += (" LIMIT ", str(limit))
@@ -476,23 +475,27 @@ class CassandraStorageImpl():
             put_attr_map[hash_key_name]
         )
 
-        not_processed_predefined_attr_names = set()
-        for attr in schema.attribute_defs:
-            not_processed_predefined_attr_names.add(attr.name)
+        not_processed_predefined_attr_names = set(
+            schema.attribute_type_map.keys()
+        )
+
+        query_builder = None
 
         if expected_condition_map:
             query_builder = [
-                "UPDATE \"", context.tenant, "\".\"", self.USER_TABLE_PREFIX,
-                put_request.table_name, "\" SET "]
+                'UPDATE "', context.tenant, '"."', self.USER_TABLE_PREFIX,
+                put_request.table_name, '" SET ']
 
             dynamic_attr_names = []
             dynamic_attr_values = []
+
             for name, val in put_attr_map.iteritems():
                 if name in key_attr_names:
                     not_processed_predefined_attr_names.remove(name)
                 elif name in not_processed_predefined_attr_names:
                     query_builder += (
-                        "\"", self.USER_COLUMN_PREFIX, name, "\"=", val, ","
+                        '"', self.USER_COLUMN_PREFIX, name, '"=',
+                        self._encode_predefined_attr_value(val), ","
                     )
                     not_processed_predefined_attr_names.remove(name)
                 else:
@@ -501,47 +504,50 @@ class CassandraStorageImpl():
                         self._encode_dynamic_attr_value(val)
                     )
 
-            query_builder.append("{")
-            dynamic_value_iter = iter(dynamic_attr_values)
-            for name in dynamic_attr_names:
-                query_builder += (
-                    "'", name, "':" + dynamic_value_iter.next(), ","
-                )
-            query_builder.pop()
-            query_builder.append("}, ")
+            query_builder += (self.SYSTEM_COLUMN_ATTRS, "={")
+            if dynamic_attr_values:
+                dynamic_value_iter = iter(dynamic_attr_values)
+                for name in dynamic_attr_names:
+                    query_builder += (
+                        "'", name, "':", dynamic_value_iter.next(), ","
+                    )
+                query_builder.pop()
+            query_builder.append("},")
 
             for name in not_processed_predefined_attr_names:
                 query_builder += (
-                    "\"", self.USER_COLUMN_PREFIX, name, "\"=null,"
+                    '"', self.USER_COLUMN_PREFIX, name,
+                    '"=null,'
                 )
 
             query_builder += (
                 self.SYSTEM_COLUMN_ATTR_TYPES, "={", types, "},",
                 self.SYSTEM_COLUMN_ATTR_EXIST, "={", exists, "},",
                 self.SYSTEM_COLUMN_HASH, "=", encoded_hash_key_value,
-                " WHERE ", self.USER_COLUMN_PREFIX, hash_key_name, "=",
+                ' WHERE "', self.USER_COLUMN_PREFIX, hash_key_name, '"=',
                 encoded_hash_key_value
             )
 
-            if key_attr_names == 2:
+            if len(key_attr_names) == 2:
                 range_key_name = key_attr_names[1]
                 encoded_range_key_value = self._encode_predefined_attr_value(
                     put_attr_map[range_key_name]
                 )
 
                 query_builder += (
-                    " AND ", self.USER_COLUMN_PREFIX, range_key_name, "=",
+                    ' AND "', self.USER_COLUMN_PREFIX, range_key_name, '"=',
                     encoded_range_key_value
                 )
 
-            if_clause = self._conditions_as_string(expected_condition_map)
-            query_builder += (" IF ", if_clause)
-
-            self._execute_query("".join(query_builder), consistent=True)
+            if expected_condition_map:
+                query_builder.append(" IF ")
+                self._append_expected_conditions(
+                    expected_condition_map, schema, query_builder
+                )
         else:
             query_builder = [
-                "INSERT INTO \"", context.tenant, "\".\"",
-                self.USER_TABLE_PREFIX, put_request.table_name, "\" ("
+                'INSERT INTO "', context.tenant, '"."',
+                self.USER_TABLE_PREFIX, put_request.table_name, '" ('
             ]
             attr_values = []
             dynamic_attr_names = []
@@ -549,7 +555,7 @@ class CassandraStorageImpl():
             for name, val in put_attr_map.iteritems():
                 if name in not_processed_predefined_attr_names:
                     query_builder += (
-                        "\"", self.USER_COLUMN_PREFIX, name, "\","
+                        '"', self.USER_COLUMN_PREFIX, name, '",'
                     )
                     attr_values.append(self._encode_predefined_attr_value(val))
                     not_processed_predefined_attr_names.remove(name)
@@ -571,9 +577,14 @@ class CassandraStorageImpl():
                 query_builder += (attr_value, ",")
 
             query_builder.append("{")
-            dynamic_value_iter = iter(dynamic_attr_values)
-            for name in dynamic_attr_names:
-                query_builder += ("'", name, "':" + dynamic_value_iter.next())
+
+            if dynamic_attr_values:
+                dynamic_value_iter = iter(dynamic_attr_values)
+                for name in dynamic_attr_names:
+                    query_builder += (
+                        "'", name, "':" + dynamic_value_iter.next(), ","
+                    )
+                query_builder.pop()
 
             query_builder += (
                 "},{", types, "},{" + exists + "},", encoded_hash_key_value
@@ -582,9 +593,9 @@ class CassandraStorageImpl():
             if if_not_exist:
                 query_builder.append(" IF NOT EXISTS")
 
-            self._execute_query("".join(query_builder), consistent=True)
+        result = self._execute_query("".join(query_builder), consistent=True)
 
-        return True
+        return (result is None) or result[0]['[applied]']
 
     def _put_types(self, attribute_map):
         return ','.join((
@@ -615,56 +626,157 @@ class CassandraStorageImpl():
 
         @raise BackendInteractionException
         """
-        query = "DELETE FROM \"{}\".\"{}{}\" WHERE ".format(
-            context.tenant, self.USER_TABLE_PREFIX, delete_request.table_name)
+        query_builder = [
+            'DELETE FROM "', context.tenant, '"."', self.USER_TABLE_PREFIX,
+            delete_request.table_name, '" WHERE '
+        ]
 
-        where = self._primary_key_as_string(delete_request.key_attribute_map)
-
-        query += where
+        query_builder.append(
+            self._primary_key_as_string(delete_request.key_attribute_map)
+        )
 
         if expected_condition_map:
-            if_clause = self._conditions_as_string(expected_condition_map)
-
-            query += " IF " + if_clause
-
-        self._execute_query(query, consistent=True)
-
-        return True
-
-    def _condition_as_string(self, attr, condition):
-        name = self.USER_COLUMN_PREFIX + attr
-
-        if condition.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
-            if condition.arg:
-                return "\"{}\"={{\"{}\"}}".format(
-                    self.SYSTEM_COLUMN_ATTR_EXIST, attr)
-            else:
-                return "\"{}\"=null".format(name)
-        elif condition.type == models.IndexedCondition.CONDITION_TYPE_BETWEEN:
-            first, second = condition.arg
-            val1 = self._encode_predefined_attr_value(first)
-            val2 = self._encode_predefined_attr_value(second)
-            return " \"{}\" >= {} AND \"{}\" <= {}".format(
-                name, val1, name, val2)
-        elif (condition.type ==
-              models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH):
-            first = condition.arg
-            second = first.value[:-1] + chr(ord(first.value[-1]) + 1)
-            second = models.AttributeValue(condition.arg.type, second)
-            val1 = self._encode_predefined_attr_value(first)
-            val2 = self._encode_predefined_attr_value(second)
-            return " \"{}\" >= {} AND \"{}\" < {}".format(
-                name, val1, name, val2)
-        else:
-            op = self.CONDITION_TO_OP[condition.type]
-            return '"' + name + '"' + op + self._encode_predefined_attr_value(
-                condition.arg
+            schema = self.describe_table(context, delete_request.table_name)
+            query_builder.append(" IF ")
+            self._append_expected_conditions(
+                expected_condition_map, schema, query_builder
             )
 
-    def _conditions_as_string(self, condition_map):
-        return " AND ".join((self._condition_as_string(attr, cond)
-                             for attr, cond
-                             in condition_map.iteritems()))
+        result = self._execute_query("".join(query_builder), consistent=True)
+
+        return (result is None) or result[0]['[applied]']
+
+    def _compact_indexed_condition(self, cond_list):
+        left_condition = None
+        right_condition = None
+        exact_condition = None
+
+        assert cond_list
+
+        for condition in cond_list:
+            if condition.type == models.IndexedCondition.CONDITION_TYPE_EQUAL:
+                if (exact_condition is not None and
+                        condition.arg.value != exact_condition.arg.value):
+                    return None
+                exact_condition = condition
+            elif condition.is_left_border():
+                if left_condition is None:
+                    left_condition = condition
+                elif condition.is_strict_border():
+                    if condition.arg.value >= left_condition.arg.value:
+                        left_condition = condition
+                else:
+                    if condition.arg.value > left_condition.arg.value:
+                        left_condition = condition
+            elif condition.is_right_border():
+                if right_condition is None:
+                    right_condition = condition
+                elif condition.is_strict():
+                    if condition.arg.value <= right_condition.arg.value:
+                        right_condition = condition
+                else:
+                    if condition.arg.value < right_condition.arg.value:
+                        right_condition = condition
+
+        if exact_condition is not None:
+            if left_condition is not None:
+                if left_condition.is_strict():
+                    if left_condition.arg.value >= exact_condition.arg.value:
+                        return None
+                else:
+                    if left_condition.arg.value > exact_condition.arg.value:
+                        return None
+            if right_condition is not None:
+                if right_condition.is_strict():
+                    if right_condition.arg.value <= exact_condition.arg.value:
+                        return None
+                else:
+                    if right_condition.arg.value < exact_condition.arg.value:
+                        return None
+            return [exact_condition]
+        elif left_condition is not None:
+            if right_condition is not None:
+                if (left_condition.is_strict_border() or
+                        right_condition.is_strict_border()):
+                    if left_condition.arg.value >= right_condition.arg.value:
+                        return None
+                else:
+                    if left_condition.arg.value > right_condition.arg.value:
+                        return None
+                return [left_condition, right_condition]
+            else:
+                return [left_condition]
+
+        assert right_condition is not None
+
+        return [right_condition]
+
+    def _append_indexed_condition(self, attr_name, condition, query_builder,
+                                  column_prefix=USER_COLUMN_PREFIX):
+        op = self.CONDITION_TO_OP[condition.type]
+        query_builder += (
+            '"', column_prefix, attr_name, '"', op,
+            self._encode_predefined_attr_value(condition.arg)
+        )
+
+    def _append_hash_key_indexed_condition(
+            self, attr_name, condition, query_builder,
+            column_prefix=USER_COLUMN_PREFIX):
+        if condition.type == models.IndexedCondition.CONDITION_TYPE_EQUAL:
+            self._append_indexed_condition(
+                attr_name, condition, query_builder, column_prefix
+            )
+        else:
+            op = self.CONDITION_TO_OP[condition.type]
+            query_builder += (
+                'token("', column_prefix, attr_name, '")', op, "token(",
+                self._encode_predefined_attr_value(condition.arg), ")"
+            )
+
+    def _append_expected_conditions(self, expected_condition_map, schema,
+                                    query_builder):
+        init_length = len(query_builder)
+
+        for attr_name, cond_list in expected_condition_map.iteritems():
+            for condition in cond_list:
+                self._append_expected_condition(
+                    attr_name, condition, query_builder,
+                    attr_name in schema.attribute_type_map
+                )
+                query_builder.append(" AND ")
+
+        if len(query_builder) > init_length:
+            query_builder.pop()
+
+    def _append_expected_condition(self, attr, condition, query_builder,
+                                   is_predefined):
+        if condition.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
+            if condition.arg:
+                query_builder += (
+                    self.SYSTEM_COLUMN_ATTR_EXIST, "={'", attr, "'}"
+                )
+            else:
+                if is_predefined:
+                    query_builder += (
+                        '"', self.USER_COLUMN_PREFIX, attr, '"=null'
+                    )
+                else:
+                    query_builder += (
+                        self.SYSTEM_COLUMN_ATTRS, "['", attr, "']=null"
+                    )
+        elif condition.type == models.ExpectedCondition.CONDITION_TYPE_EQUAL:
+            if is_predefined:
+                query_builder += (
+                    '"', self.USER_COLUMN_PREFIX, attr, '"=',
+                    self._encode_predefined_attr_value(condition.arg)
+                )
+            else:
+                query_builder += (
+                    self.SYSTEM_COLUMN_ATTRS, "['", attr, "']=",
+                    self._encode_dynamic_attr_value(condition.arg)
+                )
+        else:
+            assert False
 
     def _primary_key_as_string(self, key_map):
         return " AND ".join((
@@ -710,24 +822,25 @@ class CassandraStorageImpl():
 
         where = self._primary_key_as_string(key_attribute_map)
 
-        query = "UPDATE \"{}\".\"{}{}\" SET {} WHERE {}".format(
-            context.tenant, self.USER_TABLE_PREFIX, table_name,
-            set_clause, where
-        )
+        query_builder = [
+            'UPDATE "', context.tenant, '"."', self.USER_TABLE_PREFIX,
+            table_name, '" SET ', set_clause, " WHERE ", where
+        ]
 
         if expected_condition_map:
-            if_clause = self._conditions_as_string(expected_condition_map)
-            query += " IF {}".format(if_clause)
+            query_builder.append(" IF ")
+            self._append_expected_conditions(
+                expected_condition_map, schema, query_builder
+            )
 
-        self._execute_query(query, consistent=True)
+        result = self._execute_query("".join(query_builder), consistent=True)
 
-        return True
+        return (result is None) or result[0]['[applied]']
 
     def _updates_as_string(self, schema, key_attribute_map, update_map):
-        predefined_attrs = [attr.name for attr in schema.attribute_defs]
-
         set_clause = ", ".join({
-            self._update_as_string(attr, update, attr in predefined_attrs)
+            self._update_as_string(attr, update,
+                                   attr in schema.attribute_type_map)
             for attr, update in update_map.iteritems()})
 
         #update system_hash
@@ -815,7 +928,9 @@ class CassandraStorageImpl():
                 lambda el: self._encode_single_value_as_dynamic_attr(
                     el, attr_value.type.element_type
                 ),
-                val)
+                val
+            )
+            val.sort()
         else:
             val = self._encode_single_value_as_dynamic_attr(
                 val, attr_value.type.element_type)
@@ -888,65 +1003,88 @@ class CassandraStorageImpl():
 
         select_type = select_type or models.SelectType.all()
 
-        select = 'COUNT(*)' if select_type.is_count else '*'
-
         query_builder = [
-            "SELECT ", select, " FROM \"", context.tenant, "\".\"",
-            self.USER_TABLE_PREFIX, table_name, "\""
+            "SELECT ", 'COUNT(*)' if select_type.is_count else '*', ' FROM "',
+            context.tenant, '"."', self.USER_TABLE_PREFIX, table_name, '"'
         ]
 
-        indexed_condition_map = indexed_condition_map or {}
-
-        token_cond = None
-        fixed_range_cond = None
-
         if exclusive_start_key:
-            if range_name in exclusive_start_key:
+            indexed_condition_map = indexed_condition_map or {}
 
-                fixed_range_cond = self._fixed_range_condition(
-                    range_name, indexed_condition_map,
-                    exclusive_start_key)
+            exclusive_hash_key_value = exclusive_start_key[hash_name]
+            exclusive_range_key_value = exclusive_start_key.get(range_name,
+                                                                None)
+            if exclusive_range_key_value:
+                range_key_cond_list = indexed_condition_map.get(
+                    range_name, None
+                )
+                if range_key_cond_list is None:
+                    range_key_cond_list = []
+                    indexed_condition_map[range_name] = range_key_cond_list
 
-                indexed_condition_map[hash_name] = models.Condition.eq(
-                    exclusive_start_key[hash_name])
+                range_key_cond_list.append(
+                    models.IndexedCondition.lt(exclusive_range_key_value)
+                    if order_type == models.ORDER_TYPE_DESC else
+                    models.IndexedCondition.gt(exclusive_range_key_value)
+                )
 
+                hash_key_cond_list = indexed_condition_map.get(
+                    hash_name, None
+                )
+                if hash_key_cond_list is None:
+                    hash_key_cond_list = []
+                    indexed_condition_map[hash_name] = hash_key_cond_list
+
+                hash_key_cond_list.append(
+                    models.IndexedCondition.eq(exclusive_hash_key_value)
+                )
             else:
-                token_cond = 'token(\"{}\")>token({})'.format(
-                    self.USER_COLUMN_PREFIX + hash_name,
-                    self._encode_predefined_attr_value(
-                        exclusive_start_key[hash_name]))
+                hash_key_cond_list = indexed_condition_map.get(
+                    hash_name, None
+                )
+                if hash_key_cond_list is None:
+                    hash_key_cond_list = []
+                    indexed_condition_map[hash_name] = hash_key_cond_list
 
-                if hash_name in indexed_condition_map:
-                    del indexed_condition_map[hash_name]
+                hash_key_cond_list.append(
+                    models.IndexedCondition.lt(exclusive_hash_key_value)
+                    if order_type == models.ORDER_TYPE_DESC else
+                    models.IndexedCondition.gt(exclusive_hash_key_value)
+                )
 
-        where = self._conditions_as_string(indexed_condition_map)
+        pre_condition_str = " WHERE "
 
-        if token_cond:
-            if where:
-                where += ' AND ' + token_cond
-            else:
-                where = token_cond
+        if indexed_condition_map:
+            hash_cond_list = None
+            for attr, cond_list in indexed_condition_map.iteritems():
+                active_cond_list = self._compact_indexed_condition(cond_list)
+                if active_cond_list is None:
+                    return models.SelectResult(count=0)
 
-        if fixed_range_cond:
-            if where:
-                where += ' AND ' + fixed_range_cond
-            else:
-                where = fixed_range_cond
+                if attr == hash_name:
+                    hash_cond_list = active_cond_list
+                    for active_cond in active_cond_list:
+                        query_builder.append(pre_condition_str)
+                        pre_condition_str = " AND "
+                        self._append_hash_key_indexed_condition(
+                            attr, active_cond, query_builder
+                        )
+                else:
+                    for active_cond in active_cond_list:
+                        query_builder.append(pre_condition_str)
+                        pre_condition_str = " AND "
+                        self._append_indexed_condition(
+                            attr, active_cond, query_builder
+                        )
 
-        if where:
-            query_builder += (" WHERE ", where)
-
-        add_filtering, add_system_hash = self._add_filtering_and_sys_hash(
-            schema, indexed_condition_map)
-
-        if add_system_hash:
-            hash_value = self._encode_predefined_attr_value(
-                indexed_condition_map[hash_name].arg
-            )
-
-            query_builder += (
-                " AND \"", self.SYSTEM_COLUMN_HASH, "\"=", hash_value
-            )
+            if (hash_cond_list is not None and
+                    len(hash_cond_list) == 1 and
+                    hash_cond_list[0].type ==
+                    models.IndexedCondition.CONDITION_TYPE_EQUAL):
+                query_builder.append(pre_condition_str)
+                self._append_indexed_condition(
+                    self.SYSTEM_COLUMN_HASH, hash_cond_list[0],
+                    query_builder, column_prefix="")
 
         #add limit
         if limit:
@@ -955,13 +1093,12 @@ class CassandraStorageImpl():
         #add ordering
         if order_type and range_name:
             query_builder += (
-                " ORDER BY \"", self.USER_COLUMN_PREFIX, range_name, "\" ",
+                ' ORDER BY "', self.USER_COLUMN_PREFIX, range_name, '" ',
                 order_type
             )
 
         #add allow filtering
-        if add_filtering:
-            query_builder.append(" ALLOW FILTERING")
+        query_builder.append(" ALLOW FILTERING")
 
         rows = self._execute_query("".join(query_builder), consistent)
 
@@ -971,7 +1108,6 @@ class CassandraStorageImpl():
         # process results
 
         prefix_len = len(self.USER_COLUMN_PREFIX)
-        attr_defs = {attr.name: attr.type for attr in schema.attribute_defs}
         result = []
 
         # TODO ikhudoshyn: if select_type.is_all_projected,
@@ -987,7 +1123,7 @@ class CassandraStorageImpl():
                 if key.startswith(self.USER_COLUMN_PREFIX) and val:
                     name = key[prefix_len:]
                     if not attributes_to_get or name in attributes_to_get:
-                        storage_type = attr_defs[name]
+                        storage_type = schema.attribute_type_map[name]
                         record[name] = self._decode_value(
                             val, storage_type, True)
 
@@ -1015,57 +1151,6 @@ class CassandraStorageImpl():
         return models.SelectResult(items=result,
                                    last_evaluated_key=last_evaluated_key,
                                    count=count)
-
-    def _fixed_range_condition(self, range_name,
-                               condition_map, exclusive_start_key):
-
-        if range_name not in exclusive_start_key:
-            return None
-
-        right_cond = None
-
-        if range_name in condition_map:
-            condition = condition_map.pop(range_name)
-
-            if condition.type == models.Condition.CONDITION_TYPE_EQUAL:
-                condition_map[range_name] = condition
-                return None
-
-            elif condition.type in (
-                models.IndexedCondition.CONDITION_TYPE_LESS,
-                models.IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL
-            ):
-
-                right_cond = condition
-
-            elif condition.type == (models.IndexedCondition.
-                                    CONDITION_TYPE_BETWEEN):
-
-                first, second = condition.arg
-
-                right_cond = models.IndexedCondition.le(second)
-
-            elif condition.type == (models.IndexedCondition.
-                                    CONDITION_TYPE_BEGINS_WITH):
-
-                first = condition.arg
-                second_value = first.value[:-1] + chr(
-                    ord(first.value[-1]) + 1)
-                second = models.AttributeValue(
-                    condition.arg.type, second_value)
-
-                right_cond = models.IndexedCondition.lt(second)
-
-        left_cond = models.IndexedCondition.gt(
-            exclusive_start_key[range_name])
-
-        fixed = self._condition_as_string(range_name, left_cond)
-
-        if right_cond:
-            fixed += ' AND ' + self._condition_as_string(
-                range_name, right_cond)
-
-        return fixed
 
     def scan(self, context, table_name, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None, consistent=False):
@@ -1160,53 +1245,16 @@ class CassandraStorageImpl():
 
         return filtered
 
-    @staticmethod
-    def _add_filtering_and_sys_hash(schema, condition_map={}):
+    def _conditions_satisfied(self, row, cond_map=None):
+        if not cond_map:
+            return True
 
-        condition_map = condition_map or {}
-
-        hash_name = schema.key_attributes[0]
-
-        if hash_name in condition_map:
-            assert (condition_map[hash_name].type
-                    == models.Condition.CONDITION_TYPE_EQUAL)
-
-        try:
-            range_name = schema.key_attributes[1]
-        except IndexError:
-            range_name = None
-
-        non_pk_attrs = [
-            key
-            for key in condition_map.iterkeys()
-            if key != hash_name and key != range_name
-        ]
-
-        non_pk_attrs_count = len(non_pk_attrs)
-
-        if non_pk_attrs_count == 0:
-            return False, False
-
-        indexed_attrs = [
-            ind_def.attribute_to_index
-            for ind_def in schema.index_defs
-        ]
-
-        has_one_indexed_eq = any(
-            [(attr in indexed_attrs) and
-             (condition_map[attr].type ==
-              models.Condition.CONDITION_TYPE_EQUAL)
-             for attr in non_pk_attrs])
-
-        add_sys_hash = not has_one_indexed_eq
-        add_filtering = non_pk_attrs_count > 1 or add_sys_hash
-
-        return add_filtering, add_sys_hash
-
-    def _conditions_satisfied(self, row, cond_map={}):
-        cond_map = cond_map or {}
-        return all([self._condition_satisfied(row.get(attr, None), cond)
-                    for attr, cond in cond_map.iteritems()])
+        for attr_name, cond_list in cond_map.iteritems():
+            for cond in cond_list:
+                if not self._condition_satisfied(
+                        row.get(attr_name, None), cond):
+                    return False
+        return True
 
     @staticmethod
     def _condition_satisfied(attr_val, cond):
@@ -1237,16 +1285,6 @@ class CassandraStorageImpl():
                 models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL):
             return (attr_val.type == cond.arg.type and
                     attr_val.value >= cond.arg.value)
-
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_BETWEEN:
-            first, second = cond.arg
-            return (attr_val.type == first.type and
-                    second.type == first.type and
-                    first.value <= attr_val.value <= second.value)
-
-        if cond.type == models.IndexedCondition.CONDITION_TYPE_BEGINS_WITH:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value.startswith(cond.arg.value))
 
         if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_EQUAL:
             return (attr_val.type != cond.arg.type or

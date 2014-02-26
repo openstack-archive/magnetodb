@@ -22,7 +22,6 @@ from oslo.config import cfg
 from magnetodb.common import exception
 from magnetodb.common import wsgi
 
-from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import jsonutils as json
 from magnetodb.openstack.common import log as logging
 from magnetodb.openstack.common import gettextutils
@@ -227,4 +226,3 @@ def EC2Token_filter_factory(global_conf, **local_conf):
         return EC2Token(app, conf)
 
     return filter
-
