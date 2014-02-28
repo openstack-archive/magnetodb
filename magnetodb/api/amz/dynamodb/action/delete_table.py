@@ -42,8 +42,9 @@ class DeleteTableDynamoDBAction(DynamoDBAction):
             return {
                 Props.TABLE_DESCRIPTION: {
                     Props.ATTRIBUTE_DEFINITIONS: (
-                        map(Parser.format_attribute_definition,
-                            table_schema.attribute_defs)
+                        Parser.format_attribute_definitions(
+                            table_schema.attribute_type_map
+                        )
                     ),
                     Props.CREATION_DATE_TIME: 0,
                     Props.ITEM_COUNT: 0,
@@ -55,7 +56,7 @@ class DeleteTableDynamoDBAction(DynamoDBAction):
                     Props.LOCAL_SECONDARY_INDEXES: (
                         Parser.format_local_secondary_indexes(
                             table_schema.key_attributes[0],
-                            table_schema.index_defs
+                            table_schema.index_def_map
                         )
                     ),
                     Props.PROVISIONED_THROUGHPUT: (

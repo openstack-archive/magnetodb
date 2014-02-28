@@ -39,31 +39,34 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
         try:
             table_schema = storage.describe_table(self.context, table_name)
 
-            return {Props.TABLE: {
-                Props.ATTRIBUTE_DEFINITIONS: (
-                    map(Parser.format_attribute_definition,
-                        table_schema.attribute_defs)
+            return {
+                Props.TABLE: {
+                    Props.ATTRIBUTE_DEFINITIONS: (
+                        Parser.format_attribute_definitions(
+                            table_schema.attribute_type_map
+                        )
                     ),
-                Props.CREATION_DATE_TIME: 0,
-                Props.ITEM_COUNT: 0,
-                Props.KEY_SCHEMA: (
-                    Parser.format_key_schema(
-                        table_schema.key_attributes
-                    )
-                ),
-                Props.LOCAL_SECONDARY_INDEXES: (
-                    Parser.format_local_secondary_indexes(
-                        table_schema.key_attributes[0],
-                        table_schema.index_defs
-                    )
-                ),
-                Props.PROVISIONED_THROUGHPUT: (
-                    Values.PROVISIONED_THROUGHPUT_DUMMY
-                ),
-                Props.TABLE_NAME: table_schema.table_name,
-                Props.TABLE_STATUS: Values.TABLE_STATUS_ACTIVE,
-                Props.TABLE_SIZE_BYTES: 0
-            }}
+                    Props.CREATION_DATE_TIME: 0,
+                    Props.ITEM_COUNT: 0,
+                    Props.KEY_SCHEMA: (
+                        Parser.format_key_schema(
+                            table_schema.key_attributes
+                        )
+                    ),
+                    Props.LOCAL_SECONDARY_INDEXES: (
+                        Parser.format_local_secondary_indexes(
+                            table_schema.key_attributes[0],
+                            table_schema.index_def_map
+                        )
+                    ),
+                    Props.PROVISIONED_THROUGHPUT: (
+                        Values.PROVISIONED_THROUGHPUT_DUMMY
+                    ),
+                    Props.TABLE_NAME: table_schema.table_name,
+                    Props.TABLE_STATUS: Values.TABLE_STATUS_ACTIVE,
+                    Props.TABLE_SIZE_BYTES: 0
+                }
+            }
 
         except exception.TableNotExistsException as e:
             raise exception.ResourceNotFoundException(e.message)

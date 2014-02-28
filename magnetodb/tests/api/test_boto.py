@@ -91,15 +91,12 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableSchema(
                 'test_table',
                 {
-                    models.AttributeDefinition(
-                        'city1', models.ATTRIBUTE_TYPE_STRING),
-                    models.AttributeDefinition(
-                        'id', models.ATTRIBUTE_TYPE_STRING),
-                    models.AttributeDefinition(
-                        'name', models.ATTRIBUTE_TYPE_STRING)
+                    'city1': models.ATTRIBUTE_TYPE_STRING,
+                    'id': models.ATTRIBUTE_TYPE_STRING,
+                    'name': models.ATTRIBUTE_TYPE_STRING
                 },
                 ['id', 'name'],
-                {models.IndexDefinition('index_name', 'city1')}
+                {'index_name': models.IndexDefinition('city1')}
             )
         )
 
@@ -161,15 +158,12 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableSchema(
                 'test_table',
                 {
-                    models.AttributeDefinition(
-                        'city1', models.ATTRIBUTE_TYPE_STRING),
-                    models.AttributeDefinition(
-                        'id', models.ATTRIBUTE_TYPE_STRING),
-                    models.AttributeDefinition(
-                        'name', models.ATTRIBUTE_TYPE_STRING)
+                    'city1': models.ATTRIBUTE_TYPE_STRING,
+                    'id': models.ATTRIBUTE_TYPE_STRING,
+                    'name': models.ATTRIBUTE_TYPE_STRING
                 },
                 ['id', 'name'],
-                {models.IndexDefinition('index_name', 'city1')}
+                {'index_name': models.IndexDefinition('city1')}
             )
         )
 
@@ -447,13 +441,10 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableSchema(
                 'test_table',
                 {
-                    models.AttributeDefinition(
-                        'hash_key', models.ATTRIBUTE_TYPE_NUMBER),
-                    models.AttributeDefinition(
-                        'range_key', models.ATTRIBUTE_TYPE_STRING)
+                    'hash_key': models.ATTRIBUTE_TYPE_NUMBER,
+                    'range_key': models.ATTRIBUTE_TYPE_STRING
                 },
                 ['hash_key', 'range_key'],
-                {}
             )
         )
 

@@ -84,7 +84,7 @@ class GetItemDynamoDBAction(DynamoDBAction):
 
             # format conditions to get item
             indexed_condition_map = {
-                name: models.IndexedCondition.eq(value)
+                name: [models.IndexedCondition.eq(value)]
                 for name, value in key_attributes.iteritems()
             }
         except Exception:

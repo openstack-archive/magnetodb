@@ -416,29 +416,40 @@ class Parser():
             dynamodb__attr_type, None
         )
 
-        return models.AttributeDefinition(dynamodb_attr_name, storage_type)
+        return dynamodb_attr_name, storage_type
 
     @classmethod
-    def format_attribute_definition(cls, attr_def):
-        dynamodb_type = cls.STORAGE_TO_DYNAMODB_TYPE_MAP.get(attr_def.type,
+    def format_attribute_definition(cls, attr_name, attr_type):
+        dynamodb_type = cls.STORAGE_TO_DYNAMODB_TYPE_MAP.get(attr_type,
                                                              None)
 
         assert dynamodb_type, (
-            "Unknown Attribute type returned by backend: %s" % attr_def.type
+            "Unknown Attribute type returned by backend: %s" % attr_type
         )
 
         return {
-            Props.ATTRIBUTE_NAME: attr_def.name,
+            Props.ATTRIBUTE_NAME: attr_name,
             Props.ATTRIBUTE_TYPE: dynamodb_type
         }
 
     @classmethod
     def parse_attribute_definitions(cls, attr_def_list_json):
-        return map(cls.parse_attribute_definition, attr_def_list_json)
+        res = {}
+
+        for attr_def_json in attr_def_list_json:
+            attr_name, attr_type = (
+                cls.parse_attribute_definition(attr_def_json)
+            )
+            res[attr_name] = attr_type
+
+        return res
 
     @classmethod
-    def format_attribute_definitions(cls, attr_def_list):
-        return map(cls.format_attribute_definition, attr_def_list)
+    def format_attribute_definitions(cls, attr_def_map):
+        return [
+            cls.format_attribute_definition(attr_name, attr_type)
+            for attr_name, attr_type in attr_def_map.iteritems()
+        ]
 
     @classmethod
     def parse_key_schema(cls, key_def_list_json):
@@ -514,10 +525,11 @@ class Parser():
                 Props.NON_KEY_ATTRIBUTES, None
             )
 
-        return IndexDefinition(index_name, range_key, projected_attrs)
+        return index_name, IndexDefinition(range_key, projected_attrs)
 
     @classmethod
-    def format_local_secondary_index(cls, hash_key, local_secondary_index):
+    def format_local_secondary_index(cls, index_name, hash_key,
+                                     local_secondary_index):
         if local_secondary_index.projected_attributes:
             projection = {
                 Props.PROJECTION_TYPE: Values.PROJECTION_TYPE_INCLUDE,
@@ -535,7 +547,7 @@ class Parser():
             }
 
         return {
-            Props.INDEX_NAME: local_secondary_index.index_name,
+            Props.INDEX_NAME: index_name,
             Props.KEY_SCHEMA: cls.format_key_schema(
                 (hash_key, local_secondary_index.attribute_to_index)
             ),
@@ -546,15 +558,23 @@ class Parser():
 
     @classmethod
     def parse_local_secondary_indexes(cls, local_secondary_index_list_json):
-        return map(cls.parse_local_secondary_index,
-                   local_secondary_index_list_json)
+        res = {}
+
+        for index__json in local_secondary_index_list_json:
+            index_name, index_def = (
+                cls.parse_local_secondary_index(index__json)
+            )
+            res[index_name] = index_def
+
+        return res
 
     @classmethod
     def format_local_secondary_indexes(cls, hash_key,
-                                       local_secondary_index_list):
-        return map(lambda index: cls.format_local_secondary_index(hash_key,
-                                                                  index),
-                   local_secondary_index_list)
+                                       local_secondary_index_map):
+        return [
+            cls.format_local_secondary_index(index_name, hash_key, index_def)
+            for index_name, index_def in local_secondary_index_map.iteritems()
+        ]
 
     @staticmethod
     def decode_single_value(single_value_type, encoded_single_value):
@@ -757,63 +777,77 @@ class Parser():
 
             if dynamodb_condition_type == Values.EQ:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = models.IndexedCondition.eq(
-                    condition_args[0]
-                )
+                attribute_conditions[attr_name] = [
+                    models.IndexedCondition.eq(condition_args[0])
+                ]
             elif dynamodb_condition_type == Values.GT:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = models.IndexedCondition.gt(
-                    condition_args[0]
-                )
+                attribute_conditions[attr_name] = [
+                    models.IndexedCondition.gt(condition_args[0])
+                ]
             elif dynamodb_condition_type == Values.LT:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = models.IndexedCondition.lt(
-                    condition_args[0]
-                )
+                attribute_conditions[attr_name] = [
+                    models.IndexedCondition.lt(condition_args[0])
+                ]
             elif dynamodb_condition_type == Values.GE:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = models.IndexedCondition.ge(
-                    condition_args[0]
-                )
+                attribute_conditions[attr_name] = [
+                    models.IndexedCondition.ge(condition_args[0])
+                ]
             elif dynamodb_condition_type == Values.LE:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = models.IndexedCondition.le(
-                    condition_args[0]
-                )
+                attribute_conditions[attr_name] = [
+                    models.IndexedCondition.le(condition_args[0])
+                ]
             elif dynamodb_condition_type == Values.BEGINS_WITH:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = (
-                    models.IndexedCondition.begins_with(condition_args[0])
+
+                first = condition_args[0]
+                second = models.AttributeValue(
+                    first.type,
+                    first.value[:-1] + chr(ord(first.value[-1]) + 1)
                 )
+
+                attribute_conditions[attr_name] = [
+                    models.IndexedCondition.ge(first),
+                    models.IndexedCondition.lt(second)
+                ]
             elif dynamodb_condition_type == Values.BETWEEN:
                 assert len(condition_args) == 2
                 assert condition_args[0].type == condition_args[1].type
-                attribute_conditions[attr_name] = (
-                    models.IndexedCondition.btw(condition_args[0],
-                                                condition_args[1])
-                )
+
+                attribute_conditions[attr_name] = [
+                    models.IndexedCondition.ge(condition_args[0]),
+                    models.IndexedCondition.le(condition_args[1])
+                ]
             elif dynamodb_condition_type == Values.NE:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = models.ScanCondition.neq(
-                    condition_args[0]
-                )
+                attribute_conditions[attr_name] = [
+                    models.ScanCondition.neq(condition_args[0])
+                ]
             elif dynamodb_condition_type == Values.CONTAINS:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = (
-                    models.ScanCondition.contains(condition_args[0]))
+                attribute_conditions[attr_name] = [
+                    models.ScanCondition.contains(condition_args[0])
+                ]
             elif dynamodb_condition_type == Values.NOT_CONTAINS:
                 assert len(condition_args) == 1
-                attribute_conditions[attr_name] = (
-                    models.ScanCondition.not_contains(condition_args[0]))
+                attribute_conditions[attr_name] = [
+                    models.ScanCondition.not_contains(condition_args[0])
+                ]
             elif dynamodb_condition_type == Values.IN:
-                attribute_conditions[attr_name] = (
-                    models.ScanCondition.in_set(condition_args))
+                attribute_conditions[attr_name] = [
+                    models.ScanCondition.in_set(condition_args)
+                ]
             elif dynamodb_condition_type == Values.NULL:
-                attribute_conditions[attr_name] = (
-                    models.ExpectedCondition.not_exists())
+                attribute_conditions[attr_name] = [
+                    models.ExpectedCondition.not_exists()
+                ]
             elif dynamodb_condition_type == Values.NOT_NULL:
-                attribute_conditions[attr_name] = (
-                    models.ExpectedCondition.exists())
+                attribute_conditions[attr_name] = [
+                    models.ExpectedCondition.exists()
+                ]
 
         return attribute_conditions
 

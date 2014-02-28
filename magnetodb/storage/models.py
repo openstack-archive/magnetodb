@@ -19,6 +19,13 @@ class ModelBase(object):
 
     _data_fields = []
 
+    def __repr__(self):
+        res = {}
+        for field in self._data_fields:
+            res[field] = str(self[field])
+
+        return str(res)
+
     def __init__(self):
         self.__hash = None
 
@@ -97,25 +104,6 @@ ATTRIBUTE_TYPE_BLOB_SET = AttributeType(AttributeType.ELEMENT_TYPE_BLOB,
 
 ORDER_TYPE_ASC = "ASC"
 ORDER_TYPE_DESC = "DESC"
-
-
-class AttributeDefinition(ModelBase):
-
-    _data_fields = ['name', 'type']
-
-    def __init__(self, attr_name, attr_type):
-        super(AttributeDefinition, self).__init__()
-
-        self._name = attr_name
-        self._type = attr_type
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def type(self):
-        return self._type
 
 
 class AttributeValue(ModelBase):
@@ -223,7 +211,7 @@ class AttributeValue(ModelBase):
 
 
 class Condition(object):
-    CONDITION_TYPE_EQUAL = "equal"
+    CONDITION_TYPE_EQUAL = "e"
 
     _allowed_types = {CONDITION_TYPE_EQUAL}
 
@@ -249,18 +237,14 @@ class Condition(object):
 
 
 class IndexedCondition(Condition):
-    CONDITION_TYPE_LESS = "less"
-    CONDITION_TYPE_LESS_OR_EQUAL = "less_or_equal"
-    CONDITION_TYPE_GREATER = "greater"
-    CONDITION_TYPE_GREATER_OR_EQUAL = "greater_or_equal"
-
-    CONDITION_TYPE_BETWEEN = "between"
-    CONDITION_TYPE_BEGINS_WITH = "begins_with"
+    CONDITION_TYPE_LESS = "l"
+    CONDITION_TYPE_LESS_OR_EQUAL = "le"
+    CONDITION_TYPE_GREATER = "g"
+    CONDITION_TYPE_GREATER_OR_EQUAL = "ge"
 
     _allowed_types = {Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_LESS,
                       CONDITION_TYPE_LESS_OR_EQUAL, CONDITION_TYPE_GREATER,
-                      CONDITION_TYPE_GREATER_OR_EQUAL, CONDITION_TYPE_BETWEEN,
-                      CONDITION_TYPE_BEGINS_WITH}
+                      CONDITION_TYPE_GREATER_OR_EQUAL}
 
     @classmethod
     def lt(cls, condition_arg):
@@ -278,14 +262,17 @@ class IndexedCondition(Condition):
     def ge(cls, condition_arg):
         return cls(cls.CONDITION_TYPE_GREATER_OR_EQUAL, condition_arg)
 
-    @classmethod
-    def btw(cls, condition_arg1, condition_arg2):
-        return cls(cls.CONDITION_TYPE_BETWEEN,
-                   (condition_arg1, condition_arg2))
+    def is_strict_border(self):
+        return self.type not in (self.CONDITION_TYPE_LESS_OR_EQUAL,
+                                 self.CONDITION_TYPE_GREATER_OR_EQUAL)
 
-    @classmethod
-    def begins_with(cls, condition_arg):
-        return cls(cls.CONDITION_TYPE_BEGINS_WITH, condition_arg)
+    def is_right_border(self):
+        return self.type in (self.CONDITION_TYPE_LESS,
+                             self.CONDITION_TYPE_LESS_OR_EQUAL)
+
+    def is_left_border(self):
+        return self.type in (self.CONDITION_TYPE_GREATER,
+                             self.CONDITION_TYPE_GREATER_OR_EQUAL)
 
 
 class ScanCondition(IndexedCondition):
@@ -293,15 +280,13 @@ class ScanCondition(IndexedCondition):
     CONDITION_TYPE_IN = "in"
     CONDITION_TYPE_CONTAINS = "contains"
     CONDITION_TYPE_NOT_CONTAINS = "not_contains"
-    CONDITION_TYPE_NOT_EQUAL = "not_equal"
+    CONDITION_TYPE_NOT_EQUAL = "ne"
 
     _allowed_types = {Condition.CONDITION_TYPE_EQUAL,
                       IndexedCondition.CONDITION_TYPE_LESS,
                       IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL,
                       IndexedCondition.CONDITION_TYPE_GREATER,
                       IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL,
-                      IndexedCondition.CONDITION_TYPE_BETWEEN,
-                      IndexedCondition.CONDITION_TYPE_BEGINS_WITH,
                       CONDITION_TYPE_IN, CONDITION_TYPE_CONTAINS,
                       CONDITION_TYPE_NOT_CONTAINS, CONDITION_TYPE_NOT_EQUAL}
 
@@ -480,9 +465,9 @@ class UpdateItemAction(object):
 
 
 class IndexDefinition(ModelBase):
-    _data_fields = ['index_name', 'attribute_to_index', 'projected_attributes']
+    _data_fields = ['attribute_to_index', 'projected_attributes']
 
-    def __init__(self, index_name, attribute_to_index,
+    def __init__(self, attribute_to_index,
                  projected_attributes=None):
         """
         @param index_name: name of index
@@ -493,16 +478,11 @@ class IndexDefinition(ModelBase):
 
         super(IndexDefinition, self).__init__()
 
-        self._index_name = index_name
         self._attribute_to_index = attribute_to_index
         self._projected_attributes = (
             None if projected_attributes is None else
             frozenset(projected_attributes)
         )
-
-    @property
-    def index_name(self):
-        return self._index_name
 
     @property
     def attribute_to_index(self):
@@ -560,43 +540,41 @@ class ScanResult(SelectResult):
 
 
 class TableSchema(ModelBase):
-    _data_fields = ['table_name', 'attribute_defs', 'key_attributes',
-                    'index_defs']
+    _data_fields = ['table_name', 'attribute_type_map', 'key_attributes',
+                    'index_def_map']
 
-    def __init__(self, table_name, attribute_defs, key_attributes,
-                 index_defs=None):
+    def __init__(self, table_name, attribute_type_map, key_attributes,
+                 index_def_map=None):
         """
         @param table_name: String, name of table to create
-        @param attribute_defs: list of AttributeDefinition which define table
-                    attribute names and types
+        @param attribute_type_map: attribute name to AttributeType mapping
         @param key_attrs: list of key attribute names, contains partition key
                     (the first in list, required) attribute name and extra key
                     attribute names (the second and other list items, not
                     required)
 
-        @param index_defs: set of IndexDefinition which defines indexes on
-                    table attributes
+        @param index_def_map: attribute name to IndexDefinition mapping
         """
 
         super(TableSchema, self).__init__()
 
         self._table_name = table_name
-        self._attribute_defs = attribute_defs
+        self._attribute_type_map = attribute_type_map
         self._key_attributes = key_attributes
-        self._index_defs = index_defs
+        self._index_def_map = {} if index_def_map is None else index_def_map
 
     @property
     def table_name(self):
         return self._table_name
 
     @property
-    def attribute_defs(self):
-        return self._attribute_defs
+    def attribute_type_map(self):
+        return self._attribute_type_map
 
     @property
     def key_attributes(self):
         return self._key_attributes
 
     @property
-    def index_defs(self):
-        return self._index_defs
+    def index_def_map(self):
+        return self._index_def_map
