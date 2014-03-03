@@ -10,6 +10,6 @@ Wiki - https://wiki.openstack.org/wiki/MagnetoDB
 
 IRC - #magnetodb at FreeNode
 
-Source code - https://github.com/Mirantis/magnetodb
+Source code - https://github.com/stackforge/magnetodb
 
 Deployment - https://github.com/Mirantis/magnetodb/blob/master/doc/deploy_magnetodb_howto.rst

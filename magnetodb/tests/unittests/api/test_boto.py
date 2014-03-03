@@ -22,7 +22,7 @@ from boto.dynamodb2 import RegionInfo
 from boto.dynamodb2.layer1 import DynamoDBConnection
 from boto.dynamodb2 import types as schema_types
 from boto.dynamodb2 import fields
-from magnetodb.tests.fake import magnetodb_api_fake
+from magnetodb.tests.unittests.fake import magnetodb_api_fake
 from boto.dynamodb2.table import Table
 from magnetodb.common.exception import TableNotExistsException
 from magnetodb.common.exception import TableAlreadyExistsException
@@ -281,8 +281,8 @@ class BotoIntegrationTest(unittest.TestCase):
                 "hash_key": 1,
                 "range_key": "range",
                 "value_blob": types.Binary(blob_data1),
-                "value_blob_set": {types.Binary(blob_data1),
-                                   types.Binary(blob_data2)}
+                "value_blob_set": set([types.Binary(blob_data1),
+                                       types.Binary(blob_data2)])
             },
             False
         )
@@ -331,7 +331,7 @@ class BotoIntegrationTest(unittest.TestCase):
                         ),
                         "value_blob_set": models.AttributeValue(
                             models.ATTRIBUTE_TYPE_BLOB_SET,
-                            {blob_data1, blob_data2}
+                            set([blob_data1, blob_data2])
                         )
                     }
                 ]
