@@ -19,7 +19,7 @@ import unittest
 
 from magnetodb import storage
 from magnetodb.common.exception import TableNotExistsException
-from magnetodb.tests.fake import magnetodb_api_fake
+from magnetodb.tests.unittests.fake import magnetodb_api_fake
 from mox import Mox, IgnoreArg
 
 
