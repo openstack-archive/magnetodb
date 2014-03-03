@@ -62,10 +62,10 @@ class AttributeType(ModelBase):
 
     COLLECTION_TYPE_SET = "set"
 
-    _allowed_types = {ELEMENT_TYPE_STRING, ELEMENT_TYPE_NUMBER,
-                      ELEMENT_TYPE_BLOB}
+    _allowed_types = set([ELEMENT_TYPE_STRING, ELEMENT_TYPE_NUMBER,
+                          ELEMENT_TYPE_BLOB])
 
-    _allowed_collection_types = {None, COLLECTION_TYPE_SET}
+    _allowed_collection_types = set([None, COLLECTION_TYPE_SET])
 
     _data_fields = ['element_type', 'collection_type']
 
@@ -213,7 +213,7 @@ class AttributeValue(ModelBase):
 class Condition(object):
     CONDITION_TYPE_EQUAL = "e"
 
-    _allowed_types = {CONDITION_TYPE_EQUAL}
+    _allowed_types = set([CONDITION_TYPE_EQUAL])
 
     def __init__(self, condition_type, condition_arg):
         assert condition_type in self._allowed_types, (
@@ -242,9 +242,9 @@ class IndexedCondition(Condition):
     CONDITION_TYPE_GREATER = "g"
     CONDITION_TYPE_GREATER_OR_EQUAL = "ge"
 
-    _allowed_types = {Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_LESS,
-                      CONDITION_TYPE_LESS_OR_EQUAL, CONDITION_TYPE_GREATER,
-                      CONDITION_TYPE_GREATER_OR_EQUAL}
+    _allowed_types = set([Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_LESS,
+                          CONDITION_TYPE_LESS_OR_EQUAL, CONDITION_TYPE_GREATER,
+                          CONDITION_TYPE_GREATER_OR_EQUAL])
 
     @classmethod
     def lt(cls, condition_arg):
@@ -282,13 +282,14 @@ class ScanCondition(IndexedCondition):
     CONDITION_TYPE_NOT_CONTAINS = "not_contains"
     CONDITION_TYPE_NOT_EQUAL = "ne"
 
-    _allowed_types = {Condition.CONDITION_TYPE_EQUAL,
-                      IndexedCondition.CONDITION_TYPE_LESS,
-                      IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL,
-                      IndexedCondition.CONDITION_TYPE_GREATER,
-                      IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL,
-                      CONDITION_TYPE_IN, CONDITION_TYPE_CONTAINS,
-                      CONDITION_TYPE_NOT_CONTAINS, CONDITION_TYPE_NOT_EQUAL}
+    _allowed_types = set([Condition.CONDITION_TYPE_EQUAL,
+                          IndexedCondition.CONDITION_TYPE_LESS,
+                          IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL,
+                          IndexedCondition.CONDITION_TYPE_GREATER,
+                          IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL,
+                          CONDITION_TYPE_IN, CONDITION_TYPE_CONTAINS,
+                          CONDITION_TYPE_NOT_CONTAINS,
+                          CONDITION_TYPE_NOT_EQUAL])
 
     @classmethod
     def neq(cls, condition_arg):
@@ -310,7 +311,8 @@ class ScanCondition(IndexedCondition):
 class ExpectedCondition(Condition):
     CONDITION_TYPE_EXISTS = "exists"
 
-    _allowed_types = {Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_EXISTS}
+    _allowed_types = set(
+        [Condition.CONDITION_TYPE_EQUAL, CONDITION_TYPE_EXISTS])
 
     @classmethod
     def exists(cls):
@@ -327,8 +329,8 @@ class SelectType(object):
     SELECT_TYPE_SPECIFIED = "specified"
     SELECT_TYPE_COUNT = "count"
 
-    _allowed_types = {SELECT_TYPE_ALL, SELECT_TYPE_ALL_PROJECTED,
-                      SELECT_TYPE_SPECIFIED, SELECT_TYPE_COUNT}
+    _allowed_types = set([SELECT_TYPE_ALL, SELECT_TYPE_ALL_PROJECTED,
+                          SELECT_TYPE_SPECIFIED, SELECT_TYPE_COUNT])
 
     def __init__(self, select_type, attributes=None):
         assert select_type in self._allowed_types, (
@@ -440,8 +442,8 @@ class UpdateItemAction(object):
     UPDATE_ACTION_DELETE = "delete"
     UPDATE_ACTION_ADD = "add"
 
-    _allowed_actions = {UPDATE_ACTION_PUT, UPDATE_ACTION_DELETE,
-                        UPDATE_ACTION_ADD}
+    _allowed_actions = set([UPDATE_ACTION_PUT, UPDATE_ACTION_DELETE,
+                            UPDATE_ACTION_ADD])
 
     def __init__(self, action, value):
         """

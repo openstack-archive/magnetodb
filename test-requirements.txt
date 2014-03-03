@@ -1,11 +1,12 @@
 boto>=2.4.0,!=2.13.0
+discover
 flake8==2.0
+funkload
 mox>=0.5.3
+nose
 pep8==1.4.5
+sphinx>=1.1.2,<1.2
+testresources
 testrepository>=0.0.17
 testtools>=0.9.32
 wsgi_intercept
-nose
-funkload
-testresources
-discover
