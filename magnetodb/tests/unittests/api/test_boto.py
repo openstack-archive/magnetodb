@@ -22,7 +22,7 @@ from boto.dynamodb2 import RegionInfo
 from boto.dynamodb2.layer1 import DynamoDBConnection
 from boto.dynamodb2 import types as schema_types
 from boto.dynamodb2 import fields
-from magnetodb.tests.fake import magnetodb_api_fake
+from magnetodb.tests.unittests.fake import magnetodb_api_fake
 from boto.dynamodb2.table import Table
 from magnetodb.common.exception import TableNotExistsException
 from magnetodb.common.exception import TableAlreadyExistsException
