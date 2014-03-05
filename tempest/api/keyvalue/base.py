@@ -68,8 +68,8 @@ class MagnetoDBTestCase(test.BotoTestCase):
                 'Projection': {'ProjectionType': 'ALL'}
             }
         ]
-        cls.smoke_throughput = {'ReadCapacityUnits': 1,
-                                'WriteCapacityUnits': 1}
+        cls.smoke_throughput = {'ReadCapacityUnits': 0,
+                                'WriteCapacityUnits': 0}
 
     @classmethod
     def wait_for_table_active(cls, table_name, timeout=120, interval=3):

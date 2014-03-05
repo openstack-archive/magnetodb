@@ -38,10 +38,12 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         expected = provisioned_throughput.copy()
         expected['NumberOfDecreasesToday'] = 0
+        expected['LastDecreaseDateTime'] = 0
+        expected['LastIncreaseDateTime'] = 0
         self.assertEqual(expected, content['ProvisionedThroughput'])
 
         if local_secondary_indexes is None:
-            self.assertNotIn('LocalSecondaryIndexes', content)
+            self.assertEqual(content['LocalSecondaryIndexes'], [])
         else:
             expected = local_secondary_indexes.copy()
             expected['IndexSizeBytes'] = 0
