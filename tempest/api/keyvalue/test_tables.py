@@ -38,7 +38,9 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         expected = provisioned_throughput.copy()
         expected['NumberOfDecreasesToday'] = 0
-        self.assertEqual(expected, content['ProvisionedThroughput'])
+        for key, value in expected.items():
+            self.assertIn(key, content['ProvisionedThroughput'])
+            self.assertIsInstance(value, int)
 
         if local_secondary_indexes is None:
             self.assertNotIn('LocalSecondaryIndexes', content)
@@ -121,10 +123,11 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         self.assertTrue(self.wait_for_table_active(tname))
         self.addResourceCleanUp(self.client.delete_table, tname)
 
-        self.assertBotoError(self.errors.client.ResourceInUseException,
-                             self.client.create_table,
-                             self.smoke_attrs, tname,
-                             self.smoke_schema, self.smoke_throughput)
+        self.assertBotoError(
+            self.errors.client.ResourceInUseException_DuplicateTable,
+            self.client.create_table,
+            self.smoke_attrs, tname,
+            self.smoke_schema, self.smoke_throughput)
 
         new_tables = [n for n in self.client.list_tables()['TableNames']
                       if n == tname]
