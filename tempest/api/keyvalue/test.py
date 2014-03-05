@@ -125,8 +125,8 @@ class BotoExceptionMatcher(object):
                    (exc.error_code, self.CODE_RE)
 
         if hasattr(self, 'MESSAGE'):
-            exc_message = exc.message
-            if exc_message != self.MESSAGE:
+            exc_message = str(exc.message)
+            if self.MESSAGE not in exc_message:
                 return ("Error message (%s) does not match "
                         "the expected value \"%s\"") % (exc_message,
                                                         self.MESSAGE)
@@ -692,8 +692,8 @@ for code in (('InternalError', 500),
 
 
 for code in (
-    ('ResourceInUseException', 400, 'The resource which you are '
-                                    'attempting to change is in use.'),
+    ('ResourceInUseException', 400, 'Attempt to change a resource which is '
+                                    'still in use: Duplicate table name:'),
     ('LimitExceededException', 400, 'Too many operations for a '
                                     'given subscriber.'), ):
     _add_matcher_class(BotoTestCase.dynamodb_error_code.client,

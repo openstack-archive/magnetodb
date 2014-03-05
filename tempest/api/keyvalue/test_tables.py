@@ -38,7 +38,9 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         expected = provisioned_throughput.copy()
         expected['NumberOfDecreasesToday'] = 0
-        self.assertEqual(expected, content['ProvisionedThroughput'])
+        for key, value in expected.items():
+            self.assertIn(key, content['ProvisionedThroughput'])
+            self.assertIsInstance(value, int)
 
         if local_secondary_indexes is None:
             self.assertNotIn('LocalSecondaryIndexes', content)
