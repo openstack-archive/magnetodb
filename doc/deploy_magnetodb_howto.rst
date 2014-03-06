@@ -12,7 +12,7 @@ Minimal MagnetoDB installation contains of 5 VMs
 - 2 MagnetoDB  instances installed on CentOS pre-build image
 - 3 Cassandra nodes installed on CentOs 6.4 pre-build image (database backend)
 
-Steps to deploy MagnetDB are:
+Steps to deploy MagnetoDB are:
 
 - build MagnetoDB rpm package and all dependencies including python 2.7
 - create repository for built packages and make it accessable via http. 
@@ -205,4 +205,4 @@ After deployment finished you can get details with
   "output_key": "floating_ip_address" 
   }
 
-On example above  MagnetoDB  is accessable via URL http://172.18.169.205:8080/
+On example above  MagnetoDB  is accessible via URL http://172.18.169.205:8080/
