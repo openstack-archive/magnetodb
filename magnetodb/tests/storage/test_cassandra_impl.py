@@ -86,11 +86,12 @@ class TestCassandraBase(unittest.TestCase):
         super(TestCassandraBase, cls).setUpClass()
 
         cls.CASANDRA_STORAGE_IMPL = impl.CassandraStorageImpl(
-            **TEST_CONNECTION)
+            query_timeout=300, **TEST_CONNECTION)
 
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
         cls.SESSION = cls.CLUSTER.connect()
         cls.SESSION.row_factory = decoder.dict_factory
+        cls.SESSION.default_timeout = 300
 
         if cls._keyspace_scope == cls.KEYSPACE_PER_TEST_CLASS:
             cls.keyspace = cls._get_unique_name()
@@ -132,13 +133,13 @@ class TestCassandraBase(unittest.TestCase):
         query = "CREATE KEYSPACE {} WITH replication".format(keyspace)
         query += " = {'class':'SimpleStrategy', 'replication_factor':1}"
 
-        cls.SESSION.execute(query, timeout=300)
+        cls.SESSION.execute(query)
 
     @classmethod
     def _drop_keyspace(cls, keyspace):
         query = ("DROP KEYSPACE {}".format(keyspace))
 
-        cls.SESSION.execute(query, timeout=300)
+        cls.SESSION.execute(query)
 
     def _get_table_names(self, keyspace=None):
         keyspace = keyspace or self.keyspace

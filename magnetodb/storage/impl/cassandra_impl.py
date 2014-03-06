@@ -117,8 +117,6 @@ class CassandraStorageImpl(object):
                  control_connection_timeout=2.0,
                  query_timeout=10.0):
 
-        self._query_timeout = query_timeout
-
         if connection_class:
             connection_class = importutils.import_class(connection_class)
 
@@ -144,6 +142,7 @@ class CassandraStorageImpl(object):
 
         self.session = self.cluster.connect()
         self.session.row_factory = decoder.dict_factory
+        self.session.default_timeout = query_timeout
 
     def schema_change_listener(self, event):
         LOG.debug("Schema change event captured: %s" % event)
@@ -165,7 +164,7 @@ class CassandraStorageImpl(object):
                 )
 
             LOG.debug("Executing query {}".format(query))
-            return self.session.execute(query, timeout=self._query_timeout)
+            return self.session.execute(query)
         except AlreadyExists as e:
             msg = "Error executing query {}:{}".format(query, e.message)
             LOG.error(msg)
