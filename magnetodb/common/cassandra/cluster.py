@@ -384,18 +384,18 @@ class Cluster(object):
 
     def get_core_connections_per_host(self, host_distance):
         """
-        Gets the minimum number of connections that will be opened for each
-        host with :class:`~.HostDistance` equal to `host_distance`. The default
-        is 2 for :attr:`~HostDistance.LOCAL` and 1 for
+        Gets the minimum number of connections per Session that will be opened
+        for each host with :class:`~.HostDistance` equal to `host_distance`.
+        The default is 2 for :attr:`~HostDistance.LOCAL` and 1 for
         :attr:`~HostDistance.REMOTE`.
         """
         return self._core_connections_per_host[host_distance]
 
     def set_core_connections_per_host(self, host_distance, core_connections):
         """
-        Sets the minimum number of connections that will be opened for each
-        host with :class:`~.HostDistance` equal to `host_distance`. The default
-        is 2 for :attr:`~HostDistance.LOCAL` and 1 for
+        Sets the minimum number of connections per Session that will be opened
+        for each host with :class:`~.HostDistance` equal to `host_distance`.
+        The default is 2 for :attr:`~HostDistance.LOCAL` and 1 for
         :attr:`~HostDistance.REMOTE`.
         """
         old = self._core_connections_per_host[host_distance]
@@ -405,18 +405,18 @@ class Cluster(object):
 
     def get_max_connections_per_host(self, host_distance):
         """
-        Gets the maximum number of connections that will be opened for each
-        host with :class:`~.HostDistance` equal to `host_distance`. The default
-        is 8 for :attr:`~HostDistance.LOCAL` and 2 for
+        Gets the maximum number of connections per Session that will be opened
+        for each host with :class:`~.HostDistance` equal to `host_distance`.
+        The default is 8 for :attr:`~HostDistance.LOCAL` and 2 for
         :attr:`~HostDistance.REMOTE`.
         """
         return self._max_connections_per_host[host_distance]
 
     def set_max_connections_per_host(self, host_distance, max_connections):
         """
-        Gets the maximum number of connections that will be opened for each
-        host with :class:`~.HostDistance` equal to `host_distance`. The default
-        is 2 for :attr:`~HostDistance.LOCAL` and 1 for
+        Gets the maximum number of connections per Session that will be opened
+        for each host with :class:`~.HostDistance` equal to `host_distance`.
+        The default is 2 for :attr:`~HostDistance.LOCAL` and 1 for
         :attr:`~HostDistance.REMOTE`.
         """
         self._max_connections_per_host[host_distance] = max_connections
@@ -853,8 +853,8 @@ class Cluster(object):
                                       "statement on host %s: %r", host, response)
 
             log.debug("Done preparing all known prepared statements against host %s", host)
-        except OperationTimedOut:
-            log.warn("Timed out trying to prepare all statements on host %s", host)
+        except OperationTimedOut as timeout:
+            log.warn("Timed out trying to prepare all statements on host %s: %s", host, timeout)
         except (ConnectionException, socket.error) as exc:
             log.warn("Error trying to prepare all statements on host %s: %r", host, exc)
         except Exception:
@@ -1040,6 +1040,12 @@ class Session(object):
             ...     log.exception("Operation failed:")
 
         """
+        future = self._create_response_future(query, parameters, trace)
+        future.send_request()
+        return future
+
+    def _create_response_future(self, query, parameters, trace):
+        """ Returns the ResponseFuture before calling send_request() on it """
         prepared_statement = None
         if isinstance(query, basestring):
             query = SimpleStatement(query)
@@ -1061,11 +1067,9 @@ class Session(object):
         if trace:
             message.tracing = True
 
-        future = ResponseFuture(
+        return ResponseFuture(
             self, message, query, self.default_timeout, metrics=self._metrics,
             prepared_statement=prepared_statement)
-        future.send_request()
-        return future
 
     def prepare(self, query):
         """
@@ -1657,8 +1661,9 @@ class ControlConnection(object):
                     timeout = min(2.0, total_timeout - elapsed)
                     peers_result, local_result = connection.wait_for_responses(
                         peers_query, local_query, timeout=timeout)
-                except OperationTimedOut:
-                    log.debug("[control connection] Timed out waiting for response during schema agreement check")
+                except OperationTimedOut as timeout:
+                    log.debug("[control connection] Timed out waiting for " \
+                              "response during schema agreement check: %s", timeout)
                     elapsed = self._time.time() - start
                     continue
 
@@ -2203,7 +2208,7 @@ class ResponseFuture(object):
             elif self._final_exception:
                 raise self._final_exception
             else:
-                raise OperationTimedOut()
+                raise OperationTimedOut(errors=self._errors, last_host=self._current_host)
 
     def get_query_trace(self, max_wait=None):
         """
