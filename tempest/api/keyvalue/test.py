@@ -37,7 +37,6 @@ from tempest.api.keyvalue.utils.wait import re_search_wait
 from tempest.api.keyvalue.utils.wait import state_wait
 from tempest.api.keyvalue.utils.wait import wait_exception
 
-
 LOG = logging.getLogger(__name__)
 
 
@@ -693,6 +692,10 @@ for code in (('InternalError', 500),
 
 
 for code in (
+    ('ResourceNotFoundException', 400, 'Requested resource not found'),
+    ('SerializationException', 400, None),
+    ('ValidationException', 400, 'The provided key element does not '
+                                 'match the schema'),
     ('ResourceInUseException', 400, 'The resource which you are '
                                     'attempting to change is in use.'),
     ('ResourceInUseException_DuplicateTable', 400, 'Attempt to change a '

@@ -20,6 +20,7 @@ from tempest.common.utils.data_utils import rand_name
 from tempest.openstack.common import log as logging
 from tempest.test import attr
 
+
 LOG = logging.getLogger(__name__)
 
 
@@ -28,17 +29,17 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
     def setUpClass(cls):
         super(MagnetoDBItemsTest, cls).setUpClass()
         cls.tname = rand_name().replace('-', '')
-        cls.client.create_table(cls.smoke_attrs + cls.index_attrs,
-                                cls.tname,
-                                cls.smoke_schema,
-                                cls.smoke_throughput,
-                                cls.smoke_lsi,
-                                cls.smoke_gsi)
-        cls.wait_for_table_active(cls.tname)
-        cls.addResourceCleanUp(cls.client.delete_table, cls.tname)
 
     @attr(type='smoke')
     def test_put_get_update_delete_item(self):
+        self.client.create_table(self.smoke_attrs + self.index_attrs,
+                                 self.tname,
+                                 self.smoke_schema,
+                                 self.smoke_throughput,
+                                 self.smoke_lsi,
+                                 self.smoke_gsi)
+        self.wait_for_table_active(self.tname)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         resp = self.client.put_item(self.tname, item)
@@ -65,3 +66,78 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         self.assertEqual({}, resp)
         self.assertEqual({}, self.client.get_item(self.tname, key,
                                                   consistent_read=True))
+
+    def test_get_item_table_not_exists(self):
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     last_posted_by='John')
+        key = {self.hashkey: item[self.hashkey],
+               self.rangekey: item[self.rangekey]}
+        self.assertBotoError(self.errors.client.ResourceNotFoundException,
+                             self.client.get_item,
+                             self.tname,
+                             key)
+
+    def test_get_item_table_creating(self):
+        self.client.create_table(self.smoke_attrs + self.index_attrs,
+                                 self.tname,
+                                 self.smoke_schema,
+                                 self.smoke_throughput,
+                                 self.smoke_lsi,
+                                 self.smoke_gsi)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     last_posted_by='John')
+        key = {self.hashkey: item[self.hashkey],
+               self.rangekey: item[self.rangekey]}
+        self.assertBotoError(self.errors.client.ResourceNotFoundException,
+                             self.client.get_item,
+                             self.tname,
+                             key)
+        self.wait_for_table_active(self.tname)
+
+    def test_get_item_bad_keys(self):
+        self.client.create_table(self.smoke_attrs + self.index_attrs,
+                                 self.tname,
+                                 self.smoke_schema,
+                                 self.smoke_throughput,
+                                 self.smoke_lsi,
+                                 self.smoke_gsi)
+        self.wait_for_table_active(self.tname)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     last_posted_by='John')
+        keys = [{self.hashkey: 'badhashkey',
+                 self.rangekey: item[self.rangekey]},
+                {self.hashkey: item[self.hashkey],
+                 self.rangekey: 'badrangekey'},
+                {self.hashkey: 'badhashkey',
+                 self.rangekey: 'badrangekey'},
+                ]
+        for key in keys:
+            self.assertBotoError(self.errors.client.SerializationException,
+                                 self.client.get_item,
+                                 self.tname,
+                                 key)
+        self.wait_for_table_active(self.tname)
+
+    def test_get_item_empty_key(self):
+        self.client.create_table(self.smoke_attrs + self.index_attrs,
+                                 self.tname,
+                                 self.smoke_schema,
+                                 self.smoke_throughput,
+                                 self.smoke_lsi,
+                                 self.smoke_gsi)
+        self.wait_for_table_active(self.tname)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     last_posted_by='John')
+        keys = [{},
+                {self.hashkey: item[self.hashkey]},
+                {self.rangekey: item[self.rangekey]},
+                ]
+        for key in keys:
+            self.assertBotoError(self.errors.client.ValidationException,
+                                 self.client.get_item,
+                                 self.tname,
+                                 key)
+        self.wait_for_table_active(self.tname)
