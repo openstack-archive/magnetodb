@@ -19,7 +19,7 @@ from tempest import config
 from tempest import exceptions
 from tempest.openstack.common import log as logging
 from tempest.services import botoclients
-
+from tempest.services.keyvalue.json.magnetodb_client import MagnetoDBClientJSON
 
 LOG = logging.getLogger(__name__)
 
@@ -63,3 +63,4 @@ class Manager(object):
 
         # common clients
         self.dynamodb_client = botoclients.APIClientDynamoDB(*client_args)
+        self.magnetodb_client = MagnetoDBClientJSON(*client_args)
