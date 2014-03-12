@@ -184,3 +184,6 @@ class ResponseWithNonEmptyBody(RFCViolation):
 class ResponseWithEntity(RFCViolation):
     message = ("RFC Violation! Response with 205 HTTP Status Code "
                "MUST NOT have an entity")
+
+class ComputeFault(TempestException):
+    message = "Got compute fault"
