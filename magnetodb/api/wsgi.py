@@ -22,6 +22,8 @@ from magnetodb.common import wsgi, setup_global_env, is_global_env_ready
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
 
+from magnetodb.api.rest import controller as rest_controller
+from magnetodb.api.rest import wsgi as rest_wsgi
 
 class MagnetoDBApplication(wsgi.Router):
 
@@ -38,6 +40,26 @@ class MagnetoDBApplication(wsgi.Router):
         mapper.connect("/", controller=amz_dynamodb_api_app,
                        conditions={'method': 'POST'},
                        action="process_request")
+
+        rest_api_app = (
+            rest_wsgi.RestResource(
+                controller=rest_controller.RestApiController())
+        )
+
+        mapper.connect("/v1/{project_id}/data/tables", controller=rest_api_app,
+                       conditions={'method': 'GET'},
+                       action="list_tables")
+
+        mapper.connect("/v1/{project_id}/data/tables", controller=rest_api_app,
+                       conditions={'method': 'POST'},
+                       action="create_table")
+
+        mapper.connect("/v1/{project_id}/data/tables/{table_name}", controller=rest_api_app,
+                       action="process_table")
+
+        mapper.connect("/v1/{project_id}/data/tables/{table_name}/{item_action}", controller=rest_api_app,
+                       conditions={'method': 'POST'},
+                       action="process_items")
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):

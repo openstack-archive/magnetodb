@@ -115,6 +115,12 @@ class Props():
     ATTRIBUTE_UPDATES = "AttributeUpdates"
     ACTION = "Action"
 
+    LINKS = "links"
+    HREF = "href"
+    REL = "rel"
+    BOOKMARK = "bookmark"
+    SELF = "self"
+
 
 class Values():
     ATTRIBUTE_TYPE_STRING = TYPE_STRING
