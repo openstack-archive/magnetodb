@@ -1,4 +1,4 @@
-# Copyright 2013 Mirantis Inc.
+# Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,15 +13,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api import parser
 
 from magnetodb import storage
 from magnetodb.common import exception
 from magnetodb.storage import models
 
+from magnetodb.openstack.common.log import logging
 
-class CreateTableDynamoDBAction(DynamoDBAction):
+from magnetodb.api import parser
+from magnetodb.api.openstack.v1 import validation
+
+LOG = logging.getLogger(__name__)
+
+
+class CreateTableController():
     schema = {
         "required": [parser.Props.ATTRIBUTE_DEFINITIONS,
                      parser.Props.KEY_SCHEMA,
@@ -48,31 +53,29 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                 }
             },
 
-            parser.Props.PROVISIONED_THROUGHPUT: (
-                parser.Types.PROVISIONED_THROUGHPUT
-            ),
-
             parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
         }
     }
 
-    def __call__(self):
+    def create_table(self, req, body, project_id):
+        validation.validate_params(self.schema, body)
+
         try:
-            table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
+            table_name = body.get(parser.Props.TABLE_NAME, None)
 
             #parse table attributes
             attribute_definitions = parser.Parser.parse_attribute_definitions(
-                self.action_params.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
+                body.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
             )
 
             #parse table key schema
             key_attrs = parser.Parser.parse_key_schema(
-                self.action_params.get(parser.Props.KEY_SCHEMA, [])
+                body.get(parser.Props.KEY_SCHEMA, [])
             )
 
             #parse table indexed field list
             indexed_attr_names = parser.Parser.parse_local_secondary_indexes(
-                self.action_params.get(
+                body.get(
                     parser.Props.LOCAL_SECONDARY_INDEXES, [])
             )
 
@@ -86,7 +89,11 @@ class CreateTableDynamoDBAction(DynamoDBAction):
 
         try:
             # creating table
-            storage.create_table(self.context, table_schema)
+            req.context.tenant = project_id
+            storage.create_table(req.context, table_schema)
+
+            url = req.path_url + "/" + table_name
+            bookmark = req.path_url + "/" + table_name
 
             return {
                 parser.Props.TABLE_DESCRIPTION: {
@@ -107,14 +114,21 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                             key_attrs[0], indexed_attr_names
                         )
                     ),
-                    parser.Props.PROVISIONED_THROUGHPUT: (
-                        parser.Values.PROVISIONED_THROUGHPUT_DUMMY
-                    ),
                     parser.Props.TABLE_NAME: table_name,
                     parser.Props.TABLE_STATUS: (
                         parser.Values.TABLE_STATUS_ACTIVE
                     ),
-                    parser.Props.TABLE_SIZE_BYTES: 0
+                    parser.Props.TABLE_SIZE_BYTES: 0,
+                    parser.Props.LINKS: [
+                        {
+                            parser.Props.HREF: url,
+                            parser.Props.REL: parser.Props.SELF
+                        },
+                        {
+                            parser.Props.HREF: bookmark,
+                            parser.Props.REL: parser.Props.BOOKMARK
+                        }
+                    ]
                 }
             }
         except exception.TableAlreadyExistsException:

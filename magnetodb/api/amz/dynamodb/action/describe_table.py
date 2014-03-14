@@ -16,7 +16,7 @@
 
 from magnetodb import storage
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
+from magnetodb.api.parser import Props, Parser, Types, Values
 from magnetodb.common import exception
 
 

@@ -1,4 +1,4 @@
-# Copyright 2013 Mirantis Inc.
+# Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,45 +14,38 @@
 #    under the License.
 
 from magnetodb import storage
+from magnetodb.common import exception
+from magnetodb.openstack.common.log import logging
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api import parser
 
-from magnetodb.common import exception
+
+LOG = logging.getLogger(__name__)
 
 
-class ListTablesDynamoDBAction(DynamoDBAction):
-    schema = {
-        "type": "object",
-        "properties": {
-            parser.Props.EXCLUSIVE_START_TABLE_NAME:  parser.Types.TABLE_NAME,
-            parser.Props.LIMIT: {
-                "type": "integer",
-                "minimum": 0
-            }
-        }
-    }
-
-    def __call__(self):
+class ListTablesController():
+    def list_tables(self, req, project_id):
         exclusive_start_table_name = (
-            self.action_params.get(parser.Props.EXCLUSIVE_START_TABLE_NAME,
-                                   None)
+            req.params.get(parser.Props.EXCLUSIVE_START_TABLE_NAME, None)
         )
 
-        limit = self.action_params.get(parser.Props.LIMIT, None)
+        limit = req.params.get(parser.Props.LIMIT, None)
 
         try:
             table_names = (
                 storage.list_tables(
-                    self.context,
+                    req.context,
                     exclusive_start_table_name=exclusive_start_table_name,
-                    limit=limit)
+                    limit=limit
+                )
             )
 
-            res = {parser.Props.TABLE_NAMES: table_names}
+            res = {}
 
-            if table_names and limit == len(table_names):
+            if table_names and str(limit) == str(len(table_names)):
                 res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
+
+            res["Tables"] = [{"rel": "self", "href": name} for name in table_names]
 
             return res
         except exception.AWSErrorResponseException as e:

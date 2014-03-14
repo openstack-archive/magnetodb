@@ -236,7 +236,7 @@ class CassandraStorageImpl(object):
 
         key_attrs = [
             "\"{}{}\"".format(self.USER_COLUMN_PREFIX, name)
-            for name in table_schema.key_attributes
+            for name in table_schema.key_attributes if name
         ]
 
         key_count = len(key_attrs)
@@ -432,10 +432,6 @@ class CassandraStorageImpl(object):
             )
 
         if limit:
-            query_builder += (
-                " AND columnfamily_name > '",
-                exclusive_start_table_name, "'"
-            )
             query_builder += (" LIMIT ", str(limit))
 
         tables = self._execute_query("".join(query_builder), consistent=True)

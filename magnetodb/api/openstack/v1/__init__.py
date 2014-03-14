@@ -15,13 +15,34 @@
 
 from routes.base import Route
 
+from magnetodb.common import wsgi
+from magnetodb.openstack.common.log import logging
+
 from magnetodb.api.openstack.v1 import put_item
+
+
+LOG = logging.getLogger(__name__)
+
+
+def create_resource(controller, options=None):
+    body_deserializers = {
+        'application/json': wsgi.JSONDeserializer()
+    }
+    deserializer = wsgi.RequestDeserializer(
+        body_deserializers=body_deserializers)
+
+    body_serializers = {
+        'application/json': wsgi.JSONDictSerializer()
+    }
+    serializer = wsgi.ResponseSerializer(body_serializers=body_serializers)
+
+    return wsgi.Resource(controller, deserializer, serializer)
 
 
 openstack_api = [
     Route("put_item", "/{project_id}/data/tables/{table_name}/put_item",
           conditions={'method': 'POST'},
-          controller=put_item.create_resource(None),
+          controller=create_resource(put_item.PutItemController()),
           action="process_request"),
 ]
 
