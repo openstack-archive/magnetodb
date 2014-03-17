@@ -19,6 +19,8 @@ import routes
 
 from magnetodb.common import wsgi, setup_global_env, is_global_env_ready
 
+from magnetodb.api.openstack.v1 import openstack_api
+
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
 
@@ -34,6 +36,8 @@ class MagnetoDBApplication(wsgi.Router):
             amazon_wsgi.AmazonResource(
                 controller=amz_api_controller.AmzDynamoDBApiController())
         )
+
+        mapper.extend(openstack_api, "/v1")
 
         mapper.connect("/", controller=amz_dynamodb_api_app,
                        conditions={'method': 'POST'},
