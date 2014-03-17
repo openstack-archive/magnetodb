@@ -1,0 +1,75 @@
+# lib/magnetodb
+
+# Dependencies:
+# ``functions`` file
+# ``DEST``, ``STACK_USER`` must be defined
+
+# ``stack.sh`` calls the entry points in this order:
+#
+# install_magnetodb
+# configure_magnetodb
+# start_magnetodb
+# stop_magnetodb
+
+# Save trace setting
+XTRACE=$(set +o | grep xtrace)
+set +o xtrace
+
+
+# Defaults
+# --------
+
+# Set up default repos
+MAGNETODB_REPO=${MAGNETODB_REPO:-${GIT_BASE}/stackforge/magnetodb.git}
+MAGNETODB_BRANCH=${MAGNETODB_BRANCH:-master}
+
+# Set up default directories
+MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
+MAGNETODB_LOG_DIR=${MAGNETODB_LOG_DIR:-/var/log/magnetodb}
+MAGNETODB_USER=${MAGNETODB_USER:-$STACK_USER}
+
+# Set up additional requirements
+# Use this pattern: MAGNETODB_ADDITIONAL_REQ="Requirement_1\nRequirement_2\nRequirement_N"
+# Example: MAGNETODB_ADDITIONAL_REQ="tox<1.7.0\nBabel>=0.9.6\ncassandra-driver>=1.0.0"
+MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
+
+
+# Functions
+# ---------
+
+# install_magnetodb() - Collect source and prepare
+function install_magnetodb() {
+    git_clone $MAGNETODB_REPO $MAGNETODB_DIR $MAGNETODB_BRANCH
+    echo -e $MAGNETODB_ADDITIONAL_REQ >> $MAGNETODB_DIR/requirements.txt
+    setup_develop $MAGNETODB_DIR
+}
+
+
+# configure_magnetodb() - Set config files, create data dirs, etc
+function configure_magnetodb() {
+    if [[ ! -d $MAGNETODB_LOG_DIR ]]; then
+        sudo mkdir -p $MAGNETODB_LOG_DIR
+    fi
+    sudo touch $MAGNETODB_LOG_DIR/magnetodb.log
+    sudo chown -R $MAGNETODB_USER $MAGNETODB_LOG_DIR
+}
+
+
+# start_magnetodb() - Start running processes, including screen
+function start_magnetodb() {
+    screen_it magnetodb-api "cd $MAGNETODB_DIR && python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
+}
+
+
+# stop_magnetodb() - Stop running processes
+function stop_magnetodb() {
+    # Kill the magnetodb screen windows
+    screen -S $SCREEN_NAME -p magnetodb-api -X kill
+}
+
+# Restore xtrace
+$XTRACE
+
+# Local variables:
+# mode: shell-script
+# End:
