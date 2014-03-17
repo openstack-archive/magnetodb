@@ -1,0 +1,203 @@
+# lib/magnetodb
+
+# Dependencies:
+# ``functions`` file
+# ``DEST``, ``STACK_USER`` must be defined
+
+# ``stack.sh`` calls the entry points in this order:
+#
+# install_magnetodb
+# configure_magnetodb
+# start_magnetodb
+# stop_magnetodb
+
+# Save trace setting
+XTRACE=$(set +o | grep xtrace)
+set +o xtrace
+
+
+# Defaults
+# --------
+
+# Set up default repos
+MAGNETODB_REPO=${MAGNETODB_REPO:-${GIT_BASE}/stackforge/magnetodb.git}
+MAGNETODB_BRANCH=${MAGNETODB_BRANCH:-master}
+
+# Set up default directories
+MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
+MAGNETODB_LOG_DIR=${MAGNETODB_LOG_DIR:-/var/log/magnetodb}
+MAGNETODB_USER=${MAGNETODB_USER:-$STACK_USER}
+
+
+
+#11
+MAGNETODB_BACKEND=${MAGNETODB_BACKEND:-cassandra}
+JDKURL_RPM="http://download.oracle.com/otn-pub/java/jdk/7u45-b18/jdk-7u45-linux-x64.rpm"
+JDKURL_TARBAR="http://download.oracle.com/otn-pub/java/jdk/7u51-b13/jdk-7u51-linux-x64.tar.gz"
+JDK_TARBAR_NAME="jdk-7-linux-x64.tar.gz"
+JDKVersion="1.7.0_51"
+JDKCookie="Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie"
+JDKSpeedLimitRate="512k"
+
+
+CCM_REPO=${CCM_REPO:-'https://github.com/pcmanus/ccm.git'}
+CCM_BRANCH=${CCM_BRANCH:-master}
+CCM_DIR=${CCM_DIR:-$DEST/ccm}
+CassandraVersion=${CassandraVersion:-2.0.2}
+CassandraClusterName=${CassandraClusterName:-test}
+# By default CassandraClusterAmountNodes = 3
+# If you need more, then you need to change the number of loopback network interface aliases below
+CassandraClusterAmountNodes=${CassandraClusterAmountNodes:-3}
+Cassandra_KEYSPACE_TenantName=${Cassandra_KEYSPACE_TenantName:-default_tenant}
+Cassandra_KEYSPACE_ReplicationFactor=${Cassandra_KEYSPACE_ReplicationFactor:-3}
+
+
+# Set up additional requirements
+# Use this pattern: MAGNETODB_ADDITIONAL_REQ="Requirement_1\nRequirement_2\nRequirement_N"
+# Example: MAGNETODB_ADDITIONAL_REQ="tox<1.7.0\nBabel>=0.9.6\ncassandra-driver>=1.0.0"
+MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
+
+# Functions
+# ---------
+
+
+
+function install_cassandra() {
+	  #install java
+	  if [ ! -d /usr/lib/jvm/jdk${JDKVersion} ]
+		  then
+  		  echo "---  Installing JDK  ---" 
+	  	  sudo mkdir -p /usr/lib/jvm
+	  
+		  if [ ! -f /usr/lib/jvm/$JDK_TARBAR_NAME ]
+			  then
+				  echo "---  Downloading JDK  ---"
+				  sudo  wget --no-cookies --header "$JDKCookie" $JDKURL_TARBAR -O /usr/lib/jvm/$JDK_TARBAR_NAME  --no-check-certificate --limit-rate=$JDKSpeedLimitRate
+		  fi		  
+ 		  sudo tar zxvf /usr/lib/jvm/$JDK_TARBAR_NAME -C /usr/lib/jvm
+  	  fi
+	  sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk${JDKVersion}/bin/java" 2000
+	  sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk${JDKVersion}/bin/java" 2000
+	  sudo update-alternatives --set java /usr/lib/jvm/jdk${JDKVersion}/bin/java
+	  echo "---  Installing JNA  ---"
+	  sudo apt-get -y install libjna-java
+
+#install Cassandra Cluster Manager
+git_clone $CCM_REPO $CCM_DIR $CCM_BRANCH
+sudo pip install -e $CCM_DIR
+sudo apt-get -y install python-setuptools python-dev build-essential
+sudo easy_install pyYaml
+sudo apt-get -y install ant
+
+
+  # for cassandra.io.libevwrapper extension.
+  # The C extensions are not required for the driver to run, but they add support
+  # for libev and token-aware routing with the Murmur3Partitioner.
+sudo apt-get -y install build-essential python-dev
+sudo apt-get -y install libev4 libev-dev
+
+
+
+	  
+}
+
+
+# install_magnetodb() - Collect source and prepare
+function install_magnetodb() {
+
+	if [ "$MAGNETODB_BACKEND" == "cassandra" ]
+	   then
+ 		install_cassandra
+	fi
+    git_clone $MAGNETODB_REPO $MAGNETODB_DIR $MAGNETODB_BRANCH
+    echo -e $MAGNETODB_ADDITIONAL_REQ >> $MAGNETODB_DIR/requirements.txt
+    setup_develop $MAGNETODB_DIR
+
+}
+
+
+function configure_cassandra() {
+
+#allocate loopback interfaces 127.0.0.2 - its a first address for second cassandra, the first node will be use 127.0.0.1
+addr=2
+while [ $n -lt $CassandraClusterAmountNodes ]
+do
+	addr=2
+	echo "add secondary loopback 127.0.0.${addr}/8"
+	sudo ip addr add 127.0.0.${addr}/8 dev lo
+	let addr=$addr+1
+	let n=$n+1
+done
+
+# Installing Cassandra Cluster
+ccm create $CassandraClusterName -v $CassandraVersion
+ccm populate -n $CassandraClusterAmountNodes
+}
+
+# configure_magnetodb() - Set config files, create data dirs, etc
+function configure_magnetodb() {
+
+	if [ "$MAGNETODB_BACKEND" == "cassandra" ]
+	   then
+ 		configure_cassandra
+	fi
+
+    if [[ ! -d $MAGNETODB_LOG_DIR ]]; then
+        sudo mkdir -p $MAGNETODB_LOG_DIR
+    fi
+    sudo touch $MAGNETODB_LOG_DIR/magnetodb.log
+    sudo chown -R $MAGNETODB_USER $MAGNETODB_LOG_DIR
+}
+
+
+
+
+function start_cassandra() {
+  echo "===  Starting Cassandra Clauster  ==="
+  ccm start
+  echo "===  Creating KeySpace  ==="
+  echo "CREATE KEYSPACE $Cassandra_KEYSPACE_TenantName WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':$Cassandra_KEYSPACE_ReplicationFactor};" > ~/.ccm/KeySpace.txt
+ ~/.ccm/repository/$CassandraVersion/bin/cqlsh -f ~/.ccm/KeySpace.txt
+}
+
+# start_magnetodb() - Start running processes, including screen
+function start_magnetodb() {
+
+	if [ "$MAGNETODB_BACKEND" == "cassandra" ]
+	   then
+ 		start_cassandra
+	fi
+
+    screen_it magnetodb-api "cd $MAGNETODB_DIR && python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
+
+
+
+}
+
+function stop_cassandra(){
+ccm remove $CassandraClusterName
+}
+
+
+# stop_magnetodb() - Stop running processes
+function stop_magnetodb() {
+
+
+	if [ "$MAGNETODB_BACKEND" == "cassandra" ]
+	   then
+ 		stop_cassandra
+	fi
+
+    # Kill the magnetodb screen windows
+    screen -S $SCREEN_NAME -p magnetodb-api -X kill
+}
+
+
+
+
+# Restore xtrace
+$XTRACE
+
+# Local variables:
+# mode: shell-script
+# End:
