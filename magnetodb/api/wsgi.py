@@ -20,10 +20,6 @@ import routes
 from magnetodb.common import wsgi, setup_global_env, is_global_env_ready
 
 from magnetodb.api.openstack.v1 import openstack_api
-from magnetodb.api.openstack.v1 import create_resource
-from magnetodb.api.openstack.v1 import create_table
-from magnetodb.api.openstack.v1 import list_tables
-
 
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
@@ -46,18 +42,6 @@ class MagnetoDBApplication(wsgi.Router):
         mapper.connect("/", controller=amz_dynamodb_api_app,
                        conditions={'method': 'POST'},
                        action="process_request")
-
-        mapper.connect("/v1/{project_id}/data/tables",
-                       controller=create_resource(
-                           list_tables.ListTablesController()),
-                       conditions={'method': 'GET'},
-                       action="list_tables")
-
-        mapper.connect("/v1/{project_id}/data/tables",
-                       controller=create_resource(
-                           create_table.CreateTableController()),
-                       conditions={'method': 'POST'},
-                       action="create_table")
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):
