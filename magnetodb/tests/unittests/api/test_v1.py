@@ -145,3 +145,112 @@ class APITestCase(unittest.TestCase):
         response_payload = json.loads(json_response)
 
         self.assertEqual(expected_response, response_payload)
+
+    @mock.patch('magnetodb.storage.put_item')
+    def test_put_item(self, mock_put_item):
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/fake_project_id/data/tables/the_table/put_item'
+        body = """
+            {
+                "Item": {
+                    "LastPostDateTime": {
+                        "S": "201303190422"
+                    },
+                    "Tags": {
+                        "SS": ["Update","Multiple Items","HelpMe"]
+                    },
+                    "ForumName": {
+                        "S": "Amazon DynamoDB"
+                    },
+                    "Message": {
+                        "S": "I want to update multiple items."
+                    },
+                    "Subject": {
+                        "S": "How do I update multiple items?"
+                    },
+                    "LastPostedBy": {
+                        "S": "fred@example.com"
+                    }
+                },
+                "Expected": {
+                    "ForumName": {
+                        "Exists": false
+                    },
+                    "Subject": {
+                        "Exists": false
+                    }
+                }
+            }
+        """
+        conn.request("POST", url, headers=headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_put_item.called)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual({}, response_payload)
+
+    @mock.patch('magnetodb.storage.put_item')
+    def test_put_item_expected(self, mock_put_item):
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/fake_project_id/data/tables/the_table/put_item'
+        body = """
+            {
+                "Item": {
+                    "LastPostDateTime": {
+                        "S": "201303190422"
+                    },
+                    "Tags": {
+                        "SS": ["Update","Multiple Items","HelpMe"]
+                    },
+                    "ForumName": {
+                        "S": "Amazon DynamoDB"
+                    },
+                    "Message": {
+                        "S": "I want to update multiple items."
+                    },
+                    "Subject": {
+                        "S": "How do I update multiple items?"
+                    },
+                    "LastPostedBy": {
+                        "S": "fred@example.com"
+                    }
+                },
+                "Expected": {
+                    "ForumName": {
+                        "Exists": false
+                    },
+                    "Subject": {
+                        "Exists": false
+                    }
+                },
+                "ReturnValues": "ALL_NEW"
+            }
+        """
+        conn.request("POST", url, headers=headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_put_item.called)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected = {'Attributes': {
+            'ForumName': {'S': u'Amazon DynamoDB'},
+            'LastPostDateTime': {'S': '201303190422'},
+            'LastPostedBy': {'S': 'fred@example.com'},
+            'Message': {'S': 'I want to update multiple items.'},
+            'Subject': {'S': 'How do I update multiple items?'},
+            'Tags': {'SS': ['HelpMe', 'Update', 'Multiple Items']}}}
+
+        self.assertEqual(expected, response_payload)
