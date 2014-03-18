@@ -20,6 +20,8 @@ import unittest
 
 from magnetodb.tests.fake import magnetodb_api_fake
 
+from magnetodb.storage import models
+
 
 class APITestCase(unittest.TestCase):
     """The test for v1 ReST API."""
@@ -140,6 +142,75 @@ class APITestCase(unittest.TestCase):
         response = conn.getresponse()
 
         self.assertTrue(mock_create_table.called)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual(expected_response, response_payload)
+
+    @mock.patch('magnetodb.storage.describe_table')
+    def test_describe_table(self, mock_describe_table):
+
+        attr_map = {'ForumName': models.ATTRIBUTE_TYPE_STRING,
+                    'Subject': models.ATTRIBUTE_TYPE_STRING,
+                    'LastPostDateTime': models.ATTRIBUTE_TYPE_STRING}
+
+        key_attrs = ['ForumName', 'Subject']
+
+        index_map = {
+            'LastPostIndex': models.IndexDefinition('LastPostDateTime')
+        }
+
+        table_schema = models.TableSchema(
+            'Thread', attr_map, key_attrs, index_map)
+
+        mock_describe_table.return_value = table_schema
+
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/fake_project_id/data/tables/Thread'
+
+        table_url = ('http://localhost:8080/v1/fake_project_id'
+                     '/data/tables/Thread')
+        expected_response = {'table': {
+            'attribute_definitions': [
+                {'attribute_name': 'Subject', 'attribute_type': 'S'},
+                {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
+                {'attribute_name': 'ForumName', 'attribute_type': 'S'}
+            ],
+            'creation_date_time': 0,
+            'item_count': 0,
+            'key_schema': [
+                {'attribute_name': 'ForumName', 'key_type': 'HASH'},
+                {'attribute_name': 'Subject', 'key_type': 'RANGE'}
+            ],
+            'local_secondary_indexes': [
+                {'index_name': 'LastPostIndex',
+                 'index_size_bytes': 0,
+                 'item_count': 0,
+                 'key_schema': [
+                     {'attribute_name': 'ForumName',
+                      'key_type': 'HASH'},
+                     {'attribute_name': 'LastPostDateTime',
+                      'key_type': 'RANGE'}
+                 ],
+                 'projection': {'projection_type': 'ALL'}}
+            ],
+            'table_name': 'Thread',
+            'table_size_bytes': 0,
+            'table_status': 'ACTIVE',
+            'links': [
+                {'href': table_url, 'rel': 'self'},
+                {'href': table_url, 'rel': 'bookmark'}
+            ]}}
+
+        conn.request("GET", url, headers=headers)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_describe_table.called)
 
         json_response = response.read()
         response_payload = json.loads(json_response)
