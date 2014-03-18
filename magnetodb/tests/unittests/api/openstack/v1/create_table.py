@@ -15,36 +15,13 @@
 
 import httplib
 import json
+
 import mock
-import unittest
-
-from magnetodb.tests.fake import magnetodb_api_fake
+from magnetodb.tests.unittests.api.openstack.v1.base_testcase import APITestCase
 
 
-class APITestCase(unittest.TestCase):
-    """The test for v1 ReST API."""
-
-    @classmethod
-    def setUpClass(cls):
-        magnetodb_api_fake.run_fake_magnetodb_api()
-
-    @classmethod
-    def tearDownClass(cls):
-        magnetodb_api_fake.stop_fake_magnetodb_api()
-
-    def test_list_tables(self):
-        headers = {'Content-Type': 'application/json',
-                   'Accept': 'application/json'}
-
-        conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables'
-        conn.request("GET", url, headers=headers)
-
-        response = conn.getresponse()
-
-        json_response = response.read()
-        response_model = json.loads(json_response)
-        self.assertEqual([], response_model['tables'])
+class CreateTableTest(APITestCase):
+    """The test for v1 ReST API CreateTableController."""
 
     @mock.patch('magnetodb.storage.create_table')
     def test_create_table(self, mock_create_table):
