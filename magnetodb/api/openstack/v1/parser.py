@@ -1,6 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2013 Mirantis Inc.
+# Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -40,86 +38,75 @@ TYPE_BLOB_SET = "BS"
 
 
 class Props():
-    TABLE_NAME = "TableName"
-    ATTRIBUTE_DEFINITIONS = "AttributeDefinitions"
-    ATTRIBUTE_NAME = "AttributeName"
-    ATTRIBUTE_TYPE = "AttributeType"
-    KEY_SCHEMA = "KeySchema"
-    KEY_TYPE = "KeyType"
-    LOCAL_SECONDARY_INDEXES = "LocalSecondaryIndexes"
-    GLOBAL_SECONDARY_INDEXES = "GlobalSecondaryIndexes"
-    INDEX_NAME = "IndexName"
-    PROJECTION = "Projection"
-    NON_KEY_ATTRIBUTES = "NonKeyAttributes"
-    PROJECTION_TYPE = "ProjectionType"
-    PROVISIONED_THROUGHPUT = "ProvisionedThroughput"
-    READ_CAPACITY_UNITS = "ReadCapacityUnits"
-    WRITE_CAPACITY_UNITS = "WriteCapacityUnits"
+    TABLE_NAME = "table_name"
+    ATTRIBUTE_DEFINITIONS = "attribute_definitions"
+    ATTRIBUTE_NAME = "attribute_name"
+    ATTRIBUTE_TYPE = "attribute_type"
+    KEY_SCHEMA = "key_schema"
+    KEY_TYPE = "key_type"
+    LOCAL_SECONDARY_INDEXES = "local_secondary_indexes"
+    GLOBAL_SECONDARY_INDEXES = "global_secondary_indexes"
+    INDEX_NAME = "index_name"
+    PROJECTION = "projection"
+    NON_KEY_ATTRIBUTES = "non_key_attributes"
+    PROJECTION_TYPE = "projection_type"
 
-    TABLE_DESCRIPTION = "TableDescription"
-    TABLE = "Table"
-    TABLE_SIZE_BYTES = "TableSizeBytes"
-    TABLE_STATUS = "TableStatus"
-    CREATION_DATE_TIME = "CreationDateTime"
-    INDEX_SIZE_BYTES = "IndexSizeBytes"
-    ITEM_COUNT = "ItemCount"
+    TABLE_DESCRIPTION = "table_description"
+    TABLE = "table"
+    TABLE_SIZE_BYTES = "table_size_bytes"
+    TABLE_STATUS = "table_status"
+    CREATION_DATE_TIME = "creation_date_time"
+    INDEX_SIZE_BYTES = "index_size_bytes"
+    ITEM_COUNT = "item_count"
 
-    TABLE_NAMES = "TableNames"
-    EXCLUSIVE_START_TABLE_NAME = "ExclusiveStartTableName"
-    LAST_EVALUATED_TABLE_NAME = "LastEvaluatedTableName"
-    LIMIT = "Limit"
+    TABLE_NAMES = "table_names"
+    EXCLUSIVE_START_TABLE_NAME = "exclusive_start_table_name"
+    LAST_EVALUATED_TABLE_NAME = "last_evaluated_table_name"
+    LIMIT = "limit"
 
-    EXPECTED = "Expected"
-    EXISTS = "Exists"
-    VALUE = "Value"
+    EXPECTED = "expected"
+    EXISTS = "exists"
+    VALUE = "value"
     ITEM_TYPE_STRING = TYPE_STRING
     ITEM_TYPE_NUMBER = TYPE_NUMBER
     ITEM_TYPE_BLOB = TYPE_BLOB
     ITEM_TYPE_STRING_SET = TYPE_STRING_SET
     ITEM_TYPE_NUMBER_SET = TYPE_NUMBER_SET
     ITEM_TYPE_BLOB_SET = TYPE_BLOB_SET
-    ITEM = "Item"
-    RETURN_CONSUMED_CAPACITY = "ReturnConsumedCapacity"
-    RETURN_ITEM_COLLECTION_METRICS = "ReturnItemCollectionMetrics"
-    RETURN_VALUES = "ReturnValues"
+    ITEM = "item"
+    RETURN_VALUES = "return_values"
 
-    ATTRIBUTES = "Attributes"
-    ITEM_COLLECTION_METRICS = "ItemCollectionMetrics"
-    ITEM_COLLECTION_KEY = "ItemCollectionKey"
-    SIZE_ESTIMATED_RANGE_GB = "SizeEstimateRangeGB"
-    CONSUMED_CAPACITY = "ConsumedCapacity"
-    CAPACITY_UNITS = "CapacityUnits"
+    ATTRIBUTES = "attributes"
+    ITEM_COLLECTION_METRICS = "item_collection_metrics"
+    ITEM_COLLECTION_KEY = "item_collection_key"
 
-    ATTRIBUTES_TO_GET = "AttributesToGet"
-    CONSISTENT_READ = "ConsistentRead"
-    KEY = "Key"
+    ATTRIBUTES_TO_GET = "attributes_to_get"
+    CONSISTENT_READ = "consistent_read"
+    KEY = "key"
 
-    EXCLUSIVE_START_KEY = "ExclusiveStartKey"
-    SCAN_FILTER = "ScanFilter"
-    SELECT = "Select"
-    SEGMENT = "Segment"
-    TOTAL_SEGMENTS = "TotalSegments"
-    ATTRIBUTE_VALUE_LIST = "AttributeValueList"
-    COMPARISON_OPERATOR = "ComparisonOperator"
+    EXCLUSIVE_START_KEY = "exclusive_start_key"
+    SCAN_FILTER = "scan_filter"
+    SELECT = "select"
+    SEGMENT = "segment"
+    TOTAL_SEGMENTS = "total_segments"
+    ATTRIBUTE_VALUE_LIST = "attribute_value_list"
+    COMPARISON_OPERATOR = "comparison_operator"
 
-    EXCLUSIVE_START_KEY = "ExclusiveStartKey"
-    KEY_CONDITIONS = "KeyConditions"
-    SCAN_INDEX_FORWARD = "ScanIndexForward"
-    SELECT = "Select"
+    KEY_CONDITIONS = "key_conditions"
+    SCAN_INDEX_FORWARD = "scan_index_forward"
+    SELECT = "select"
 
-    COUNT = "Count"
-    SCANNED_COUNT = "ScannedCount"
-    ITEMS = "Items"
-    LAST_EVALUATED_KEY = "LastEvaluatedKey"
+    COUNT = "count"
+    SCANNED_COUNT = "scanned_count"
+    ITEMS = "items"
+    LAST_EVALUATED_KEY = "last_evaluated_key"
 
-    ATTRIBUTE_UPDATES = "AttributeUpdates"
-    ACTION = "Action"
+    ATTRIBUTE_UPDATES = "attribute_updates"
+    ACTION = "action"
 
     LINKS = "links"
     HREF = "href"
     REL = "rel"
-    BOOKMARK = "bookmark"
-    SELF = "self"
 
 
 class Values():
@@ -140,14 +127,6 @@ class Values():
     ACTION_TYPE_PUT = "PUT"
     ACTION_TYPE_ADD = "ADD"
     ACTION_TYPE_DELETE = "DELETE"
-
-    PROVISIONED_THROUGHPUT_DUMMY = {
-        "LastDecreaseDateTime": 0,
-        "LastIncreaseDateTime": 0,
-        "NumberOfDecreasesToday": 0,
-        "ReadCapacityUnits": 0,
-        "WriteCapacityUnits": 0
-    }
 
     TABLE_STATUS_ACTIVE = "ACTIVE"
 
@@ -182,6 +161,10 @@ class Values():
     BEGINS_WITH = "BEGINS_WITH"
     IN = "IN"
     BETWEEN = "BETWEEN"
+
+    BOOKMARK = "bookmark"
+    SELF = "self"
+
 
 ATTRIBUTE_NAME_PATTERN = "^\w+"
 TABLE_NAME_PATTERN = "^\w+"
@@ -265,19 +248,6 @@ class Types():
                 }
             },
             Props.PROJECTION_TYPE: PROJECTION_TYPE
-        }
-    }
-
-    PROVISIONED_THROUGHPUT = {
-        "type": "object",
-        "required": [Props.READ_CAPACITY_UNITS, Props.WRITE_CAPACITY_UNITS],
-        "properties": {
-            Props.READ_CAPACITY_UNITS: {
-                "type": "integer"
-            },
-            Props.WRITE_CAPACITY_UNITS: {
-                "type": "integer"
-            }
         }
     }
 
