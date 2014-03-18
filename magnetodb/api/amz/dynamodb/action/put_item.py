@@ -14,7 +14,7 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api import parser
+from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
 from magnetodb.storage import models

@@ -44,7 +44,7 @@ class APITestCase(unittest.TestCase):
 
         json_response = response.read()
         response_model = json.loads(json_response)
-        self.assertEqual([], response_model['Tables'])
+        self.assertEqual([], response_model['tables'])
 
     @mock.patch('magnetodb.storage.create_table')
     def test_create_table(self, mock_create_table):
@@ -55,46 +55,46 @@ class APITestCase(unittest.TestCase):
         url = '/v1/fake_project_id/data/tables'
         body = """
             {
-                "AttributeDefinitions": [
+                "attribute_definitions": [
                     {
-                        "AttributeName": "ForumName",
-                        "AttributeType": "S"
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
                     },
                     {
-                        "AttributeName": "Subject",
-                        "AttributeType": "S"
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
                     },
                     {
-                        "AttributeName": "LastPostDateTime",
-                        "AttributeType": "S"
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
                     }
                 ],
-                "TableName": "Thread",
-                "KeySchema": [
+                "table_name": "Thread",
+                "key_schema": [
                     {
-                        "AttributeName": "ForumName",
-                        "KeyType": "HASH"
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
                     },
                     {
-                        "AttributeName": "Subject",
-                        "KeyType": "RANGE"
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
                     }
                 ],
-                "LocalSecondaryIndexes": [
+                "local_secondary_indexes": [
                     {
-                        "IndexName": "LastPostIndex",
-                        "KeySchema": [
+                        "index_name": "LastPostIndex",
+                        "key_schema": [
                             {
-                                "AttributeName": "ForumName",
-                                "KeyType": "HASH"
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
                             },
                             {
-                                "AttributeName": "LastPostDateTime",
-                                "KeyType": "RANGE"
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
                             }
                         ],
-                        "Projection": {
-                            "ProjectionType": "KEYS_ONLY"
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
                         }
                     }
                 ]
@@ -103,33 +103,33 @@ class APITestCase(unittest.TestCase):
 
         table_url = ('http://localhost:8080/v1/fake_project_id'
                      '/data/tables/Thread')
-        expected_response = {'TableDescription': {
-            'AttributeDefinitions': [
-                {'AttributeName': 'Subject', 'AttributeType': 'S'},
-                {'AttributeName': 'LastPostDateTime', 'AttributeType': 'S'},
-                {'AttributeName': 'ForumName', 'AttributeType': 'S'}
+        expected_response = {'table_description': {
+            'attribute_definitions': [
+                {'attribute_name': 'Subject', 'attribute_type': 'S'},
+                {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
+                {'attribute_name': 'ForumName', 'attribute_type': 'S'}
             ],
-            'CreationDateTime': 0,
-            'ItemCount': 0,
-            'KeySchema': [
-                {'AttributeName': 'ForumName', 'KeyType': 'HASH'},
-                {'AttributeName': 'Subject', 'KeyType': 'RANGE'}
+            'creation_date_time': 0,
+            'item_count': 0,
+            'key_schema': [
+                {'attribute_name': 'ForumName', 'key_type': 'HASH'},
+                {'attribute_name': 'Subject', 'key_type': 'RANGE'}
             ],
-            'LocalSecondaryIndexes': [
-                {'IndexName': 'LastPostIndex',
-                 'IndexSizeBytes': 0,
-                 'ItemCount': 0,
-                 'KeySchema': [
-                     {'AttributeName': 'ForumName',
-                      'KeyType': 'HASH'},
-                     {'AttributeName': 'LastPostDateTime',
-                      'KeyType': 'RANGE'}
+            'local_secondary_indexes': [
+                {'index_name': 'LastPostIndex',
+                 'index_size_bytes': 0,
+                 'item_count': 0,
+                 'key_schema': [
+                     {'attribute_name': 'ForumName',
+                      'key_type': 'HASH'},
+                     {'attribute_name': 'LastPostDateTime',
+                      'key_type': 'RANGE'}
                  ],
-                 'Projection': {'ProjectionType': 'ALL'}}
+                 'projection': {'projection_type': 'ALL'}}
             ],
-            'TableName': 'Thread',
-            'TableSizeBytes': 0,
-            'TableStatus': 'ACTIVE',
+            'table_name': 'Thread',
+            'table_size_bytes': 0,
+            'table_status': 'ACTIVE',
             'links': [
                 {'href': table_url, 'rel': 'self'},
                 {'href': table_url, 'rel': 'bookmark'}
