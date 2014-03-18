@@ -1,0 +1,8 @@
+Verified+2: Jenkins
+Approved+1: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Code-Review+2: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Tue, 18 Mar 2014 10:54:02 +0000
+Reviewed-on: https://review.openstack.org/81005
+Project: stackforge/magnetodb
+Branch: refs/heads/master
