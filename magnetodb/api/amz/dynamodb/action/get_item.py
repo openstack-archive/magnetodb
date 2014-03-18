@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from magnetodb.api import parser
+from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 
