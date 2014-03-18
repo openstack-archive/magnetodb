@@ -2,6 +2,7 @@ boto>=2.4.0,!=2.13.0
 discover
 flake8==2.0
 funkload
+mock>=1.0
 mox>=0.5.3
 nose
 pep8==1.4.5
