@@ -20,7 +20,7 @@ from magnetodb.storage import models
 
 from magnetodb.openstack.common.log import logging
 
-from magnetodb.api import parser
+from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import validation
 
 LOG = logging.getLogger(__name__)

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -114,12 +112,6 @@ class Props():
 
     ATTRIBUTE_UPDATES = "AttributeUpdates"
     ACTION = "Action"
-
-    LINKS = "links"
-    HREF = "href"
-    REL = "rel"
-    BOOKMARK = "bookmark"
-    SELF = "self"
 
 
 class Values():
