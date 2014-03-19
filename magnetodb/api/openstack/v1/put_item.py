@@ -13,7 +13,103 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb import storage
+from magnetodb.common import exception
+from magnetodb.storage import models
+
+from magnetodb.api.openstack.v1 import parser
+from magnetodb.api.openstack.v1 import validation
+
 
 class PutItemController(object):
+    schema = {
+        "required": [parser.Props.ITEM],
+        "properties": {
+            parser.Props.EXPECTED: {
+                "type": "object",
+                "patternProperties": {
+                    parser.ATTRIBUTE_NAME_PATTERN: {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "required": [parser.Props.EXISTS],
+                                "properties": {
+                                    parser.Props.EXISTS: {
+                                        "type": "boolean",
+                                    },
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "required": [parser.Props.VALUE],
+                                "properties": {
+                                    parser.Props.VALUE:
+                                        parser.Types.ITEM_VALUE,
+                                }
+                            },
+                        ]
+                    }
+                }
+            },
+
+            parser.Props.ITEM: {
+                "type": "object",
+                "patternProperties": {
+                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
+                }
+            },
+
+            parser.Props.RETURN_VALUES: {
+                "type": "string",
+                "enum": [parser.Values.RETURN_VALUES_NONE,
+                         parser.Values.RETURN_VALUES_ALL_OLD]
+            }
+        }
+    }
+
     def process_request(self, req, body, project_id, table_name):
-        return {'Hello': 'world'}
+        try:
+            validation.validate_params(self.schema, body)
+            # parse expected item conditions
+            expected_item_conditions = (
+                parser.Parser.parse_expected_attribute_conditions(
+                    body.get(parser.Props.EXPECTED, {})
+                )
+            )
+
+            # parse item
+            item_attributes = parser.Parser.parse_item_attributes(
+                body[parser.Props.ITEM]
+            )
+
+            # parse return_values param
+            return_values = body.get(
+                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+            )
+        except Exception:
+            raise exception.ValidationException()
+
+        try:
+            # put item
+            req.context.tenant = project_id
+            result = storage.put_item(
+                req.context,
+                models.PutItemRequest(table_name, item_attributes),
+                if_not_exist=False,
+                expected_condition_map=expected_item_conditions)
+
+            if not result:
+                raise exception.AWSErrorResponseException()
+
+            # format response
+            response = {}
+
+            if return_values != parser.Values.RETURN_VALUES_NONE:
+                response[parser.Props.ATTRIBUTES] = (
+                    parser.Parser.format_item_attributes(item_attributes)
+                )
+            return response
+        except exception.AWSErrorResponseException as e:
+            raise e
+        except Exception:
+            raise exception.AWSErrorResponseException()
