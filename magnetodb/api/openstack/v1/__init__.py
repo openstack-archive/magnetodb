@@ -45,4 +45,3 @@ openstack_api = [
           controller=create_resource(put_item.PutItemController()),
           action="process_request"),
 ]
-
