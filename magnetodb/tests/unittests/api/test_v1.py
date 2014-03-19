@@ -103,7 +103,7 @@ class APITestCase(unittest.TestCase):
 
         table_url = ('http://localhost:8080/v1/fake_project_id'
                      '/data/tables/Thread')
-        expected_response = {'table_description': {
+        expected = {'table_description': {
             'attribute_definitions': [
                 {'attribute_name': 'Subject', 'attribute_type': 'S'},
                 {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
@@ -144,4 +144,4 @@ class APITestCase(unittest.TestCase):
         json_response = response.read()
         response_payload = json.loads(json_response)
 
-        self.assertEqual(expected_response, response_payload)
+        self.assertEqual(expected, response_payload)

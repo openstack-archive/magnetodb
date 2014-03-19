@@ -76,20 +76,3 @@ class APITest(unittest.TestCase):
 
         self.assertEqual(
             response.getheader('Content-Type'), 'application/x-amz-json-1.0')
-
-    def test_os_api(self):
-        headers = {'Content-Type': 'application/json'}
-
-        conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/projectid/data/tables/tablename/put_item'
-        conn.request("POST", url, body='{}',
-                     headers=headers)
-
-        response = conn.getresponse()
-
-        json_response = response.read()
-        response_model = json.loads(json_response)
-
-        self.assertEqual(
-            response_model['Hello'],
-            'world')
