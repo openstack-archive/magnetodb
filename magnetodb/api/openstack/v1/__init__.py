@@ -19,6 +19,7 @@ from magnetodb.common import wsgi
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import put_item
+from magnetodb.api.openstack.v1 import get_item
 
 
 LOG = logging.getLogger(__name__)
@@ -43,6 +44,11 @@ openstack_api = [
     Route("put_item", "/{project_id}/data/tables/{table_name}/put_item",
           conditions={'method': 'POST'},
           controller=create_resource(put_item.PutItemController()),
+          action="process_request"),
+
+    Route("get_item", "/{project_id}/data/tables/{table_name}/get_item",
+          conditions={'method': 'POST'},
+          controller=create_resource(get_item.GetItemController()),
           action="process_request"),
 ]
 
