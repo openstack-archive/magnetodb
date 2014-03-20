@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012 OpenStack Foundation
 # All Rights Reserved.
 #
@@ -14,8 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-#from boto import exception
 
 import tempest.clients
 import tempest.config
@@ -45,19 +41,21 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
             {'attribute_name': cls.hashkey, 'attribute_type': 'S'},
             {'attribute_name': cls.rangekey, 'attribute_type': 'S'}
         ]
-        # add this attribute to smoke_attrs if want to create index
-        # TODO(yyekovenko): full list of attrs should be clarified
         cls.index_attrs = [
             {'attribute_name': 'last_posted_by', 'attribute_type': 'S'},
             #{'attribute_name': 'message', 'attribute_type': 'S'},
             #{'attribute_name': 'replies', 'attribute_type': 'N'}
         ]
-
         cls.smoke_schema = [
             {'attribute_name': cls.hashkey, 'key_type': 'HASH'},
             {'attribute_name': cls.rangekey, 'key_type': 'RANGE'}
         ]
-        cls.smoke_gsi = None
+        cls.one_attr = [
+            {'attribute_name': cls.hashkey, 'attribute_type': 'S'}
+        ]
+        cls.schema_hash_only = [
+            {'attribute_name': cls.hashkey, 'key_type': 'HASH'}
+        ]
         cls.smoke_lsi = [
             {
                 'index_name': 'last_posted_by_index',
@@ -89,9 +87,6 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
             finally:
                 del cls._resource_trash_bin[key]
         super(MagnetoDBTestCase, cls).tearDownClass()
-        # NOTE(afazekas): let the super called even on exceptions
-        # The real exceptions already logged, if the super throws another,
-        # does not causes hidden issues
         if fail_count:
             raise exceptions.TearDownException(num=fail_count)
 
