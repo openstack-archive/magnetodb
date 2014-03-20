@@ -25,6 +25,7 @@ from magnetodb.api.openstack.v1 import create_table
 from magnetodb.api.openstack.v1 import list_tables
 from magnetodb.api.openstack.v1 import describe_table
 from magnetodb.api.openstack.v1 import scan
+from magnetodb.api.openstack.v1 import query
 
 
 from magnetodb.api.amz import controller as amz_api_controller
@@ -72,6 +73,12 @@ class MagnetoDBApplication(wsgi.Router):
                            scan.ScanController()),
                        conditions={'method': 'POST'},
                        action="scan")
+
+        mapper.connect("/v1/{project_id}/data/tables/{table_name}/query",
+                       controller=create_resource(
+                           query.QueryController()),
+                       conditions={'method': 'POST'},
+                       action="query")
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):
