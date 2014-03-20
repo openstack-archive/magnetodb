@@ -122,3 +122,73 @@ class CreateTableTest(test_base_testcase.APITestCase):
         response_payload = json.loads(json_response)
 
         self.assertEqual(expected_response, response_payload)
+
+    @mock.patch('magnetodb.storage.create_table')
+    def test_create_table_no_sec_indexes(self, mock_create_table):
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/fake_project_id/data/tables'
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "Thread",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ]
+            }
+        """
+
+        table_url = ('http://localhost:8080/v1/fake_project_id'
+                     '/data/tables/Thread')
+        expected_response = {'table_description': {
+            'attribute_definitions': [
+                {'attribute_name': 'Subject', 'attribute_type': 'S'},
+                {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
+                {'attribute_name': 'ForumName', 'attribute_type': 'S'}
+            ],
+            'creation_date_time': 0,
+            'item_count': 0,
+            'key_schema': [
+                {'attribute_name': 'ForumName', 'key_type': 'HASH'},
+                {'attribute_name': 'Subject', 'key_type': 'RANGE'}
+            ],
+            'table_name': 'Thread',
+            'table_size_bytes': 0,
+            'table_status': 'ACTIVE',
+            'links': [
+                {'href': table_url, 'rel': 'self'},
+                {'href': table_url, 'rel': 'bookmark'}
+            ]}}
+
+        conn.request("POST", url, headers=headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_create_table.called)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual(expected_response, response_payload)
