@@ -786,10 +786,16 @@ class CassandraStorageImpl(object):
                     perform batch
         @param durable: if True, batch will be fully performed or fully
                     skipped. Partial batch execution isn't allowed
-
-        @raise BackendInteractionException
         """
-        raise NotImplementedError
+        # TODO(achudnovets): 1) Use cassandra BATCH; 2) raise
+        # BackendInteractionException in error cases; 3) add
+        # BackendInteractionException to docstring.
+        for req in write_request_list:
+            if isinstance(req, models.PutItemRequest):
+                self.put_item(context, req)
+            elif isinstance(req, models.DeleteItemRequest):
+                self.delete_item(context, req)
+        return {}
 
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
