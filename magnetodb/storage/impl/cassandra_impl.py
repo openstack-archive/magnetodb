@@ -789,7 +789,12 @@ class CassandraStorageImpl(object):
 
         @raise BackendInteractionException
         """
-        raise NotImplementedError
+        for req in write_request_list:
+            if isinstance(req, models.PutItemRequest):
+                self.put_item(context, req)
+            elif isinstance(req, models.DeleteItemRequest):
+                self.delete_item(context, req)
+        return {}
 
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
