@@ -1,0 +1,12 @@
+Verified+2: Jenkins
+Approved+1: Ilya Sviridov <isviridov@mirantis.com>
+Code-Review+2: Ilya Sviridov <isviridov@mirantis.com>
+Code-Review+1: Maksym Iarmak <miarmak@mirantis.com>
+Code-Review+1: Alexander Chudnovets <achudnovets@mirantis.com>
+Code-Review+2: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Code-Review+1: Andrei Ostapenko <aostapenko@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Thu, 20 Mar 2014 13:00:30 +0000
+Reviewed-on: https://review.openstack.org/81433
+Project: stackforge/magnetodb
+Branch: refs/heads/master
