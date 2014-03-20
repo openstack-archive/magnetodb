@@ -71,9 +71,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         table = self.client.create_table(self.smoke_attrs + self.index_attrs,
                                          tname,
                                          self.smoke_schema,
-                                         self.smoke_throughput,
-                                         self.smoke_lsi,
-                                         self.smoke_gsi)
+                                         self.smoke_throughput)
         rck = self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(table))
         # TODO(yyekovenko) Later should be changed to just "CREATING" (async)
