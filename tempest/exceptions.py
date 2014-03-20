@@ -107,6 +107,10 @@ class StackBuildErrorException(TempestException):
                "due to '%(stack_status_reason)s'")
 
 
+class Duplicate(RestClientException):
+    message = "An object with that identifier already exists"
+
+
 class BadRequest(RestClientException):
     message = "Bad request"
 
