@@ -95,7 +95,7 @@ class CreateTableController():
             url = req.path_url + "/" + table_name
             bookmark = req.path_url + "/" + table_name
 
-            return {
+            result = {
                 parser.Props.TABLE_DESCRIPTION: {
                     parser.Props.ATTRIBUTE_DEFINITIONS: (
                         parser.Parser.format_attribute_definitions(
@@ -107,11 +107,6 @@ class CreateTableController():
                     parser.Props.KEY_SCHEMA: (
                         parser.Parser.format_key_schema(
                             key_attrs
-                        )
-                    ),
-                    parser.Props.LOCAL_SECONDARY_INDEXES: (
-                        parser.Parser.format_local_secondary_indexes(
-                            key_attrs[0], indexed_attr_names
                         )
                     ),
                     parser.Props.TABLE_NAME: table_name,
@@ -131,6 +126,14 @@ class CreateTableController():
                     ]
                 }
             }
+
+            if indexed_attr_names:
+                table_def = result[parser.Props.TABLE_DESCRIPTION]
+                table_def[parser.Props.LOCAL_SECONDARY_INDEXES] = (
+                    parser.Parser.format_local_secondary_indexes(
+                        key_attrs[0], indexed_attr_names))
+
+            return result
         except exception.TableAlreadyExistsException:
             raise exception.ResourceInUseException()
         except exception.AWSErrorResponseException as e:

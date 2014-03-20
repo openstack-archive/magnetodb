@@ -88,7 +88,7 @@ class CreateTableDynamoDBAction(DynamoDBAction):
             # creating table
             storage.create_table(self.context, table_schema)
 
-            return {
+            result = {
                 parser.Props.TABLE_DESCRIPTION: {
                     parser.Props.ATTRIBUTE_DEFINITIONS: (
                         parser.Parser.format_attribute_definitions(
@@ -102,11 +102,6 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                             key_attrs
                         )
                     ),
-                    parser.Props.LOCAL_SECONDARY_INDEXES: (
-                        parser.Parser.format_local_secondary_indexes(
-                            key_attrs[0], indexed_attr_names
-                        )
-                    ),
                     parser.Props.PROVISIONED_THROUGHPUT: (
                         parser.Values.PROVISIONED_THROUGHPUT_DUMMY
                     ),
@@ -117,6 +112,14 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                     parser.Props.TABLE_SIZE_BYTES: 0
                 }
             }
+
+            if indexed_attr_names:
+                table_def = result[parser.Props.TABLE_DESCRIPTION]
+                table_def[parser.Props.LOCAL_SECONDARY_INDEXES] = (
+                    parser.Parser.format_local_secondary_indexes(
+                        key_attrs[0], indexed_attr_names))
+
+            return result
         except exception.TableAlreadyExistsException:
             raise exception.ResourceInUseException()
         except exception.AWSErrorResponseException as e:
