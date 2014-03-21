@@ -112,7 +112,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
     @classmethod
     def wait_for_table_active(cls, table_name, timeout=120, interval=3):
         def check():
-            resp = cls.client.describe_table(table_name)
+            resp = cls.client.describe_table(table_name)[1]
             if "table" in resp and "table_status" in resp["table"]:
                 return resp["table"]["table_status"] == "ACTIVE"
 
