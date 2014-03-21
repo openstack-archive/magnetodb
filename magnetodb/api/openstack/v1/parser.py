@@ -108,6 +108,10 @@ class Props():
     HREF = "href"
     REL = "rel"
 
+    REQUEST_ITEMS = "request_items"
+    REQUEST_DELETE = "delete_request"
+    REQUEST_PUT = "put_request"
+
 
 class Values():
     ATTRIBUTE_TYPE_STRING = TYPE_STRING
@@ -857,3 +861,21 @@ class Parser():
             attribute_updates[attr] = update_action
 
         return attribute_updates
+
+    @classmethod
+    def parse_request_items(cls, request_items_json):
+        result = []
+        for table_name, request_list in request_items_json.iteritems():
+            for request in request_list:
+                for request_type, request_body in request.iteritems():
+                    if request_type == Props.REQUEST_PUT:
+                        result.append(models.PutItemRequest(
+                            table_name,
+                            cls.parse_item_attributes(
+                                request_body[Props.ITEM])))
+                    elif request_type == Props.REQUEST_DELETE:
+                            result.append(models.DeleteItemRequest(
+                                table_name,
+                                cls.parse_key_schema(
+                                    request_body[Props.KEY])))
+        return result
