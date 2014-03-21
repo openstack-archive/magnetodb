@@ -100,19 +100,14 @@ class ScanController(object):
             exclusive_start_key = parser.Parser.parse_item_attributes(
                 exclusive_start_key) if exclusive_start_key else None
 
-
-            scan_filter = body.get(
-                parser.Props.SCAN_FILTER, {}
-            )
+            scan_filter = body.get(parser.Props.SCAN_FILTER, {})
 
             condition_map = parser.Parser.parse_attribute_conditions(
                 scan_filter
             )
 
             segment = body.get(parser.Props.SEGMENT, 0)
-            total_segments = body.get(
-                parser.Props.TOTAL_SEGMENTS, 1
-            )
+            total_segments = body.get(parser.Props.TOTAL_SEGMENTS, 1)
 
             assert segment < total_segments
         except Exception:

@@ -54,8 +54,9 @@ class DescribeTableController(object):
                         )
                     ),
                     parser.Props.TABLE_NAME: table_schema.table_name,
-                    parser.Props.TABLE_STATUS:
-                        parser.Values.TABLE_STATUS_ACTIVE,
+
+                    parser.Props.TABLE_STATUS: (
+                        parser.Values.TABLE_STATUS_ACTIVE),
                     parser.Props.TABLE_SIZE_BYTES: 0,
 
                     parser.Props.LINKS: [
