@@ -95,8 +95,8 @@ class MagnetoDBClientJSON(rest_client.RestClient):
         post_body = {'key': key,
                      'expected': expected}
         for k, v in post_body.items():
-            if v is not None:
-                post_body.update({k: v})
+            if v is None:
+                del post_body[k]
         post_body = json.dumps(post_body)
         resp, body = self.post(url, post_body, self.headers)
         return resp, self._parse_resp(body)
@@ -109,8 +109,8 @@ class MagnetoDBClientJSON(rest_client.RestClient):
                      'consistent_read': consistent_read,
                      }
         for k, v in post_body.items():
-            if v is not None:
-                post_body.update({k: v})
+            if v is None:
+                del post_body[k]
         post_body = json.dumps(post_body)
         resp, body = self.post(url, post_body, self.headers)
         return resp, self._parse_resp(body)
