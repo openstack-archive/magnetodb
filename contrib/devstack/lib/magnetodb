@@ -28,11 +28,8 @@ MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
 MAGNETODB_LOG_DIR=${MAGNETODB_LOG_DIR:-/var/log/magnetodb}
 MAGNETODB_USER=${MAGNETODB_USER:-$STACK_USER}
 
-
-
 #11
 MAGNETODB_BACKEND=${MAGNETODB_BACKEND:-cassandra}
-JDKURL_RPM="http://download.oracle.com/otn-pub/java/jdk/7u45-b18/jdk-7u45-linux-x64.rpm"
 JDKURL_TARBAR="http://download.oracle.com/otn-pub/java/jdk/7u51-b13/jdk-7u51-linux-x64.tar.gz"
 JDK_TARBAR_NAME="jdk-7-linux-x64.tar.gz"
 JDKVersion="1.7.0_51"
@@ -60,8 +57,6 @@ MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
 # Functions
 # ---------
 
-
-
 function install_cassandra() {
 	  #install java
 	  if [ ! -d /usr/lib/jvm/jdk${JDKVersion} ]
@@ -85,30 +80,20 @@ function install_cassandra() {
 #install Cassandra Cluster Manager
 git_clone $CCM_REPO $CCM_DIR $CCM_BRANCH
 sudo pip install -e $CCM_DIR
-sudo apt-get -y install python-setuptools python-dev build-essential
-sudo easy_install pyYaml
+sudo pip install pyYaml
 sudo apt-get -y install ant
 
 
   # for cassandra.io.libevwrapper extension.
   # The C extensions are not required for the driver to run, but they add support
   # for libev and token-aware routing with the Murmur3Partitioner.
-sudo apt-get -y install build-essential python-dev
 sudo apt-get -y install libev4 libev-dev
 
-
-
-	  
 }
-
 
 # install_magnetodb() - Collect source and prepare
 function install_magnetodb() {
 
-	if [ "$MAGNETODB_BACKEND" == "cassandra" ]
-	   then
- 		install_cassandra
-	fi
     git_clone $MAGNETODB_REPO $MAGNETODB_DIR $MAGNETODB_BRANCH
     echo -e $MAGNETODB_ADDITIONAL_REQ >> $MAGNETODB_DIR/requirements.txt
     setup_develop $MAGNETODB_DIR
@@ -119,10 +104,10 @@ function install_magnetodb() {
 function configure_cassandra() {
 
 #allocate loopback interfaces 127.0.0.2 - its a first address for second cassandra, the first node will be use 127.0.0.1
+n=1
 addr=2
 while [ $n -lt $CassandraClusterAmountNodes ]
 do
-	addr=2
 	echo "add secondary loopback 127.0.0.${addr}/8"
 	sudo ip addr add 127.0.0.${addr}/8 dev lo
 	let addr=$addr+1
@@ -137,10 +122,6 @@ ccm populate -n $CassandraClusterAmountNodes
 # configure_magnetodb() - Set config files, create data dirs, etc
 function configure_magnetodb() {
 
-	if [ "$MAGNETODB_BACKEND" == "cassandra" ]
-	   then
- 		configure_cassandra
-	fi
 
     if [[ ! -d $MAGNETODB_LOG_DIR ]]; then
         sudo mkdir -p $MAGNETODB_LOG_DIR
@@ -150,9 +131,7 @@ function configure_magnetodb() {
 }
 
 
-
-
-function start_cassandra() {
+function start_cassandra_back() {
   echo "===  Starting Cassandra Clauster  ==="
   ccm start
   echo "===  Creating KeySpace  ==="
@@ -160,37 +139,47 @@ function start_cassandra() {
  ~/.ccm/repository/$CassandraVersion/bin/cqlsh -f ~/.ccm/KeySpace.txt
 }
 
+function start_cassandra() {
+
+echo "CREATE KEYSPACE $Cassandra_KEYSPACE_TenantName WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':$Cassandra_KEYSPACE_ReplicationFactor};" > ~/.ccm/KeySpace.txt
+screen_it cassandra "ccm start"
+#waiting for cassandra start.
+timeout 60 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done'
+~/.ccm/repository/$CassandraVersion/bin/cqlsh -f ~/.ccm/KeySpace.txt
+}
+
 # start_magnetodb() - Start running processes, including screen
 function start_magnetodb() {
 
-	if [ "$MAGNETODB_BACKEND" == "cassandra" ]
-	   then
- 		start_cassandra
-	fi
 
-    screen_it magnetodb-api "cd $MAGNETODB_DIR && python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
-
-
+    screen_it magnetodb "timeout 60 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' &&  cd $MAGNETODB_DIR && python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
 
 }
 
 function stop_cassandra(){
-ccm remove $CassandraClusterName
+ccm stop $CassandraClusterName
+screen -S $SCREEN_NAME -p cassandra -X kill
 }
 
 
 # stop_magnetodb() - Stop running processes
 function stop_magnetodb() {
 
-
-	if [ "$MAGNETODB_BACKEND" == "cassandra" ]
-	   then
- 		stop_cassandra
-	fi
-
     # Kill the magnetodb screen windows
-    screen -S $SCREEN_NAME -p magnetodb-api -X kill
+    screen -S $SCREEN_NAME -p magnetodb -X kill
 }
+
+
+function clean_cassandra() {
+
+	ccm remove $CassandraClusterName
+
+	for i in `sudo ip addr show dev lo | grep 'secondary' | awk '{print $2}'`
+	do
+		sudo ip addr del $i dev lo
+	done 
+}
+
 
 
 
