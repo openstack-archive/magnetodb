@@ -467,7 +467,7 @@ class Parser():
             }
         ]
 
-        if len(key_attr_names) > 1:
+        if len(key_attr_names) > 1 and key_attr_names[1] is not None:
             res.append({
                 Props.KEY_TYPE: Values.KEY_TYPE_RANGE,
                 Props.ATTRIBUTE_NAME: key_attr_names[1]
