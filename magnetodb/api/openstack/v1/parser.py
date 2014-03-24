@@ -448,7 +448,9 @@ class Parser():
                 )
                 range_key_attr_name = dynamodb_key_attr_name
 
-        return (hash_key_attr_name, range_key_attr_name)
+        if range_key_attr_name:
+            return hash_key_attr_name, range_key_attr_name
+        return hash_key_attr_name,
 
     @classmethod
     def format_key_schema(cls, key_attr_names):
