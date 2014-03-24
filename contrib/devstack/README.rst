@@ -10,6 +10,7 @@ To configure devstack to run Magnetodb::
 
     $ cd ${DEVSTACK_DIR}
     $ echo "enable_service magnetodb" >> local.conf
+    $ echo "enable_service cassandra" >> local.conf
 
 Run devstack as normal::
 
