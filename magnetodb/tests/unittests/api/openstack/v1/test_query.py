@@ -24,10 +24,8 @@ from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 class QueryTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API ScanController."""
 
-    @mock.patch('magnetodb.storage.select_item')
-    def test_query(self, mock_query):
-
-        items = [
+    def setUp(self):
+        self.items = [
             {
                 'ForumName': models.AttributeValue.str('Testing OS API'),
                 'LastPostDateTime': models.AttributeValue.str('3/18/14'),
@@ -40,21 +38,25 @@ class QueryTest(test_base_testcase.APITestCase):
             },
         ]
 
-        last_evaluated_key = {
+        self.last_evaluated_key = {
             'ForumName': models.AttributeValue.str('Testing OS API'),
             'LastPostDateTime': models.AttributeValue.str('3/19/14'),
         }
 
+        self.headers = {'Content-Type': 'application/json',
+                        'Accept': 'application/json'}
+
+        self.url = '/v1/fake_project_id/data/tables/Threads/query'
+
+    @mock.patch('magnetodb.storage.select_item')
+    def test_query(self, mock_query):
         mock_query.return_value = models.SelectResult(
-            items=items,
-            last_evaluated_key=last_evaluated_key,
+            items=self.items,
+            last_evaluated_key=self.last_evaluated_key,
             count=2)
 
-        headers = {'Content-Type': 'application/json',
-                   'Accept': 'application/json'}
-
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/Threads/query'
+
         body = """
             {
                "attributes_to_get": [
@@ -120,7 +122,44 @@ class QueryTest(test_base_testcase.APITestCase):
             }
         }
 
-        conn.request("POST", url, headers=headers, body=body)
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_query.called)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual(expected_response, response_payload)
+
+    @mock.patch('magnetodb.storage.select_item')
+    def test_query_empty_body(self, mock_query):
+        mock_query.return_value = models.SelectResult(
+            items=self.items,
+            last_evaluated_key=self.last_evaluated_key,
+            count=2)
+
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        body = '{}'
+        expected_response = {
+            "count": 2,
+            "items": [
+                {
+                    'ForumName': {'S': 'Testing OS API'},
+                    'LastPostDateTime': {'S': '3/18/14'},
+                    'Posts': {'SS': ['Opening post']}
+                },
+                {
+                    'ForumName': {'S': 'Testing OS API'},
+                    'LastPostDateTime': {'S': '3/19/14'},
+                    'Posts': {'SS': ['Hi', 'Hello']}
+                },
+            ]
+        }
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
 
         response = conn.getresponse()
 

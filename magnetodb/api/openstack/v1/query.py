@@ -27,7 +27,6 @@ LOG = logging.getLogger(__name__)
 
 class QueryController(object):
     schema = {
-        "required": [parser.Props.KEY_CONDITIONS],
         "properties": {
             parser.Props.ATTRIBUTES_TO_GET: {
                 "type": "array",
