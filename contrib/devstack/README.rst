@@ -14,3 +14,10 @@ To configure devstack to run Magnetodb::
 Run devstack as normal::
 
     $ ./stack.sh
+
+Note::
+
+    $ Make sure that your local.conf contains [[local|localrc]] in the first line
+    $ See more about configuration of Devstack at http://devstack.org/configuration.html
+    $ script ./rejoin-stack.sh doesn't work after reboot,
+    $ launch ./stack.sh again if server was rebooted.
