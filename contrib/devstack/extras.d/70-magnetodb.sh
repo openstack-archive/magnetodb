@@ -6,24 +6,19 @@ if is_service_enabled magnetodb; then
         echo "Installing Magnetodb"
         install_magnetodb
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
-	echo "Configuring Magneto"
-	configure_magnetodb        
-
-
+        echo "Configuring Magneto"
+        configure_magnetodb  
 :
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
-        # no-op
         start_magnetodb
     fi
 
     if [[ "$1" == "unstack" ]]; then
-	echo  "Stopping Magnetodb"
+        echo  "Stopping Magnetodb"
         stop_magnetodb
     fi
 
     if [[ "$1" == "clean" ]]; then
-        # no-op
-        :
+        clean_magnetodb
     fi
 fi
-
