@@ -106,14 +106,18 @@ function configure_cassandra() {
     addr=2
     while [ $n -lt $CassandraClusterAmountNodes ]; do
         echo "add secondary loopback 127.0.0.${addr}/8"
-        sudo ip addr add 127.0.0.${addr}/8 dev lo
+        #adding adresses only if doesnt exist
+        sudo ip addr add 127.0.0.${addr}/8 dev lo || [ $? -eq 2 ] && true
         let addr=$addr+1
         let n=$n+1
     done
 
 # Installing Cassandra Cluster
-    ccm create $CassandraClusterName -v $CassandraVersion
-    ccm populate -n $CassandraClusterAmountNodes
+    ccm status $CassandraClusterName || ccm create $CassandraClusterName -v $CassandraVersion
+    ccm populate -n $CassandraClusterAmountNodes || true
+    echo "CREATE KEYSPACE $Cassandra_KEYSPACE_TenantName WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':$Cassandra_KEYSPACE_ReplicationFactor};" > ~/.ccm/KeySpace.txt
+
+
 }
 
 # configure_magnetodb() - Set config files, create data dirs, etc
@@ -132,11 +136,13 @@ function configure_magnetodb() {
 
 
 function start_cassandra() {
-    echo "===  Starting Cassandra Clauster  ==="
+    echo "===  Starting Cassandra Cluster  ==="
     ccm start
+    screen_rc 'cassandra' 'ccm start'
     echo "===  Creating KeySpace  ==="
-    echo "CREATE KEYSPACE $Cassandra_KEYSPACE_TenantName WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':$Cassandra_KEYSPACE_ReplicationFactor};" > ~/.ccm/KeySpace.txt
-    ~/.ccm/repository/$CassandraVersion/bin/cqlsh -f ~/.ccm/KeySpace.txt
+    timeout 60 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
+    echo "show keyspaces;" | ccm node1 cli | grep "Keyspace: $Cassandra_KEYSPACE_TenantName" || ccm node1 cqlsh -f ~/.ccm/KeySpace.txt
+
 }
 
 # start_magnetodb() - Start running processes, including screen
@@ -146,12 +152,13 @@ function start_magnetodb() {
         start_cassandra
     fi
 
-    screen_it magnetodb "cd $MAGNETODB_DIR && python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
+    screen_it magnetodb "timeout 60 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
 
 }
 
 function stop_cassandra(){
-    ccm remove $CassandraClusterName
+    ccm stop $CassandraClusterName
+    screen -S $SCREEN_NAME -p cassandra -X kill
 }
 
 # stop_magnetodb() - Stop running processes
@@ -164,6 +171,19 @@ function stop_magnetodb() {
 # Kill the magnetodb screen windows
     screen -S $SCREEN_NAME -p magnetodb -X kill
 }
+
+
+function clean_magnetodb() {
+
+    ccm remove $CassandraClusterName
+    for i in `sudo ip addr show dev lo | grep 'secondary' | awk '{print $2}'`
+        do
+            sudo ip addr del $i dev lo
+        done
+}
+
+
+
 
 # Restore xtrace
 $XTRACE
