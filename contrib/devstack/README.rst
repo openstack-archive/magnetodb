@@ -14,3 +14,9 @@ To configure devstack to run Magnetodb::
 Run devstack as normal::
 
     $ ./stack.sh
+
+Note::
+
+    $ script ./rejoin-stack.sh doesnt work after reboot,
+    $ launch ./stack.sh again if server was rebooted.
+

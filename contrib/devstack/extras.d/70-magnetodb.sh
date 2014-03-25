@@ -8,8 +8,6 @@ if is_service_enabled magnetodb; then
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
 	echo "Configuring Magneto"
 	configure_magnetodb        
-
-
 :
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         # no-op
@@ -22,8 +20,6 @@ if is_service_enabled magnetodb; then
     fi
 
     if [[ "$1" == "clean" ]]; then
-        # no-op
-        :
+        clean_magnetodb
     fi
 fi
-
