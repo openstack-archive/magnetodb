@@ -400,7 +400,7 @@ class RestClient(object):
         """A simple HTTP request interface."""
 
         url = '/'.join([CONF.boto.magnetodb_url, url])
-        url = url % {'project_id': 'testtenantid'}
+        url = url % {'project_id': 'default_tenant'}
         self._log_request(method, url, headers, body)
         resp, resp_body = self.http_obj.request(url, method,
                                                 headers=headers, body=body)
