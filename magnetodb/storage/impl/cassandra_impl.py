@@ -592,6 +592,104 @@ class CassandraStorageImpl(object):
 
         return (result is None) or result[0]['[applied]']
 
+    def bulk_put_item(self, tenant, table, schema, map):
+        """
+        @param context: current request context
+        @param put_request: contains PutItemRequest items to perform
+                    put item operation
+        @param if_not_exist: put item only is row is new record (It is possible
+                    to use only one of if_not_exist and expected_condition_map
+                    parameter)
+        @param expected_condition_map: expected attribute name to
+                    ExpectedCondition instance mapping. It provides
+                    preconditions to make decision about should item be put or
+                    not
+
+        @return: True if operation performed, otherwise False
+
+        @raise BackendInteractionException
+        """
+
+        key_attr_names = schema.key_attributes
+
+        put_attr_map = self.map_to_attr_vals(map)
+
+        types = self._put_types(put_attr_map)
+        exists = self._put_exists(put_attr_map)
+
+        hash_key_name = key_attr_names[0]
+        encoded_hash_key_value = self._encode_predefined_attr_value(
+            put_attr_map[hash_key_name]
+        )
+
+        not_processed_predefined_attr_names = set(
+            schema.attribute_type_map.keys()
+        )
+
+        query_builder = [
+            'INSERT INTO "', tenant, '"."',
+            self.USER_TABLE_PREFIX, table, '" ('
+        ]
+        attr_values = []
+        dynamic_attr_names = []
+        dynamic_attr_values = []
+        for name, val in put_attr_map.iteritems():
+            if name in not_processed_predefined_attr_names:
+                query_builder += (
+                    '"', self.USER_COLUMN_PREFIX, name, '",'
+                )
+                attr_values.append(self._encode_predefined_attr_value(val))
+                not_processed_predefined_attr_names.remove(name)
+            else:
+                dynamic_attr_names.append(name)
+                dynamic_attr_values.append(
+                    self._encode_dynamic_attr_value(val)
+                )
+
+        query_builder += (
+            self.SYSTEM_COLUMN_ATTRS, ",",
+            self.SYSTEM_COLUMN_ATTR_TYPES, ",",
+            self.SYSTEM_COLUMN_ATTR_EXIST, ",",
+            self.SYSTEM_COLUMN_HASH,
+            ") VALUES("
+        )
+
+        for attr_value in attr_values:
+            query_builder += (attr_value, ",")
+
+        query_builder.append("{")
+
+        if dynamic_attr_values:
+            dynamic_value_iter = iter(dynamic_attr_values)
+            for name in dynamic_attr_names:
+                query_builder += (
+                    "'", name, "':" + dynamic_value_iter.next(), ","
+                )
+            query_builder.pop()
+
+        query_builder += (
+            "},{", types, "},{" + exists + "},", encoded_hash_key_value
+        )
+        query_builder.append(")")
+
+        result = self._execute_query("".join(query_builder), consistent=True)
+
+        return (result is None) or result[0]['[applied]']
+
+    def map_to_attr_vals(self, map):
+        return {
+            name: self.map_to_attr_val(val)
+            for name, val
+            in map.iteritems()}
+
+    def map_to_attr_val(self, map):
+        typ, val = map.items()[0]
+
+        if typ == 'S':
+            return models.AttributeValue.str(val)
+        else:
+            return models.AttributeValue.number(val)
+
     def _put_types(self, attribute_map):
         return ','.join((
             "'{}':'{}'".format(attr, self.STORAGE_TO_CASSANDRA_TYPES[val.type])
