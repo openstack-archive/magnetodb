@@ -33,9 +33,9 @@ import tempest.config
 from tempest import exceptions
 from tempest.openstack.common import log as logging
 import tempest.test
-from tempest.api.keyvalue.boto.utils.wait import re_search_wait
-from tempest.api.keyvalue.boto.utils.wait import state_wait
-from tempest.api.keyvalue.boto.utils.wait import wait_exception
+from tempest.api.keyvalue.boto_base.utils.wait import re_search_wait
+from tempest.api.keyvalue.boto_base.utils.wait import state_wait
+from tempest.api.keyvalue.boto_base.utils.wait import wait_exception
 
 
 LOG = logging.getLogger(__name__)

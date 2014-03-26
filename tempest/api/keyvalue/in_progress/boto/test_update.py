@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.keyvalue.base import MagnetoDBTestCase
+from tempest.api.keyvalue.boto_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
 from tempest.openstack.common import log as logging
 from tempest import test
@@ -28,7 +28,7 @@ class MagnetoDBUpdateTest(MagnetoDBTestCase):
     def setUpClass(cls):
         super(MagnetoDBUpdateTest, cls).setUpClass()
 
-    def create_table_for_test(self, wait):
+    def _create_table_for_test(self, wait):
         self.table_name = rand_name().replace('-', '')
         self.client.create_table(self.smoke_attrs + self.index_attrs,
                                  self.table_name,
@@ -60,7 +60,7 @@ class MagnetoDBUpdateTest(MagnetoDBTestCase):
 
     @test.attr(type='negative')
     def test_update_table_creating(self):
-        self.create_table_for_test(False)
+        self._create_table_for_test(False)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -80,7 +80,7 @@ class MagnetoDBUpdateTest(MagnetoDBTestCase):
 
     @test.attr(type='negative')
     def test_update_item_with_wrong_expected(self):
-        self.create_table_for_test(True)
+        self._create_table_for_test(True)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -108,7 +108,7 @@ class MagnetoDBUpdateTest(MagnetoDBTestCase):
 
     @test.attr(type='negative')
     def test_update_item_bad_keys(self):
-        self.create_table_for_test(True)
+        self._create_table_for_test(True)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         keys = [{self.hashkey: 'badhashkey',
@@ -133,7 +133,7 @@ class MagnetoDBUpdateTest(MagnetoDBTestCase):
 
     @test.attr(type='negative')
     def test_update_item_empty_key(self):
-        self.create_table_for_test(True)
+        self._create_table_for_test(True)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         attribute_updates = {

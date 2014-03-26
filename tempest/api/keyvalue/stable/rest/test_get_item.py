@@ -15,7 +15,7 @@
 
 import random
 import string
-from tempest.api.keyvalue.rest.base import MagnetoDBTestCase
+from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
 
 
@@ -64,24 +64,6 @@ class MagnetoDBPutGetItemTest(MagnetoDBTestCase):
         get_resp = self.client.get_item(self.table_name,
                                         key,
                                         attributes_to_get,
-                                        True)
-        self.assertEqual(get_resp[1]['item']['last_posted_by'], {'S': 'John'})
-
-    def test_get_item_long_table_name(self):
-        self.table_name = self.random_name(255)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 self.table_name,
-                                 self.smoke_schema)
-        item = self.build_smoke_item('forum1', 'subject2',
-                                     last_posted_by='John')
-        key = {self.hashkey: item[self.hashkey],
-               self.rangekey: item[self.rangekey]}
-
-        self.put_smoke_item(self.table_name, 'forum1', 'subject2')
-
-        attributes_to_get = ['last_posted_by']
-        get_resp = self.client.get_item(self.table_name,
-                                        key, attributes_to_get,
                                         True)
         self.assertEqual(get_resp[1]['item']['last_posted_by'], {'S': 'John'})
 

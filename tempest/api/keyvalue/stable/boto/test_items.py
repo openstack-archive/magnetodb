@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.keyvalue.boto.base import MagnetoDBTestCase
+from tempest.api.keyvalue.boto_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
 from tempest.openstack.common import log as logging
 from tempest.test import attr
