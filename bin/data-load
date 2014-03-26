@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+
+# Copyright 2014 Mirantis Inc.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+
+"""CLI tool for data load from json string or file with set of json strings."""
+
+
+import argparse
+import json
+
+from magnetodb.storage import models
+from magnetodb.storage.impl import cassandra_impl
+
+TYPE_DICT = {'N': models.ATTRIBUTE_TYPE_NUMBER,
+             'S': models.ATTRIBUTE_TYPE_STRING}
+
+
+class NameSpace(object):
+    """Custom Namespace object for parser. """
+    pass
+
+
+def context():
+    """Custom context object. """
+    pass
+
+
+def put_item(table, py_obj):
+    """CassandraStorageImpl put_item method wrapper. """
+    put = {}
+
+    for k, v in py_obj.items():
+        put[k] = models.AttributeValue(TYPE_DICT[v.keys()[0]], v.values()[0])
+
+    put_request = models.PutItemRequest(table, put)
+    cassandra = cassandra_impl.CassandraStorageImpl()
+    cassandra.put_item(context, put_request)
+
+
+def string_loader(table, input_string):
+    """Load data from specified string. """
+    py_obj = json.loads(input_string)
+    put_item(table, py_obj)
+
+
+def file_loader(table, input_file):
+    """Load data from specified text file. """
+    line_counter = 0
+    for item in input_file:
+        line_counter += 1
+        try:
+            string_loader(table, item)
+        except ValueError as e:
+            print ('Error in json input. Line %s was not processed. '
+                   'Please fix and try again. %s' % (line_counter, e))
+
+
+def main():
+    namespace = NameSpace()
+    context.tenant = 'default_tenant'
+
+    parser = argparse.ArgumentParser(description='CLI tool for data load')
+
+    parser.add_argument('-t', '--table', type=str, dest='table_name',
+                        help='Name of the table')
+    parser.add_argument('-f', '--file', type=file, dest='input_file',
+                        help='File with imported data')
+    parser.add_argument('-s', '--string', type=str, dest='input_string',
+                        help='String with imported data')
+
+    parser.parse_args(namespace=namespace)
+
+    if not namespace.table_name:
+        print ("You have not specified table name. Use '-t' or '--table' "
+               "<table_name>")
+        return
+
+    if namespace.input_file:
+        file_loader(namespace.table_name, namespace.input_file)
+    elif namespace.input_string:
+        string_loader(namespace.table_name, namespace.input_string)
+    else:
+        print ("You have not specified any input data. Use '-h' or '--help' "
+               "keys for script using info")
+        return
+
+
+if __name__ == '__main__':
+    main()
