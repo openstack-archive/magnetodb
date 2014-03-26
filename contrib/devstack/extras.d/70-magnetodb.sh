@@ -3,22 +3,23 @@ if is_service_enabled magnetodb; then
         # Initial source
         source $TOP_DIR/lib/magnetodb
     elif [[ "$1" == "stack" && "$2" == "install" ]]; then
-        echo "Installing Magnetodb"
+        echo_summary "Installing Magnetodb"
         install_magnetodb
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
-        echo "Configuring Magneto"
+        echo_summary "Configuring Magnetodb"
         configure_magnetodb
-
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
+        echo_summary "Starting Magnetodb"
         start_magnetodb
     fi
 
     if [[ "$1" == "unstack" ]]; then
-        echo  "Stopping Magnetodb"
+        echo "Stopping Magnetodb"
         stop_magnetodb
     fi
 
     if [[ "$1" == "clean" ]]; then
+        echo "Cleaning Magnetodb"
         clean_magnetodb
     fi
 fi
