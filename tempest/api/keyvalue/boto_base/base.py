@@ -20,7 +20,7 @@
 import tempest.clients
 import tempest.config
 import tempest.test
-from tempest.api.keyvalue.boto import test
+from tempest.api.keyvalue.boto_base import test
 from tempest.common.utils import data_utils
 from tempest.openstack.common import log as logging
 

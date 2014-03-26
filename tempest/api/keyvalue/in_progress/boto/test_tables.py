@@ -15,9 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.keyvalue.boto.base import MagnetoDBTestCase
+from tempest.api.keyvalue.boto_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
-from tempest.test import attr
 
 
 class MagnetoDBTablesTest(MagnetoDBTestCase):
@@ -64,56 +63,6 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         # TODO(yyekovenko): Later should be changed to just "CREATING" (async)
         self.assertIn(content['TableStatus'], ['CREATING', 'ACTIVE'])
-
-    @attr(type='smoke')
-    def test_create_list_delete_table(self):
-        tname = rand_name().replace('-', '')
-        table = self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                         tname,
-                                         self.smoke_schema,
-                                         self.smoke_throughput,
-                                         self.smoke_lsi,
-                                         self.smoke_gsi)
-        rck = self.addResourceCleanUp(self.client.delete_table, tname)
-        self.assertEqual(dict, type(table))
-        # TODO(yyekovenko) Later should be changed to just "CREATING" (async)
-        self.assertIn(table['TableDescription']['TableStatus'],
-                      ['CREATING', 'ACTIVE'])
-        self.assertEqual(tname, table['TableDescription']['TableName'])
-        self.assertTrue(self.wait_for_table_active(tname))
-
-        tables = self.client.list_tables()
-        self.assertIn(tname, tables['TableNames'])
-
-        descr = self.client.describe_table(tname)
-        self.assertIn('Table', descr)
-        self.assertIn('ItemCount', descr['Table'])
-
-        res = self.client.delete_table(tname)
-        # TODO(yyekovenko) Later should be changed to just "DELETING" (async)
-        self.assertIn(res['TableDescription']['TableStatus'],
-                      ['DELETING', 'ACTIVE'])
-        self.assertTrue(self.wait_for_table_deleted(tname))
-        self.cancelResourceCleanUp(rck)
-
-    def test_create_table_with_required_params_only(self):
-        """
-        Create a table only with required attrs and verify response content
-        """
-        tname = rand_name().replace('-', '')
-        table = self.client.create_table(
-            attribute_definitions=self.smoke_attrs,
-            table_name=tname,
-            key_schema=self.smoke_schema,
-            provisioned_throughput=self.smoke_throughput)
-        self.addResourceCleanUp(self.client.delete_table, tname)
-
-        self._verify_create_table_response(
-            table,
-            self.smoke_attrs, tname, self.smoke_schema,
-            self.smoke_throughput)
-
-        self.assertTrue(self.wait_for_table_active(tname))
 
     def test_duplicate_table(self):
         tname = rand_name().replace('-', '')
