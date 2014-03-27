@@ -14,8 +14,11 @@
 
 # This script is executed inside pre_test_hook function in desvstack gate.
 
-# Install solum devstack integration
+# Install magnetodb devstack integration
 MAGNETODB_BASE=/opt/stack/new/magnetodb/contrib/devstack
 DEVSTACK_BASE=/opt/stack/new/devstack
+DEVSTACK_GATE=/opt/stack/new/devstack-gate
+
 cp $MAGNETODB_BASE/lib/* $DEVSTACK_BASE/lib
 cp $MAGNETODB_BASE/extras.d/* $DEVSTACK_BASE/extras.d
+sed -e 's/ERROR_ON_CLONE=True/ERROR_ON_CLONE=False/' -i $DEVSTACK_GATE/devstack-vm-gate.sh
