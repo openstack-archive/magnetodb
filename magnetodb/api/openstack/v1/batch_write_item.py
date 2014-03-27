@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
+
 from magnetodb import storage
 from magnetodb.common import exception
 
@@ -87,19 +89,24 @@ class BatchWriteItemController(object):
 
             # parse request_items
             request_items = parser.Parser.parse_request_items(
-                body[parser.Props.REQUEST_ITEMS]
-            )
+                body[parser.Props.REQUEST_ITEMS])
         except Exception:
             raise exception.ValidationException()
 
         try:
             req.context.tenant = project_id
 
-            result = storage.execute_write_batch(
-                req.context,
-                request_items)
+            request_list = collections.deque()
+            for rq_item in request_items:
+                request_list.append(rq_item)
 
-            return result
+            response = {}
+
+            if not storage.execute_write_batch(req.context, request_list):
+                raise exception.AWSErrorResponseException(
+                    'Batch write filed')
+
+            return response
         except exception.AWSErrorResponseException as e:
             raise e
         except Exception:

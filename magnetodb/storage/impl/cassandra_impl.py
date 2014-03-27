@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 from decimal import Decimal
 import json
 import binascii
@@ -457,6 +458,31 @@ class CassandraStorageImpl(object):
 
         @raise BackendInteractionException
         """
+        query = self._get_put_item_query(context, put_request, if_not_exist,
+                                         expected_condition_map)
+
+        result = self._execute_query(query, consistent=True)
+
+        return (result is None) or result[0]['[applied]']
+
+    def _get_put_item_query(self, context, put_request, if_not_exist=False,
+                            expected_condition_map=None):
+        """
+        @param context: current request context
+        @param put_request: contains PutItemRequest items to perform
+                    put item operation
+        @param if_not_exist: put item only is row is new record (It is possible
+                    to use only one of if_not_exist and expected_condition_map
+                    parameter)
+        @param expected_condition_map: expected attribute name to
+                    ExpectedCondition instance mapping. It provides
+                    preconditions to make decision about should item be put or
+                    not
+
+        @return: CQL query string
+
+        @raise BackendInteractionException
+        """
 
         schema = self.describe_table(context, put_request.table_name)
         key_attr_names = schema.key_attributes
@@ -588,9 +614,7 @@ class CassandraStorageImpl(object):
             if if_not_exist:
                 query_builder.append(" IF NOT EXISTS")
 
-        result = self._execute_query("".join(query_builder), consistent=True)
-
-        return (result is None) or result[0]['[applied]']
+        return "".join(query_builder)
 
     def _put_types(self, attribute_map):
         return ','.join((
@@ -621,6 +645,28 @@ class CassandraStorageImpl(object):
 
         @raise BackendInteractionException
         """
+        query = self._get_delete_item_query(context, delete_request,
+                                            expected_condition_map)
+
+        result = self._execute_query(query, consistent=True)
+
+        return (result is None) or result[0]['[applied]']
+
+    def _get_delete_item_query(self, context, delete_request,
+                               expected_condition_map=None):
+        """
+        @param context: current request context
+        @param delete_request: contains DeleteItemRequest items to perform
+                    delete item operation
+        @param expected_condition_map: expected attribute name to
+                    ExpectedCondition instance mapping. It provides
+                    preconditions to make decision about should item be deleted
+                    or not
+
+        @return: CQL query string
+
+        @raise BackendInteractionException
+        """
         query_builder = [
             'DELETE FROM "', context.tenant, '"."', self.USER_TABLE_PREFIX,
             delete_request.table_name, '" WHERE '
@@ -637,9 +683,7 @@ class CassandraStorageImpl(object):
                 expected_condition_map, schema, query_builder
             )
 
-        result = self._execute_query("".join(query_builder), consistent=True)
-
-        return (result is None) or result[0]['[applied]']
+        return "".join(query_builder)
 
     def _compact_indexed_condition(self, cond_list):
         left_condition = None
@@ -779,6 +823,14 @@ class CassandraStorageImpl(object):
                                self._encode_predefined_attr_value(attr_value))
             for attr_name, attr_value in key_map.iteritems()))
 
+    def _get_batch_begin_query(self, durable=True):
+        if durable:
+            return 'BEGIN BATCH'
+        return 'BEGIN UNLOGGED BATCH'
+
+    def _get_batch_apply_query(self):
+        return 'APPLY BATCH;'
+
     def execute_write_batch(self, context, write_request_list, durable=True):
         """
         @param context: current request context
@@ -787,17 +839,31 @@ class CassandraStorageImpl(object):
         @param durable: if True, batch will be fully performed or fully
                     skipped. Partial batch execution isn't allowed
 
-        @return: dict with list of unprocessed keys if any
+        @return: True if operation performed, otherwise False
+
+        @raise BackendInteractionException
         """
-        # TODO(achudnovets): 1) Use cassandra BATCH; 2) raise
-        # BackendInteractionException in error cases; 3) add
-        # BackendInteractionException to docstring.
+        if not write_request_list:
+            # TODO(achudnovets): or raise BackendInteractionException?
+            return False
+
+        query_builder = collections.deque()
+        query_builder.append(self._get_batch_begin_query(durable))
+
         for req in write_request_list:
             if isinstance(req, models.PutItemRequest):
-                self.put_item(context, req)
+                query_builder.append(self._get_put_item_query(context, req))
             elif isinstance(req, models.DeleteItemRequest):
-                self.delete_item(context, req)
-        return {}
+                query_builder.append(
+                    self._get_delete_item_query(context, req))
+            else:
+                raise BackendInteractionException('Wrong WriteItemRequest')
+
+        query_builder.append(self._get_batch_apply_query())
+
+        result = self._execute_query('\n'.join(query_builder),
+                                     consistent=True)
+        return (result is None) or result[0]['[applied]']
 
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
