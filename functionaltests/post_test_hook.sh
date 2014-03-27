@@ -18,3 +18,16 @@
 sudo pip install -r /opt/stack/new/magnetodb/test-requirements.txt
 cd /opt/stack/new/magnetodb/functionaltests
 sudo ./run_tests.sh
+
+#preparing artifacts for publishing
+
+LOGS_DIR=/opt/stack/new/logs
+cd /opt/stack/new/magnetodb/
+cp tempest/tempest.conf $LOGS_DIR/magnetodb_tempest.conf
+
+if [ -f tempest/tempest.log ] ; then
+    cp tempest/tempest.log $LOGS_DIR/magnetodb_tempest.log
+fi
+
+mkdir  $LOGS_DIR/etc/magnetodb
+cp -r etc $LOGS_DIR/etc/magnetodb/
