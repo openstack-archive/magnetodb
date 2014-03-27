@@ -864,18 +864,16 @@ class Parser():
 
     @classmethod
     def parse_request_items(cls, request_items_json):
-        result = []
         for table_name, request_list in request_items_json.iteritems():
             for request in request_list:
                 for request_type, request_body in request.iteritems():
                     if request_type == Props.REQUEST_PUT:
-                        result.append(models.PutItemRequest(
+                        yield models.PutItemRequest(
                             table_name,
                             cls.parse_item_attributes(
-                                request_body[Props.ITEM])))
+                                request_body[Props.ITEM]))
                     elif request_type == Props.REQUEST_DELETE:
-                            result.append(models.DeleteItemRequest(
-                                table_name,
-                                cls.parse_item_attributes(
-                                    request_body[Props.KEY])))
-        return result
+                        yield models.DeleteItemRequest(
+                            table_name,
+                            cls.parse_item_attributes(
+                                request_body[Props.KEY]))
