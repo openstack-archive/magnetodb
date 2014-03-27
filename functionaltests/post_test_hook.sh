@@ -15,8 +15,12 @@
 # This script is executed inside post_test_hook function in devstack gate.
 
 # Install packages from test-requirements.txt
+ip=$(/sbin/ip a | grep eth0|grep inet|awk '{print $2}'|sed 's/\/.*//g')
+
 sudo pip install -r /opt/stack/new/magnetodb/test-requirements.txt
-sudo cd /opt/stack/new/magnetodb/functionaltests
+cd /opt/stack/new/magnetodb/functionaltests
+ip=$(/sbin/ip a | grep eth0|grep inet|awk '{print $2}'|sed 's/\/.*//g')
+sudo sed -e 's|magnetodb_url.*$|magnetodb_url = http://'$ip':8480|' -i /opt/stack/new/magnetodb/tempest/tempest.conf
 sudo ./run_tests.sh
 
 #preparing artifacts for publishing
@@ -31,3 +35,4 @@ fi
 
 sudo mkdir $LOGS_DIR/magnetodb_etc/
 sudo cp -r etc/* $LOGS_DIR/magnetodb_etc/
+
