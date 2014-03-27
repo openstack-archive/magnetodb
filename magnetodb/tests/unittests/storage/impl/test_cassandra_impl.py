@@ -24,12 +24,18 @@ class CassandraImplTestCase(unittest.TestCase):
     """The test for Cassandra storage implementation."""
 
     @mock.patch('magnetodb.storage.impl.cassandra_impl.'
-                'CassandraStorageImpl.delete_item')
+                'CassandraStorageImpl._get_delete_item_query')
     @mock.patch('magnetodb.storage.impl.cassandra_impl.'
-                'CassandraStorageImpl.put_item')
+                'CassandraStorageImpl._get_put_item_query')
+    @mock.patch('magnetodb.storage.impl.cassandra_impl.'
+                'CassandraStorageImpl._execute_query')
     @mock.patch('magnetodb.common.cassandra.cluster.Cluster.connect')
-    def test_execute_write_batch(self, mock_connect, mock_put_item,
-                                 mock_delete_item):
+    def test_execute_write_batch(self, mock_connect, mock_execute_query,
+                                 mock_put_item_query, mock_delete_item_query):
+        mock_execute_query.return_value = None
+        mock_put_item_query.return_value = 'hello'
+        mock_delete_item_query.return_value = 'world'
+
         conn = cassandra_impl.CassandraStorageImpl()
         context = mock.Mock(tenant='fake_tenant')
 
@@ -61,7 +67,11 @@ class CassandraImplTestCase(unittest.TestCase):
 
         result = conn.execute_write_batch(context, request_list)
 
-        self.assertEqual(expected_put, mock_put_item.call_args_list)
-        self.assertEqual(expected_delete, mock_delete_item.call_args_list)
+        self.assertEqual(expected_put, mock_put_item_query.call_args_list)
+        self.assertEqual(expected_delete,
+                         mock_delete_item_query.call_args_list)
 
-        self.assertEqual({}, result)
+        mock_execute_query.assert_called_once_with(
+            'BEGIN BATCH\nhello\nhello\nworld\nAPPLY BATCH;', consistent=True)
+
+        self.assertTrue(result)

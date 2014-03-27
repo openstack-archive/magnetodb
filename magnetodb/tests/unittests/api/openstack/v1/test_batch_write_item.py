@@ -23,7 +23,7 @@ from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 class BatchWriteItemTestCase(test_base_testcase.APITestCase):
     """The test for batch_write_item method for v1 ReST API."""
 
-    @mock.patch('magnetodb.storage.execute_write_batch', return_value={})
+    @mock.patch('magnetodb.storage.execute_write_batch', return_value=True)
     def test_batch_write_item(self, mock_execute_write_batch):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
@@ -78,4 +78,4 @@ class BatchWriteItemTestCase(test_base_testcase.APITestCase):
         response_payload = json.loads(json_response)
 
         self.assertTrue(mock_execute_write_batch.called)
-        self.assertEqual({}, response_payload)
+        self.assertEqual({'unprocessed_items': {}}, response_payload)
