@@ -133,6 +133,8 @@ class Values():
     ACTION_TYPE_DELETE = "DELETE"
 
     TABLE_STATUS_ACTIVE = "ACTIVE"
+    TABLE_STATUS_CREATING = "CREATING"
+    TABLE_STATUS_DELETING = "DELETING"
 
     RETURN_CONSUMED_CAPACITY_INDEXES = "INDEXES"
     RETURN_CONSUMED_CAPACITY_TOTAL = "TOTAL"
@@ -877,3 +879,51 @@ class Parser():
                             table_name,
                             cls.parse_item_attributes(
                                 request_body[Props.KEY]))
+
+    @classmethod
+    def format_request_items(cls, request_items):
+        res = {}
+        for request in request_items:
+            table_requests = res.get(request.table_name, None)
+            if table_requests is None:
+                table_requests = []
+                res[request.table_name] = table_requests
+
+            if isinstance(request, models.PutItemRequest):
+                request_json = {
+                    Props.REQUEST_PUT: {
+                        Props.ITEM: cls.format_item_attributes(
+                            request.attribute_map)
+                    }
+
+                }
+            elif isinstance(request, models.DeleteItemRequest):
+                request_json = {
+                    Props.REQUEST_DELETE: {
+                        Props.KEY: cls.format_item_attributes(
+                            request.key_attribute_map)
+                    }
+                }
+            else:
+                assert False, (
+                    "Unknown request type '{}'".format(
+                        request.__class__.__name__
+                    )
+                )
+
+            table_requests.append(request_json)
+
+        return res
+
+    @classmethod
+    def format_table_status(cls, table_status):
+        if table_status == models.TableMeta.TABLE_STATUS_ACTIVE:
+            return Values.TABLE_STATUS_ACTIVE
+        elif table_status == models.TableMeta.TABLE_STATUS_CREATING:
+            return Values.TABLE_STATUS_CREATING
+        elif table_status == models.TableMeta.TABLE_STATUS_DELETING:
+            return Values.TABLE_STATUS_DELETING
+        else:
+            assert False, (
+                "Table status '{}' is not allowed".format(table_status)
+            )
