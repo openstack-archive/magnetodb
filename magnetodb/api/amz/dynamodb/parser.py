@@ -142,6 +142,9 @@ class Values():
     }
 
     TABLE_STATUS_ACTIVE = "ACTIVE"
+    TABLE_STATUS_CREATING = "CREATING"
+    TABLE_STATUS_DELETING = "DELETING"
+    TABLE_STATUS_UPDATING = "UPDATING"
 
     RETURN_CONSUMED_CAPACITY_INDEXES = "INDEXES"
     RETURN_CONSUMED_CAPACITY_TOTAL = "TOTAL"
@@ -879,3 +882,14 @@ class Parser():
             attribute_updates[attr] = update_action
 
         return attribute_updates
+
+    @classmethod
+    def format_table_status(cls, table_status):
+        if table_status == models.TableMeta.TABLE_STATUS_ACTIVE:
+            return Values.TABLE_STATUS_ACTIVE
+        elif table_status == models.TableMeta.TABLE_STATUS_CREATING:
+            return Values.TABLE_STATUS_CREATING
+        elif table_status == models.TableMeta.TABLE_STATUS_DELETING:
+            return Values.TABLE_STATUS_DELETING
+        else:
+            assert False

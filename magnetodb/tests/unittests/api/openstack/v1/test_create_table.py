@@ -15,6 +15,7 @@
 
 import httplib
 import json
+from magnetodb.storage import models
 
 import mock
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
@@ -25,6 +26,21 @@ class CreateTableTest(test_base_testcase.APITestCase):
 
     @mock.patch('magnetodb.storage.create_table')
     def test_create_table(self, mock_create_table):
+        mock_create_table.return_value = models.TableMeta(
+            models.TableSchema(
+                attribute_type_map={
+                    "ForumName": models.ATTRIBUTE_TYPE_STRING,
+                    "Subject": models.ATTRIBUTE_TYPE_STRING,
+                    "LastPostDateTime": models.ATTRIBUTE_TYPE_STRING
+                },
+                key_attributes=["ForumName", "Subject"],
+                index_def_map={
+                    "LastPostIndex": models.IndexDefinition("LastPostDateTime")
+                }
+            ),
+            models.TableMeta.TABLE_STATUS_ACTIVE
+        )
+
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
@@ -125,6 +141,18 @@ class CreateTableTest(test_base_testcase.APITestCase):
 
     @mock.patch('magnetodb.storage.create_table')
     def test_create_table_no_sec_indexes(self, mock_create_table):
+        mock_create_table.return_value = models.TableMeta(
+            models.TableSchema(
+                attribute_type_map={
+                    "ForumName": models.ATTRIBUTE_TYPE_STRING,
+                    "Subject": models.ATTRIBUTE_TYPE_STRING,
+                    "LastPostDateTime": models.ATTRIBUTE_TYPE_STRING
+                },
+                key_attributes=["ForumName", "Subject"]
+            ),
+            models.TableMeta.TABLE_STATUS_ACTIVE
+        )
+
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 

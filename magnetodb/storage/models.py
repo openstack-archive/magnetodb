@@ -13,52 +13,70 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import decimal
+import json
 
 
 class ModelBase(object):
 
-    _data_fields = []
-
     def __repr__(self):
-        res = {}
-        for field in self._data_fields:
-            res[field] = str(self[field])
+        return self.to_json()
 
-        return str(res)
+    def __init__(self, **kwargs):
+        self.__dict__["_data"] = kwargs
+        self.__dict__["_hash"] = None
 
-    def __init__(self):
-        self.__hash = None
+    def __setattr__(self, key, value):
+        if key == "_hash":
+            self.__dict__[key] = value
+        else:
+            raise Exception("Object is read only")
 
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
+    def __getattr__(self, key):
+        return self._data[key]
 
     def __getitem__(self, key):
-        return getattr(self, key)
+        return self._data[key]
 
     def __eq__(self, other):
-        for field in self._data_fields:
-            if self[field] != other[field]:
-                return False
-
-        return True
+        return (
+            type(other) == type(self) and
+            cmp(self._data, other._data) == 0
+        )
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
-        if not self.__hash:
-            fields_as_list = []
-            for field in self._data_fields:
-                fields_as_list.append(self[field])
-                self.__hash = hash(tuple(fields_as_list))
+        if not self._hash:
+            self._hash = hash(tuple(sorted(self._data.items())))
 
-        return self.__hash
+        return self._hash
+
+    def to_json(self):
+        def encode_model(obj):
+            if isinstance(obj, ModelBase):
+                data = obj._data.copy()
+                data["__model__"] = obj.__class__.__name__
+                return data
+            raise TypeError(repr(obj) + " is not JSON serializable")
+
+        return json.dumps(self, default=encode_model, sort_keys=True)
+
+    @staticmethod
+    def from_json(jsn):
+        def as_model(dct):
+            model_cls = dct.pop('__model__', None)
+            if model_cls:
+                return eval(model_cls)(**dct)
+            return dct
+
+        return json.loads(jsn, object_hook=as_model)
 
 
 class AttributeType(ModelBase):
-    ELEMENT_TYPE_STRING = "string"
-    ELEMENT_TYPE_NUMBER = "number"
-    ELEMENT_TYPE_BLOB = "blob"
+    ELEMENT_TYPE_STRING = "s"
+    ELEMENT_TYPE_NUMBER = "n"
+    ELEMENT_TYPE_BLOB = "b"
 
     COLLECTION_TYPE_SET = "set"
 
@@ -67,11 +85,7 @@ class AttributeType(ModelBase):
 
     _allowed_collection_types = set([None, COLLECTION_TYPE_SET])
 
-    _data_fields = ['element_type', 'collection_type']
-
     def __init__(self, element_type, collection_type=None):
-        super(AttributeType, self).__init__()
-
         assert element_type in self._allowed_types, (
             "Attribute type '%s' isn't allowed" % element_type
         )
@@ -80,16 +94,8 @@ class AttributeType(ModelBase):
             "Attribute type collection '%s' isn't allowed" % collection_type
         )
 
-        self._element_type = element_type
-        self._collection_type = collection_type
-
-    @property
-    def element_type(self):
-        return self._element_type
-
-    @property
-    def collection_type(self):
-        return self._collection_type
+        super(AttributeType, self).__init__(element_type=element_type,
+                                            collection_type=collection_type)
 
 
 ATTRIBUTE_TYPE_STRING = AttributeType(AttributeType.ELEMENT_TYPE_STRING)
@@ -107,56 +113,43 @@ ORDER_TYPE_DESC = "DESC"
 
 
 class AttributeValue(ModelBase):
-
-    _data_fields = ['value', 'type']
-
     def __init__(self, attr_type, attr_value):
-        super(AttributeValue, self).__init__()
-
-        self._type = attr_type
-
         if attr_type == ATTRIBUTE_TYPE_STRING:
-            self._value = self.__create_str(attr_value)
+            value = self.__create_str(attr_value)
         elif attr_type == ATTRIBUTE_TYPE_NUMBER:
-            self._value = self.__create_number(attr_value)
+            value = self.__create_number(attr_value)
         elif attr_type == ATTRIBUTE_TYPE_BLOB:
-            self._value = self.__create_blob(attr_value)
+            value = self.__create_blob(attr_value)
         elif attr_type == ATTRIBUTE_TYPE_STRING_SET:
-            self._value = self.__create_str_set(attr_value)
+            value = self.__create_str_set(attr_value)
         elif attr_type == ATTRIBUTE_TYPE_NUMBER_SET:
-            self._value = self.__create_number_set(attr_value)
+            value = self.__create_number_set(attr_value)
         elif attr_type == ATTRIBUTE_TYPE_BLOB_SET:
-            self._value = self.__create_blob_set(attr_value)
+            value = self.__create_blob_set(attr_value)
         else:
             assert False, "Attribute type wasn't recognized"
 
-    @property
-    def value(self):
-        return self._value
-
-    @property
-    def type(self):
-        return self._type
+        super(AttributeValue, self).__init__(type=attr_type, value=value)
 
     @property
     def is_str(self):
-        return self._type == ATTRIBUTE_TYPE_STRING
+        return self.type == ATTRIBUTE_TYPE_STRING
 
     @property
     def is_number(self):
-        return self._type == ATTRIBUTE_TYPE_NUMBER
+        return self.type == ATTRIBUTE_TYPE_NUMBER
 
     @property
     def is_str_set(self):
-        return self._type == ATTRIBUTE_TYPE_STRING_SET
+        return self.type == ATTRIBUTE_TYPE_STRING_SET
 
     @property
     def is_number_set(self):
-        return self._type == ATTRIBUTE_TYPE_NUMBER_SET
+        return self.type == ATTRIBUTE_TYPE_NUMBER_SET
 
     @property
     def is_blob_set(self):
-        return self._type == ATTRIBUTE_TYPE_BLOB_SET
+        return self.type == ATTRIBUTE_TYPE_BLOB_SET
 
     @classmethod
     def __create_str(cls, str_value):
@@ -210,7 +203,7 @@ class AttributeValue(ModelBase):
         return cls(ATTRIBUTE_TYPE_NUMBER_SET, number_set_value)
 
 
-class Condition(object):
+class Condition(ModelBase):
     CONDITION_TYPE_EQUAL = "e"
 
     _allowed_types = set([CONDITION_TYPE_EQUAL])
@@ -219,17 +212,7 @@ class Condition(object):
         assert condition_type in self._allowed_types, (
             "Condition type '%s' isn't allowed" % condition_type
         )
-
-        self._condition_type = condition_type
-        self._condition_arg = condition_arg
-
-    @property
-    def type(self):
-        return self._condition_type
-
-    @property
-    def arg(self):
-        return self._condition_arg
+        super(Condition, self).__init__(type=condition_type, arg=condition_arg)
 
     @classmethod
     def eq(cls, condition_arg):
@@ -323,7 +306,7 @@ class ExpectedCondition(Condition):
         return cls(cls.CONDITION_TYPE_EXISTS, False)
 
 
-class SelectType(object):
+class SelectType(ModelBase):
     SELECT_TYPE_ALL = "all"
     SELECT_TYPE_ALL_PROJECTED = "all_projected"
     SELECT_TYPE_SPECIFIED = "specified"
@@ -336,17 +319,8 @@ class SelectType(object):
         assert select_type in self._allowed_types, (
             "Select type '%s' isn't allowed" % select_type
         )
-
-        self._select_type = select_type
-        self._attributes = attributes
-
-    @property
-    def type(self):
-        return self._select_type
-
-    @property
-    def attributes(self):
-        return self._attributes
+        super(SelectType, self).__init__(type=select_type,
+                                         attributes=attributes)
 
     @classmethod
     def all(cls):
@@ -366,39 +340,31 @@ class SelectType(object):
 
     @property
     def is_count(self):
-        return self._select_type == self.SELECT_TYPE_COUNT
+        return self.type == self.SELECT_TYPE_COUNT
 
     @property
     def is_all(self):
-        return self._select_type == self.SELECT_TYPE_ALL
+        return self.type == self.SELECT_TYPE_ALL
 
     @property
     def is_all_projected(self):
-        return self._select_type == self.SELECT_TYPE_ALL_PROJECTED
+        return self.type == self.SELECT_TYPE_ALL_PROJECTED
 
     @property
     def is_specified(self):
-        return self._select_type == self.SELECT_TYPE_SPECIFIED
+        return self.type == self.SELECT_TYPE_SPECIFIED
 
 
-class WriteItemBatchableRequest(object):
-    def __init__(self, table_name, timestamp=None):
+class WriteItemBatchableRequest(ModelBase):
+    def __init__(self, table_name, **kwargs):
         """
         @param table_name: String, name of table to delete item from
         @param timestamp: timestamp of operation. Operation will be skipped
                     if another one already performed with greater or equal
                     timestamp
         """
-        self._table_name = table_name
-        self._timestamp = timestamp
-
-    @property
-    def table_name(self):
-        return self._table_name
-
-    @property
-    def timestamp(self):
-        return self._timestamp
+        super(WriteItemBatchableRequest, self).__init__(table_name=table_name,
+                                                        **kwargs)
 
 
 class DeleteItemRequest(WriteItemBatchableRequest):
@@ -411,13 +377,8 @@ class DeleteItemRequest(WriteItemBatchableRequest):
                     IndexedCondition instance mapping. It defines rows
                     set to be removed
         """
-        super(DeleteItemRequest, self).__init__(table_name)
-
-        self._key_attribute_map = key_attribute_map
-
-    @property
-    def key_attribute_map(self):
-        return self._key_attribute_map
+        super(DeleteItemRequest, self).__init__(
+            table_name, key_attribute_map=key_attribute_map)
 
 
 class PutItemRequest(WriteItemBatchableRequest):
@@ -428,18 +389,13 @@ class PutItemRequest(WriteItemBatchableRequest):
                     It defines row key and additional attributes to put
                     item
         """
-        super(PutItemRequest, self).__init__(table_name)
-
-        self._attribute_map = attribute_map
-
-    @property
-    def attribute_map(self):
-        return self._attribute_map
+        super(PutItemRequest, self).__init__(
+            table_name, attribute_map=attribute_map)
 
 
-class UpdateItemAction(object):
+class UpdateItemAction(ModelBase):
     UPDATE_ACTION_PUT = "put"
-    UPDATE_ACTION_DELETE = "delete"
+    UPDATE_ACTION_DELETE = "del"
     UPDATE_ACTION_ADD = "add"
 
     _allowed_actions = set([UPDATE_ACTION_PUT, UPDATE_ACTION_DELETE,
@@ -451,53 +407,35 @@ class UpdateItemAction(object):
         @param value: AttributeValue instance, parameter for action
         """
         assert action in self._allowed_actions, (
-            "Update action '%s' is't allowed" % action
+            "Update action '%s' isn't allowed" % action
         )
 
-        self._action = action
-        self._value = value
-
-    @property
-    def action(self):
-        return self._action
-
-    @property
-    def value(self):
-        return self._value
+        super(UpdateItemAction, self).__init__(action=action, value=value)
 
 
 class IndexDefinition(ModelBase):
-    _data_fields = ['attribute_to_index', 'projected_attributes']
-
-    def __init__(self, attribute_to_index,
-                 projected_attributes=None):
+    def __init__(self, attribute_to_index, projected_attributes=None):
         """
         @param index_name: name of index
         @param attribute_to_index: attribute name to be indexed
         @param projected_attributes: set of non key attribute names to be
                     projected. If 'None' - all attributes will be projected
         """
-
-        super(IndexDefinition, self).__init__()
-
-        self._attribute_to_index = attribute_to_index
-        self._projected_attributes = (
+        projected_attributes = (
             None if projected_attributes is None else
             frozenset(projected_attributes)
         )
 
-    @property
-    def attribute_to_index(self):
-        return self._attribute_to_index
-
-    @property
-    def projected_attributes(self):
-        return self._projected_attributes
+        super(IndexDefinition, self).__init__(
+            attribute_to_index=attribute_to_index,
+            projected_attributes=projected_attributes
+        )
 
 
-class SelectResult(object):
+class SelectResult(ModelBase):
 
-    def __init__(self, items=None, last_evaluated_key=None, count=None):
+    def __init__(self, items=None, last_evaluated_key=None, count=None,
+                 **kwargs):
         """
         @param items: list of attribute name to AttributeValue mappings
         @param last_evaluated_key: attribute name to AttributeValue mapping,
@@ -510,21 +448,9 @@ class SelectResult(object):
         else:
             assert (items is None) or (count == len(items))
 
-        self._items = items
-        self._count = count
-        self._last_evaluated_key = last_evaluated_key
-
-    @property
-    def items(self):
-        return self._items
-
-    @property
-    def count(self):
-        return self._count
-
-    @property
-    def last_evaluated_key(self):
-        return self._last_evaluated_key
+        super(SelectResult, self).__init__(
+            items=items, count=count, last_evaluated_key=last_evaluated_key,
+            **kwargs)
 
 
 class ScanResult(SelectResult):
@@ -532,51 +458,47 @@ class ScanResult(SelectResult):
     def __init__(self, items=None, last_evaluated_key=None,
                  count=None, scanned_count=None):
 
-        super(ScanResult, self).__init__(items, last_evaluated_key, count)
-
-        self._scanned_count = scanned_count
-
-    @property
-    def scanned_count(self):
-        return self._scanned_count
+        super(ScanResult, self).__init__(items, last_evaluated_key, count,
+                                         scanned_count=scanned_count)
 
 
 class TableSchema(ModelBase):
-    _data_fields = ['table_name', 'attribute_type_map', 'key_attributes',
-                    'index_def_map']
 
-    def __init__(self, table_name, attribute_type_map, key_attributes,
-                 index_def_map=None):
+    def __init__(self, attribute_type_map, key_attributes, index_def_map=None):
         """
-        @param table_name: String, name of table to create
         @param attribute_type_map: attribute name to AttributeType mapping
         @param key_attrs: list of key attribute names, contains partition key
                     (the first in list, required) attribute name and extra key
                     attribute names (the second and other list items, not
                     required)
-
-        @param index_def_map: attribute name to IndexDefinition mapping
+        @param index_def_map: index name to IndexDefinition mapping
         """
 
-        super(TableSchema, self).__init__()
+        if index_def_map is None:
+            index_def_map = {}
 
-        self._table_name = table_name
-        self._attribute_type_map = attribute_type_map
-        self._key_attributes = key_attributes
-        self._index_def_map = {} if index_def_map is None else index_def_map
+        super(TableSchema, self).__init__(
+            attribute_type_map=attribute_type_map,
+            key_attributes=key_attributes,
+            index_def_map=index_def_map)
 
-    @property
-    def table_name(self):
-        return self._table_name
 
-    @property
-    def attribute_type_map(self):
-        return self._attribute_type_map
+class TableMeta(ModelBase):
+    TABLE_STATUS_CREATING = "creating"
+    TABLE_STATUS_DELETING = "deleting"
+    TABLE_STATUS_ACTIVE = "active"
 
-    @property
-    def key_attributes(self):
-        return self._key_attributes
+    _allowed_statuses = set([TABLE_STATUS_CREATING, TABLE_STATUS_DELETING,
+                             TABLE_STATUS_ACTIVE])
 
-    @property
-    def index_def_map(self):
-        return self._index_def_map
+    def __init__(self, schema, status):
+        """
+        @param table_schema: TableSchema instance
+        @param status: table status
+        """
+
+        assert status in self._allowed_statuses, (
+            "Table status '%s' isn't allowed" % status
+        )
+
+        super(TableMeta, self).__init__(schema=schema, status=status)

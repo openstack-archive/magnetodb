@@ -32,16 +32,19 @@ def setup():
     )
 
 
-def create_table(context, table_schema):
+def create_table(context, table_name, table_schema):
     """
     Creates table
 
     @param context: current request context
+    @param table_name: String, name of the table to create
     @param table_schema: TableSchema instance which define table to create
+
+    @return TableMeta instance with metadata of created table
 
     @raise BackendInteractionException
     """
-    __STORAGE_IMPL.create_table(context, table_schema)
+    return __STORAGE_IMPL.create_table(context, table_name, table_schema)
 
 
 def delete_table(context, table_name):
@@ -123,17 +126,16 @@ def delete_item(context, delete_request, expected_condition_map=None):
                                       expected_condition_map)
 
 
-def execute_write_batch(context, write_request_list, durable=True):
+def execute_write_batch(context, write_request_list):
     """
     @param context: current request context
     @param write_request_list: contains WriteItemBatchableRequest items to
                 perform batch
-    @param durable: if True, batch will be fully performed or fully skipped.
-                Partial batch execution isn't allowed
 
+    @return: List of unprocessed items
     @raise BackendInteractionException
     """
-    __STORAGE_IMPL.execute_write_batch(context, write_request_list, durable)
+    return __STORAGE_IMPL.execute_write_batch(context, write_request_list)
 
 
 def update_item(context, table_name, key_attribute_map, attribute_action_map,

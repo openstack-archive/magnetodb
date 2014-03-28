@@ -24,17 +24,17 @@ class CassandraImplTestCase(unittest.TestCase):
     """The test for Cassandra storage implementation."""
 
     @mock.patch('magnetodb.storage.impl.cassandra_impl.'
-                'CassandraStorageImpl._get_delete_item_query')
+                'CassandraStorageImpl.delete_item')
     @mock.patch('magnetodb.storage.impl.cassandra_impl.'
-                'CassandraStorageImpl._get_put_item_query')
+                'CassandraStorageImpl.put_item')
     @mock.patch('magnetodb.storage.impl.cassandra_impl.'
                 'CassandraStorageImpl._execute_query')
     @mock.patch('magnetodb.common.cassandra.cluster.Cluster.connect')
     def test_execute_write_batch(self, mock_connect, mock_execute_query,
-                                 mock_put_item_query, mock_delete_item_query):
+                                 mock_put_item, mock_delete_item):
         mock_execute_query.return_value = None
-        mock_put_item_query.return_value = 'hello'
-        mock_delete_item_query.return_value = 'world'
+        mock_put_item.return_value = None
+        mock_delete_item.return_value = None
 
         conn = cassandra_impl.CassandraStorageImpl()
         context = mock.Mock(tenant='fake_tenant')
@@ -65,13 +65,10 @@ class CassandraImplTestCase(unittest.TestCase):
                         mock.call(context, request_list[1]), ]
         expected_delete = [mock.call(context, request_list[2])]
 
-        result = conn.execute_write_batch(context, request_list)
+        unprocessed_items = conn.execute_write_batch(context, request_list)
 
-        self.assertEqual(expected_put, mock_put_item_query.call_args_list)
+        self.assertEqual(expected_put, mock_put_item.call_args_list)
         self.assertEqual(expected_delete,
-                         mock_delete_item_query.call_args_list)
+                         mock_delete_item.call_args_list)
 
-        mock_execute_query.assert_called_once_with(
-            'BEGIN BATCH\nhello\nhello\nworld\nAPPLY BATCH;', consistent=True)
-
-        self.assertTrue(result)
+        self.assertEqual(unprocessed_items, [])
