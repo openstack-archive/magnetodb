@@ -100,13 +100,15 @@ class BatchWriteItemController(object):
             for rq_item in request_items:
                 request_list.append(rq_item)
 
-            response = {'unprocessed_items': {}}
+            unprocessed_items = storage.execute_write_batch(
+                req.context, request_list
+            )
 
-            if not storage.execute_write_batch(req.context, request_list):
-                raise exception.AWSErrorResponseException(
-                    'Batch write failed')
-
-            return response
+            return {
+                'unprocessed_items': parser.Parser.format_request_items(
+                    unprocessed_items
+                )
+            }
         except exception.AWSErrorResponseException as e:
             raise e
         except Exception:

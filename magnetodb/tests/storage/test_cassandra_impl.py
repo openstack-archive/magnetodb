@@ -19,7 +19,7 @@ import uuid
 import binascii
 
 from magnetodb.common.cassandra import cluster
-from cassandra import decoder
+from cassandra import query
 
 from magnetodb.storage import models
 from magnetodb.storage.impl import cassandra_impl as impl
@@ -37,49 +37,88 @@ class FakeContext(object):
 
 
 class TestCassandraBase(unittest.TestCase):
-    KEYSPACE_PER_TEST_METHOD = "test"
-    KEYSPACE_PER_TEST_CLASS = "class"
+    TENANT_PER_TEST_METHOD = "test"
+    TENANT_PER_TEST_CLASS = "class"
 
-    _keyspace_scope = KEYSPACE_PER_TEST_CLASS
+    _tenant_scope = TENANT_PER_TEST_CLASS
 
-    test_data_keys = [
-        ('id', 'decimal', '1', 1),
-        ('range', 'text', "'1'", '1'),
-    ]
+    test_data_keys = {
+        'id': ('decimal', '1', 1),
+        'range': ('text', "'1'", '1')
+    }
 
-    test_data_predefined_fields = [
-        ('indexed', 'text', "'ind'", 'ind'),
-        ('str', 'text', "'str'", 'str'),
-        ('numbr', 'decimal', '1', 1),
-        ('blb', 'blob', '0x{}'.format('blob'.encode('hex')), 'blob'),
-        ('set_number', 'set<decimal>', '{1,2,3}', {1, 2, 3}),
-        ('set_string', 'set<text>', "{'a','b','c'}", {'a', 'b', 'c'}),
-        ('set_blob', 'set<blob>', '{{0x{}, 0x{}}}'.format(
-            'blob1'.encode('hex'),
-            'blob2'.encode('hex')), {'blob1', 'blob2'})
-    ]
+    test_table_schema = models.TableSchema(
+        {
+            "id": models.ATTRIBUTE_TYPE_NUMBER,
+            "range": models.ATTRIBUTE_TYPE_STRING,
+            "indexed": models.ATTRIBUTE_TYPE_STRING,
+            "str": models.ATTRIBUTE_TYPE_STRING,
+            "numbr": models.ATTRIBUTE_TYPE_NUMBER,
+            "blb": models.ATTRIBUTE_TYPE_BLOB,
+            "set_number": models.ATTRIBUTE_TYPE_NUMBER_SET,
+            "set_string": models.ATTRIBUTE_TYPE_STRING_SET,
+            "set_blob": models.ATTRIBUTE_TYPE_BLOB_SET
+        },
+        ["id", "range"]
+    )
 
-    test_data_system_fields = [
-        ('system_hash', 'decimal'),
-        ('system_attrs', 'map<text,blob>'),
-        ('system_attr_types', 'map<text,text>'),
-        ('system_attr_exist', 'set<text>'),
-    ]
+    test_table_schema_with_index = models.TableSchema(
+        {
+            "id": models.ATTRIBUTE_TYPE_NUMBER,
+            "range": models.ATTRIBUTE_TYPE_STRING,
+            "indexed": models.ATTRIBUTE_TYPE_STRING,
+            "str": models.ATTRIBUTE_TYPE_STRING,
+            "numbr": models.ATTRIBUTE_TYPE_NUMBER,
+            "blb": models.ATTRIBUTE_TYPE_BLOB,
+            "set_number": models.ATTRIBUTE_TYPE_NUMBER_SET,
+            "set_string": models.ATTRIBUTE_TYPE_STRING_SET,
+            "set_blob": models.ATTRIBUTE_TYPE_BLOB_SET
+        },
+        ["id", "range"],
+        {
+            "index": models.IndexDefinition("indexed")
+        }
+    )
 
-    test_data_dynamic_fields = [
-        ('fnum', 'decimal', binascii.hexlify(json.dumps('1')), 1),
-        ('fstr', 'text', binascii.hexlify(json.dumps('fstr')), 'fstr'),
-        ('fblb', 'blob', binascii.hexlify(json.dumps('fblob')), 'fblob'),
-        ('fsnum', 'set<decimal>',
-         binascii.hexlify(json.dumps(['1', '2', '3'])), {1, 2, 3}),
-        ('fsstr', 'set<text>',
-         binascii.hexlify(json.dumps(['fa', 'fb', 'fc'])), {'fa', 'fb', 'fc'}),
-        ('fsblob', 'set<blob>',
-         binascii.hexlify(json.dumps(['fblob1', 'fblob2'])),
-         {'fblob1', 'fblob2'})
-    ]
+    test_data_predefined_fields = {
+        'indexed': ('text', "'ind'", 'ind'),
+        'str': ('text', "'str'", 'str'),
+        'numbr': ('decimal', '1', 1),
+        'blb': ('blob', '0x{}'.format(binascii.hexlify('blob')), 'blob'),
+        'set_number': ('set<decimal>', '{1,2,3}', {1, 2, 3}),
+        'set_string': ('set<text>', "{'a','b','c'}", {'a', 'b', 'c'}),
+        'set_blob': (
+            'set<blob>', '{{0x{}, 0x{}}}'.format(
+                binascii.hexlify('blob1'), binascii.hexlify('blob2')),
+            {'blob1', 'blob2'}
+        )
+    }
 
-    C2S_TYPES = impl.CassandraStorageImpl.CASSANDRA_TO_STORAGE_TYPES
+    test_data_system_fields = {
+        impl.SYSTEM_COLUMN_EXTRA_ATTR_DATA: 'map<text,blob>',
+        impl.SYSTEM_COLUMN_EXTRA_ATTR_TYPES: 'map<text,text>',
+        impl.SYSTEM_COLUMN_ATTR_EXIST: 'set<text>'
+    }
+
+    test_data_dynamic_fields = {
+        'fnum': ('decimal', binascii.hexlify(json.dumps('1')), 1),
+        'fstr': ('text', binascii.hexlify(json.dumps('fstr')), 'fstr'),
+        'fblb': ('blob', binascii.hexlify(json.dumps('fblob')), 'fblob'),
+        'fsnum': (
+            'set<decimal>', binascii.hexlify(json.dumps(['1', '2', '3'])),
+            {1, 2, 3}
+        ),
+        'fsstr': (
+            'set<text>', binascii.hexlify(
+                json.dumps(['fa', 'fb', 'fc'])), {'fa', 'fb', 'fc'}
+        ),
+        'fsblob': (
+            'set<blob>', binascii.hexlify(json.dumps(['fblob1', 'fblob2'])),
+            {'fblob1', 'fblob2'}
+        )
+    }
+
+    C2S_TYPES = impl.CASSANDRA_TO_STORAGE_TYPES
 
     @classmethod
     def setUpClass(cls):
@@ -90,38 +129,39 @@ class TestCassandraBase(unittest.TestCase):
 
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
         cls.SESSION = cls.CLUSTER.connect()
-        cls.SESSION.row_factory = decoder.dict_factory
+        cls.SESSION.row_factory = query.dict_factory
         cls.SESSION.default_timeout = 300
 
-        if cls._keyspace_scope == cls.KEYSPACE_PER_TEST_CLASS:
-            cls.keyspace = cls._get_unique_name()
-            cls._create_keyspace(cls.keyspace)
+        if cls._tenant_scope == cls.TENANT_PER_TEST_CLASS:
+            cls.tenant = cls._get_unique_name()
+            cls._create_tenant(cls.tenant)
 
         cls.expected_data = {
             name: models.AttributeValue(cls.C2S_TYPES[typ], val)
-            for name, typ, _, val
-            in (cls.test_data_keys +
-                cls.test_data_dynamic_fields +
-                cls.test_data_predefined_fields)}
+            for name, (typ, _, val)
+            in dict(cls.test_data_keys.items() +
+                    cls.test_data_dynamic_fields.items() +
+                    cls.test_data_predefined_fields.items()).iteritems()
+        }
 
     @classmethod
     def tearDownClass(cls):
         super(TestCassandraBase, cls).tearDownClass()
-        if cls._keyspace_scope == cls.KEYSPACE_PER_TEST_CLASS:
-            cls._drop_keyspace(cls.keyspace)
+        if cls._tenant_scope == cls.TENANT_PER_TEST_CLASS:
+            cls._drop_tenant(cls.tenant)
 
     def setUp(self):
-        if self._keyspace_scope == self.KEYSPACE_PER_TEST_METHOD:
+        if self._tenant_scope == self.TENANT_PER_TEST_METHOD:
             self.keyspace = self._get_unique_name()
-            self._create_keyspace(self.keyspace)
+            self._create_tenant(self.tenant)
 
-        self.context = FakeContext(self.keyspace)
+        self.context = FakeContext(self.tenant)
 
         self.table_name = self._get_unique_name()
 
     def tearDown(self):
-        if self._keyspace_scope == self.KEYSPACE_PER_TEST_METHOD:
-            self._drop_keyspace(self.keyspace)
+        if self._tenant_scope == self.TENANT_PER_TEST_METHOD:
+            self._drop_tenant(self.tenant)
 
     @staticmethod
     def _get_unique_name():
@@ -129,101 +169,229 @@ class TestCassandraBase(unittest.TestCase):
         return 'test' + filter(lambda x: x != '-', name)[:28]
 
     @classmethod
-    def _create_keyspace(cls, keyspace):
-        query = "CREATE KEYSPACE {} WITH replication".format(keyspace)
+    def _create_tenant(cls, tenant):
+        query = "CREATE KEYSPACE {}{} WITH replication".format(
+            impl.USER_PREFIX, tenant)
         query += " = {'class':'SimpleStrategy', 'replication_factor':1}"
 
         cls.SESSION.execute(query)
 
     @classmethod
-    def _drop_keyspace(cls, keyspace):
-        query = ("DROP KEYSPACE {}".format(keyspace))
+    def _drop_tenant(cls, tenant):
+        query = ("DROP KEYSPACE {}{}".format(impl.USER_PREFIX, tenant))
 
         cls.SESSION.execute(query)
 
-    def _get_table_names(self, keyspace=None):
-        keyspace = keyspace or self.keyspace
+    def _get_table_names(self, tenant=None):
 
-        ks = self.CLUSTER.metadata.keyspaces[keyspace]
+        query = (
+            "SELECT name FROM magnetodb.table_info WHERE tenant='{}'"
+        ).format(
+            tenant or self.tenant
+        )
 
-        return [k[len("user_"):] for k in ks.tables.keys()]
+        result = self.SESSION.execute(query)
+        return [item["name"] for item in result]
 
-    def _create_table(self, keyspace=None, table_name=None):
-        keyspace = keyspace or self.keyspace
-        table_name = table_name or self.table_name
-        query = "CREATE TABLE {}.user_{} (".format(keyspace, table_name)
-
-        for field in self.test_data_keys:
-            name, typ, _, _ = field
-            query += 'user_{} {},'.format(name, typ)
-
-        for field in self.test_data_predefined_fields:
-            name, typ, _, _ = field
-            query += 'user_{} {},'.format(name, typ)
-
-        for field in self.test_data_system_fields:
-            name, typ = field
-            query += '{} {},'.format(name, typ)
-
-        query += " PRIMARY KEY(user_id, user_range))"
-
-        self.SESSION.execute(query)
-        self._create_index(attr='system_hash')
-
-    def _create_index(self, keyspace=None, table_name=None,
-                      attr='user_indexed', index_name=""):
-        keyspace = keyspace or self.keyspace
+    def _create_table(self, tenant=None, table_name=None, indexed=True):
+        tenant = tenant or self.tenant
         table_name = table_name or self.table_name
 
-        if index_name:
-            index_name = "_".join((table_name, index_name))
+        internal_table_name = impl.USER_PREFIX + self._get_unique_name()
+        keyspace = impl.USER_PREFIX + tenant
 
-        query = "CREATE INDEX {} ON {}.user_{} ({})".format(
-            index_name, keyspace, table_name, attr)
+        query = (
+            "INSERT INTO magnetodb.table_info (tenant, name, exists, "
+            '"schema", status, internal_name) '
+            "VALUES('{}', '{}', 1, '{}', 'active', '{}') IF NOT EXISTS"
+        ).format(
+            tenant, table_name,
+            self.test_table_schema_with_index.to_json() if indexed else
+            self.test_table_schema.to_json(),
+            internal_table_name
+        )
+        result = self.SESSION.execute(query)
+        self.assertTrue(result[0]['[applied]'])
+
+        query = "CREATE TABLE {}.{} (".format(keyspace, internal_table_name)
+
+        for name, field in self.test_data_keys.iteritems():
+            typ, _, _ = field
+            query += '{}{} {},'.format(impl.USER_PREFIX, name, typ)
+
+        for name, field in self.test_data_predefined_fields.iteritems():
+            typ, _, _ = field
+            query += '{}{} {},'.format(impl.USER_PREFIX, name, typ)
+
+        for name, field in self.test_data_system_fields.iteritems():
+            query += '{} {},'.format(name, field)
+
+        if indexed:
+            query += (
+                "{} text, {} blob, {} text, {} decimal,"
+                " PRIMARY KEY({}id, {}, {}, {}, {}, {}range))".format(
+                    impl.SYSTEM_COLUMN_INDEX_NAME,
+                    impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
+                    impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
+                    impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                    impl.USER_PREFIX,
+                    impl.SYSTEM_COLUMN_INDEX_NAME,
+                    impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
+                    impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
+                    impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                    impl.USER_PREFIX
+                )
+            )
+        else:
+            query += " PRIMARY KEY({}id, {}range))".format(
+                impl.USER_PREFIX, impl.USER_PREFIX
+            )
         self.SESSION.execute(query)
 
-    def _drop_table(self, keyspace=None, table_name=None):
-        keyspace = keyspace or self.keyspace
-        table_name = None or self.table_name
-        query = "DROP TABLE IF EXISTS {}.user_{}".format(keyspace, table_name)
+    def _drop_table(self, tenant=None, table_name=None):
+        query = (
+            "SELECT internal_name FROM magnetodb.table_info "
+            "WHERE tenant='{}' and name='{}'"
+        ).format(
+            tenant, table_name
+        )
+        result = self.SESSION.execute(query)
+        internal_table_name = result[0]["internal_name"]
+        query = "DROP TABLE IF EXISTS {}{}.{}".format(
+            impl.USER_PREFIX, tenant, internal_table_name
+        )
+        self.SESSION.execute(query)
+        query = (
+            "DELETE FROM magnetodb.table_info "
+            "WHERE tenant='{}' and name='{}'".format(
+                tenant, table_name
+            )
+        )
         self.SESSION.execute(query)
 
-    def _select_all(self, keyspace=None, table_name=None):
-        keyspace = keyspace or self.keyspace
+    def _select_all(self, tenant=None, table_name=None):
+        tenant = tenant or self.tenant
         table_name = table_name or self.table_name
-        query = "SELECT * FROM {}.user_{}".format(keyspace, table_name)
+        query = (
+            'SELECT internal_name, "schema" FROM magnetodb.table_info '
+            "WHERE tenant='{}' and name='{}'"
+        ).format(
+            tenant, table_name
+        )
+        result = self.SESSION.execute(query)
+        internal_table_name = result[0]["internal_name"]
+        schema = models.ModelBase.from_json(result[0]["schema"])
+
+        query = "SELECT * FROM {}{}.{}".format(
+            impl.USER_PREFIX, tenant, internal_table_name)
+
+        if schema.index_def_map:
+            query += " WHERE {}={}".format(
+                impl.SYSTEM_COLUMN_INDEX_NAME,
+                impl.ENCODED_DEFAULT_STRING_VALUE
+            )
+
+        query += " ALLOW FILTERING"
+
         return self.SESSION.execute(query)
 
     def _insert_data(self, id_value=1, range_value='1',
                      predefined_fields=None, dynamic_fields=None):
-        query = "UPDATE {}.user_{} SET ".format(self.keyspace, self.table_name)
+        query = (
+            'SELECT internal_name, "schema" FROM magnetodb.table_info '
+            "WHERE tenant='{}' and name='{}'"
+        ).format(
+            self.tenant, self.table_name
+        )
+
+        result = self.SESSION.execute(query)
+        internal_table_name = result[0]["internal_name"]
+        schema = models.ModelBase.from_json(result[0]["schema"])
+
+        query = "UPDATE {}{}.{} SET ".format(
+            impl.USER_PREFIX, self.tenant, internal_table_name)
 
         predefined_fields = (
             predefined_fields or self.test_data_predefined_fields
         )
 
         dynamic_fields = dynamic_fields or self.test_data_dynamic_fields
-        for field in predefined_fields:
-            name, _, sval, _ = field
-            query += 'user_{}={},'.format(name, sval)
 
-        for field in dynamic_fields:
-            name, typ, sval, _ = field
-            query += "system_attrs['{}'] = 0x{},".format(
-                name, sval)
+        set_items = []
+        for name, field in predefined_fields.iteritems():
+            _, sval, _ = field
+            set_items.append('{}{}={}'.format(impl.USER_PREFIX, name, sval))
 
-        for field in (self.test_data_keys +
-                      dynamic_fields +
-                      predefined_fields):
-            name, typ, _, _ = field
-            query += "system_attr_types['{}'] ='{}',".format(name, typ)
-            query += ("system_attr_exist = system_attr_exist + {{'{}'}},"
-                      .format(name))
+        for name, field in dynamic_fields.iteritems():
+            typ, sval, _ = field
+            set_items.append("{}['{}'] = 0x{}".format(
+                impl.SYSTEM_COLUMN_EXTRA_ATTR_DATA, name, sval))
+            set_items.append("{}['{}'] ='{}'".format(
+                impl.SYSTEM_COLUMN_EXTRA_ATTR_TYPES, name, typ))
 
-        query += 'system_hash = {}'.format(id_value)
+        for name, field in dict(self.test_data_keys.items() +
+                                predefined_fields.items() +
+                                dynamic_fields.items()).iteritems():
+            typ, sval, _ = field
 
-        query += " WHERE user_id = {} AND user_range='{}'".format(
-            id_value, range_value)
+            set_items.append("{} = {} + {{'{}'}}".format(
+                impl.SYSTEM_COLUMN_ATTR_EXIST, impl.SYSTEM_COLUMN_ATTR_EXIST,
+                name,
+            ))
+
+        query += ",".join(set_items)
+
+        query += " WHERE {}id = {} AND {}range='{}'".format(
+            impl.USER_PREFIX, id_value, impl.USER_PREFIX, range_value)
+
+        if schema.index_def_map:
+            default_index_cond_params = (
+                impl.SYSTEM_COLUMN_INDEX_NAME,
+                impl.ENCODED_DEFAULT_STRING_VALUE,
+                impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
+                impl.ENCODED_DEFAULT_BLOB_VALUE,
+                impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
+                impl.ENCODED_DEFAULT_STRING_VALUE,
+                impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                impl.ENCODED_DEFAULT_NUMBER_VALUE
+            )
+
+            queries = [
+                query + (
+                    " AND {}={} AND {}={} AND {}={} AND {}={}".format(
+                        *default_index_cond_params
+                    )
+                )
+            ]
+
+            for index_name, index_def in schema.index_def_map.iteritems():
+                params = list(default_index_cond_params)
+                params[1] = '{}'.format(index_name)
+                index_type = schema.attribute_type_map[
+                    index_def.attribute_to_index]
+
+                index_value = predefined_fields[
+                    index_def.attribute_to_index
+                ][1]
+                if index_type == models.ATTRIBUTE_TYPE_BLOB:
+                    params[3] = index_value
+                elif index_type == models.ATTRIBUTE_TYPE_STRING:
+                    params[5] = index_value
+                elif index_type == models.ATTRIBUTE_TYPE_NUMBER:
+                    params[7] = index_value
+                else:
+                    self.fail()
+
+                queries.append(
+                    query +
+                    " AND {}='{}' AND {}={} AND {}={} AND {}={}".format(
+                        *params
+                    )
+                )
+
+            query = (
+                "BEGIN UNLOGGED BATCH " + " ".join(queries) + " APPLY BATCH"
+            )
 
         self.SESSION.execute(query)
 
@@ -237,19 +405,22 @@ class TestCassandraTableCrud(TestCassandraBase):
     def test_create_table(self):
         self.assertEqual([], self._get_table_names())
 
-        attrs = {
-            name: self.C2S_TYPES[typ] for name, typ, _, _ in (
-                self.test_data_keys + self.test_data_predefined_fields)
-        }
+        attrs = {}
+        for name, (typ, _, _) in self.test_data_keys.iteritems():
+            attrs[name] = self.C2S_TYPES[typ]
+        for name, (typ, _, _) in self.test_data_predefined_fields.iteritems():
+            attrs[name] = self.C2S_TYPES[typ]
 
         index_def_map = {
             'index_name': models.IndexDefinition('indexed')
         }
 
-        schema = models.TableSchema(self.table_name, attrs, ['id', 'range'],
+        schema = models.TableSchema(attrs, ['id', 'range'],
                                     index_def_map)
 
-        self.CASANDRA_STORAGE_IMPL.create_table(self.context, schema)
+        self.CASANDRA_STORAGE_IMPL.create_table(
+            self.context, self.table_name, schema
+        )
 
         self.assertEqual([self.table_name], self._get_table_names())
 
@@ -264,25 +435,25 @@ class TestCassandraTableCrud(TestCassandraBase):
 
     def test_describe_table(self):
 
-        self._create_table()
-        self._create_index(index_name="index_name")
+        self._create_table(indexed=True)
 
-        attrs = {
-            name: self.C2S_TYPES[typ] for name, typ, _, _ in (
-                self.test_data_keys + self.test_data_predefined_fields)
-        }
+        attrs = {}
+        for name, (typ, _, _) in self.test_data_keys.iteritems():
+            attrs[name] = self.C2S_TYPES[typ]
+        for name, (typ, _, _) in self.test_data_predefined_fields.iteritems():
+            attrs[name] = self.C2S_TYPES[typ]
 
         index_def_map = {
-            'index_name': models.IndexDefinition('indexed')
+            'index': models.IndexDefinition('indexed')
         }
 
-        schema = models.TableSchema(self.table_name, attrs, ['id', 'range'],
+        schema = models.TableSchema(attrs, ['id', 'range'],
                                     index_def_map)
 
         desc = self.CASANDRA_STORAGE_IMPL.describe_table(
             self.context, self.table_name)
 
-        self.assertEqual(schema, desc)
+        self.assertEqual(schema, desc.schema)
 
     def test_delete_table(self):
         self._create_table()
@@ -297,8 +468,7 @@ class TestCassandraTableCrud(TestCassandraBase):
 class TestCassandraDeleteItem(TestCassandraBase):
 
     def test_delete_item_where(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
         self._insert_data(range_value=2)
 
@@ -319,8 +489,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual('2', all[0]['user_range'])
 
     def test_delete_item_where_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         del_req = models.DeleteItemRequest(
@@ -336,9 +505,10 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual(1, len(all))
         self.assertEqual(1, all[0]['user_id'])
 
+    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
+                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_delete_item_if_exists(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         all = self._select_all()
@@ -354,15 +524,15 @@ class TestCassandraDeleteItem(TestCassandraBase):
              'range': models.AttributeValue.str('1')})
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, del_req, expected)
+            self.context, del_req, expected
+        )
 
         all = self._select_all()
 
         self.assertEqual(0, len(all))
 
     def test_delete_item_if_exists_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -390,9 +560,10 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual(1, len(all))
         self.assertEqual(1, all[0]["user_id"])
 
+    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
+                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_delete_item_if_not_exists(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -420,8 +591,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertEqual(0, len(all))
 
     def test_delete_item_if_not_exists_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         all = self._select_all()
@@ -450,8 +620,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
 class TestCassandraSelectItem(TestCassandraBase):
 
     def test_select_item(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -467,8 +636,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_no_condition(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -479,8 +647,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_attr(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -501,8 +668,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             result.items[0])
 
     def test_select_item_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -517,8 +683,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_select_item_less(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -536,8 +701,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_less_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -554,8 +718,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_select_item_less_eq(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -573,8 +736,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_less_eq_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -591,8 +753,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_select_item_greater(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -610,8 +771,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_greater_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -628,8 +788,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_select_item_greater_eq(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -647,8 +806,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_greater_eq_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -665,47 +823,42 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_select_item_indexed(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
         indexed_cond = {
             'id': [models.Condition.eq(models.AttributeValue.number(1))],
-            'range': [models.Condition.eq(models.AttributeValue.str('1'))],
             'indexed': [
                 models.IndexedCondition.le(models.AttributeValue.str('ind'))
             ]
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond, index_name="index")
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
     def test_select_item_indexed_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
         indexed_cond = {
             'id': [models.Condition.eq(models.AttributeValue.number(1))],
-            'range': [models.Condition.eq(models.AttributeValue.str('1'))],
             'indexed': [
                 models.IndexedCondition.lt(models.AttributeValue.str('ind'))
             ]
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond, index_name="index")
 
         self.assertEqual(0, result.count)
 
     def test_select_item_between(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data(range_value='0')
         self._insert_data(range_value='1')
@@ -726,8 +879,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_between2(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data(range_value='-1')
         self._insert_data(range_value='1')
@@ -748,8 +900,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_between_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data(range_value='1')
         self._insert_data(range_value='4')
@@ -768,8 +919,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_select_item_begins_with(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data(range_value='0')
         self._insert_data(range_value='1')
@@ -792,8 +942,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_begins_with2(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data(range_value='0')
         self._insert_data(range_value='11')
@@ -816,8 +965,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertIn('11', result.items[0]['range'].value)
 
     def test_select_item_begins_with_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data(range_value='0')
         self._insert_data(range_value='2')
@@ -838,8 +986,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_select_with_limit(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
         self._insert_data(range_value='2')
 
@@ -863,8 +1010,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
 
     def test_select_count(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -880,9 +1026,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
 
     def test_select_item_exclusive_key(self):
-        self._create_table()
-        self._create_index()
-
+        self._create_table(indexed=True)
         self._insert_data()
 
         exclusive_start_key = {
@@ -898,8 +1042,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_select_item_exclusive_key2(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
         self._insert_data(id_value=2)
@@ -925,8 +1068,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertTrue(result.count == 1 or result2.count == 1)
 
     def test_select_item_exclusive_key_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data()
 
@@ -942,8 +1084,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_select_item_exclusive_key_with_range(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         self._insert_data(range_value='1')
         self._insert_data(range_value='2')
@@ -981,8 +1122,7 @@ class TestCassandraSelectItem(TestCassandraBase):
 
 class TestCassandraUpdateItem(TestCassandraBase):
     def test_update_item_put_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -999,12 +1139,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
-
+        expected = self.expected_data.copy()
         expected['str'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_STRING, 'new')
 
@@ -1019,8 +1154,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1037,11 +1171,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['numbr'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_NUMBER, 42)
@@ -1057,8 +1187,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1075,11 +1204,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['blb'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_BLOB, 'new')
@@ -1095,8 +1220,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_set_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1114,11 +1238,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['set_string'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_STRING_SET, {'new'})
@@ -1134,8 +1254,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_set_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1152,11 +1271,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['set_number'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_NUMBER_SET, {42})
@@ -1172,8 +1287,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_set_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1191,11 +1305,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['set_blob'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_BLOB_SET, {'new'})
@@ -1211,8 +1321,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1229,11 +1338,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['fstr'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_STRING, 'new')
@@ -1249,8 +1354,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1267,11 +1371,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['fnum'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_NUMBER, 42)
@@ -1287,8 +1387,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1305,11 +1404,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['fblb'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_BLOB, 'new')
@@ -1325,8 +1420,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_set_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1344,11 +1438,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['fsstr'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_STRING_SET, {'new1', 'new2'})
@@ -1364,8 +1454,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_set_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1383,11 +1472,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['fsnum'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_NUMBER_SET, {42, 43})
@@ -1403,8 +1488,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_put_dynamic_set_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1422,11 +1506,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         expected['fsblb'] = models.AttributeValue(
             models.ATTRIBUTE_TYPE_BLOB_SET, {'new1', 'new2'})
@@ -1442,8 +1522,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.assertEquals([expected], result.items)
 
     def test_update_item_delete(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         keys = {
@@ -1461,11 +1540,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         self.CASANDRA_STORAGE_IMPL.update_item(
             self.context, self.table_name, keys, actions)
 
-        expected = {name: models.AttributeValue(self.C2S_TYPES[typ], val)
-                    for name, typ, _, val
-                    in (self.test_data_keys +
-                        self.test_data_predefined_fields +
-                        self.test_data_dynamic_fields)}
+        expected = self.expected_data.copy()
 
         del expected['str']
         del expected['fstr']
@@ -1483,8 +1558,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
 
 class TestCassandraPutItem(TestCassandraBase):
     def test_put_item_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1507,8 +1581,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue.number(1),
@@ -1531,8 +1604,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue.number(1),
@@ -1555,8 +1627,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_set_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1580,8 +1651,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_set_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1605,8 +1675,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_set_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1630,8 +1699,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1654,8 +1722,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1678,8 +1745,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1702,8 +1768,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_set_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1727,8 +1792,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_set_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1752,8 +1816,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_dynamic_set_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
 
         put = {
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
@@ -1777,8 +1840,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_expected_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -1811,8 +1873,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_expected_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -1845,8 +1906,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_expected_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -1883,8 +1943,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_expected_set_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -1919,8 +1978,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_expected_set_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -1955,8 +2013,7 @@ class TestCassandraPutItem(TestCassandraBase):
         self.assertEquals([put], result.items)
 
     def test_put_item_expected_set_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -1994,9 +2051,10 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEquals([put], result.items)
 
+    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
+                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -2028,9 +2086,10 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEquals([put], result.items)
 
+    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
+                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -2066,9 +2125,10 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEquals([put], result.items)
 
+    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
+                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -2101,9 +2161,10 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEquals([put], result.items)
 
+    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
+                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_set_str(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -2137,9 +2198,10 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEquals([put], result.items)
 
+    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
+                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_set_number(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -2173,9 +2235,10 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEquals([put], result.items)
 
+    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
+                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_set_blob(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         put = {
@@ -2213,8 +2276,7 @@ class TestCassandraPutItem(TestCassandraBase):
 class TestCassandraScan(TestCassandraBase):
 
     def test_scan(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
@@ -2224,8 +2286,7 @@ class TestCassandraScan(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_scan_not_equal(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
         self._insert_data(range_value='2')
 
@@ -2240,8 +2301,7 @@ class TestCassandraScan(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_scan_contains(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
         self._insert_data(range_value='121')
 
@@ -2257,8 +2317,7 @@ class TestCassandraScan(TestCassandraBase):
         self.assertEqual('121', result.items[0]['range'].value)
 
     def test_scan_not_contains(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
         self._insert_data(range_value='22')
 
@@ -2274,8 +2333,7 @@ class TestCassandraScan(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_scan_contains_for_set(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         condition = {
@@ -2290,8 +2348,7 @@ class TestCassandraScan(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_scan_contains_for_set2(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         condition = {
@@ -2305,8 +2362,7 @@ class TestCassandraScan(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_scan_not_contains_for_set(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         condition = {
@@ -2321,8 +2377,7 @@ class TestCassandraScan(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_scan_not_contains_for_set2(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         condition = {
@@ -2336,8 +2391,7 @@ class TestCassandraScan(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_scan_in(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         condition = {
@@ -2354,8 +2408,7 @@ class TestCassandraScan(TestCassandraBase):
         self._validate_data(result.items[0])
 
     def test_scan_in_negative(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
 
         condition = {
@@ -2371,8 +2424,7 @@ class TestCassandraScan(TestCassandraBase):
         self.assertEqual(0, result.count)
 
     def test_paging(self):
-        self._create_table()
-        self._create_index()
+        self._create_table(indexed=True)
         self._insert_data()
         self._insert_data(range_value='2')
         self._insert_data(range_value='3')
@@ -2419,9 +2471,7 @@ class TestCassandraScan(TestCassandraBase):
 
 class TestCassandraBatch(TestCassandraBase):
     def test_batch_write_item(self):
-        self._create_table()
-        self._create_index()
-
+        self._create_table(indexed=True)
         put_items = [{
             'id': models.AttributeValue(models.ATTRIBUTE_TYPE_NUMBER, 1),
             'range': models.AttributeValue(models.ATTRIBUTE_TYPE_STRING, '1'),
