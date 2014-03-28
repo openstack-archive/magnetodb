@@ -1,5 +1,5 @@
+import traceback
 import time
-from cassandra import OperationTimedOut
 import gevent
 from gevent import select, socket
 from gevent.event import Event
@@ -9,8 +9,6 @@ from collections import defaultdict
 from functools import partial
 import logging
 import os
-import sys
-import traceback
 
 try:
     from cStringIO import StringIO
@@ -19,8 +17,9 @@ except ImportError:
 
 from errno import EALREADY, EINPROGRESS, EWOULDBLOCK, EINVAL
 
-from cassandra.connection import (Connection, ResponseWaiter, ConnectionShutdown,
-                                  ConnectionBusy, MAX_STREAM_PER_CONNECTION)
+from cassandra import OperationTimedOut
+from cassandra.connection import Connection, ConnectionShutdown, ConnectionBusy, \
+    ResponseWaiter, MAX_STREAM_PER_CONNECTION
 from cassandra.decoder import RegisterMessage
 from cassandra.marshal import int32_unpack
 
@@ -69,11 +68,7 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
         self._push_watchers = defaultdict(set)
 
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.ssl_options:
-            if not ssl:
-                raise Exception("This version of Python was not compiled with SSL support")
-            self._socket = ssl.wrap_socket(self._socket, **self.ssl_options)
-        self._socket.settimeout(1.0)  # TODO potentially make this value configurable
+        self._socket.settimeout(1.0)
         self._socket.connect((self.host, self.port))
 
         if self.sockopts:
@@ -83,27 +78,6 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
         self._read_watcher = gevent.spawn(lambda: self.handle_read())
         self._write_watcher = gevent.spawn(lambda: self.handle_write())
         self._send_options_message()
-
-    def close(self):
-        with self.lock:
-            if self.is_closed:
-                return
-            self.is_closed = True
-
-        log.debug("Closing connection (%s) to %s", id(self), self.host)
-        if self._read_watcher:
-            self._read_watcher.kill()
-        if self._write_watcher:
-            self._write_watcher.kill()
-        if self._socket:
-            self._socket.close()
-        log.debug("Closed socket to %s" % (self.host,))
-
-        # don't leave in-progress operations hanging
-        self.connected_event.set()
-        if not self.is_defunct:
-            self._error_all_callbacks(
-                ConnectionShutdown("Connection to %s was closed" % self.host))
 
     def defunct(self, exc):
         with self.lock:
@@ -116,118 +90,13 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
             log.debug("Defuncting connection (%s) to %s: %s\n%s",
                       id(self), self.host, exc, traceback.format_exc(exc))
         else:
-            log.debug("Defuncting connection (%s) to %s: %s",
-                      id(self), self.host, exc)
+            log.debug("Defuncting connection (%s) to %s: %s", id(self), self.host, exc)
 
         self.last_error = exc
-        self._error_all_callbacks(exc)
+        self.close()
+        self.error_all_callbacks(exc)
         self.connected_event.set()
         return exc
-
-    def _error_all_callbacks(self, exc):
-        with self.lock:
-            callbacks = self._callbacks
-            self._callbacks = {}
-        new_exc = ConnectionShutdown(str(exc))
-        for cb in callbacks.values():
-            try:
-                cb(new_exc)
-            except Exception:
-                log.warn("Ignoring unhandled exception while erroring callbacks for a "
-                         "failed connection (%s) to host %s:",
-                         id(self), self.host, exc_info=True)
-
-    def handle_error(self):
-        self.defunct(sys.exc_info()[1])
-
-    def handle_close(self):
-        log.debug("connection closed by server")
-        self.close()
-
-    def handle_write(self):
-        wlist = (self._socket,)
-
-        while True:
-            try:
-                next_msg = self._write_queue.get()
-                select.select((), wlist, ())
-            except Exception as err:
-                log.debug("Write loop: got error %s" % err)
-                return
-
-            try:
-                self._socket.sendall(next_msg)
-            except socket.error as err:
-                log.debug("Write loop: got error, defuncting socket and exiting")
-                self.defunct(err)
-                return # Leave the write loop
-
-    def handle_read(self):
-        rlist = (self._socket,)
-
-        while True:
-            try:
-                select.select(rlist, (), ())
-            except Exception as err:
-                return
-
-            try:
-                buf = self._socket.recv(self.in_buffer_size)
-            except socket.error as err:
-                if not is_timeout(err):
-                    self.defunct(err)
-                    return # leave the read loop
-
-            if buf:
-                self._iobuf.write(buf)
-                while True:
-                    pos = self._iobuf.tell()
-                    if pos < 8 or (self._total_reqd_bytes > 0 and pos < self._total_reqd_bytes):
-                        # we don't have a complete header yet or we
-                        # already saw a header, but we don't have a
-                        # complete message yet
-                        break
-                    else:
-                        # have enough for header, read body len from header
-                        self._iobuf.seek(4)
-                        body_len_bytes = self._iobuf.read(4)
-                        body_len = int32_unpack(body_len_bytes)
-
-                        # seek to end to get length of current buffer
-                        self._iobuf.seek(0, os.SEEK_END)
-                        pos = self._iobuf.tell()
-
-                        if pos - 8 >= body_len:
-                            # read message header and body
-                            self._iobuf.seek(0)
-                            msg = self._iobuf.read(8 + body_len)
-
-                            # leave leftover in current buffer
-                            leftover = self._iobuf.read()
-                            self._iobuf = StringIO()
-                            self._iobuf.write(leftover)
-
-                            self._total_reqd_bytes = 0
-                            self.process_msg(msg, body_len)
-                        else:
-                            self._total_reqd_bytes = body_len + 8
-                            break
-            else:
-                log.debug("connection closed by server")
-                self.close()
-
-    def handle_pushed(self, response):
-        log.debug("Message pushed from server: %r", response)
-        for cb in self._push_watchers.get(response.event_type, []):
-            try:
-                cb(response.event_args)
-            except Exception:
-                log.exception("Pushed event handler errored, ignoring:")
-
-    def push(self, data):
-        chunk_size = self.out_buffer_size
-        for i in xrange(0, len(data), chunk_size):
-            self._write_queue.put(data[i:i+chunk_size])
 
     def send_msg(self, msg, cb, wait_for_id=False):
         if self.is_defunct:
@@ -245,8 +114,21 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
             request_id = self._id_queue.get()
 
         self._callbacks[request_id] = cb
-        self.push(msg.to_string(request_id, compression=self.compressor))
+        self.push(msg.to_string(request_id, self.protocol_version, compression=self.compressor))
         return request_id
+
+    def error_all_callbacks(self, exc):
+        with self.lock:
+            callbacks = self._callbacks
+            self._callbacks = {}
+        new_exc = ConnectionShutdown(str(exc))
+        for cb in callbacks.values():
+            try:
+                cb(new_exc)
+            except Exception:
+                log.warn("Ignoring unhandled exception while erroring callbacks for a "
+                         "failed connection (%s) to host %s:",
+                         id(self), self.host, exc_info=True)
 
     def wait_for_response(self, msg, timeout=None):
         return self.wait_for_responses(msg, timeout=timeout)[0]
@@ -283,6 +165,118 @@ An implementation of :class:`.Connection` that utilizes ``gevent``.
         except Exception, exc:
             self.defunct(exc)
             raise
+
+    def handle_pushed(self, response):
+        log.debug("Message pushed from server: %r", response)
+        for cb in self._push_watchers.get(response.event_type, []):
+            try:
+                cb(response.event_args)
+            except Exception:
+                log.exception("Pushed event handler errored, ignoring:")
+
+    def close(self):
+        with self.lock:
+            if self.is_closed:
+                return
+            self.is_closed = True
+
+        log.debug("Closing connection (%s) to %s" % (id(self), self.host))
+        if self._read_watcher:
+            self._read_watcher.kill()
+        if self._write_watcher:
+            self._write_watcher.kill()
+        if self._socket:
+            self._socket.close()
+        log.debug("Closed socket to %s" % (self.host,))
+
+        if not self.is_defunct:
+            self.error_all_callbacks(
+                ConnectionShutdown("Connection to %s was closed" % self.host))
+            # don't leave in-progress operations hanging
+            self.connected_event.set()
+
+    def handle_close(self):
+        log.debug("connection closed by server")
+        self.close()
+
+    def handle_write(self):
+        run_select = partial(select.select, (), (self._socket,), ())
+        while True:
+            try:
+                next_msg = self._write_queue.get()
+                run_select()
+            except Exception as exc:
+                log.debug("Exception during write select() for %s: %s", self, exc)
+                self.defunct(exc)
+                return
+
+            try:
+                self._socket.sendall(next_msg)
+            except socket.error as err:
+                log.debug("Exception during socket sendall for %s: %s", self, err)
+                self.defunct(err)
+                return # Leave the write loop
+
+    def handle_read(self):
+        run_select = partial(select.select, (self._socket,), (), ())
+        while True:
+            try:
+                run_select()
+            except Exception as exc:
+                log.debug("Exception during read select() for %s: %s", self, exc)
+                self.defunct(exc)
+                return
+
+            try:
+                buf = self._socket.recv(self.in_buffer_size)
+                self._iobuf.write(buf)
+            except socket.error as err:
+                if not is_timeout(err):
+                    log.debug("Exception during socket recv for %s: %s", self, err)
+                    self.defunct(err)
+                    return # leave the read loop
+
+            if self._iobuf.tell():
+                while True:
+                    pos = self._iobuf.tell()
+                    if pos < 8 or (self._total_reqd_bytes > 0 and pos < self._total_reqd_bytes):
+                        # we don't have a complete header yet or we
+                        # already saw a header, but we don't have a
+                        # complete message yet
+                        break
+                    else:
+                        # have enough for header, read body len from header
+                        self._iobuf.seek(4)
+                        body_len = int32_unpack(self._iobuf.read(4))
+
+                        # seek to end to get length of current buffer
+                        self._iobuf.seek(0, os.SEEK_END)
+                        pos = self._iobuf.tell()
+
+                        if pos >= body_len + 8:
+                            # read message header and body
+                            self._iobuf.seek(0)
+                            msg = self._iobuf.read(8 + body_len)
+
+                            # leave leftover in current buffer
+                            leftover = self._iobuf.read()
+                            self._iobuf = StringIO()
+                            self._iobuf.write(leftover)
+
+                            self._total_reqd_bytes = 0
+                            self.process_msg(msg, body_len)
+                        else:
+                            self._total_reqd_bytes = body_len + 8
+                            break
+            else:
+                log.debug("connection closed by server")
+                self.close()
+                return
+
+    def push(self, data):
+        chunk_size = self.out_buffer_size
+        for i in xrange(0, len(data), chunk_size):
+            self._write_queue.put(data[i:i + chunk_size])
 
     def register_watcher(self, event_type, callback):
         self._push_watchers[event_type].add(callback)

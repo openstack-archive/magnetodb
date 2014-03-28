@@ -71,35 +71,37 @@ class CreateTableDynamoDBAction(DynamoDBAction):
             )
 
             #parse table indexed field list
-            indexed_attr_names = parser.Parser.parse_local_secondary_indexes(
+            indexed_def_map = parser.Parser.parse_local_secondary_indexes(
                 self.action_params.get(
                     parser.Props.LOCAL_SECONDARY_INDEXES, [])
             )
 
             #prepare table_schema structure
             table_schema = models.TableSchema(
-                table_name, attribute_definitions,
-                key_attrs, indexed_attr_names)
+                attribute_definitions, key_attrs, indexed_def_map
+            )
 
         except Exception:
             raise exception.ValidationException()
 
         try:
             # creating table
-            storage.create_table(self.context, table_schema)
+            table_meta = storage.create_table(
+                self.context, table_name, table_schema
+            )
 
             result = {
                 parser.Props.TABLE_DESCRIPTION: {
                     parser.Props.ATTRIBUTE_DEFINITIONS: (
                         parser.Parser.format_attribute_definitions(
-                            attribute_definitions
+                            table_meta.schema.attribute_type_map
                         )
                     ),
                     parser.Props.CREATION_DATE_TIME: 0,
                     parser.Props.ITEM_COUNT: 0,
                     parser.Props.KEY_SCHEMA: (
                         parser.Parser.format_key_schema(
-                            key_attrs
+                            table_meta.schema.key_attributes
                         )
                     ),
                     parser.Props.PROVISIONED_THROUGHPUT: (
@@ -107,17 +109,20 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                     ),
                     parser.Props.TABLE_NAME: table_name,
                     parser.Props.TABLE_STATUS: (
-                        parser.Values.TABLE_STATUS_ACTIVE
+                        parser.Parser.format_table_status(table_meta.status)
                     ),
                     parser.Props.TABLE_SIZE_BYTES: 0
                 }
             }
 
-            if indexed_attr_names:
+            if table_meta.schema.index_def_map:
                 table_def = result[parser.Props.TABLE_DESCRIPTION]
                 table_def[parser.Props.LOCAL_SECONDARY_INDEXES] = (
                     parser.Parser.format_local_secondary_indexes(
-                        key_attrs[0], indexed_attr_names))
+                        table_meta.schema.key_attributes[0],
+                        table_meta.schema.index_def_map
+                    )
+                )
 
             return result
         except exception.TableAlreadyExistsException:
