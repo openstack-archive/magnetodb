@@ -88,15 +88,17 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
         storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
-            models.TableSchema(
-                'test_table',
-                {
-                    'city1': models.ATTRIBUTE_TYPE_STRING,
-                    'id': models.ATTRIBUTE_TYPE_STRING,
-                    'name': models.ATTRIBUTE_TYPE_STRING
-                },
-                ['id', 'name'],
-                {'index_name': models.IndexDefinition('city1')}
+            models.TableMeta(
+                models.TableSchema(
+                    {
+                        'city1': models.ATTRIBUTE_TYPE_STRING,
+                        'id': models.ATTRIBUTE_TYPE_STRING,
+                        'name': models.ATTRIBUTE_TYPE_STRING
+                    },
+                    ['id', 'name'],
+                    {'index_name': models.IndexDefinition('city1')}
+                ),
+                models.TableMeta.TABLE_STATUS_ACTIVE
             )
         )
 
@@ -155,15 +157,17 @@ class BotoIntegrationTest(unittest.TestCase):
         storage.delete_table(IgnoreArg(), 'test_table')
 
         storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
-            models.TableSchema(
-                'test_table',
-                {
-                    'city1': models.ATTRIBUTE_TYPE_STRING,
-                    'id': models.ATTRIBUTE_TYPE_STRING,
-                    'name': models.ATTRIBUTE_TYPE_STRING
-                },
-                ['id', 'name'],
-                {'index_name': models.IndexDefinition('city1')}
+            models.TableMeta(
+                models.TableSchema(
+                    {
+                        'city1': models.ATTRIBUTE_TYPE_STRING,
+                        'id': models.ATTRIBUTE_TYPE_STRING,
+                        'name': models.ATTRIBUTE_TYPE_STRING
+                    },
+                    ['id', 'name'],
+                    {'index_name': models.IndexDefinition('city1')}
+                ),
+                models.TableMeta.TABLE_STATUS_ACTIVE
             )
         )
 
@@ -177,7 +181,22 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def test_create_table(self):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
-        storage.create_table(IgnoreArg(), IgnoreArg())
+        storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
+            models.TableMeta(
+                models.TableSchema(
+                    {
+                        'hash': models.ATTRIBUTE_TYPE_NUMBER,
+                        'range': models.ATTRIBUTE_TYPE_STRING,
+                        'indexed_field': models.ATTRIBUTE_TYPE_STRING
+                    },
+                    ['hash', 'range'],
+                    {
+                        "index_name": models.IndexDefinition('indexed_field')
+                    }
+                ),
+                models.TableMeta.TABLE_STATUS_ACTIVE
+            )
+        )
         self.storage_mocker.ReplayAll()
 
         Table.create(
@@ -206,9 +225,24 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def test_create_table_duplicate(self):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
-        storage.create_table(IgnoreArg(), IgnoreArg())
+        storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
+            models.TableMeta(
+                models.TableSchema(
+                    {
+                        'hash': models.ATTRIBUTE_TYPE_NUMBER,
+                        'range': models.ATTRIBUTE_TYPE_STRING,
+                        'indexed_field': models.ATTRIBUTE_TYPE_STRING
+                    },
+                    ['hash', 'range'],
+                    {
+                        "index_name": models.IndexDefinition('indexed_field')
+                    }
+                ),
+                models.TableMeta.TABLE_STATUS_ACTIVE
+            )
+        )
         storage.create_table(
-            IgnoreArg(), IgnoreArg()
+            IgnoreArg(), IgnoreArg(), IgnoreArg()
         ).AndRaise(TableAlreadyExistsException)
         self.storage_mocker.ReplayAll()
 
@@ -438,13 +472,15 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
         storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
-            models.TableSchema(
-                'test_table',
-                {
-                    'hash_key': models.ATTRIBUTE_TYPE_NUMBER,
-                    'range_key': models.ATTRIBUTE_TYPE_STRING
-                },
-                ['hash_key', 'range_key'],
+            models.TableMeta(
+                models.TableSchema(
+                    {
+                        'hash_key': models.ATTRIBUTE_TYPE_NUMBER,
+                        'range_key': models.ATTRIBUTE_TYPE_STRING
+                    },
+                    ['hash_key', 'range_key'],
+                ),
+                models.TableMeta.TABLE_STATUS_ACTIVE
             )
         )
 

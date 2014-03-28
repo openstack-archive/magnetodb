@@ -128,7 +128,6 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
             raise exception.ValidationException()
 
         try:
-
             if return_values in (parser.Values.RETURN_VALUES_UPDATED_OLD,
                                  parser.Values.RETURN_VALUES_ALL_OLD):
 
