@@ -14,19 +14,32 @@
 
 # This script is executed inside post_test_hook function in devstack gate.
 
+DEST_DIR=/opt/stack/new
+LOGS_DIR=/opt/stack/logs
+
 # Install packages from test-requirements.txt
 
-sudo pip install -r /opt/stack/new/magnetodb/test-requirements.txt
-cd /opt/stack/new/magnetodb/functionaltests
+sudo pip install -r $DEST_DIR/magnetodb/test-requirements.txt
+
+# Preparing tempest.conf
+
+cd $DEST_DIR/magnetodb/functionaltests
 ip=$(/sbin/ip a | grep eth0|grep inet|awk '{print $2}'|sed 's/\/.*//g')
-sudo sed -e 's|magnetodb_url.*$|magnetodb_url = http://'$ip':8480|' -i /opt/stack/new/magnetodb/tempest/tempest.conf
+sudo cp $DEST_DIR/tempest/etc/tempest.conf $DEST_DIR/magnetodb/tempest/tempest.conf
+
+sudo sed -e '{ /\[boto\]/ a\
+magnetodb_url = http://'$ip':8480
+}' -i $DEST_DIR/magnetodb/tempest/tempest.conf
+sudo sed -e "s/#aws_secret=<None>/aws_secret = ''/" -e "s/#aws_access=<None>/aws_access = ''/" -i $DEST_DIR/magnetodb/tempest/tempest.conf
+
+# Run tempest tests
+
 sudo ./run_tests.sh
 RETVAL=$?
 
-#preparing artifacts for publishing
+# Preparing artifacts for publishing
 
-LOGS_DIR=/opt/stack/logs
-cd /opt/stack/new/magnetodb/
+cd $DEST_DIR/magnetodb/
 sudo cp tempest/tempest.conf $LOGS_DIR/magnetodb_tempest_conf
 
 if [ -f tempest/tempest.log ] ; then
