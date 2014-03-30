@@ -81,3 +81,24 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         self.assertEqual(8, resp2['Count'])
         self.assertNotIn(resp1['Items'][0], resp2['Items'])
         self.assertNotIn(resp1['Items'][1], resp2['Items'])
+
+    def test_query_attributes_to_get_totally_incorrect(self):
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = ['incorrect1', 'incorrect2', 'incorrect3']
+        key_conditions = {
+            'forum': {
+                'AttributeValueList': [{'S': 'forum1'}],
+                'ComparisonOperator': 'EQ'
+            },
+            'subject': {
+                'AttributeValueList': [{'S': 'subject'}],
+                'ComparisonOperator': 'BEGINS_WITH'
+            }
+        }
+        resp = self.client.query(table_name=self.tname,
+                                 key_conditions=key_conditions,
+                                 attributes_to_get=attributes_to_get,
+                                 consistent_read=True)
+
+        self.assertEqual(len(resp['Items'][0]), 0)
