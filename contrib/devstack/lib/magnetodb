@@ -24,13 +24,6 @@ MAGNETODB_BACKEND=${MAGNETODB_BACKEND:-cassandra}
 
 MAGNETODB_REPO=${MAGNETODB_REPO:-${GIT_BASE}/stackforge/magnetodb.git}
 MAGNETODB_BRANCH=${MAGNETODB_BRANCH:-master}
-
-JDKURL_TARBAR=${JDKURL_TARBAR:-"http://download.oracle.com/otn-pub/java/jdk/7u51-b13/jdk-7u51-linux-x64.tar.gz"}
-JDKCookie=${JDKCookie:-"Cookie: oraclelicense=a"}
-JDK_TARBAR_NAME=${JDK_TARBAR_NAME:-"jdk-7-linux-x64.tar.gz"}
-JDKVersion=${JDKVersion:-"1.7.0_51"}
-
-CCM_REPO=${CCM_REPO:-'https://github.com/pcmanus/ccm.git'}
 CCM_BRANCH=${CCM_BRANCH:-master}
 CCM_DIR=${CCM_DIR:-$DEST/ccm}
 CassandraVersion=${CassandraVersion:-2.0.2}
@@ -58,20 +51,10 @@ MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
 function install_cassandra() {
 
     #install java
-    if [ ! -d /usr/lib/jvm/jdk${JDKVersion} ]; then
-        echo "---  Installing JDK  ---"
-        sudo mkdir -p /usr/lib/jvm
-
-        if [ ! -f /usr/lib/jvm/$JDK_TARBAR_NAME ]; then
-            echo "---  Downloading JDK  ---"
-            sudo wget --continue --no-check-certificate --header "$JDKCookie" $JDKURL_TARBAR -O /usr/lib/jvm/$JDK_TARBAR_NAME
-        fi
-        sudo tar zxvf /usr/lib/jvm/$JDK_TARBAR_NAME -C /usr/lib/jvm
-    fi
-
-    sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk${JDKVersion}/bin/java" 2000
-    sudo update-alternatives --set java /usr/lib/jvm/jdk${JDKVersion}/bin/java
-    sudo update-alternatives --auto java
+    sudo apt-get install openjdk-7-jdk
+    #update alternatives
+    sudo update-alternatives --set java /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java
+    sudo update-alternatives --set javaws /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/javaws
 
     echo "---  Installing JNA  ---"
     sudo apt-get -y install libjna-java
