@@ -28,14 +28,12 @@ MAGNETODB_BRANCH=${MAGNETODB_BRANCH:-master}
 CCM_REPO=${CCM_REPO:-'https://github.com/pcmanus/ccm.git'}
 CCM_BRANCH=${CCM_BRANCH:-master}
 CCM_DIR=${CCM_DIR:-$DEST/ccm}
-CassandraVersion=${CassandraVersion:-2.0.2}
+CassandraVersion=${CassandraVersion:-2.0.6}
 CassandraClusterName=${CassandraClusterName:-test}
 # By default CassandraClusterAmountNodes = 3
 # If you need more, then you need to change the number of loopback network interface aliases below
 CassandraClusterAmountNodes=${CassandraClusterAmountNodes:-3}
-Cassandra_KEYSPACE_TenantName=${Cassandra_KEYSPACE_TenantName:-default_tenant}
 Cassandra_KEYSPACE_ReplicationFactor=${Cassandra_KEYSPACE_ReplicationFactor:-3}
-
 # Set up default directories
 MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
 MAGNETODB_LOG_DIR=${MAGNETODB_LOG_DIR:-/var/log/magnetodb}
@@ -98,10 +96,13 @@ function configure_cassandra() {
         let n=$n+1
     done
 
+    echo "CREATE KEYSPACE magnetodb  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : $Cassandra_KEYSPACE_ReplicationFactor};" > ~/.ccm/KeySpace.txt
+    echo "CREATE KEYSPACE user_default_tenant  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : $Cassandra_KEYSPACE_ReplicationFactor};"  >> ~/.ccm/KeySpace.txt
+    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, in ternal_name text, PRIMARY KEY(tenant, name));' >> ~/.ccm/KeySpace.txt
     # Installing Cassandra Cluster
+
     ccm status $CassandraClusterName || ccm create $CassandraClusterName -v $CassandraVersion
     ccm populate -n $CassandraClusterAmountNodes || true
-    echo "CREATE KEYSPACE $Cassandra_KEYSPACE_TenantName WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':$Cassandra_KEYSPACE_ReplicationFactor};" > ~/.ccm/KeySpace.txt
 }
 
 
@@ -127,7 +128,7 @@ function start_cassandra() {
     screen_rc 'cassandra' "n=1; addr=2; while [ \\\$n -lt $CassandraClusterAmountNodes ]; do sudo ip addr add 127.0.0.\\\${addr}/8 dev lo || [ \\\$? -eq 2 ] && true; let addr=\\\$addr+1; let n=\\\$n+1; done; ccm start"
     echo "===  Creating KeySpace  ==="
     timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
-    echo "show keyspaces;" | ccm node1 cli | grep "Keyspace: $Cassandra_KEYSPACE_TenantName" || ccm node1 cqlsh -f ~/.ccm/KeySpace.txt
+    ccm node1 cqlsh -f ~/.ccm/KeySpace.txt
 }
 
 
