@@ -45,15 +45,11 @@ from cassandra.query import (SimpleStatement, PreparedStatement, BoundStatement,
                              BatchStatement, bind_params, QueryTrace, Statement,
                              named_tuple_factory, dict_factory)
 
-# default to gevent when we are monkey patched, otherwise if libev is available, use that as the
-# default because it's faster than asyncore
-if 'gevent.monkey' in sys.modules:
-    from magnetodb.common.cassandra.io.geventreactor import GeventConnection as DefaultConnection
-else:
-    try:
-        from cassandra.io.libevreactor import LibevConnection as DefaultConnection
-    except ImportError:
-        from cassandra.io.asyncorereactor import AsyncoreConnection as DefaultConnection  # NOQA
+# libev is all around faster, so we want to try and default to using that when we can
+try:
+    from cassandra.io.libevreactor import LibevConnection as DefaultConnection
+except ImportError:
+    from cassandra.io.asyncorereactor import AsyncoreConnection as DefaultConnection  # NOQA
 
 # Forces load of utf8 encoding module to avoid deadlock that occurs
 # if code that is being imported tries to import the module in a seperate
@@ -283,12 +279,17 @@ class Cluster(object):
                  protocol_version=2,
                  executor_threads=2,
                  max_schema_agreement_wait=10,
-                 control_connection_timeout=2.0,
-                 schema_change_listeners=None):
+                 control_connection_timeout=2.0):
         """
         Any of the mutable Cluster attributes may be set as keyword arguments
         to the constructor.
         """
+        if 'gevent.monkey' in sys.modules:
+            raise Exception(
+                "gevent monkey-patching detected. This driver does not currently "
+                "support gevent, and monkey patching will break the driver "
+                "completely. You can track progress towards adding gevent "
+                "support here: https://datastax-oss.atlassian.net/browse/PYTHON-7.")
 
         self.contact_points = contact_points
         self.port = port
@@ -373,8 +374,6 @@ class Cluster(object):
 
         if self.metrics_enabled:
             self.metrics = Metrics(weakref.proxy(self))
-
-        self._schema_change_listeners = schema_change_listeners or ()
 
         self.control_connection = ControlConnection(
             self, self.control_connection_timeout)
@@ -1381,7 +1380,7 @@ class ControlConnection(object):
         self._timeout = timeout
 
         self._lock = RLock()
-        self._schema_agreement_lock = RLock()
+        self._schema_agreement_lock = Lock()
 
         self._reconnection_handler = None
         self._reconnection_lock = RLock()
@@ -1532,50 +1531,42 @@ class ControlConnection(object):
         if self._cluster.is_shutdown:
             return
 
-        with self._schema_agreement_lock:
-            log.debug("start refresh_schema for cluster:{}".format(self._cluster))
-            current_schema_version = self.wait_for_schema_agreement(connection)
-            expected_schema_version = None
-            while current_schema_version != expected_schema_version:
-                expected_schema_version = current_schema_version
+        self.wait_for_schema_agreement(connection)
 
-                where_clause = ""
-                if keyspace:
-                    where_clause = " WHERE keyspace_name = '%s'" % (keyspace,)
-                    if table:
-                        where_clause += " AND columnfamily_name = '%s'" % (table,)
-
-                cl = ConsistencyLevel.ONE
-                if table:
-                    ks_query = None
-                else:
-                    ks_query = QueryMessage(query=self._SELECT_KEYSPACES + where_clause, consistency_level=cl)
-                cf_query = QueryMessage(query=self._SELECT_COLUMN_FAMILIES + where_clause, consistency_level=cl)
-                col_query = QueryMessage(query=self._SELECT_COLUMNS + where_clause, consistency_level=cl)
-
-                if ks_query:
-                    ks_result, cf_result, col_result = connection.wait_for_responses(
-                        ks_query, cf_query, col_query, timeout=self._timeout)
-                    ks_result = dict_factory(*ks_result.results)
-                    cf_result = dict_factory(*cf_result.results)
-                    col_result = dict_factory(*col_result.results)
-                else:
-                    ks_result = None
-                    cf_result, col_result = connection.wait_for_responses(
-                        cf_query, col_query, timeout=self._timeout)
-                    cf_result = dict_factory(*cf_result.results)
-                    col_result = dict_factory(*col_result.results)
-
-                current_schema_version = self.wait_for_schema_agreement(connection)
-
-
-            log.debug("[control connection] Fetched schema, rebuilding metadata")
+        where_clause = ""
+        if keyspace:
+            where_clause = " WHERE keyspace_name = '%s'" % (keyspace,)
             if table:
-                self._cluster.metadata.table_changed(keyspace, table, cf_result, col_result)
-            elif keyspace:
-                self._cluster.metadata.keyspace_changed(keyspace, ks_result, cf_result, col_result)
-            else:
-                self._cluster.metadata.rebuild_schema(ks_result, cf_result, col_result)
+                where_clause += " AND columnfamily_name = '%s'" % (table,)
+
+        cl = ConsistencyLevel.ONE
+        if table:
+            ks_query = None
+        else:
+            ks_query = QueryMessage(query=self._SELECT_KEYSPACES + where_clause, consistency_level=cl)
+        cf_query = QueryMessage(query=self._SELECT_COLUMN_FAMILIES + where_clause, consistency_level=cl)
+        col_query = QueryMessage(query=self._SELECT_COLUMNS + where_clause, consistency_level=cl)
+
+        if ks_query:
+            ks_result, cf_result, col_result = connection.wait_for_responses(
+                ks_query, cf_query, col_query, timeout=self._timeout)
+            ks_result = dict_factory(*ks_result.results)
+            cf_result = dict_factory(*cf_result.results)
+            col_result = dict_factory(*col_result.results)
+        else:
+            ks_result = None
+            cf_result, col_result = connection.wait_for_responses(
+                cf_query, col_query, timeout=self._timeout)
+            cf_result = dict_factory(*cf_result.results)
+            col_result = dict_factory(*col_result.results)
+
+        log.debug("[control connection] Fetched schema, rebuilding metadata")
+        if table:
+            self._cluster.metadata.table_changed(keyspace, table, cf_result, col_result)
+        elif keyspace:
+            self._cluster.metadata.keyspace_changed(keyspace, ks_result, cf_result, col_result)
+        else:
+            self._cluster.metadata.rebuild_schema(ks_result, cf_result, col_result)
 
     def refresh_node_list_and_token_map(self):
         try:
@@ -1685,10 +1676,6 @@ class ControlConnection(object):
         elif event['change_type'] == "UPDATED":
             self._submit(self.refresh_schema, keyspace, table)
 
-        for listener in self._cluster._schema_change_listeners:
-            listener(event)
-
-
     def wait_for_schema_agreement(self, connection=None):
         # Each schema change typically generates two schema refreshes, one
         # from the response type and one from the pushed notification. Holding
@@ -1740,15 +1727,14 @@ class ControlConnection(object):
                         versions.add(row.get("schema_version"))
 
                 if len(versions) == 1:
-                    version = iter(versions).next()
-                    log.debug("[control connection] Schemas match, version: %s", version)
-                    return version
+                    log.debug("[control connection] Schemas match")
+                    return True
 
                 log.debug("[control connection] Schemas mismatched, trying again")
                 self._time.sleep(0.2)
                 elapsed = self._time.time() - start
 
-            raise OperationTimedOut("Schema agreement timeout exceeded")
+            return False
 
     def _signal_error(self):
         # try just signaling the cluster, as this will trigger a reconnect

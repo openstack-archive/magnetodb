@@ -37,10 +37,11 @@ class DescribeTableTest(test_base_testcase.APITestCase):
             'LastPostIndex': models.IndexDefinition('LastPostDateTime')
         }
 
-        table_schema = models.TableSchema(
-            'Thread', attr_map, key_attrs, index_map)
+        table_meta = models.TableMeta(
+            models.TableSchema(attr_map, key_attrs, index_map),
+            models.TableMeta.TABLE_STATUS_ACTIVE)
 
-        mock_describe_table.return_value = table_schema
+        mock_describe_table.return_value = table_meta
 
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
