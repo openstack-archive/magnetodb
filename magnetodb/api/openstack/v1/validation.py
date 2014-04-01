@@ -27,8 +27,10 @@ def format_validation_msg(errors):
     messages = []
     for error in errors:
         path = list(error.path)
-        f_path = "%s%s" % (path[0],
-                           ''.join(['[%r]' % i for i in path[1:]]))
+        f_path = ''
+        if path:
+            f_path = "%s%s" % (path[0],
+                               ''.join(['[%r]' % i for i in path[1:]]))
         messages.append("%s %s" % (f_path, error.message))
         for suberror in sorted(error.context, key=lambda e: e.schema_path):
             messages.append(suberror.message)
