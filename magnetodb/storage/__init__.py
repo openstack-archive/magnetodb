@@ -97,7 +97,7 @@ def create_table(context, table_name, table_schema):
 
 def delete_table(context, table_name):
     """
-    Creates table
+    Delete table
 
     @param context: current request context
     @param table_name: String, name of table to delete
@@ -111,7 +111,7 @@ def delete_table(context, table_name):
 
 def describe_table(context, table_name):
     """
-    Creates table
+    Describe table
 
     @param context: current request context
     @param table_name: String, name of table to describes
