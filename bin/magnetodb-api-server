@@ -20,7 +20,7 @@ import sys
 from paste import deploy
 
 from gevent import monkey
-monkey.patch_all()
+# monkey.patch_all()
 
 from gevent import wsgi
 
