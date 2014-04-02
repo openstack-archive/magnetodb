@@ -14,12 +14,11 @@
 #    under the License.
 
 import collections
+import jsonschema
 
 from magnetodb import storage
-from magnetodb.common import exception
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import validation
 
 
 class BatchWriteItemController(object):
@@ -84,32 +83,21 @@ class BatchWriteItemController(object):
     }
 
     def process_request(self, req, body, project_id):
-        try:
-            validation.validate_params(self.schema, body)
+        jsonschema.validate(body, self.schema)
 
-            # parse request_items
-            request_items = parser.Parser.parse_request_items(
-                body[parser.Props.REQUEST_ITEMS])
-        except Exception:
-            raise exception.ValidationException()
+        # parse request_items
+        request_items = parser.Parser.parse_request_items(
+            body[parser.Props.REQUEST_ITEMS])
 
-        try:
-            req.context.tenant = project_id
+        req.context.tenant = project_id
 
-            request_list = collections.deque()
-            for rq_item in request_items:
-                request_list.append(rq_item)
+        request_list = collections.deque()
+        for rq_item in request_items:
+            request_list.append(rq_item)
 
-            unprocessed_items = storage.execute_write_batch(
-                req.context, request_list
-            )
+        unprocessed_items = storage.execute_write_batch(
+            req.context, request_list)
 
-            return {
-                'unprocessed_items': parser.Parser.format_request_items(
-                    unprocessed_items
-                )
-            }
-        except exception.AWSErrorResponseException as e:
-            raise e
-        except Exception:
-            raise exception.AWSErrorResponseException()
+        return {
+            'unprocessed_items': parser.Parser.format_request_items(
+                unprocessed_items)}
