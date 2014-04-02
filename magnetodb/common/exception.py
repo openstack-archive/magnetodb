@@ -110,6 +110,13 @@ class IncompleteSignatureError(BadRequestException):
     error_code = 'IncompleteSignature'
 
 
+class ConditionalCheckFailedException(AWSErrorResponseException):
+    status = '400'
+    response_message = ('Operation failed because no such resource meets the '
+                        'conditional check.')
+    error_code = 'ConditionalCheckFailedException'
+
+
 class AccessDeniedError(AWSErrorResponseException):
     """ Base class for all errors with HTTP status code 403"""
     status = '403'
