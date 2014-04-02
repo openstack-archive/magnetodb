@@ -26,8 +26,7 @@ from magnetodb.api.openstack.v1 import list_tables
 from magnetodb.api.openstack.v1 import describe_table
 from magnetodb.api.openstack.v1 import scan
 from magnetodb.api.openstack.v1 import query
-
-
+from magnetodb.api.openstack.v1 import delete_item
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
 
@@ -79,6 +78,12 @@ class MagnetoDBApplication(wsgi.Router):
                            query.QueryController()),
                        conditions={'method': 'POST'},
                        action="query")
+
+        mapper.connect("/v1/{project_id}/data/tables/{table_name}/delete_item",
+                       controller=create_resource(
+                           delete_item.DeleteItemController()),
+                       conditions={'method': 'POST'},
+                       action="delete_item")
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):

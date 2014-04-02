@@ -110,6 +110,11 @@ class IncompleteSignatureError(BadRequestException):
     error_code = 'IncompleteSignature'
 
 
+class DeleteFailedException(BadRequestException):
+    response_message = 'Failed to delete the requested resource.'
+    error_code = 'ResourceDeleteFailedException'
+
+
 class AccessDeniedError(AWSErrorResponseException):
     """ Base class for all errors with HTTP status code 403"""
     status = '403'
