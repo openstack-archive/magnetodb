@@ -66,6 +66,9 @@ class FaultWrapper(wsgi.Middleware):
         # Table errors
         'TableAlreadyExistsException': webob.exc.HTTPBadRequest,
         'TableNotExistsException': webob.exc.HTTPNotFound,
+
+        # data item error
+        'ConditionalCheckFailedException': webob.exc.HTTPBadRequest,
     }
 
     def __init__(self, app, options):
