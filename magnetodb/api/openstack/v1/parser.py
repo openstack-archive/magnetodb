@@ -579,7 +579,7 @@ class Parser():
             assert isinstance(decoded_single_value, decimal.Decimal)
             return str(decoded_single_value)
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            assert isinstance(decoded_single_value, str)
+            assert isinstance(decoded_single_value, (str, unicode))
             return base64.encodestring(decoded_single_value)
         else:
             assert False, "Value type wasn't recognized"
