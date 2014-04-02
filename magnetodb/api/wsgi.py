@@ -26,8 +26,6 @@ from magnetodb.api.openstack.v1 import list_tables
 from magnetodb.api.openstack.v1 import describe_table
 from magnetodb.api.openstack.v1 import scan
 from magnetodb.api.openstack.v1 import query
-
-
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
 

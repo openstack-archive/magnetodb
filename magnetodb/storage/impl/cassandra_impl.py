@@ -24,6 +24,7 @@ from magnetodb.common.cassandra import cluster
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.common.exception import TableNotExistsException
 from magnetodb.common.exception import TableAlreadyExistsException
+from magnetodb.common.exception import ConditionalCheckFailedException
 from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
@@ -1045,7 +1046,9 @@ class CassandraStorageImpl(object):
 
                 if old_indexes is None:
                     # Nothing to delete
-                    return not expected_condition_map
+                    if expected_condition_map:
+                        raise ConditionalCheckFailedException()
+                    return True
 
                 query_builder = [delete_query]
                 if_prefix = " AND " if expected_condition_map else " IF "
