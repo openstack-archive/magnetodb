@@ -18,7 +18,11 @@ from oslo.config import cfg
 from magnetodb.common import PROJECT_NAME
 
 common_opts = [
-    cfg.StrOpt('storage_manager_config', default="{}")
+    cfg.StrOpt('storage_manager_config', default="{}"),
+
+    cfg.IntOpt('max_async_jobs',
+               default=100,
+               help='Max amount of simultaneously processed items for bulk')
 ]
 
 CONF = cfg.CONF
