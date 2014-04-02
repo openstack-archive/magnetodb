@@ -251,7 +251,7 @@ function start_magnetodb() {
     elif is_fedora; then
         use_Python="python2.7"
     fi
-    screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_CONF_DIR"
+    screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-file $MAGNETODB_CONF_DIR/magnetodb-api-server.conf"
 }
 
 function stop_cassandra(){
