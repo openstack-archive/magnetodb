@@ -56,5 +56,5 @@ openstack_api = [
     Route("get_item", "/{project_id}/data/tables/{table_name}/get_item",
           conditions={'method': 'POST'},
           controller=create_resource(get_item.GetItemController()),
-          action="process_request"),
+          action="process_request")
 ]
