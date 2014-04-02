@@ -254,6 +254,7 @@ class CassandraStorageImpl(object):
             return
 
         tenant = keyspace[USER_PREFIX_LENGTH:]
+        table_name = table_name[USER_PREFIX_LENGTH:]
 
         if event['change_type'] == "DROPPED":
             self._remove_table_schema_from_cache(
@@ -433,7 +434,7 @@ class CassandraStorageImpl(object):
 
         if table_info is None:
             raise TableNotExistsException(
-                "Table '{}' already exists".format(table_name)
+                "Table '{}' does not exists".format(table_name)
             )
 
         table_info.status = models.TableMeta.TABLE_STATUS_DELETING
