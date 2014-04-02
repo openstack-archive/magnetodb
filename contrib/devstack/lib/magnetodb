@@ -11,6 +11,7 @@
 # start_magnetodb
 # stop_magnetodb
 
+
 # Save trace setting
 XTRACE=$(set +o | grep xtrace)
 set +o xtrace
@@ -34,6 +35,7 @@ CassandraClusterName=${CassandraClusterName:-test}
 # If you need more, then you need to change the number of loopback network interface aliases below
 CassandraClusterAmountNodes=${CassandraClusterAmountNodes:-3}
 Cassandra_KEYSPACE_ReplicationFactor=${Cassandra_KEYSPACE_ReplicationFactor:-3}
+
 # Set up default directories
 MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
 MAGNETODB_LOG_DIR=${MAGNETODB_LOG_DIR:-/var/log/magnetodb}
@@ -48,26 +50,75 @@ MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
 # Functions
 # ---------
 
-function install_cassandra() {
+function install_python27() {
 
-    #install java
-    sudo apt-get install -y openjdk-7-jdk
-    #update alternatives
-    sudo update-alternatives --set java /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java
+    if is_ubuntu; then
+        # Ubuntu 12.04 already has python2.7
+        :
+    elif is_fedora; then
+        # Install PUIAS repository
+        # PUIAS created and maintained by members of Princeton University and the Institute for Advanced Study and it’s fully compatible with RHEL6 / CentOS6.
+        sudo wget -q http://springdale.math.ias.edu/data/puias/6/x86_64/os/RPM-GPG-KEY-puias -O /etc/pki/rpm-gpg/RPM-GPG-KEY-puias
+        sudo rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-puias
+
+        sudo sh -c "echo '[PUIAS_6_computational]
+name=PUIAS computational Base \$releasever - \$basearch
+mirrorlist=http://puias.math.ias.edu/data/puias/computational/\$releasever/\$basearch/mirrorlist
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-puias' > /etc/yum.repos.d/puias-computational.repo"
+
+        sudo yum -y install python27 python27-tools python27-setuptools python27-devel
+    fi
+    sudo easy_install-2.7 pip
+}
+
+
+function install_jdk() {
+
+     if is_ubuntu; then
+         sudo apt-get -y install openjdk-7-jdk
+         sudo update-alternatives --set java /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java
+     elif is_fedora; then
+         sudo yum -y install java-1.7.0-openjdk java-1.7.0-openjdk-devel
+         sudo update-alternatives --set java /usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java
+     fi
+}
+
+
+function install_jna() {
 
     echo "---  Installing JNA  ---"
-    sudo apt-get -y install libjna-java
+    if is_ubuntu; then
+        sudo apt-get -y install libjna-java
+    elif is_fedora; then
+        sudo yum -y install jna
+    fi
+}
 
-    #install Cassandra Cluster Manager
-    git_clone $CCM_REPO $CCM_DIR $CCM_BRANCH
-    sudo pip install -e $CCM_DIR
-    sudo pip install pyYaml
-    sudo apt-get -y install ant
 
+function install_cassandra() {
+    
     # for cassandra.io.libevwrapper extension.
     # The C extensions are not required for the driver to run, but they add support
     # for libev and token-aware routing with the Murmur3Partitioner.
-    sudo apt-get -y install libev4 libev-dev
+    if is_ubuntu; then
+        sudo apt-get -y install ant libyaml-0-2 libyaml-dev python-yaml libev4 libev-dev
+    elif is_fedora; then
+        sudo yum -y install ant ant-nodeps libyaml libyaml-devel PyYAML libev libev-devel
+    fi
+
+    #install Cassandra Cluster Manager
+    git_clone $CCM_REPO $CCM_DIR $CCM_BRANCH
+
+    if is_ubuntu; then
+        sudo pip install -e $CCM_DIR
+    elif is_fedora; then
+        cd $CCM_DIR    
+        sudo python setup.py install
+    fi
+
+    install_jdk
+    install_jna
 }
 
 
@@ -77,9 +128,17 @@ function install_magnetodb() {
     if [ "$MAGNETODB_BACKEND" == "cassandra" ]; then
         install_cassandra
     fi
+
+    install_python27
+
     git_clone $MAGNETODB_REPO $MAGNETODB_DIR $MAGNETODB_BRANCH
     echo -e $MAGNETODB_ADDITIONAL_REQ >> $MAGNETODB_DIR/requirements.txt
-    setup_develop $MAGNETODB_DIR
+    if is_ubuntu; then
+        setup_develop $MAGNETODB_DIR
+    elif is_fedora; then
+        cd $MAGNETODB_DIR
+        sudo pip2.7 install -r requirements.txt -r test-requirements.txt
+    fi
 }
 
 
@@ -95,7 +154,6 @@ function configure_cassandra() {
         let addr=$addr+1
         let n=$n+1
     done
-    # Installing Cassandra Cluster
 
     ccm status $CassandraClusterName || ccm create $CassandraClusterName -v $CassandraVersion
     ccm populate -n $CassandraClusterAmountNodes || true
@@ -140,7 +198,12 @@ function start_magnetodb() {
         start_cassandra
     fi
 
-    screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
+    if is_ubuntu; then
+        use_Python="python"
+    elif is_fedora; then
+        use_Python="python2.7"
+    fi
+    screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
 }
 
 
