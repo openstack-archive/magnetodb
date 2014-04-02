@@ -26,6 +26,7 @@ from magnetodb.common.cassandra.cluster import NoHostAvailable
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.common.exception import TableNotExistsException
 from magnetodb.common.exception import TableAlreadyExistsException
+from magnetodb.common.exception import ConditionalCheckFailedException
 from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
@@ -1054,7 +1055,9 @@ class CassandraStorageImpl(object):
 
                 if old_indexes is None:
                     # Nothing to delete
-                    return not expected_condition_map
+                    if expected_condition_map:
+                        raise ConditionalCheckFailedException()
+                    return True
 
                 query_builder = [delete_query]
                 if_prefix = " AND " if expected_condition_map else " IF "
@@ -1096,10 +1099,12 @@ class CassandraStorageImpl(object):
                         break
                 else:
                     # expected condition wasn't passed
-                    return False
+                    raise ConditionalCheckFailedException()
         else:
             result = self._execute_query(delete_query, consistent=True)
-            return (result is None) or result[0]['[applied]']
+            if result and not result[0]['[applied]']:
+                raise ConditionalCheckFailedException()
+            return True
 
     @staticmethod
     def _compact_indexed_condition(cond_list):
@@ -1250,11 +1255,12 @@ class CassandraStorageImpl(object):
         if query_builder is None:
             query_builder = []
         for key_attr in table_schema.key_attributes:
-            query_builder += (
-                prefix, '"', USER_PREFIX, key_attr, '"=',
-                _encode_predefined_attr_value(attribute_map[key_attr])
-            )
-            prefix = " AND "
+            if key_attr:
+                query_builder += (
+                    prefix, '"', USER_PREFIX, key_attr, '"=',
+                    _encode_predefined_attr_value(attribute_map[key_attr])
+                )
+                prefix = " AND "
         return query_builder
 
     @staticmethod
