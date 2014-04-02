@@ -21,6 +21,7 @@ from magnetodb.openstack.common.log import logging
 from magnetodb.api.openstack.v1 import put_item
 from magnetodb.api.openstack.v1 import get_item
 from magnetodb.api.openstack.v1 import batch_write_item
+from magnetodb.api.openstack.v1 import delete_table
 
 
 LOG = logging.getLogger(__name__)
@@ -57,4 +58,9 @@ openstack_api = [
           conditions={'method': 'POST'},
           controller=create_resource(get_item.GetItemController()),
           action="process_request"),
+
+    Route("delete_table", "/{project_id}/data/tables/{table_name}",
+          conditions={'method': 'DELETE'},
+          controller=create_resource(delete_table.DeleteTableController()),
+          action="process_request")
 ]

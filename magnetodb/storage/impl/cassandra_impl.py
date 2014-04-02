@@ -254,6 +254,7 @@ class CassandraStorageImpl(object):
             return
 
         tenant = keyspace[USER_PREFIX_LENGTH:]
+        table_name = table_name[USER_PREFIX_LENGTH:]
 
         if event['change_type'] == "DROPPED":
             self._remove_table_schema_from_cache(
