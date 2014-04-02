@@ -38,7 +38,7 @@ resources:
             #!/bin/bash
             sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
             sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
-            sed -i s/"pipeline = tokenauth contextwrapper magnetodb_app"/"pipeline = contextwrapper magnetodb_app"/g /etc/magnetodb/api-paste.ini
+            sed -i s/"pipeline = faultwrapper tokenauth contextwrapper magnetodb_app"/"pipeline = contextwrapper magnetodb_app"/g /etc/magnetodb/api-paste.ini
             sed -i s/'"contact_points": \["localhost"\]'/'"contact_points": \["cassandra1_fixed_ips","cassandra2_fixed_ips","cassandra3_fixed_ips"\]'/g /etc/magnetodb/magnetodb.conf
             echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
             echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
@@ -70,7 +70,7 @@ resources:
             #!/bin/bash
             sed -i s/"GSSAPIAuthentication yes"/"GSSAPIAuthentication no"/g /etc/ssh/sshd_config
             sed -i s/"#UseDNS yes"/"UseDNS no"/g /etc/ssh/sshd_config
-            sed -i s/"pipeline = tokenauth contextwrapper magnetodb_app"/"pipeline = contextwrapper magnetodb_app"/g /etc/magnetodb/api-paste.ini
+            sed -i s/"pipeline = faultwrapper tokenauth contextwrapper magnetodb_app"/"pipeline = contextwrapper magnetodb_app"/g /etc/magnetodb/api-paste.ini
             sed -i s/'"contact_points": \["localhost"\]'/'"contact_points": \["cassandra1_fixed_ips","cassandra2_fixed_ips","cassandra3_fixed_ips"\]'/g /etc/magnetodb/magnetodb.conf
             echo cassandra1_fixed_ips cassandra1 >> /etc/hosts
             echo cassandra2_fixed_ips cassandra2 >> /etc/hosts
