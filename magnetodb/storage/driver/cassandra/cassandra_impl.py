@@ -18,6 +18,7 @@ import json
 import binascii
 
 from magnetodb.common import exception
+from magnetodb.common.exception import ConditionalCheckFailedException
 
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
@@ -807,7 +808,9 @@ class CassandraStorageDriver(StorageDriver):
 
                 if old_indexes is None:
                     # Nothing to delete
-                    return not expected_condition_map
+                    if expected_condition_map:
+                        raise ConditionalCheckFailedException()
+                    return True
 
                 query_builder = [delete_query]
                 if_prefix = " AND " if expected_condition_map else " IF "
@@ -850,11 +853,12 @@ class CassandraStorageDriver(StorageDriver):
                         break
                 else:
                     # expected condition wasn't passed
-                    return False
+                    raise ConditionalCheckFailedException()
         else:
             result = self.__cluster_handler.execute_query(delete_query,
                                                           consistent=True)
-            return (result is None) or result[0]['[applied]']
+            if result and not result[0]['[applied]']:
+                raise ConditionalCheckFailedException()
 
     @staticmethod
     def _compact_indexed_condition(cond_list):
@@ -1005,11 +1009,12 @@ class CassandraStorageDriver(StorageDriver):
         if query_builder is None:
             query_builder = []
         for key_attr in table_schema.key_attributes:
-            query_builder += (
-                prefix, '"', USER_PREFIX, key_attr, '"=',
-                _encode_predefined_attr_value(attribute_map[key_attr])
-            )
-            prefix = " AND "
+            if key_attr:
+                query_builder += (
+                    prefix, '"', USER_PREFIX, key_attr, '"=',
+                    _encode_predefined_attr_value(attribute_map[key_attr])
+                )
+                prefix = " AND "
         return query_builder
 
     @staticmethod
