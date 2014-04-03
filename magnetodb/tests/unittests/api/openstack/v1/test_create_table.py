@@ -220,3 +220,27 @@ class CreateTableTest(test_base_testcase.APITestCase):
         response_payload = json.loads(json_response)
 
         self.assertEqual(expected_response, response_payload)
+
+    def test_create_table_malformed(self):
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/fake_project_id/data/tables'
+        body = '{"table_name": "spam"}'
+
+        conn.request("POST", url, headers=headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_response = {
+            'message': 'One or more required parameter values were missing.',
+            '__type': 'com.amazonaws.dynamodb.v20111205#ValidationException'
+        }
+
+        self.assertEqual(expected_response, response_payload)
