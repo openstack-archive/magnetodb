@@ -12,12 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import jsonschema
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import validation
 from magnetodb import storage
 from magnetodb.storage import models
-from magnetodb.common import exception
 
 
 class GetItemController(object):
@@ -44,54 +43,45 @@ class GetItemController(object):
     }
 
     def process_request(self, req, body, project_id, table_name):
-        try:
-            validation.validate_params(self.schema, body)
-            req.context.tenant = project_id
+        jsonschema.validate(body, self.schema)
+        req.context.tenant = project_id
 
-            # get attributes_to_get
-            attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
+        # get attributes_to_get
+        attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
 
-            select_type = (
-                models.SelectType.all()
-                if attributes_to_get is None else
-                models.SelectType.specified_attributes(attributes_to_get)
-            )
+        select_type = (
+            models.SelectType.all()
+            if attributes_to_get is None else
+            models.SelectType.specified_attributes(attributes_to_get)
+        )
 
-            # parse key_attributes
-            key_attributes = parser.Parser.parse_item_attributes(
-                body[parser.Props.KEY]
-            )
+        # parse key_attributes
+        key_attributes = parser.Parser.parse_item_attributes(
+            body[parser.Props.KEY]
+        )
 
-            # parse consistent_read
-            consistent_read = body.get(
-                parser.Props.CONSISTENT_READ, False
-            )
+        # parse consistent_read
+        consistent_read = body.get(
+            parser.Props.CONSISTENT_READ, False
+        )
 
-            # format conditions to get item
-            indexed_condition_map = {
-                name: [models.IndexedCondition.eq(value)]
-                for name, value in key_attributes.iteritems()
-            }
+        # format conditions to get item
+        indexed_condition_map = {
+            name: [models.IndexedCondition.eq(value)]
+            for name, value in key_attributes.iteritems()
+        }
 
-        except Exception:
-            raise exception.ValidationException()
+        # get item
+        result = storage.select_item(
+            req.context, table_name, indexed_condition_map,
+            select_type=select_type, limit=2, consistent=consistent_read)
 
-        try:
-            # get item
-            result = storage.select_item(
-                req.context, table_name, indexed_condition_map,
-                select_type=select_type, limit=2, consistent=consistent_read)
+        # format response
+        if result.count == 0:
+            return {}
 
-            # format response
-            if result.count == 0:
-                return {}
-
-            response = {
-                parser.Props.ITEM: parser.Parser.format_item_attributes(
-                    result.items[0])
-            }
-            return response
-        except exception.AWSErrorResponseException as e:
-            raise e
-        except Exception:
-            raise exception.AWSErrorResponseException()
+        response = {
+            parser.Props.ITEM: parser.Parser.format_item_attributes(
+                result.items[0])
+        }
+        return response

@@ -12,15 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+import jsonschema
 
 from magnetodb import storage
-from magnetodb.common import exception
 
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import validation
 
 LOG = logging.getLogger(__name__)
 
@@ -79,65 +77,56 @@ class ScanController(object):
     }
 
     def scan(self, req, body, project_id, table_name):
-
-        validation.validate_params(self.schema, body)
+        jsonschema.validate(body, self.schema)
 
         req.context.tenant = project_id
 
-        try:
-            #TODO ikhudoshyn: table_name may be index name
+        #TODO ikhudoshyn: table_name may be index name
 
-            attrs_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
+        attrs_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
 
-            select = body.get(parser.Props.SELECT)
+        select = body.get(parser.Props.SELECT)
 
-            select_type = parser.Parser.parse_select_type(select, attrs_to_get)
+        select_type = parser.Parser.parse_select_type(select, attrs_to_get)
 
-            limit = body.get(parser.Props.LIMIT)
+        limit = body.get(parser.Props.LIMIT)
 
-            exclusive_start_key = body.get(parser.Props.EXCLUSIVE_START_KEY)
+        exclusive_start_key = body.get(parser.Props.EXCLUSIVE_START_KEY)
 
-            exclusive_start_key = parser.Parser.parse_item_attributes(
-                exclusive_start_key) if exclusive_start_key else None
+        exclusive_start_key = parser.Parser.parse_item_attributes(
+            exclusive_start_key) if exclusive_start_key else None
 
-            scan_filter = body.get(parser.Props.SCAN_FILTER, {})
+        scan_filter = body.get(parser.Props.SCAN_FILTER, {})
 
-            condition_map = parser.Parser.parse_attribute_conditions(
-                scan_filter
+        condition_map = parser.Parser.parse_attribute_conditions(
+            scan_filter
+        )
+
+        segment = body.get(parser.Props.SEGMENT, 0)
+        total_segments = body.get(parser.Props.TOTAL_SEGMENTS, 1)
+
+        assert segment < total_segments
+
+        result = storage.scan(
+            req.context, table_name, condition_map,
+            attributes_to_get=attrs_to_get, limit=limit,
+            exclusive_start_key=exclusive_start_key)
+
+        response = {
+            parser.Props.COUNT: result.count,
+            parser.Props.SCANNED_COUNT: result.scanned_count
+        }
+
+        if not select_type.is_count:
+            response[parser.Props.ITEMS] = [
+                parser.Parser.format_item_attributes(row)
+                for row in result.items]
+
+        if result.last_evaluated_key:
+            response[parser.Props.LAST_EVALUATED_KEY] = (
+                parser.Parser.format_item_attributes(
+                    result.last_evaluated_key
+                )
             )
 
-            segment = body.get(parser.Props.SEGMENT, 0)
-            total_segments = body.get(parser.Props.TOTAL_SEGMENTS, 1)
-
-            assert segment < total_segments
-        except Exception:
-            raise exception.AWSErrorResponseException()
-
-        try:
-            result = storage.scan(
-                req.context, table_name, condition_map,
-                attributes_to_get=attrs_to_get, limit=limit,
-                exclusive_start_key=exclusive_start_key)
-
-            response = {
-                parser.Props.COUNT: result.count,
-                parser.Props.SCANNED_COUNT: result.scanned_count
-            }
-
-            if not select_type.is_count:
-                response[parser.Props.ITEMS] = [
-                    parser.Parser.format_item_attributes(row)
-                    for row in result.items]
-
-            if result.last_evaluated_key:
-                response[parser.Props.LAST_EVALUATED_KEY] = (
-                    parser.Parser.format_item_attributes(
-                        result.last_evaluated_key
-                    )
-                )
-
-            return response
-        except exception.AWSErrorResponseException as e:
-            raise e
-        except Exception:
-            raise exception.AWSErrorResponseException()
+        return response

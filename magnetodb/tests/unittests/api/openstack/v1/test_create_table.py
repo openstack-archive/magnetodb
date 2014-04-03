@@ -238,9 +238,10 @@ class CreateTableTest(test_base_testcase.APITestCase):
         json_response = response.read()
         response_payload = json.loads(json_response)
 
-        expected_response = {
-            'message': 'One or more required parameter values were missing.',
-            '__type': 'com.amazonaws.dynamodb.v20111205#ValidationException'
+        expected_error = {
+            'message': "'attribute_definitions' is a required property",
+            'traceback': None,
+            'type': 'ValidationError',
         }
 
-        self.assertEqual(expected_response, response_payload)
+        self.assertEqual(expected_error, response_payload['error'])
