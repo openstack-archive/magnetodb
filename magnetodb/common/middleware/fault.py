@@ -62,7 +62,15 @@ class FaultWrapper(wsgi.Middleware):
         'InvalidQueryParameter': webob.exc.HTTPBadRequest,
         'ValidationError': webob.exc.HTTPBadRequest,
         'MissingParameter': webob.exc.HTTPBadRequest,
+
+        # Table errors
+        'TableAlreadyExistsException': webob.exc.HTTPBadRequest,
+        'TableNotExistsException': webob.exc.HTTPNotFound,
     }
+
+    def __init__(self, app, options):
+        self.options = options
+        super(FaultWrapper, self).__init__(app)
 
     def _map_exception_to_error(self, class_exception):
         if class_exception == Exception:
@@ -85,6 +93,10 @@ class FaultWrapper(wsgi.Middleware):
             msg_trace = traceback.format_exc()
             message = full_message
 
+        trace = None
+        if self.options.get('show_trace', False):
+            trace = msg_trace
+
         error = {
             'code': webob_exc.code,
             'title': webob_exc.title,
@@ -92,7 +104,7 @@ class FaultWrapper(wsgi.Middleware):
             'error': {
                 'message': message,
                 'type': ex_type,
-                'traceback': msg_trace,
+                'traceback': trace,
             }
         }
 
@@ -107,4 +119,4 @@ class FaultWrapper(wsgi.Middleware):
 
     @classmethod
     def factory_method(cls, global_config, **local_config):
-        return lambda application: cls(application)
+        return lambda application: cls(application, local_config)

@@ -56,6 +56,52 @@ class TableAlreadyExistsException(BackendInteractionException):
     pass
 
 
+# Common Errors
+class InternalFailure(MagnetoError):
+    pass
+
+
+class RequestQuotaExceeded(MagnetoError):
+    pass
+
+
+class OverLimit(MagnetoError):
+    pass
+
+
+class InvalidClientToken(MagnetoError):
+    pass
+
+
+class Forbidden(MagnetoError):
+    pass
+
+
+class InvalidParameterCombination(MagnetoError):
+    pass
+
+
+class InvalidParameterValue(MagnetoError):
+    pass
+
+
+class InvalidQueryParameter(MagnetoError):
+    pass
+
+
+class MalformedQueryString(MagnetoError):
+    pass
+
+
+class MissingParameter(MagnetoError):
+    pass
+
+
+class ServiceUnavailable(MagnetoError):
+    pass
+
+
+# DynamoDB Errors
 class AWSErrorResponseException(HTTPException, Response):
     """ Base Exception for rendering to AWS DynamoDB error
     JSON http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/

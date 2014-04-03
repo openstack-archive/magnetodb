@@ -14,7 +14,6 @@
 #    under the License.
 
 from magnetodb import storage
-from magnetodb.common import exception
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
@@ -25,61 +24,52 @@ LOG = logging.getLogger(__name__)
 
 class DescribeTableController(object):
     def describe_table(self, req, project_id, table_name):
-        try:
-            req.context.tenant = project_id
+        req.context.tenant = project_id
 
-            table_meta = storage.describe_table(req.context, table_name)
+        table_meta = storage.describe_table(req.context, table_name)
 
-            url = req.path_url
-            bookmark = req.path_url
+        url = req.path_url
+        bookmark = req.path_url
 
-            result = {
-                parser.Props.TABLE: {
-                    parser.Props.ATTRIBUTE_DEFINITIONS: (
-                        parser.Parser.format_attribute_definitions(
-                            table_meta.schema.attribute_type_map
-                        )
-                    ),
-                    parser.Props.CREATION_DATE_TIME: 0,
-                    parser.Props.ITEM_COUNT: 0,
-                    parser.Props.KEY_SCHEMA: (
-                        parser.Parser.format_key_schema(
-                            table_meta.schema.key_attributes
-                        )
-                    ),
-                    parser.Props.TABLE_NAME: table_name,
+        result = {
+            parser.Props.TABLE: {
+                parser.Props.ATTRIBUTE_DEFINITIONS: (
+                    parser.Parser.format_attribute_definitions(
+                        table_meta.schema.attribute_type_map)),
 
-                    parser.Props.TABLE_STATUS: (
-                        parser.Parser.format_table_status(table_meta.status)
-                    ),
-                    parser.Props.TABLE_SIZE_BYTES: 0,
+                parser.Props.CREATION_DATE_TIME: 0,
+                parser.Props.ITEM_COUNT: 0,
 
-                    parser.Props.LINKS: [
-                        {
-                            parser.Props.HREF: url,
-                            parser.Props.REL: parser.Values.SELF
-                        },
-                        {
-                            parser.Props.HREF: bookmark,
-                            parser.Props.REL: parser.Values.BOOKMARK
-                        }
-                    ]
-                }
+                parser.Props.KEY_SCHEMA: (
+                    parser.Parser.format_key_schema(
+                        table_meta.schema.key_attributes)),
+
+                parser.Props.TABLE_NAME: table_name,
+
+                parser.Props.TABLE_STATUS: (
+                    parser.Parser.format_table_status(table_meta.status)),
+
+                parser.Props.TABLE_SIZE_BYTES: 0,
+
+                parser.Props.LINKS: [
+                    {
+                        parser.Props.HREF: url,
+                        parser.Props.REL: parser.Values.SELF
+                    },
+                    {
+                        parser.Props.HREF: bookmark,
+                        parser.Props.REL: parser.Values.BOOKMARK
+                    }
+                ]
             }
+        }
 
-            if table_meta.schema.index_def_map:
-                table_def = result[parser.Props.TABLE]
-                table_def[parser.Props.LOCAL_SECONDARY_INDEXES] = (
-                    parser.Parser.format_local_secondary_indexes(
-                        table_meta.schema.key_attributes[0],
-                        table_meta.schema.index_def_map
-                    )
+        if table_meta.schema.index_def_map:
+            table_def = result[parser.Props.TABLE]
+            table_def[parser.Props.LOCAL_SECONDARY_INDEXES] = (
+                parser.Parser.format_local_secondary_indexes(
+                    table_meta.schema.key_attributes[0],
+                    table_meta.schema.index_def_map
                 )
-            return result
-
-        except exception.TableNotExistsException as e:
-            raise exception.ResourceNotFoundException(e.message)
-        except exception.AWSErrorResponseException as e:
-            raise e
-        except Exception:
-            raise exception.AWSErrorResponseException()
+            )
+        return result

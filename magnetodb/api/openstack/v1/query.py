@@ -12,15 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+import jsonschema
 
 from magnetodb import storage
-from magnetodb.common import exception
 from magnetodb.openstack.common.log import logging
 from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import validation
 
 LOG = logging.getLogger(__name__)
 
@@ -84,91 +82,82 @@ class QueryController(object):
     }
 
     def query(self, req, body, project_id, table_name):
-        validation.validate_params(self.schema, body)
+        jsonschema.validate(body, self.schema)
         req.context.tenant = project_id
 
-        try:
-            # parse select_type
-            attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
+        # parse select_type
+        attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
 
-            if attributes_to_get is not None:
-                attributes_to_get = frozenset(attributes_to_get)
+        if attributes_to_get is not None:
+            attributes_to_get = frozenset(attributes_to_get)
 
-            select = body.get(parser.Props.SELECT)
+        select = body.get(parser.Props.SELECT)
 
-            index_name = body.get(parser.Props.INDEX_NAME)
+        index_name = body.get(parser.Props.INDEX_NAME)
 
-            select_type = parser.Parser.parse_select_type(select,
-                                                          attributes_to_get,
-                                                          index_name)
+        select_type = parser.Parser.parse_select_type(select,
+                                                      attributes_to_get,
+                                                      index_name)
 
-            # parse exclusive_start_key_attributes
-            exclusive_start_key_attributes = body.get(
-                parser.Props.EXCLUSIVE_START_KEY)
+        # parse exclusive_start_key_attributes
+        exclusive_start_key_attributes = body.get(
+            parser.Props.EXCLUSIVE_START_KEY)
 
-            if exclusive_start_key_attributes is not None:
-                exclusive_start_key_attributes = (
-                    parser.Parser.parse_item_attributes(
-                        exclusive_start_key_attributes
-                    )
+        if exclusive_start_key_attributes is not None:
+            exclusive_start_key_attributes = (
+                parser.Parser.parse_item_attributes(
+                    exclusive_start_key_attributes
                 )
-
-            # parse indexed_condition_map
-            indexed_condition_map = parser.Parser.parse_attribute_conditions(
-                body.get(parser.Props.KEY_CONDITIONS))
-
-            # TODO(dukhlov):
-            # it would be nice to validate given table_name, key_attributes and
-            # attributes_to_get to schema expectation
-
-            consistent_read = body.get(
-                parser.Props.CONSISTENT_READ, False)
-
-            limit = body.get(parser.Props.LIMIT)
-
-            order_asc = body.get(parser.Props.SCAN_INDEX_FORWARD)
-
-            if order_asc is None:
-                order_type = None
-            elif order_asc:
-                order_type = models.ORDER_TYPE_ASC
-            else:
-                order_type = models.ORDER_TYPE_DESC
-
-        except Exception:
-            raise exception.ValidationException()
-
-        try:
-            # select item
-            result = storage.select_item(
-                req.context, table_name, indexed_condition_map,
-                select_type=select_type, index_name=index_name, limit=limit,
-                consistent=consistent_read, order_type=order_type,
-                exclusive_start_key=exclusive_start_key_attributes
             )
 
-            # format response
-            if select_type.type == models.SelectType.SELECT_TYPE_COUNT:
-                response = {
-                    parser.Props.COUNT: result.items
-                }
-            else:
-                response = {
-                    parser.Props.COUNT: len(result.items),
-                    parser.Props.ITEMS: [
-                        parser.Parser.format_item_attributes(row)
-                        for row in result.items
-                    ]
-                }
+        # parse indexed_condition_map
+        indexed_condition_map = parser.Parser.parse_attribute_conditions(
+            body.get(parser.Props.KEY_CONDITIONS))
 
-            if limit == len(result.items):
-                response[parser.Props.LAST_EVALUATED_KEY] = (
-                    parser.Parser.format_item_attributes(
-                        result.last_evaluated_key)
-                )
+        # TODO(dukhlov):
+        # it would be nice to validate given table_name, key_attributes and
+        # attributes_to_get to schema expectation
 
-            return response
-        except exception.AWSErrorResponseException as e:
-            raise e
-        except Exception:
-            raise exception.AWSErrorResponseException()
+        consistent_read = body.get(
+            parser.Props.CONSISTENT_READ, False)
+
+        limit = body.get(parser.Props.LIMIT)
+
+        order_asc = body.get(parser.Props.SCAN_INDEX_FORWARD)
+
+        if order_asc is None:
+            order_type = None
+        elif order_asc:
+            order_type = models.ORDER_TYPE_ASC
+        else:
+            order_type = models.ORDER_TYPE_DESC
+
+        # select item
+        result = storage.select_item(
+            req.context, table_name, indexed_condition_map,
+            select_type=select_type, index_name=index_name, limit=limit,
+            consistent=consistent_read, order_type=order_type,
+            exclusive_start_key=exclusive_start_key_attributes
+        )
+
+        # format response
+        if select_type.type == models.SelectType.SELECT_TYPE_COUNT:
+            response = {
+                parser.Props.COUNT: result.items
+            }
+        else:
+            response = {
+                parser.Props.COUNT: len(result.items),
+                parser.Props.ITEMS: [
+                    parser.Parser.format_item_attributes(row)
+                    for row in result.items
+                ]
+            }
+
+        if limit == len(result.items):
+            response[parser.Props.LAST_EVALUATED_KEY] = (
+                parser.Parser.format_item_attributes(
+                    result.last_evaluated_key)
+            )
+
+        return response
