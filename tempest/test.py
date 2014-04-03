@@ -30,6 +30,7 @@ from tempest import clients
 from tempest import config
 from tempest import exceptions
 from tempest.openstack.common import log as logging
+from unittest.case import _AssertRaisesContext
 
 LOG = logging.getLogger(__name__)
 
@@ -275,6 +276,13 @@ class BaseTestCase(testtools.TestCase,
             cls.config.identity.admin_password,
             cls.config.identity.uri
         )
+
+    def assertRaises(self, excClass, callableObj=None, *args, **kwargs):
+        context = _AssertRaisesContext(excClass, self)
+        if callableObj is None:
+            return context
+        with context:
+            callableObj(*args, **kwargs)
 
 
 def call_until_true(func, duration, sleep_for):
