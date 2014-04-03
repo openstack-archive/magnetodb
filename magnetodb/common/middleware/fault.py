@@ -24,6 +24,8 @@ import traceback
 
 import webob
 
+from oslo.config import cfg
+
 from magnetodb.common import wsgi
 
 from magnetodb.openstack.common import log as logging
@@ -62,6 +64,10 @@ class FaultWrapper(wsgi.Middleware):
         'InvalidQueryParameter': webob.exc.HTTPBadRequest,
         'ValidationError': webob.exc.HTTPBadRequest,
         'MissingParameter': webob.exc.HTTPBadRequest,
+
+        # Table errors
+        'TableAlreadyExistsException': webob.exc.HTTPBadRequest,
+        'TableNotExistsException': webob.exc.HTTPNotFound,
     }
 
     def _map_exception_to_error(self, class_exception):
@@ -85,6 +91,10 @@ class FaultWrapper(wsgi.Middleware):
             msg_trace = traceback.format_exc()
             message = full_message
 
+        trace = None
+        if cfg.CONF.debug:
+            trace = msg_trace
+
         error = {
             'code': webob_exc.code,
             'title': webob_exc.title,
@@ -92,7 +102,7 @@ class FaultWrapper(wsgi.Middleware):
             'error': {
                 'message': message,
                 'type': ex_type,
-                'traceback': msg_trace,
+                'traceback': trace,
             }
         }
 

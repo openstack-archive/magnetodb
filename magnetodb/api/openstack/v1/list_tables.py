@@ -14,7 +14,6 @@
 #    under the License.
 
 from magnetodb import storage
-from magnetodb.common import exception
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
@@ -26,31 +25,25 @@ LOG = logging.getLogger(__name__)
 class ListTablesController():
     def list_tables(self, req, project_id):
         req.context.tenant = project_id
-        exclusive_start_table_name = (
-            req.params.get(parser.Props.EXCLUSIVE_START_TABLE_NAME, None)
+        exclusive_start_table_name = req.params.get(
+            parser.Props.EXCLUSIVE_START_TABLE_NAME)
+
+        limit = req.params.get(parser.Props.LIMIT)
+
+        table_names = (
+            storage.list_tables(
+                req.context,
+                exclusive_start_table_name=exclusive_start_table_name,
+                limit=limit
+            )
         )
 
-        limit = req.params.get(parser.Props.LIMIT, None)
+        res = {}
 
-        try:
-            table_names = (
-                storage.list_tables(
-                    req.context,
-                    exclusive_start_table_name=exclusive_start_table_name,
-                    limit=limit
-                )
-            )
+        if table_names and str(limit) == str(len(table_names)):
+            res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
 
-            res = {}
+        res["tables"] = [{"rel": "self", "href": name} for name in
+                         table_names]
 
-            if table_names and str(limit) == str(len(table_names)):
-                res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
-
-            res["tables"] = [{"rel": "self", "href": name} for name in
-                             table_names]
-
-            return res
-        except exception.AWSErrorResponseException as e:
-            raise e
-        except Exception:
-            raise exception.AWSErrorResponseException()
+        return res

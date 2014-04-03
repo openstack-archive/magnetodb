@@ -79,3 +79,28 @@ class BatchWriteItemTestCase(test_base_testcase.APITestCase):
 
         self.assertTrue(mock_execute_write_batch.called)
         self.assertEqual({'unprocessed_items': {}}, response_payload)
+
+    def test_batch_write_item_malformed(self):
+        self.maxDiff = None
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/fake_project_id/data/batch_write_item'
+        body = '{"foo": "bar"}'
+        conn.request("POST", url, headers=headers, body=body)
+
+        response = conn.getresponse()
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual(400, response.status)
+
+        expected_message = "'request_items' is a required property"
+        expected_type = 'ValidationError'
+
+        self.assertEqual(expected_message,
+                         response_payload['error']['message'])
+        self.assertEqual(expected_type,
+                         response_payload['error']['type'])
