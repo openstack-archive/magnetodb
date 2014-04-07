@@ -130,3 +130,54 @@ class QueryTest(test_base_testcase.APITestCase):
         response_payload = json.loads(json_response)
 
         self.assertEqual(expected_response, response_payload)
+
+    @mock.patch('magnetodb.storage.select_item')
+    def test_query_count(self, mock_query):
+        mock_query.return_value = models.SelectResult(count=100500)
+
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/fake_project_id/data/tables/Threads/query'
+        body = """
+            {
+                "key_conditions":
+                   {
+                        "ForumName" :
+                           {
+                               "attribute_value_list": [
+                                   {
+                                       "S": "Testing OS API"
+                                   }
+                               ],
+                               "comparison_operator": "EQ"
+                           },
+                       "LastPostDateTime" :
+                           {
+                               "attribute_value_list": [
+                                   {
+                                       "S": "3/10/14"
+                                   }
+                               ],
+                               "comparison_operator": "GT"
+                           }
+                   },
+               "select": "COUNT"
+            }
+        """
+
+        expected_response = {
+            "count": 100500,
+        }
+
+        conn.request("POST", url, headers=headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_query.called)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual(expected_response, response_payload)

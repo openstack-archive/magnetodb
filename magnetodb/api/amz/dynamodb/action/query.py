@@ -158,11 +158,11 @@ class QueryDynamoDBAction(DynamoDBAction):
             # format response
             if select_type.type == models.SelectType.SELECT_TYPE_COUNT:
                 response = {
-                    parser.Props.COUNT: result.items
+                    parser.Props.COUNT: result.count
                 }
             else:
                 response = {
-                    parser.Props.COUNT: len(result.items),
+                    parser.Props.COUNT: result.count,
                     parser.Props.ITEMS: [
                         parser.Parser.format_item_attributes(row)
                         for row in result.items
@@ -177,7 +177,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                     )
                 )
 
-            if limit == len(result.items):
+            if limit == result.count:
                 response[parser.Props.LAST_EVALUATED_KEY] = (
                     parser.Parser.format_item_attributes(
                         result.last_evaluated_key)

@@ -27,6 +27,7 @@ from magnetodb.common.exception import TableNotExistsException
 from magnetodb.common.exception import TableAlreadyExistsException
 from magnetodb.storage import models
 from magnetodb import storage
+from magnetodb.storage.models import SelectType
 from magnetodb.tests.fake import magnetodb_api_fake
 from mox import Mox, IgnoreArg
 
@@ -444,6 +445,30 @@ class BotoIntegrationTest(unittest.TestCase):
         self.assertEqual(len(items), 1)
 
         self.assertDictEqual(expected_item, dict(items[0].items()))
+
+        self.storage_mocker.VerifyAll()
+
+    def test_select_item_count(self):
+        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+
+        storage.select_item(
+            IgnoreArg(), IgnoreArg(), IgnoreArg(),
+            select_type=SelectType.count(), index_name=IgnoreArg(), limit=IgnoreArg(),
+            exclusive_start_key=IgnoreArg(), consistent=IgnoreArg(),
+            order_type=IgnoreArg(),
+        ).AndReturn(
+            models.SelectResult(
+                count=100500
+            )
+        )
+
+        self.storage_mocker.ReplayAll()
+
+        table = Table('test_table', connection=self.DYNAMODB_CON)
+
+        count = table.query_count(consistent=False, hash_key__eq=1)
+
+        self.assertEqual(count, 100500)
 
         self.storage_mocker.VerifyAll()
 
