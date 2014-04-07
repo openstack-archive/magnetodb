@@ -18,9 +18,11 @@ import json
 import binascii
 import time
 
-from cassandra import query
+from cassandra import query, ConsistencyLevel
+from cassandra.query import SimpleStatement
+from magnetodb.common.cassandra.cluster import Cluster
+from magnetodb.common.cassandra.cluster import NoHostAvailable
 
-from magnetodb.common.cassandra import cluster
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.common.exception import TableNotExistsException
 from magnetodb.common.exception import TableAlreadyExistsException
@@ -56,29 +58,29 @@ USER_PREFIX_LENGTH = len(USER_PREFIX)
 SYSTEM_KEYSPACE = 'magnetodb'
 SYSTEM_COLUMN_INDEX_NAME = 'index_name'
 SYSTEM_COLUMN_INDEX_VALUE_STRING = 'index_value_string'
-SYSTEM_COLUMN_INDEX_VALUE_BLOB = 'index_value_blob'
 SYSTEM_COLUMN_INDEX_VALUE_NUMBER = 'index_value_number'
+SYSTEM_COLUMN_INDEX_VALUE_BLOB = 'index_value_blob'
 
 LOCAL_INDEX_FIELD_LIST = [
     SYSTEM_COLUMN_INDEX_NAME,
-    SYSTEM_COLUMN_INDEX_VALUE_BLOB,
     SYSTEM_COLUMN_INDEX_VALUE_STRING,
     SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+    SYSTEM_COLUMN_INDEX_VALUE_BLOB
 ]
 
 INDEX_TYPE_TO_INDEX_POS_MAP = {
-    models.ATTRIBUTE_TYPE_BLOB: 1,
-    models.ATTRIBUTE_TYPE_STRING: 2,
-    models.ATTRIBUTE_TYPE_NUMBER: 3
+    models.ATTRIBUTE_TYPE_STRING: 1,
+    models.ATTRIBUTE_TYPE_NUMBER: 2,
+    models.ATTRIBUTE_TYPE_BLOB: 3,
 }
 
 SYSTEM_COLUMN_EXTRA_ATTR_DATA = 'extra_attr_data'
 SYSTEM_COLUMN_EXTRA_ATTR_TYPES = 'extra_attr_types'
 SYSTEM_COLUMN_ATTR_EXIST = 'attr_exist'
 
-DEFAULT_BLOB_VALUE = models.AttributeValue.blob('')
 DEFAULT_STRING_VALUE = models.AttributeValue.str('')
 DEFAULT_NUMBER_VALUE = models.AttributeValue.number(0)
+DEFAULT_BLOB_VALUE = models.AttributeValue.blob('')
 
 
 def _encode_predefined_attr_value(attr_value):
@@ -162,14 +164,14 @@ def _decode_single_value(value, element_type):
     else:
         assert False, "Value wasn't formatted for cql query"
 
-ENCODED_DEFAULT_BLOB_VALUE = _encode_predefined_attr_value(
-    DEFAULT_BLOB_VALUE
-)
 ENCODED_DEFAULT_STRING_VALUE = _encode_predefined_attr_value(
     DEFAULT_STRING_VALUE
 )
 ENCODED_DEFAULT_NUMBER_VALUE = _encode_predefined_attr_value(
     DEFAULT_NUMBER_VALUE
+)
+ENCODED_DEFAULT_BLOB_VALUE = _encode_predefined_attr_value(
+    DEFAULT_BLOB_VALUE
 )
 
 
@@ -220,7 +222,7 @@ class CassandraStorageImpl(object):
         if connection_class:
             connection_class = importutils.import_class(connection_class)
 
-        self.cluster = cluster.Cluster(
+        self.cluster = Cluster(
             contact_points=contact_points,
             port=port,
             compression=compression,
@@ -261,19 +263,25 @@ class CassandraStorageImpl(object):
                 tenant, table_name)
 
     def _execute_query(self, query, consistent=False):
-        try:
-            if consistent:
-                query = cluster.SimpleStatement(
-                    query, consistency_level=cluster.ConsistencyLevel.QUORUM
-                )
-
-            LOG.debug("Executing query {}".format(query))
-            return self.session.execute(query)
-        except Exception as e:
+        ex = None
+        if consistent:
+            query = SimpleStatement(
+                query, consistency_level=ConsistencyLevel.QUORUM
+            )
+        LOG.debug("Executing query {}".format(query))
+        for x in range(3):
+            try:
+                return self.session.execute(query)
+            except NoHostAvailable:
+                LOG.warning("It seems connection was lost. Retrying...",
+                            exc_info=1)
+            except Exception as e:
+                ex = e
+                break
+        if ex:
             msg = "Error executing query {}:{}".format(query, e.message)
-            LOG.error(msg)
-            raise BackendInteractionException(
-                msg)
+            LOG.exception(msg)
+            raise BackendInteractionException(msg)
 
     def _wait_for_table_status(self, keyspace_name, table_name,
                                expected_exists, indexed_column_names=None):
@@ -374,8 +382,8 @@ class CassandraStorageImpl(object):
             query_builder += (
                 SYSTEM_COLUMN_INDEX_NAME, " text,",
                 SYSTEM_COLUMN_INDEX_VALUE_STRING, " text, ",
-                SYSTEM_COLUMN_INDEX_VALUE_BLOB, " blob, ",
                 SYSTEM_COLUMN_INDEX_VALUE_NUMBER, " decimal, ",
+                SYSTEM_COLUMN_INDEX_VALUE_BLOB, " blob, ",
             )
 
         for attr_name, attr_type in (
@@ -398,8 +406,8 @@ class CassandraStorageImpl(object):
             query_builder += (
                 ",", SYSTEM_COLUMN_INDEX_NAME,
                 ",", SYSTEM_COLUMN_INDEX_VALUE_STRING,
-                ",", SYSTEM_COLUMN_INDEX_VALUE_BLOB,
                 ",", SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                ",", SYSTEM_COLUMN_INDEX_VALUE_BLOB,
             )
 
         if range_key_name:
@@ -576,9 +584,9 @@ class CassandraStorageImpl(object):
         if table_info.schema.index_def_map:
             query_builder += (
                 SYSTEM_COLUMN_INDEX_NAME, ",",
-                SYSTEM_COLUMN_INDEX_VALUE_BLOB, ",",
                 SYSTEM_COLUMN_INDEX_VALUE_STRING, ",",
                 SYSTEM_COLUMN_INDEX_VALUE_NUMBER, ",",
+                SYSTEM_COLUMN_INDEX_VALUE_BLOB, ",",
             )
 
         query_builder += (
@@ -596,9 +604,9 @@ class CassandraStorageImpl(object):
         if table_info.schema.index_def_map:
             res_index_values = [
                 ENCODED_DEFAULT_STRING_VALUE,
-                ENCODED_DEFAULT_BLOB_VALUE,
                 ENCODED_DEFAULT_STRING_VALUE,
-                ENCODED_DEFAULT_NUMBER_VALUE
+                ENCODED_DEFAULT_NUMBER_VALUE,
+                ENCODED_DEFAULT_BLOB_VALUE
             ]
 
             if index_name:
@@ -994,7 +1002,7 @@ class CassandraStorageImpl(object):
         self._append_index_extra_primary_key(query_buider, prefix=" AND ")
 
         select_result = self._execute_query("".join(query_buider),
-                                            consistent=True)
+                                            consistent=False)
         if not select_result:
             return None
 
@@ -1258,9 +1266,9 @@ class CassandraStorageImpl(object):
 
         res_index_values = [
             ENCODED_DEFAULT_STRING_VALUE,
-            ENCODED_DEFAULT_BLOB_VALUE,
             ENCODED_DEFAULT_STRING_VALUE,
-            ENCODED_DEFAULT_NUMBER_VALUE
+            ENCODED_DEFAULT_NUMBER_VALUE,
+            ENCODED_DEFAULT_BLOB_VALUE
         ]
 
         if index_name:
@@ -1302,7 +1310,6 @@ class CassandraStorageImpl(object):
         """
 
         assert write_request_list
-
         unprocessed_items = []
         for req in write_request_list:
             try:
@@ -1599,15 +1606,15 @@ class CassandraStorageImpl(object):
                         if index_name else DEFAULT_STRING_VALUE
                     )
                 ],
-                SYSTEM_COLUMN_INDEX_VALUE_BLOB: [],
                 SYSTEM_COLUMN_INDEX_VALUE_STRING: [],
-                SYSTEM_COLUMN_INDEX_VALUE_NUMBER: []
+                SYSTEM_COLUMN_INDEX_VALUE_NUMBER: [],
+                SYSTEM_COLUMN_INDEX_VALUE_BLOB: []
             }
 
             default_index_values = [
-                DEFAULT_BLOB_VALUE,
                 DEFAULT_STRING_VALUE,
-                DEFAULT_NUMBER_VALUE
+                DEFAULT_NUMBER_VALUE,
+                DEFAULT_BLOB_VALUE
             ]
             if index_attr_cond_list:
                 indexed_attr_type = table_info.schema.attribute_type_map[

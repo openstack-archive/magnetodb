@@ -33,6 +33,8 @@ For help:
 
 """
 
+from gevent import monkey
+monkey.patch_all()
 
 import argparse
 import json
@@ -59,7 +61,7 @@ def context():
     pass
 
 
-def put_item(table, py_obj):
+def put_item(storage_impl, table, py_obj):
     """CassandraStorageImpl put_item method wrapper. """
     put = {}
 
@@ -67,17 +69,16 @@ def put_item(table, py_obj):
         put[k] = models.AttributeValue(TYPE_DICT[v.keys()[0]], v.values()[0])
 
     put_request = models.PutItemRequest(table, put)
-    cassandra = cassandra_impl.CassandraStorageImpl()
-    cassandra.put_item(context, put_request)
+    storage_impl.put_item(context, put_request)
 
 
-def string_loader(table, input_string):
+def string_loader(storage_impl, table, input_string):
     """Load data from specified string. """
     py_obj = json.loads(input_string)
-    put_item(table, py_obj)
+    put_item(storage_impl, table, py_obj)
 
 
-def sequence_loader(table, sequence):
+def sequence_loader(storage_impl, table, sequence):
     """Load data from specified text file.
 
     :param table: Table name
@@ -90,7 +91,7 @@ def sequence_loader(table, sequence):
     for item in sequence:
         line_counter += 1
         try:
-            string_loader(table, item)
+            string_loader(storage_impl, table, item)
         except ValueError as e:
             print ('Error in json input. Line %s was not processed. '
                    'Please fix and try again. %s' % (line_counter, e))
@@ -121,16 +122,18 @@ def main():
         print 'Bad table name. Use format: <tenant_name>.<table_name>'
         return
 
+    storage_impl = cassandra_impl.CassandraStorageImpl(cql_version="3.1.5")
+
     #Checking for stdin
     if not sys.stdin.isatty():
         lines = sys.stdin.readlines()
-        sequence_loader(table, lines)
+        sequence_loader(storage_impl, table, lines)
         return
 
     if namespace.input_file:
-        sequence_loader(table, namespace.input_file)
+        sequence_loader(storage_impl, table, namespace.input_file)
     elif namespace.input_string:
-        string_loader(table, namespace.input_string)
+        string_loader(storage_impl, table, namespace.input_string)
     else:
         print ("You have not specified any input data. Use '-h' or '--help' "
                "keys for script using info")

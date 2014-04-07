@@ -228,17 +228,17 @@ class TestCassandraBase(unittest.TestCase):
 
         if indexed:
             query += (
-                "{} text, {} blob, {} text, {} decimal,"
+                "{} text, {} text, {} decimal, {} blob,"
                 " PRIMARY KEY({}id, {}, {}, {}, {}, {}range))".format(
                     impl.SYSTEM_COLUMN_INDEX_NAME,
-                    impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
                     impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
                     impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                    impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
                     impl.USER_PREFIX,
                     impl.SYSTEM_COLUMN_INDEX_NAME,
-                    impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
                     impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
                     impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                    impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
                     impl.USER_PREFIX
                 )
             )
