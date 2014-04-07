@@ -18,9 +18,11 @@ import json
 import binascii
 import time
 
-from cassandra import query
+from cassandra import query, ConsistencyLevel
+from cassandra.query import SimpleStatement
+from magnetodb.common.cassandra.cluster import Cluster
+from magnetodb.common.cassandra.cluster import NoHostAvailable
 
-from magnetodb.common.cassandra import cluster
 from magnetodb.common.exception import BackendInteractionException
 from magnetodb.common.exception import TableNotExistsException
 from magnetodb.common.exception import TableAlreadyExistsException
@@ -220,7 +222,7 @@ class CassandraStorageImpl(object):
         if connection_class:
             connection_class = importutils.import_class(connection_class)
 
-        self.cluster = cluster.Cluster(
+        self.cluster = Cluster(
             contact_points=contact_points,
             port=port,
             compression=compression,
@@ -261,19 +263,25 @@ class CassandraStorageImpl(object):
                 tenant, table_name)
 
     def _execute_query(self, query, consistent=False):
-        try:
-            if consistent:
-                query = cluster.SimpleStatement(
-                    query, consistency_level=cluster.ConsistencyLevel.QUORUM
-                )
-
-            LOG.debug("Executing query {}".format(query))
-            return self.session.execute(query)
-        except Exception as e:
+        ex = None
+        if consistent:
+            query = SimpleStatement(
+                query, consistency_level=ConsistencyLevel.QUORUM
+            )
+        LOG.debug("Executing query {}".format(query))
+        for x in range(3):
+            try:
+                return self.session.execute(query)
+            except NoHostAvailable:
+                LOG.warning("It seems connection was lost. Retrying...",
+                            exc_info=1)
+            except Exception as e:
+                ex = e
+                break
+        if ex:
             msg = "Error executing query {}:{}".format(query, e.message)
-            LOG.error(msg)
-            raise BackendInteractionException(
-                msg)
+            LOG.exception(msg)
+            raise BackendInteractionException(msg)
 
     def _wait_for_table_status(self, keyspace_name, table_name,
                                expected_exists, indexed_column_names=None):
