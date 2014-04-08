@@ -12,22 +12,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import base64
-import decimal
-
 from magnetodb.storage import models
-from magnetodb.storage.models import IndexDefinition
+
+from magnetodb.storage.models import AttributeValue
 from magnetodb.common.exception import MagnetoError
-
-
-#init decimal context to meet DynamoDB number type behaviour expectation
-DECIMAL_CONTEXT = decimal.Context(
-    prec=38, rounding=None,
-    traps=[],
-    flags=[],
-    Emax=126,
-    Emin=-128
-)
 
 TYPE_STRING = "S"
 TYPE_NUMBER = "N"
@@ -507,7 +495,7 @@ class Parser():
                 Props.NON_KEY_ATTRIBUTES, None
             )
 
-        return index_name, IndexDefinition(range_key, projected_attrs)
+        return index_name, models.IndexDefinition(range_key, projected_attrs)
 
     @classmethod
     def format_local_secondary_index(cls, index_name, hash_key,
@@ -558,77 +546,27 @@ class Parser():
             for index_name, index_def in local_secondary_index_map.iteritems()
         ]
 
-    @staticmethod
-    def decode_single_value(single_value_type, encoded_single_value):
-        assert isinstance(encoded_single_value, (str, unicode))
-        if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            return encoded_single_value
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-            return DECIMAL_CONTEXT.create_decimal(encoded_single_value)
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            return base64.decodestring(encoded_single_value)
-        else:
-            assert False, "Value type wasn't recognized"
-
-    @staticmethod
-    def encode_single_value(single_value_type, decoded_single_value):
-        if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            isinstance(decoded_single_value, (str, unicode))
-            return decoded_single_value
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-            assert isinstance(decoded_single_value, decimal.Decimal)
-            return str(decoded_single_value)
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            assert isinstance(decoded_single_value, str)
-            return base64.encodestring(decoded_single_value)
-        else:
-            assert False, "Value type wasn't recognized"
-
     @classmethod
     def decode_attr_value(cls, dynamodb_attr_type, dynamodb_attr_value):
         attr_type = cls.DYNAMODB_TO_STORAGE_TYPE_MAP[dynamodb_attr_type]
-        if attr_type.collection_type is not None:
-            attr_value = {
-                cls.decode_single_value(attr_type.element_type, val)
-                for val in dynamodb_attr_value
-            }
-        else:
-            attr_value = cls.decode_single_value(
-                attr_type.element_type, dynamodb_attr_value
-            )
-        return models.AttributeValue(attr_type, attr_value)
+
+        return AttributeValue(attr_type, dynamodb_attr_value)
 
     @classmethod
     def encode_attr_value(cls, attr_value):
-        if attr_value.type.collection_type is not None:
-            dynamodb_attr_value = map(
-                lambda val: cls.encode_single_value(
-                    attr_value.type.element_type,
-                    val),
-                attr_value.value
-            )
-        else:
-            dynamodb_attr_value = cls.encode_single_value(
-                attr_value.type.element_type, attr_value.value
-            )
-
         return {
-            cls.STORAGE_TO_DYNAMODB_TYPE_MAP[attr_value.type]:
-            dynamodb_attr_value
+            cls.STORAGE_TO_DYNAMODB_TYPE_MAP[attr_value.type]: attr_value.value
         }
 
     @classmethod
     def parse_item_attributes(cls, item_attributes_json):
-        item = {}
-        for (attr_name, dynamodb_attr) in item_attributes_json.iteritems():
-            assert len(dynamodb_attr) == 1
-            (dynamodb_attr_type, dynamodb_attr_value) = (
-                dynamodb_attr.items()[0]
+        res = {}
+        for attr_name, encoded_attr in item_attributes_json.iteritems():
+            (encoded_attr_type, encoded_attr_value) = encoded_attr.items()[0]
+            res[attr_name] = cls.decode_attr_value(
+                encoded_attr_type, encoded_attr_value
             )
-            item[attr_name] = cls.decode_attr_value(dynamodb_attr_type,
-                                                    dynamodb_attr_value)
-
-        return item
+        return res
 
     @classmethod
     def format_item_attributes(cls, item_attributes):
@@ -674,38 +612,6 @@ class Parser():
                 )
 
         return expected_attribute_conditions
-
-    @staticmethod
-    def format_consumed_capacity(return_consumed_capacity, table_schema):
-        if return_consumed_capacity == Values.RETURN_CONSUMED_CAPACITY_NONE:
-            return None
-
-        consumed_capacity = {
-            Props.GLOBAL_SECONDARY_INDEXES: {
-                # TODO(dukhlov):
-                # read schema and fill global index consumed
-                # capacity to imitate DynamoDB API
-                "global_index_name": {
-                    Props.CAPACITY_UNITS: 0
-                }
-            },
-            Props.LOCAL_SECONDARY_INDEXES: {
-                # TODO(dukhlov):
-                # read schema and fill local index consumed
-                # capacity to imitate DynamoDB API
-                "local_index_name": {
-                    Props.CAPACITY_UNITS: 0
-                }
-            }
-        }
-
-        if return_consumed_capacity == Values.RETURN_CONSUMED_CAPACITY_TOTAL:
-            consumed_capacity[Props.CAPACITY_UNITS] = 0
-            consumed_capacity[Props.TABLE] = {
-                Props.CAPACITY_UNITS: 0
-            }
-
-        return consumed_capacity
 
     @classmethod
     def parse_select_type(cls, select, attributes_to_get,
@@ -786,7 +692,7 @@ class Parser():
                 assert len(condition_args) == 1
 
                 first = condition_args[0]
-                second = models.AttributeValue(
+                second = AttributeValue(
                     first.type,
                     first.value[:-1] + chr(ord(first.value[-1]) + 1)
                 )
