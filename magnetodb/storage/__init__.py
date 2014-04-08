@@ -12,20 +12,51 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import Queue
+import threading
 
 from magnetodb.common import config
 from magnetodb.openstack.common import importutils
 
-from magnetodb.openstack.common import jsonutils
+import ujson as json
+from magnetodb.storage import models
+
+from concurrent.futures import ThreadPoolExecutor, Future
+from threading import Event
+
+from magnetodb.openstack.common import log as logging
+
+LOG = logging.getLogger(__name__)
+
+__THREAD_EXECUTOR = ThreadPoolExecutor(100)
+__SEMAPTHORE = threading.BoundedSemaphore(100)
 
 __STORAGE_IMPL = None
+
+
+def execute_async(func, *args, **kwargs):
+    def wrapper(future_result):
+        try:
+            future_result.set_result(func(*args, **kwargs))
+        except Exception as e:
+            future_result.set_exception(e)
+
+    future = Future()
+
+    def callback(future):
+        __SEMAPTHORE.release()
+
+    future.add_done_callback(callback)
+    __SEMAPTHORE.acquire()
+    __THREAD_EXECUTOR.submit(wrapper, future)
+    return future
 
 
 def setup():
     global __STORAGE_IMPL
     assert __STORAGE_IMPL is None
 
-    storage_param = jsonutils.loads(config.CONF.storage_param)
+    storage_param = json.loads(config.CONF.storage_param)
 
     __STORAGE_IMPL = importutils.import_class(config.CONF.storage_impl)(
         **storage_param
@@ -107,6 +138,10 @@ def put_item(context, put_request, if_not_exist=False,
                                    expected_condition_map)
 
 
+def put_item_async(*args, **kwargs):
+    return execute_async(put_item, *args, **kwargs)
+
+
 def delete_item(context, delete_request, expected_condition_map=None):
     """
     @param context: current request context
@@ -135,7 +170,38 @@ def execute_write_batch(context, write_request_list):
     @return: List of unprocessed items
     @raise BackendInteractionException
     """
-    return __STORAGE_IMPL.execute_write_batch(context, write_request_list)
+    assert write_request_list
+
+    unprocessed_items = []
+
+    request_count = len(write_request_list)
+    done_count = [0]
+
+    done_event = Event()
+
+    for req in write_request_list:
+        if isinstance(req, models.PutItemRequest):
+            future_result = put_item_async(context, req)
+        elif isinstance(req, models.DeleteItemRequest):
+            future_result = execute_async(delete_item, context, req)
+        else:
+            assert False, 'Wrong WriteItemRequest'
+
+        def callback(res):
+            try:
+                res.result()
+            except Exception:
+                unprocessed_items.append(req)
+                LOG.exception("Can't process WriteItemRequest")
+            done_count[0] += 1
+            if done_count[0] >= request_count:
+                done_event.set()
+
+        future_result.add_done_callback(callback)
+
+    done_event.wait()
+
+    return unprocessed_items
 
 
 def update_item(context, table_name, key_attribute_map, attribute_action_map,

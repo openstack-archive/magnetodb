@@ -14,7 +14,6 @@
 #    under the License.
 import jsonschema
 
-
 from magnetodb import storage
 from magnetodb.storage import models
 

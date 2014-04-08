@@ -14,6 +14,7 @@
 #    under the License.
 import shlex
 import string
+from magnetodb.api.streaming.controller import StreamingController
 
 import routes
 
@@ -85,6 +86,10 @@ class MagnetoDBApplication(wsgi.Router):
                            delete_table.DeleteTableController()),
                        conditions={'method': 'DELETE'},
                        action="delete_table")
+
+        mapper.connect("/stream/{project_id}/{table_name}",
+                       controller=StreamingController(),
+                       conditions={'method': 'POST'})
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):

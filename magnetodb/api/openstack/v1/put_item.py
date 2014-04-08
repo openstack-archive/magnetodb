@@ -68,27 +68,30 @@ class PutItemController(object):
     }
 
     def process_request(self, req, body, project_id, table_name):
-        jsonschema.validate(body, self.schema)
-
-        # parse expected item conditions
-        expected_item_conditions = (
-            parser.Parser.parse_expected_attribute_conditions(
-                body.get(parser.Props.EXPECTED, {})
+        try:
+            # parse expected item conditions
+            expected_item_conditions = (
+                parser.Parser.parse_expected_attribute_conditions(
+                    body.get(parser.Props.EXPECTED, {})
+                )
             )
-        )
 
-        # parse item
-        item_attributes = parser.Parser.parse_item_attributes(
-            body[parser.Props.ITEM]
-        )
+            # parse item
+            item_attributes = parser.Parser.parse_item_attributes(
+                body[parser.Props.ITEM]
+            )
 
-        # parse return_values param
-        return_values = body.get(
-            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
-        )
+            # parse return_values param
+            return_values = body.get(
+                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+            )
 
-        # put item
-        req.context.tenant = project_id
+            # put item
+            req.context.tenant = project_id
+        except Exception as e:
+            jsonschema.validate(body, self.schema)
+            raise e
+
         result = storage.put_item(
             req.context,
             models.PutItemRequest(table_name, item_attributes),
