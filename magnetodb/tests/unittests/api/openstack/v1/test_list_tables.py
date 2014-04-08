@@ -17,12 +17,13 @@ import httplib
 import json
 
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
+import mock
 
 
 class ListTablesTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API ListTableController."""
-
-    def test_list_tables(self):
+    @mock.patch('magnetodb.storage.list_tables')
+    def test_list_tables(self, mock_list_tables):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 

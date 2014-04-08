@@ -12,55 +12,75 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import decimal
+
 import json
+from decimal import Decimal
+import binascii
+import re
+from blist import sortedset
+from magnetodb.common import exception
+
+
+NAME_PATTERN = "\w+"
+
+NAME_MATCHER = re.compile(NAME_PATTERN)
+
+
+class Object(object):
+    pass
 
 
 class ModelBase(object):
+    __slots__ = ("__model_data", "_internal_data")
 
     def __repr__(self):
         return self.to_json()
 
     def __init__(self, **kwargs):
-        self.__dict__["_data"] = kwargs
-        self.__dict__["_hash"] = None
+        self.__model_data = kwargs
+        self._internal_data = Object()
+        self._internal_data.hash = None
 
-    def __setattr__(self, key, value):
-        if key == "_hash":
-            self.__dict__[key] = value
-        else:
-            raise AttributeError("Object is read only")
+    def _get_model_as_dict(self):
+        return self.__model_data.copy()
 
     def __getattr__(self, key):
-        return self._data[key]
+        return self.__model_data[key]
 
     def __getitem__(self, key):
-        return self._data[key]
+        return self.__model_data[key]
 
     def __eq__(self, other):
-        return (
+        return self is other or (
             type(other) == type(self) and
-            cmp(self._data, other._data) == 0
+            cmp(self._get_model_as_dict(), other._get_model_as_dict()) == 0
         )
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
-        if not self._hash:
-            self._hash = hash(tuple(sorted(self._data.items())))
+        if not self._internal_data.hash:
+            self._internal_data.hash = hash(
+                frozenset(self._get_model_as_dict().items())
+            )
 
-        return self._hash
+        return self._internal_data.hash
 
     def to_json(self):
         def encode_model(obj):
             if isinstance(obj, ModelBase):
-                data = obj._data.copy()
+                data = obj._get_model_as_dict()
                 data["__model__"] = obj.__class__.__name__
                 return data
+            if isinstance(obj, Decimal):
+                return str(obj)
+            if isinstance(sortedset):
+                return list(obj)
             raise TypeError(repr(obj) + " is not JSON serializable")
 
-        return json.dumps(self, default=encode_model, sort_keys=True)
+        return json.dumps(self, default=encode_model, sort_keys=True,
+                          encoding="utf8")
 
     @staticmethod
     def from_json(jsn):
@@ -70,7 +90,7 @@ class ModelBase(object):
                 return eval(model_cls)(**dct)
             return dct
 
-        return json.loads(jsn, object_hook=as_model)
+        return json.loads(jsn, object_hook=as_model, encoding="utf8")
 
 
 class AttributeType(ModelBase):
@@ -78,58 +98,141 @@ class AttributeType(ModelBase):
     ELEMENT_TYPE_NUMBER = "n"
     ELEMENT_TYPE_BLOB = "b"
 
-    COLLECTION_TYPE_SET = "set"
+    COLLECTION_TYPE_SET = "s"
 
     _allowed_types = set([ELEMENT_TYPE_STRING, ELEMENT_TYPE_NUMBER,
                           ELEMENT_TYPE_BLOB])
 
     _allowed_collection_types = set([None, COLLECTION_TYPE_SET])
 
-    def __init__(self, element_type, collection_type=None):
-        assert element_type in self._allowed_types, (
-            "Attribute type '%s' isn't allowed" % element_type
+    def __init__(self, value):
+        assert isinstance(value, basestring)
+        assert len(value) <= 2
+
+        super(AttributeType, self).__init__(value=value)
+
+        assert self.element_type in self._allowed_types, (
+            "Attribute type '%s' isn't allowed" % self.element_type
         )
 
-        assert collection_type in self._allowed_collection_types, (
-            "Attribute type collection '%s' isn't allowed" % collection_type
+        assert self.collection_type in self._allowed_collection_types, (
+            "Attribute type collection '%s' isn't allowed" %
+            self.collection_type
         )
 
-        super(AttributeType, self).__init__(element_type=element_type,
-                                            collection_type=collection_type)
+        super(AttributeType, self).__init__(value=value)
+
+    @property
+    def element_type(self):
+        return self.value[0]
+
+    @property
+    def collection_type(self):
+        return self.value[1] if len(self.value) > 1 else None
 
 
-ATTRIBUTE_TYPE_STRING = AttributeType(AttributeType.ELEMENT_TYPE_STRING)
-ATTRIBUTE_TYPE_STRING_SET = AttributeType(AttributeType.ELEMENT_TYPE_STRING,
-                                          AttributeType.COLLECTION_TYPE_SET)
-ATTRIBUTE_TYPE_NUMBER = AttributeType(AttributeType.ELEMENT_TYPE_NUMBER)
-ATTRIBUTE_TYPE_NUMBER_SET = AttributeType(AttributeType.ELEMENT_TYPE_NUMBER,
-                                          AttributeType.COLLECTION_TYPE_SET)
-ATTRIBUTE_TYPE_BLOB = AttributeType(AttributeType.ELEMENT_TYPE_BLOB)
-ATTRIBUTE_TYPE_BLOB_SET = AttributeType(AttributeType.ELEMENT_TYPE_BLOB,
-                                        AttributeType.COLLECTION_TYPE_SET)
+ATTRIBUTE_TYPE_STRING = AttributeType("s")
+ATTRIBUTE_TYPE_STRING_SET = AttributeType("ss")
+ATTRIBUTE_TYPE_NUMBER = AttributeType("n")
+ATTRIBUTE_TYPE_NUMBER_SET = AttributeType("ns")
+ATTRIBUTE_TYPE_BLOB = AttributeType("b")
+ATTRIBUTE_TYPE_BLOB_SET = AttributeType("bs")
 
 ORDER_TYPE_ASC = "ASC"
 ORDER_TYPE_DESC = "DESC"
 
 
 class AttributeValue(ModelBase):
-    def __init__(self, attr_type, attr_value):
-        if attr_type == ATTRIBUTE_TYPE_STRING:
-            value = self.__create_str(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_NUMBER:
-            value = self.__create_number(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_BLOB:
-            value = self.__create_blob(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_STRING_SET:
-            value = self.__create_str_set(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_NUMBER_SET:
-            value = self.__create_number_set(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_BLOB_SET:
-            value = self.__create_blob_set(attr_value)
-        else:
-            assert False, "Attribute type wasn't recognized"
+    def __init__(self, type, value=None, encoded_value=None):
+        assert not (value and encoded_value)
+        super(AttributeValue, self).__init__(type=type)
 
-        super(AttributeValue, self).__init__(type=attr_type, value=value)
+        self._internal_data.encoded_value = encoded_value
+        self._internal_data.decoded_value = value
+
+    def _get_model_as_dict(self):
+        model_dict = super(AttributeValue, self)._get_model_as_dict()
+        model_dict["value"] = self.value
+        return model_dict
+
+    def __encode_single_value(self, decoded_value):
+        el_type = self.type.element_type
+        if el_type == AttributeType.ELEMENT_TYPE_STRING:
+            return decoded_value
+        if el_type == AttributeType.ELEMENT_TYPE_NUMBER:
+            return str(decoded_value)
+        if el_type == AttributeType.ELEMENT_TYPE_BLOB:
+            return binascii.b2a_base64(decoded_value)
+        assert False
+
+    def __decode_single_value(self, encoded_value):
+        el_type = self.type.element_type
+        if el_type == AttributeType.ELEMENT_TYPE_STRING:
+            return encoded_value
+        if el_type == AttributeType.ELEMENT_TYPE_NUMBER:
+            return Decimal(encoded_value)
+        if el_type == AttributeType.ELEMENT_TYPE_BLOB:
+            return binascii.a2b_base64(encoded_value)
+        assert False
+
+    def __create_encoded_from_decoded(self):
+        decoded_value = self._internal_data.decoded_value
+
+        if decoded_value is None:
+            return None
+
+        decoded_value = self._internal_data.decoded_value
+
+        if decoded_value is None:
+            return None
+
+        if self.type.collection_type is not None:
+            encoded_value = map(self.__encode_single_value, decoded_value)
+        else:
+            encoded_value = self.__encode_single_value(decoded_value)
+
+        self._internal_data.encoded_value = encoded_value
+        return encoded_value
+
+    def __create_decoded_from_encoded(self):
+        encoded_value = self._internal_data.encoded_value
+
+        if encoded_value is None:
+            return None
+
+        if self.type.collection_type is not None:
+            decoded_value = sortedset()
+            for enc_val in encoded_value:
+                decoded_value.add(self.__decode_single_value(enc_val))
+
+            decoded_value = decoded_value
+        else:
+            decoded_value = self.__decode_single_value(encoded_value)
+
+        self._internal_data.decoded_value = decoded_value
+        return decoded_value
+
+    @property
+    def encoded_value(self):
+        encoded_value = self._internal_data.encoded_value
+        if encoded_value is not None:
+            return encoded_value
+
+        return self.__create_encoded_from_decoded()
+
+    @property
+    def value(self):
+        decoded_value = self._internal_data.decoded_value
+        if decoded_value is not None:
+            return decoded_value
+
+        return self.__create_decoded_from_encoded()
+
+    def normalize(self):
+        decoded_value = self._internal_data.decoded_value
+        if decoded_value is None:
+            return self.__create_decoded_from_encoded()
+        self._internal_data.encoded_value = None
 
     @property
     def is_str(self):
@@ -138,6 +241,10 @@ class AttributeValue(ModelBase):
     @property
     def is_number(self):
         return self.type == ATTRIBUTE_TYPE_NUMBER
+
+    @property
+    def is_blob(self):
+        return self.type == ATTRIBUTE_TYPE_BLOB
 
     @property
     def is_str_set(self):
@@ -152,55 +259,29 @@ class AttributeValue(ModelBase):
         return self.type == ATTRIBUTE_TYPE_BLOB_SET
 
     @classmethod
-    def __create_str(cls, str_value):
-        assert isinstance(str_value, (str, unicode))
-        return str_value
-
-    @classmethod
-    def __create_number(cls, number_value):
-        return decimal.Decimal(number_value)
-
-    @classmethod
-    def __create_blob(cls, blob_value):
-        assert isinstance(blob_value, (str, unicode))
-        return blob_value
-
-    @classmethod
-    def __create_str_set(cls, str_set_value):
-        return frozenset(map(cls.__create_str, str_set_value))
-
-    @classmethod
-    def __create_number_set(cls, number_set_value):
-        return frozenset(map(cls.__create_number, number_set_value))
-
-    @classmethod
-    def __create_blob_set(cls, blob_set_value):
-        return frozenset(map(cls.__create_blob, blob_set_value))
-
-    @classmethod
     def str(cls, str_value):
-        assert isinstance(str_value, (str, unicode))
-        return cls(ATTRIBUTE_TYPE_STRING, str_value)
+        assert isinstance(str_value, basestring)
+        return cls(ATTRIBUTE_TYPE_STRING, encoded_value=str_value)
 
     @classmethod
     def blob(cls, blob_value):
-        return cls(ATTRIBUTE_TYPE_BLOB, blob_value)
+        return cls(ATTRIBUTE_TYPE_BLOB, encoded_value=blob_value)
 
     @classmethod
     def number(cls, number_value):
-        return cls(ATTRIBUTE_TYPE_NUMBER, number_value)
+        return cls(ATTRIBUTE_TYPE_NUMBER, encoded_value=number_value)
 
     @classmethod
     def str_set(cls, string_set_value):
-        return cls(ATTRIBUTE_TYPE_STRING_SET, string_set_value)
+        return cls(ATTRIBUTE_TYPE_STRING_SET, encoded_value=string_set_value)
 
     @classmethod
     def blob_set(cls, blob_set_value):
-        return cls(ATTRIBUTE_TYPE_BLOB_SET, blob_set_value)
+        return cls(ATTRIBUTE_TYPE_BLOB_SET, encoded_value=blob_set_value)
 
     @classmethod
     def number_set(cls, number_set_value):
-        return cls(ATTRIBUTE_TYPE_NUMBER_SET, number_set_value)
+        return cls(ATTRIBUTE_TYPE_NUMBER_SET, encoded_value=number_set_value)
 
 
 class Condition(ModelBase):
@@ -280,7 +361,7 @@ class ScanCondition(IndexedCondition):
 
     @classmethod
     def in_set(cls, condition_arg):
-        return cls(cls.CONDITION_TYPE_IN, condition_arg)
+        return cls(cls.CONDITION_TYPE_IN, set(condition_arg))
 
     @classmethod
     def contains(cls, condition_arg):
@@ -307,18 +388,39 @@ class ExpectedCondition(Condition):
 
 
 class SelectType(ModelBase):
-    SELECT_TYPE_ALL = "all"
-    SELECT_TYPE_ALL_PROJECTED = "all_projected"
-    SELECT_TYPE_SPECIFIED = "specified"
-    SELECT_TYPE_COUNT = "count"
+    SELECT_TYPE_ALL = "ALL_ATTRIBUTES"
+    SELECT_TYPE_ALL_PROJECTED = "ALL_PROJECTED_ATTRIBUTES"
+    SELECT_TYPE_SPECIFIED = "SPECIFIC_ATTRIBUTES"
+    SELECT_TYPE_COUNT = "COUNT"
 
     _allowed_types = set([SELECT_TYPE_ALL, SELECT_TYPE_ALL_PROJECTED,
                           SELECT_TYPE_SPECIFIED, SELECT_TYPE_COUNT])
 
     def __init__(self, select_type, attributes=None):
-        assert select_type in self._allowed_types, (
-            "Select type '%s' isn't allowed" % select_type
-        )
+        if select_type not in self._allowed_types:
+            raise exception.ValidationException(
+                "Select type {} isn't allowed".format(select_type)
+            )
+
+        if select_type == self.SELECT_TYPE_SPECIFIED:
+            if attributes is None:
+                raise exception.ValidationException(
+                    "Attribute list to get is not specified"
+                )
+
+            for attribute_to_get in attributes:
+                if not NAME_MATCHER.match(
+                        attribute_to_get):
+                    raise exception.ValidationException(
+                        "Incompatible attribute_name '{}'".format(
+                            attribute_to_get
+                        )
+                    )
+        elif attributes:
+            raise exception.ValidationException(
+                "Unexpected attribute list to get found"
+            )
+
         super(SelectType, self).__init__(type=select_type,
                                          attributes=attributes)
 
@@ -336,7 +438,7 @@ class SelectType(ModelBase):
 
     @classmethod
     def specified_attributes(cls, attributes):
-        return cls(cls.SELECT_TYPE_ALL_PROJECTED, frozenset(attributes))
+        return cls(cls.SELECT_TYPE_SPECIFIED, attributes)
 
     @property
     def is_count(self):
@@ -423,7 +525,7 @@ class IndexDefinition(ModelBase):
         """
         projected_attributes = (
             None if projected_attributes is None else
-            frozenset(projected_attributes)
+            projected_attributes
         )
 
         super(IndexDefinition, self).__init__(
