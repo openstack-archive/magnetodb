@@ -1,5 +1,5 @@
+import ujson as json
 
-import datetime
 import sys
 import routes
 import routes.middleware
@@ -10,7 +10,7 @@ from xml.parsers import expat
 
 from magnetodb.openstack.common import exception
 from magnetodb.openstack.common.gettextutils import _
-from magnetodb.openstack.common import jsonutils
+
 from magnetodb.openstack.common import log as logging
 from magnetodb.openstack.common import xmlutils
 
@@ -302,14 +302,7 @@ class JSONDictSerializer(DictSerializer):
     """Default JSON request body serialization"""
 
     def default(self, data):
-        def sanitizer(obj):
-            if isinstance(obj, datetime.datetime):
-                _dtime = obj - datetime.timedelta(microseconds=obj.microsecond)
-                return _dtime.isoformat()
-            return obj
-
-        #            return six.text_type(obj)
-        return jsonutils.dumps(data, default=sanitizer)
+        return json.dumps(data, ensure_ascii=False)
 
 
 class XMLDictSerializer(DictSerializer):
@@ -576,7 +569,7 @@ class TextDeserializer(ActionDispatcher):
 class JSONDeserializer(TextDeserializer):
     def _from_json(self, datastring):
         try:
-            return jsonutils.loads(datastring)
+            return json.loads(datastring)
         except ValueError:
             msg = _("cannot understand JSON")
             raise exception.MalformedRequestBody(reason=msg)
