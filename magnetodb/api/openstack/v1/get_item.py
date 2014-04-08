@@ -15,7 +15,9 @@
 import jsonschema
 
 from magnetodb.api.openstack.v1 import parser
+
 from magnetodb import storage
+from magnetodb.common import exception
 from magnetodb.storage import models
 
 
@@ -43,33 +45,40 @@ class GetItemController(object):
     }
 
     def process_request(self, req, body, project_id, table_name):
-        jsonschema.validate(body, self.schema)
         req.context.tenant = project_id
 
-        # get attributes_to_get
-        attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
+        try:
+            # get attributes_to_get
+            attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
 
-        select_type = (
-            models.SelectType.all()
-            if attributes_to_get is None else
-            models.SelectType.specified_attributes(attributes_to_get)
-        )
+            select_type = (
+                models.SelectType.all()
+                if attributes_to_get is None else
+                models.SelectType.specified_attributes(attributes_to_get)
+            )
 
-        # parse key_attributes
-        key_attributes = parser.Parser.parse_item_attributes(
-            body[parser.Props.KEY]
-        )
+            # parse key_attributes
+            key_attributes = parser.Parser.parse_item_attributes(
+                body[parser.Props.KEY]
+            )
 
-        # parse consistent_read
-        consistent_read = body.get(
-            parser.Props.CONSISTENT_READ, False
-        )
+            # parse consistent_read
+            consistent_read = body.get(
+                parser.Props.CONSISTENT_READ, False
+            )
+            if not isinstance(consistent_read, bool):
+                raise exception.ValidationException(
+                    "Boolean value expected for consistent_read property"
+                )
 
-        # format conditions to get item
-        indexed_condition_map = {
-            name: [models.IndexedCondition.eq(value)]
-            for name, value in key_attributes.iteritems()
-        }
+            # format conditions to get item
+            indexed_condition_map = {
+                name: [models.IndexedCondition.eq(value)]
+                for name, value in key_attributes.iteritems()
+            }
+        except Exception as e:
+            jsonschema.validate(body, self.schema)
+            raise e
 
         # get item
         result = storage.select_item(
