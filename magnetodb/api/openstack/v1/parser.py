@@ -560,8 +560,8 @@ class Parser():
 
     @staticmethod
     def decode_single_value(single_value_type, encoded_single_value):
-        assert isinstance(encoded_single_value, (str, unicode))
         if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
+            assert isinstance(encoded_single_value, (str, unicode))
             return encoded_single_value
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
             return DECIMAL_CONTEXT.create_decimal(encoded_single_value)
@@ -579,7 +579,7 @@ class Parser():
             assert isinstance(decoded_single_value, decimal.Decimal)
             return str(decoded_single_value)
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            assert isinstance(decoded_single_value, str)
+            isinstance(decoded_single_value, (str, unicode))
             return base64.encodestring(decoded_single_value)
         else:
             assert False, "Value type wasn't recognized"

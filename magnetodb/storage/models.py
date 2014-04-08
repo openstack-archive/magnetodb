@@ -54,6 +54,8 @@ class ModelBase(object):
 
     def to_json(self):
         def encode_model(obj):
+            if isinstance(obj, decimal.Decimal):
+                return str(obj)
             if isinstance(obj, ModelBase):
                 data = obj._data.copy()
                 data["__model__"] = obj.__class__.__name__

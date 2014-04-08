@@ -1298,33 +1298,6 @@ class CassandraStorageImpl(object):
     def _get_batch_apply_clause():
         return ' APPLY BATCH'
 
-    def execute_write_batch(self, context, write_request_list):
-        """
-        @param context: current request context
-        @param write_request_list: contains WriteItemBatchableRequest items to
-                    perform batch
-
-        @return: List of unprocessed items
-
-        @raise BackendInteractionException
-        """
-
-        assert write_request_list
-        unprocessed_items = []
-        for req in write_request_list:
-            try:
-                if isinstance(req, models.PutItemRequest):
-                    self.put_item(context, req)
-                elif isinstance(req, models.DeleteItemRequest):
-                    self.delete_item(context, req)
-                else:
-                    assert False, 'Wrong WriteItemRequest'
-            except BackendInteractionException:
-                unprocessed_items.append(req)
-                LOG.exception("Can't process WriteItemRequest")
-
-        return unprocessed_items
-
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
         """

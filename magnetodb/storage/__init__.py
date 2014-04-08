@@ -14,11 +14,33 @@
 #    under the License.
 
 from magnetodb.common import config
+from magnetodb.common.exception import BackendInteractionException
 from magnetodb.openstack.common import importutils
 
 from magnetodb.openstack.common import jsonutils
+from magnetodb.storage import models
 
+from concurrent.futures import ThreadPoolExecutor, Future
+from threading import Event
+
+from magnetodb.openstack.common import log as logging
+
+LOG = logging.getLogger(__name__)
+
+THREAD_EXECUTOR = ThreadPoolExecutor(1000)
 __STORAGE_IMPL = None
+
+
+def execute_async(func, *args, **kwargs):
+    def wrapper(future_result):
+        try:
+            future_result.set_result(func(*args, **kwargs))
+        except Exception as e:
+            future_result.set_exception(e)
+
+    future = Future()
+    THREAD_EXECUTOR.submit(wrapper, future)
+    return future
 
 
 def setup():
@@ -135,7 +157,38 @@ def execute_write_batch(context, write_request_list):
     @return: List of unprocessed items
     @raise BackendInteractionException
     """
-    return __STORAGE_IMPL.execute_write_batch(context, write_request_list)
+    assert write_request_list
+
+    unprocessed_items = []
+
+    request_count = len(write_request_list)
+    done_count = [0]
+
+    done_event = Event()
+
+    for req in write_request_list:
+        if isinstance(req, models.PutItemRequest):
+            future_result = execute_async(put_item, context, req)
+        elif isinstance(req, models.DeleteItemRequest):
+            future_result = execute_async(delete_item, context, req)
+        else:
+            assert False, 'Wrong WriteItemRequest'
+
+        def callback(res):
+            try:
+                res.result()
+            except BackendInteractionException:
+                unprocessed_items.append(req)
+                LOG.exception("Can't process WriteItemRequest")
+            done_count[0] += 1
+            if done_count[0] >= request_count:
+                done_event.set()
+
+        future_result.add_done_callback(callback)
+
+    done_event.wait()
+
+    return unprocessed_items
 
 
 def update_item(context, table_name, key_attribute_map, attribute_action_map,
