@@ -83,11 +83,13 @@ class BatchWriteItemController(object):
     }
 
     def process_request(self, req, body, project_id):
-        jsonschema.validate(body, self.schema)
-
         # parse request_items
-        request_items = parser.Parser.parse_request_items(
-            body[parser.Props.REQUEST_ITEMS])
+
+        try:
+            request_items = parser.Parser.parse_request_items(body)
+        except Exception as e:
+            jsonschema.validate(body, self.schema)
+            raise e
 
         req.context.tenant = project_id
 

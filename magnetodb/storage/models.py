@@ -12,55 +12,66 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import decimal
+
 import json
+from decimal import Decimal
+import binascii
+from blist import sortedset
+
+
+class Object(object):
+    pass
 
 
 class ModelBase(object):
+    __slots__ = ("__model_data", "_internal_data")
 
     def __repr__(self):
         return self.to_json()
 
     def __init__(self, **kwargs):
-        self.__dict__["_data"] = kwargs
-        self.__dict__["_hash"] = None
+        self.__model_data = kwargs
+        self._internal_data = Object()
+        self._internal_data.hash = None
 
-    def __setattr__(self, key, value):
-        if key == "_hash":
-            self.__dict__[key] = value
-        else:
-            raise AttributeError("Object is read only")
+    def _get_model_as_dict(self):
+        return self.__model_data.copy()
 
     def __getattr__(self, key):
-        return self._data[key]
+        return self.__model_data[key]
 
     def __getitem__(self, key):
-        return self._data[key]
+        return self.__model_data[key]
 
     def __eq__(self, other):
-        return (
+        return self is other or (
             type(other) == type(self) and
-            cmp(self._data, other._data) == 0
+            cmp(self._get_model_as_dict(), other._get_model_as_dict()) == 0
         )
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
-        if not self._hash:
-            self._hash = hash(tuple(sorted(self._data.items())))
+        if not self._internal_data.hash:
+            self._internal_data.hash = hash(
+                frozenset(self._get_model_as_dict().items())
+            )
 
-        return self._hash
+        return self._internal_data.hash
 
     def to_json(self):
         def encode_model(obj):
             if isinstance(obj, ModelBase):
-                data = obj._data.copy()
+                data = obj._get_model_as_dict()
                 data["__model__"] = obj.__class__.__name__
                 return data
+            if isinstance(obj, Decimal):
+                return str(obj)
             raise TypeError(repr(obj) + " is not JSON serializable")
 
-        return json.dumps(self, default=encode_model, sort_keys=True)
+        return json.dumps(self, default=encode_model, sort_keys=True,
+                          encoding="utf8")
 
     @staticmethod
     def from_json(jsn):
@@ -70,7 +81,7 @@ class ModelBase(object):
                 return eval(model_cls)(**dct)
             return dct
 
-        return json.loads(jsn, object_hook=as_model)
+        return json.loads(jsn, object_hook=as_model, encoding="utf8")
 
 
 class AttributeType(ModelBase):
@@ -113,23 +124,96 @@ ORDER_TYPE_DESC = "DESC"
 
 
 class AttributeValue(ModelBase):
-    def __init__(self, attr_type, attr_value):
-        if attr_type == ATTRIBUTE_TYPE_STRING:
-            value = self.__create_str(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_NUMBER:
-            value = self.__create_number(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_BLOB:
-            value = self.__create_blob(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_STRING_SET:
-            value = self.__create_str_set(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_NUMBER_SET:
-            value = self.__create_number_set(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_BLOB_SET:
-            value = self.__create_blob_set(attr_value)
-        else:
-            assert False, "Attribute type wasn't recognized"
+    def __init__(self, type, value=None, encoded_value=None):
+        assert not (value and encoded_value)
+        super(AttributeValue, self).__init__(type=type)
 
-        super(AttributeValue, self).__init__(type=attr_type, value=value)
+        self._internal_data.encoded_value = encoded_value
+        self._internal_data.decoded_value = value
+
+    def _get_model_as_dict(self):
+        model_dict = super(AttributeValue, self)._get_model_as_dict()
+        model_dict["value"] = self.value
+        return model_dict
+
+    def __encode_single_value(self, decoded_value):
+        el_type = self.type.element_type
+        if el_type == AttributeType.ELEMENT_TYPE_STRING:
+            return decoded_value
+        if el_type == AttributeType.ELEMENT_TYPE_NUMBER:
+            return str(decoded_value)
+        if el_type == AttributeType.ELEMENT_TYPE_BLOB:
+            return binascii.b2a_base64(decoded_value)
+        assert False
+
+    def __decode_single_value(self, encoded_value):
+        el_type = self.type.element_type
+        if el_type == AttributeType.ELEMENT_TYPE_STRING:
+            return encoded_value
+        if el_type == AttributeType.ELEMENT_TYPE_NUMBER:
+            return Decimal(encoded_value)
+        if el_type == AttributeType.ELEMENT_TYPE_BLOB:
+            return binascii.a2b_base64(encoded_value)
+        assert False
+
+    def __create_encoded_from_decoded(self):
+        decoded_value = self._internal_data.decoded_value
+
+        if decoded_value is None:
+            return None
+
+        decoded_value = self._internal_data.decoded_value
+
+        if decoded_value is None:
+            return None
+
+        if self.type.collection_type is not None:
+            encoded_value = map(self.__encode_single_value, decoded_value)
+        else:
+            encoded_value = self.__encode_single_value(decoded_value)
+
+        self._internal_data.encoded_value = encoded_value
+        return encoded_value
+
+    def __create_decoded_from_encoded(self):
+        encoded_value = self._internal_data.encoded_value
+
+        if encoded_value is None:
+            return None
+
+        if self.type.collection_type is not None:
+            decoded_value = sortedset()
+            for enc_val in encoded_value:
+                decoded_value.add(self.__decode_single_value(enc_val))
+
+            decoded_value = frozenset(decoded_value)
+        else:
+            decoded_value = self.__decode_single_value(encoded_value)
+
+        self._internal_data.decoded_value = decoded_value
+        return decoded_value
+
+    @property
+    def encoded_value(self):
+        encoded_value = self._internal_data.encoded_value
+        if encoded_value is not None:
+            return encoded_value
+
+        return self.__create_encoded_from_decoded()
+
+    @property
+    def value(self):
+        decoded_value = self._internal_data.decoded_value
+        if decoded_value is not None:
+            return decoded_value
+
+        return self.__create_decoded_from_encoded()
+
+    def normalize(self):
+        decoded_value = self._internal_data.decoded_value
+        if decoded_value is None:
+            return self.__create_decoded_from_encoded()
+        self._internal_data.encoded_value = None
 
     @property
     def is_str(self):
@@ -138,6 +222,10 @@ class AttributeValue(ModelBase):
     @property
     def is_number(self):
         return self.type == ATTRIBUTE_TYPE_NUMBER
+
+    @property
+    def is_blob(self):
+        return self.type == ATTRIBUTE_TYPE_BLOB
 
     @property
     def is_str_set(self):
@@ -152,55 +240,29 @@ class AttributeValue(ModelBase):
         return self.type == ATTRIBUTE_TYPE_BLOB_SET
 
     @classmethod
-    def __create_str(cls, str_value):
-        assert isinstance(str_value, (str, unicode))
-        return str_value
-
-    @classmethod
-    def __create_number(cls, number_value):
-        return decimal.Decimal(number_value)
-
-    @classmethod
-    def __create_blob(cls, blob_value):
-        assert isinstance(blob_value, (str, unicode))
-        return blob_value
-
-    @classmethod
-    def __create_str_set(cls, str_set_value):
-        return frozenset(map(cls.__create_str, str_set_value))
-
-    @classmethod
-    def __create_number_set(cls, number_set_value):
-        return frozenset(map(cls.__create_number, number_set_value))
-
-    @classmethod
-    def __create_blob_set(cls, blob_set_value):
-        return frozenset(map(cls.__create_blob, blob_set_value))
-
-    @classmethod
     def str(cls, str_value):
-        assert isinstance(str_value, (str, unicode))
-        return cls(ATTRIBUTE_TYPE_STRING, str_value)
+        assert isinstance(str_value, basestring)
+        return cls(ATTRIBUTE_TYPE_STRING, encoded_value=str_value)
 
     @classmethod
     def blob(cls, blob_value):
-        return cls(ATTRIBUTE_TYPE_BLOB, blob_value)
+        return cls(ATTRIBUTE_TYPE_BLOB, encoded_value=blob_value)
 
     @classmethod
     def number(cls, number_value):
-        return cls(ATTRIBUTE_TYPE_NUMBER, number_value)
+        return cls(ATTRIBUTE_TYPE_NUMBER, encoded_value=number_value)
 
     @classmethod
     def str_set(cls, string_set_value):
-        return cls(ATTRIBUTE_TYPE_STRING_SET, string_set_value)
+        return cls(ATTRIBUTE_TYPE_STRING_SET, encoded_value=string_set_value)
 
     @classmethod
     def blob_set(cls, blob_set_value):
-        return cls(ATTRIBUTE_TYPE_BLOB_SET, blob_set_value)
+        return cls(ATTRIBUTE_TYPE_BLOB_SET, encoded_value=blob_set_value)
 
     @classmethod
     def number_set(cls, number_set_value):
-        return cls(ATTRIBUTE_TYPE_NUMBER_SET, number_set_value)
+        return cls(ATTRIBUTE_TYPE_NUMBER_SET, encoded_value=number_set_value)
 
 
 class Condition(ModelBase):
@@ -280,7 +342,7 @@ class ScanCondition(IndexedCondition):
 
     @classmethod
     def in_set(cls, condition_arg):
-        return cls(cls.CONDITION_TYPE_IN, condition_arg)
+        return cls(cls.CONDITION_TYPE_IN, set(condition_arg))
 
     @classmethod
     def contains(cls, condition_arg):
