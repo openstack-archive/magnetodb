@@ -12,8 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-import collections
 import jsonschema
 
 from magnetodb import storage
@@ -85,20 +83,17 @@ class BatchWriteItemController(object):
 
     def process_request(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
-
-        # parse request_items
-        request_items = parser.Parser.parse_request_items(
-            body[parser.Props.REQUEST_ITEMS])
-
         req.context.tenant = project_id
 
-        request_list = collections.deque()
-        for rq_item in request_items:
-            request_list.append(rq_item)
+        # parse request_items
+        try:
+            request_items = parser.Parser.parse_request_items(body)
+        except Exception:
+            jsonschema.validate(body, self.schema)
+            raise
 
         unprocessed_items = storage.execute_write_batch(
-            req.context, request_list)
+            req.context, request_items)
 
         return {
             'unprocessed_items': parser.Parser.format_request_items(
