@@ -15,6 +15,7 @@
 import decimal
 import logging
 import unittest
+import binascii
 from boto.exception import JSONResponseError
 
 from boto.dynamodb import types
@@ -354,19 +355,20 @@ class BotoIntegrationTest(unittest.TestCase):
             models.SelectResult(
                 items=[
                     {
-                        "hash_key": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_NUMBER,
-                            decimal.Decimal(hash_key)
+                        "hash_key": models.AttributeValue.number(
+                            hash_key
                         ),
-                        "range_key": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_STRING, range_key
+                        "range_key": models.AttributeValue.str(
+                            range_key
                         ),
-                        "value_blob": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_BLOB, blob_data1
+                        "value_blob": models.AttributeValue.blob(
+                            binascii.b2a_base64(blob_data1)
                         ),
-                        "value_blob_set": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_BLOB_SET,
-                            set([blob_data1, blob_data2])
+                        "value_blob_set": models.AttributeValue.blob_set(
+                            [
+                                binascii.b2a_base64(blob_data1),
+                                binascii.b2a_base64(blob_data2)
+                            ]
                         )
                     }
                 ]
@@ -411,17 +413,17 @@ class BotoIntegrationTest(unittest.TestCase):
                     {
                         "hash_key": models.AttributeValue(
                             models.ATTRIBUTE_TYPE_NUMBER,
-                            decimal.Decimal(hash_key)
+                            hash_key
                         ),
-                        "range_key": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_STRING, range_key
+                        "range_key": models.AttributeValue.str(range_key),
+                        "value_blob": models.AttributeValue.blob(
+                            binascii.b2a_base64(blob_data1)
                         ),
-                        "value_blob": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_BLOB, blob_data1
-                        ),
-                        "value_blob_set": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_BLOB_SET,
-                            set([blob_data1, blob_data2])
+                        "value_blob_set": models.AttributeValue.blob_set(
+                            [
+                                binascii.b2a_base64(blob_data1),
+                                binascii.b2a_base64(blob_data2)
+                            ]
                         )
                     }
                 ]

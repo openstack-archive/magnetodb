@@ -12,9 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 from decimal import Decimal
-import json
+from threading import Lock
+import collections
+
+from blist import sortedset
+
+import ujson as json
 import binascii
 import time
 
@@ -29,6 +33,7 @@ from magnetodb.common.exception import TableAlreadyExistsException
 from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
+from magnetodb.storage.models import AttributeValue
 
 LOG = logging.getLogger(__name__)
 
@@ -78,36 +83,73 @@ SYSTEM_COLUMN_EXTRA_ATTR_DATA = 'extra_attr_data'
 SYSTEM_COLUMN_EXTRA_ATTR_TYPES = 'extra_attr_types'
 SYSTEM_COLUMN_ATTR_EXIST = 'attr_exist'
 
-DEFAULT_STRING_VALUE = models.AttributeValue.str('')
-DEFAULT_NUMBER_VALUE = models.AttributeValue.number(0)
-DEFAULT_BLOB_VALUE = models.AttributeValue.blob('')
+DEFAULT_STRING_VALUE = AttributeValue.str('')
+DEFAULT_NUMBER_VALUE = AttributeValue.number('0')
+DEFAULT_BLOB_VALUE = AttributeValue.blob('')
 
 
-def _encode_predefined_attr_value(attr_value):
+def _encode_and_append_single_string_value_as_predefined_attr(value,
+                                                              query_builder):
+    query_builder.append("'")
+    query_builder.append(value)
+    query_builder.append("'")
+    return query_builder
+
+
+def _encode_and_append_single_number_value_as_predefined_attr(value,
+                                                              query_builder):
+    query_builder.append(value)
+    return query_builder
+
+
+def _encode_and_append_single_blob_value_as_predefined_attr(value,
+                                                            query_builder):
+    query_builder.append("0x")
+    query_builder.append(binascii.hexlify(binascii.a2b_base64(value)))
+    return query_builder
+
+
+PREDEFINED_ATTR_ENCODER_MAP = {
+    models.AttributeType.ELEMENT_TYPE_STRING:
+        _encode_and_append_single_string_value_as_predefined_attr,
+    models.AttributeType.ELEMENT_TYPE_NUMBER:
+        _encode_and_append_single_number_value_as_predefined_attr,
+    models.AttributeType.ELEMENT_TYPE_BLOB:
+        _encode_and_append_single_blob_value_as_predefined_attr
+}
+
+
+def _encode_and_append_single_value_as_predefined_attr(value, element_type,
+                                                       query_builder):
+    PREDEFINED_ATTR_ENCODER_MAP[element_type](value, query_builder)
+    return query_builder
+
+
+def _encode_and_append_predefined_attr_value(attr_value, query_builder):
     if attr_value is None:
-        return 'null'
-    if attr_value.type.collection_type:
-        values = ','.join(map(
-            lambda el: _encode_single_value_as_predefined_attr(
-                el, attr_value.type.element_type),
-            attr_value.value
-        ))
-        return '{{{}}}'.format(values)
-    else:
-        return _encode_single_value_as_predefined_attr(
-            attr_value.value, attr_value.type.element_type
-        )
+        query_builder.append('null')
+        return query_builder
 
+    attr_type = attr_value.type
+    collection_type = attr_type.collection_type
+    element_type = attr_type.element_type
+    attr_value = attr_value.value
 
-def _encode_single_value_as_predefined_attr(value, element_type):
-    if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
-        return "'{}'".format(value)
-    elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-        return str(value)
-    elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-        return "0x{}".format(binascii.hexlify(value))
+    encoder = PREDEFINED_ATTR_ENCODER_MAP[element_type]
+
+    if collection_type:
+        if attr_value:
+            query_builder.append("{")
+            for el in attr_value:
+                encoder(el, query_builder=query_builder)
+                query_builder.append(",")
+            query_builder.pop()
+            query_builder.append("}")
+        else:
+            query_builder.append("{}")
     else:
-        assert False, "Value wasn't formatted for cql query"
+        encoder(attr_value, query_builder=query_builder)
+    return query_builder
 
 
 def _encode_dynamic_attr_value(attr_value):
@@ -116,24 +158,24 @@ def _encode_dynamic_attr_value(attr_value):
 
     val = attr_value.value
     if attr_value.type.collection_type:
-        val = map(
-            lambda el: _encode_single_value_as_dynamic_attr(
-                el, attr_value.type.element_type
-            ),
-            val
-        )
-        val.sort()
+        encoded_val = sortedset()
+        element_type = attr_value.type.element_type
+        for el in val:
+            encoded_val.add(
+                _encode_single_value_as_dynamic_attr(el, element_type)
+            )
+        encoded_val = list(encoded_val)
     else:
-        val = _encode_single_value_as_dynamic_attr(
+        encoded_val = _encode_single_value_as_dynamic_attr(
             val, attr_value.type.element_type)
-    return "0x{}".format(binascii.hexlify(json.dumps(val)))
+    return "0x{}".format(binascii.hexlify(json.dumps(encoded_val)))
 
 
 def _encode_single_value_as_dynamic_attr(value, element_type):
     if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
         return value
     elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-        return str(value)
+        return str(Decimal(value))
     elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
         return value
     else:
@@ -145,38 +187,53 @@ def _decode_predefined_attr(table_info, cas_name, cas_val, prefix=USER_PREFIX):
 
     name = cas_name[len(USER_PREFIX):]
     storage_type = table_info.schema.attribute_type_map[name]
-    return name, models.AttributeValue(storage_type, cas_val)
+
+    if storage_type.collection_type is not None:
+        value = [
+            _decode_predefined_single_value(val, storage_type.element_type)
+            for val in cas_val
+        ]
+    else:
+        value = _decode_predefined_single_value(cas_val,
+                                                storage_type.element_type)
+    return name, AttributeValue(storage_type, value)
+
+
+def _decode_predefined_single_value(value, element_type):
+    if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
+        return value
+    elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
+        return str(value)
+    elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
+        return binascii.b2a_base64(value)
+    else:
+        assert False, "Value wasn't formatted for cql query"
 
 
 def _decode_dynamic_value(value, storage_type):
     value = json.loads(value)
 
-    return models.AttributeValue(storage_type, value)
+    return AttributeValue(storage_type, value)
 
 
-def _decode_single_value(value, element_type):
-    if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
-        return value
-    elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-        return Decimal(value)
-    elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-        return value
-    else:
-        assert False, "Value wasn't formatted for cql query"
-
-ENCODED_DEFAULT_STRING_VALUE = _encode_predefined_attr_value(
-    DEFAULT_STRING_VALUE
+ENCODED_DEFAULT_STRING_VALUE_BUILDER = (
+    _encode_and_append_predefined_attr_value(DEFAULT_STRING_VALUE,
+                                             collections.deque())
 )
-ENCODED_DEFAULT_NUMBER_VALUE = _encode_predefined_attr_value(
-    DEFAULT_NUMBER_VALUE
+ENCODED_DEFAULT_NUMBER_VALUE_BUILDER = (
+    _encode_and_append_predefined_attr_value(DEFAULT_NUMBER_VALUE,
+                                             collections.deque())
 )
-ENCODED_DEFAULT_BLOB_VALUE = _encode_predefined_attr_value(
-    DEFAULT_BLOB_VALUE
+ENCODED_DEFAULT_BLOB_VALUE_BUILDER = (
+    _encode_and_append_predefined_attr_value(DEFAULT_BLOB_VALUE,
+                                             collections.deque())
 )
 
 
 class CassandraStorageImpl(object):
     __table_info_cache = {}
+
+    table_cache_lock = Lock()
 
     @classmethod
     def _save_table_info_to_cache(cls, tenant, table_name, table_info):
@@ -374,46 +431,58 @@ class CassandraStorageImpl(object):
             table_schema.key_attributes[1] if key_count > 1 else None
         )
 
-        query_builder = [
-            'CREATE TABLE "', cas_keyspace, '"."', cas_table_name, '" ('
-        ]
+        query_builder = collections.deque()
+        query_builder.append('CREATE TABLE "')
+        query_builder.append(cas_keyspace)
+        query_builder.append('"."')
+        query_builder.append(cas_table_name)
+        query_builder.append('" (')
 
         if table_schema.index_def_map:
-            query_builder += (
-                SYSTEM_COLUMN_INDEX_NAME, " text,",
-                SYSTEM_COLUMN_INDEX_VALUE_STRING, " text, ",
-                SYSTEM_COLUMN_INDEX_VALUE_NUMBER, " decimal, ",
-                SYSTEM_COLUMN_INDEX_VALUE_BLOB, " blob, ",
-            )
+            query_builder.append(SYSTEM_COLUMN_INDEX_NAME)
+            query_builder.append(" text,")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_STRING)
+            query_builder.append(" text, ")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_NUMBER)
+            query_builder.append(" decimal, ")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_BLOB)
+            query_builder.append(" blob, ")
 
         for attr_name, attr_type in (
                 table_schema.attribute_type_map.iteritems()):
+            query_builder.append('"')
+            query_builder.append(USER_PREFIX)
+            query_builder.append(attr_name)
+            query_builder.append('" ')
+            query_builder.append(STORAGE_TO_CASSANDRA_TYPES[attr_type])
+            query_builder.append(",")
 
-            query_builder += (
-                '"', USER_PREFIX, attr_name, '" ',
-                STORAGE_TO_CASSANDRA_TYPES[attr_type], ","
-            )
-
-        query_builder += (
-            SYSTEM_COLUMN_EXTRA_ATTR_DATA, " map<text, blob>,",
-            SYSTEM_COLUMN_EXTRA_ATTR_TYPES, " map<text, text>,",
-            SYSTEM_COLUMN_ATTR_EXIST, " set<text>,"
-            'PRIMARY KEY ("',
-            USER_PREFIX, hash_key_name, '"'
-        )
+        query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_DATA)
+        query_builder.append(" map<text, blob>,")
+        query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_TYPES)
+        query_builder.append(" map<text, text>,")
+        query_builder.append(SYSTEM_COLUMN_ATTR_EXIST)
+        query_builder.append(" set<text>,")
+        query_builder.append('PRIMARY KEY ("')
+        query_builder.append(USER_PREFIX)
+        query_builder.append(hash_key_name)
+        query_builder.append('"')
 
         if table_schema.index_def_map:
-            query_builder += (
-                ",", SYSTEM_COLUMN_INDEX_NAME,
-                ",", SYSTEM_COLUMN_INDEX_VALUE_STRING,
-                ",", SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
-                ",", SYSTEM_COLUMN_INDEX_VALUE_BLOB,
-            )
+            query_builder.append(",")
+            query_builder.append(SYSTEM_COLUMN_INDEX_NAME)
+            query_builder.append(",")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_STRING)
+            query_builder.append(",")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_NUMBER)
+            query_builder.append(",")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_BLOB)
 
         if range_key_name:
-            query_builder += (
-                ',"', USER_PREFIX, range_key_name, '"'
-            )
+            query_builder.append(',"')
+            query_builder.append(USER_PREFIX)
+            query_builder.append(range_key_name)
+            query_builder.append('"')
 
         query_builder.append("))")
 
@@ -484,13 +553,20 @@ class CassandraStorageImpl(object):
         if table_info:
             return table_info
 
-        table_info = TableInfo.load(self, context.tenant, table_name)
+        with self.table_cache_lock:
+            table_info = self._get_table_info_from_cache(context.tenant,
+                                                         table_name)
+            if table_info:
+                return table_info
 
-        if table_info is None:
-            return None
+            table_info = TableInfo.load(self, context.tenant, table_name)
 
-        self._save_table_info_to_cache(context.tenant, table_name, table_info)
-        return table_info
+            if table_info is None:
+                return None
+
+            self._save_table_info_to_cache(context.tenant, table_name,
+                                           table_info)
+            return table_info
 
     def describe_table(self, context, table_name):
         """
@@ -505,6 +581,10 @@ class CassandraStorageImpl(object):
         """
 
         table_info = self._get_table_info(context, table_name)
+        if table_info is None:
+            raise TableNotExistsException(
+                "Table '{}' does not exists".format(table_name)
+            )
         table_info.refresh("status")
 
         return models.TableMeta(table_info.schema, table_info.status)
@@ -527,17 +607,19 @@ class CassandraStorageImpl(object):
     def _append_types_system_attr_value(table_schema, attribute_map,
                                         query_builder=None, prefix=""):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
         query_builder.append(prefix)
         prefix = ""
         query_builder.append("{")
         for attr, val in attribute_map.iteritems():
             if (val is not None) and (
                     attr not in table_schema.attribute_type_map):
-                query_builder += (
-                    prefix, "'", attr, "':'",
-                    STORAGE_TO_CASSANDRA_TYPES[val.type], "'"
-                )
+                query_builder.append(prefix)
+                query_builder.append("'")
+                query_builder.append(attr)
+                query_builder.append("':'")
+                query_builder.append(STORAGE_TO_CASSANDRA_TYPES[val.type])
+                query_builder.append("'")
                 prefix = ","
         query_builder.append("}")
         return query_builder
@@ -546,12 +628,15 @@ class CassandraStorageImpl(object):
     def _append_exists_system_attr_value(attribute_map, query_builder=None,
                                          prefix=""):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
         query_builder.append(prefix)
         prefix = ""
         query_builder.append("{")
         for attr, _ in attribute_map.iteritems():
-            query_builder += (prefix, "'", attr, "'")
+            query_builder.append(prefix)
+            query_builder.append("'")
+            query_builder.append(attr)
+            query_builder.append("'")
             prefix = ","
         query_builder.append("}")
         return query_builder
@@ -560,77 +645,86 @@ class CassandraStorageImpl(object):
             self, table_info, attribute_map, query_builder=None,
             index_name=None, index_value=None, if_not_exists=False):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
 
-        query_builder += (
-            'INSERT INTO "', USER_PREFIX, table_info.tenant, '"."',
-            table_info.internal_name, '" ('
-        )
-        attr_values = []
-        dynamic_attr_names = []
-        dynamic_attr_values = []
+        query_builder.append('INSERT INTO "')
+        query_builder.append(USER_PREFIX)
+        query_builder.append(table_info.tenant)
+        query_builder.append('"."')
+        query_builder.append(table_info.internal_name)
+        query_builder.append('" (')
+
+        attr_values_builder = collections.deque()
+        dynamic_attr_values = collections.deque()
         for name, val in attribute_map.iteritems():
             if name in table_info.schema.attribute_type_map.keys():
-                query_builder += (
-                    '"', USER_PREFIX, name, '",'
+                query_builder.append('"')
+                query_builder.append(USER_PREFIX)
+                query_builder.append(name)
+                query_builder.append('",')
+
+                _encode_and_append_predefined_attr_value(
+                    val, query_builder=attr_values_builder
                 )
-                attr_values.append(_encode_predefined_attr_value(val))
+                attr_values_builder.append(",")
             else:
-                dynamic_attr_names.append(name)
                 dynamic_attr_values.append(
-                    _encode_dynamic_attr_value(val)
+                    (name, _encode_dynamic_attr_value(val))
                 )
 
         if table_info.schema.index_def_map:
-            query_builder += (
-                SYSTEM_COLUMN_INDEX_NAME, ",",
-                SYSTEM_COLUMN_INDEX_VALUE_STRING, ",",
-                SYSTEM_COLUMN_INDEX_VALUE_NUMBER, ",",
-                SYSTEM_COLUMN_INDEX_VALUE_BLOB, ",",
-            )
+            query_builder.append(SYSTEM_COLUMN_INDEX_NAME)
+            query_builder.append(",")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_STRING)
+            query_builder.append(",")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_NUMBER)
+            query_builder.append(",")
+            query_builder.append(SYSTEM_COLUMN_INDEX_VALUE_BLOB)
+            query_builder.append(",")
 
-        query_builder += (
-            SYSTEM_COLUMN_EXTRA_ATTR_DATA, ",",
-            SYSTEM_COLUMN_EXTRA_ATTR_TYPES, ",",
-            SYSTEM_COLUMN_ATTR_EXIST,
-            ") VALUES("
-        )
+        query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_DATA)
+        query_builder.append(",")
+        query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_TYPES)
+        query_builder.append(",")
+        query_builder.append(SYSTEM_COLUMN_ATTR_EXIST)
+        query_builder.append(") VALUES(")
 
-        for attr_value in attr_values:
-            query_builder += (
-                attr_value, ","
-            )
+        query_builder.extend(attr_values_builder)
 
         if table_info.schema.index_def_map:
-            res_index_values = [
-                ENCODED_DEFAULT_STRING_VALUE,
-                ENCODED_DEFAULT_STRING_VALUE,
-                ENCODED_DEFAULT_NUMBER_VALUE,
-                ENCODED_DEFAULT_BLOB_VALUE
+            res_index_values_builders = [
+                ENCODED_DEFAULT_STRING_VALUE_BUILDER,
+                ENCODED_DEFAULT_STRING_VALUE_BUILDER,
+                ENCODED_DEFAULT_NUMBER_VALUE_BUILDER,
+                ENCODED_DEFAULT_BLOB_VALUE_BUILDER
             ]
 
             if index_name:
-                res_index_values[0] = _encode_single_value_as_predefined_attr(
-                    index_name, models.AttributeType.ELEMENT_TYPE_STRING
+                res_index_values_builders[0] = (
+                    _encode_and_append_single_string_value_as_predefined_attr(
+                        index_name, collections.deque()
+                    )
                 )
 
-                res_index_values[INDEX_TYPE_TO_INDEX_POS_MAP[
-                    index_value.type]
-                ] = _encode_predefined_attr_value(index_value)
-
-            for value in res_index_values:
-                query_builder += (
-                    value, ","
+                res_index_values_builders[
+                    INDEX_TYPE_TO_INDEX_POS_MAP[index_value.type]
+                ] = _encode_and_append_predefined_attr_value(
+                    index_value, collections.deque()
                 )
+
+            for value in res_index_values_builders:
+                query_builder.extend(value)
+                query_builder.append(",")
 
         query_builder.append("{")
 
         if dynamic_attr_values:
-            dynamic_value_iter = iter(dynamic_attr_values)
-            for name in dynamic_attr_names:
-                query_builder += (
-                    "'", name, "':" + dynamic_value_iter.next(), ","
-                )
+            for name, value in dynamic_attr_values:
+                query_builder.append("'")
+                query_builder.append(name)
+                query_builder.append("':")
+                query_builder.append(value)
+                query_builder.append(",")
             query_builder.pop()
 
         query_builder.append("},")
@@ -647,7 +741,7 @@ class CassandraStorageImpl(object):
     def _append_update_query_with_basic_pk(self, table_info, attribute_map,
                                            query_builder=None, rewrite=False):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
 
         key_attr_names = table_info.schema.key_attributes
 
@@ -655,13 +749,15 @@ class CassandraStorageImpl(object):
             table_info.schema.attribute_type_map.keys()
         )
 
-        query_builder += (
-            'UPDATE "', USER_PREFIX, table_info.tenant, '"."',
-            table_info.internal_name, '" SET '
-        )
+        query_builder.append('UPDATE "')
+        query_builder.append(USER_PREFIX)
+        query_builder.append(table_info.tenant)
+        query_builder.append('"."')
+        query_builder.append(table_info.internal_name)
+        query_builder.append('" SET ')
 
-        dynamic_attrs_to_set = []
-        dynamic_attrs_to_delete = []
+        dynamic_attrs_to_set = collections.deque()
+        dynamic_attrs_to_delete = collections.deque()
 
         set_prefix = ""
 
@@ -669,9 +765,13 @@ class CassandraStorageImpl(object):
             if name in key_attr_names:
                 not_processed_predefined_attr_names.remove(name)
             elif name in not_processed_predefined_attr_names:
-                query_builder += (
-                    set_prefix, '"', USER_PREFIX, name, '"=',
-                    _encode_predefined_attr_value(val),
+                query_builder.append(set_prefix)
+                query_builder.append('"')
+                query_builder.append(USER_PREFIX)
+                query_builder.append(name)
+                query_builder.append('"=')
+                _encode_and_append_predefined_attr_value(
+                    val, query_builder=query_builder
                 )
                 set_prefix = ","
                 not_processed_predefined_attr_names.remove(name)
@@ -684,74 +784,94 @@ class CassandraStorageImpl(object):
                     )
 
         if rewrite:
-            query_builder += (set_prefix, SYSTEM_COLUMN_EXTRA_ATTR_DATA, "={")
+            query_builder.append(set_prefix)
+            query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_DATA)
+            query_builder.append("={")
 
             field_prefix = ""
             for name, value in dynamic_attrs_to_set:
-                query_builder += (
-                    field_prefix, "'", name, "':", value
-                )
+                query_builder.append(field_prefix)
+                query_builder.append("'")
+                query_builder.append(name)
+                query_builder.append("':")
+                query_builder.append(value)
                 field_prefix = ","
+
             query_builder.append("},")
 
             for name in not_processed_predefined_attr_names:
-                query_builder += (
-                    '"', USER_PREFIX, name, '"=null,'
-                )
+                query_builder.append('"')
+                query_builder.append(USER_PREFIX)
+                query_builder.append(name)
+                query_builder.append('"=null,')
 
             query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_TYPES)
             self._append_types_system_attr_value(table_info.schema,
                                                  attribute_map, query_builder,
                                                  prefix="=")
-            query_builder += (",", SYSTEM_COLUMN_ATTR_EXIST)
+            query_builder.append(",")
+            query_builder.append(SYSTEM_COLUMN_ATTR_EXIST)
+
             self._append_exists_system_attr_value(attribute_map, query_builder,
                                                   prefix="=")
         else:
             if dynamic_attrs_to_set:
-                query_builder += (
-                    set_prefix, SYSTEM_COLUMN_EXTRA_ATTR_DATA, "=",
-                    SYSTEM_COLUMN_EXTRA_ATTR_DATA, "+{"
-                )
-                set_prefix = ","
+                query_builder.append(set_prefix)
+                query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_DATA)
+                query_builder.append("=")
+                query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_DATA)
+                query_builder.append("+{")
 
                 field_prefix = ""
                 for name, value in dynamic_attrs_to_set:
-                    query_builder += (
-                        field_prefix, "'", name, "':", value
-                    )
+                    query_builder.append(field_prefix)
+                    query_builder.append("'")
+                    query_builder.append(name)
+                    query_builder.append("':")
+                    query_builder.append(value)
                     field_prefix = ","
+
                 query_builder.append("},")
 
-                query_builder += (
-                    SYSTEM_COLUMN_EXTRA_ATTR_TYPES, "=",
-                    SYSTEM_COLUMN_EXTRA_ATTR_TYPES
-                )
+                query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_TYPES)
+                query_builder.append("=")
+                query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_TYPES)
+
                 self._append_types_system_attr_value(
                     table_info.schema, attribute_map, query_builder, prefix="+"
                 )
-                query_builder += (
-                    ",", SYSTEM_COLUMN_ATTR_EXIST, "=",
-                    SYSTEM_COLUMN_ATTR_EXIST
-                )
+                query_builder.append(",")
+                query_builder.append(SYSTEM_COLUMN_ATTR_EXIST)
+                query_builder.append("=")
+                query_builder.append(SYSTEM_COLUMN_ATTR_EXIST)
+
                 self._append_exists_system_attr_value(
                     attribute_map, query_builder, prefix="+"
                 )
+                set_prefix = ","
             if dynamic_attrs_to_delete:
                 for name in dynamic_attrs_to_delete:
-                    query_builder += (
-                        set_prefix,
-                        SYSTEM_COLUMN_EXTRA_ATTR_DATA, "['", name, "']=null,",
-                        SYSTEM_COLUMN_EXTRA_ATTR_TYPES, "['", name, "']=null,",
-                    )
-                query_builder += (
-                    SYSTEM_COLUMN_ATTR_EXIST, "=",
-                    SYSTEM_COLUMN_ATTR_EXIST, "-{"
-                )
+                    query_builder.append(set_prefix)
+                    query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_DATA)
+                    query_builder.append("['")
+                    query_builder.append(name)
+                    query_builder.append("']=null,")
+                    query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_TYPES)
+                    query_builder.append("['")
+                    query_builder.append(name)
+                    query_builder.append("']=null,")
+
+                query_builder.append(SYSTEM_COLUMN_ATTR_EXIST)
+                query_builder.append("=")
+                query_builder.append(SYSTEM_COLUMN_ATTR_EXIST)
+                query_builder.append("-{")
+
                 field_prefix = ""
                 for name in dynamic_attrs_to_delete:
-                    query_builder += (
-                        field_prefix, "'", name, "'",
-                    )
+                    query_builder.append(field_prefix)
+                    query_builder.append("'")
+                    query_builder.append(name)
+                    query_builder.append("'")
                     field_prefix = ","
                 query_builder.append("}")
         self._append_primary_key(table_info.schema, attribute_map,
@@ -783,7 +903,7 @@ class CassandraStorageImpl(object):
                                        attribute_map, query_builder=None,
                                        separator=" ", rewrite=False):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
         base_update_query = None
         base_delete_query = None
 
@@ -815,7 +935,9 @@ class CassandraStorageImpl(object):
                 base_update_query = (
                     base_update_query or create_base_update_query()
                 )
-                query_builder += (separator, base_update_query)
+                query_builder.append(separator)
+                query_builder.append(base_update_query)
+
                 self._append_index_extra_primary_key(
                     query_builder, index_name, new_index_value,
                 )
@@ -823,7 +945,8 @@ class CassandraStorageImpl(object):
                 base_delete_query = (
                     base_delete_query or create_base_delete_query()
                 )
-                query_builder += (separator, base_delete_query)
+                query_builder.append(separator)
+                query_builder.append(base_delete_query)
                 self._append_index_extra_primary_key(
                     query_builder, index_name, old_index_value,
                 )
@@ -840,8 +963,8 @@ class CassandraStorageImpl(object):
                 table_info, {}, attribute_map, query_builder, rewrite=True
             )
             if len(query_builder) > qb_len:
-                query_builder.insert(0, self._get_batch_begin_clause())
-                query_builder.append(self._get_batch_apply_clause())
+                query_builder.appendleft("BEGIN UNLOGGED BATCH ")
+                query_builder.append(" APPLY BATCH")
 
             result = self._execute_query(
                 "".join(query_builder), consistent=True)
@@ -868,6 +991,10 @@ class CassandraStorageImpl(object):
         """
 
         table_info = self._get_table_info(context, put_request.table_name)
+        if table_info is None:
+            raise TableNotExistsException(
+                "Table '{}' does not exists".format(put_request.table_name)
+            )
 
         if if_not_exist:
             if expected_condition_map:
@@ -902,11 +1029,13 @@ class CassandraStorageImpl(object):
                         index_def.attribute_to_index, None
                     )
 
-                    query_builder += (
-                        if_prefix, '"', USER_PREFIX,
-                        index_def.attribute_to_index, '"=',
-                        _encode_predefined_attr_value(old_index_value)
-                        if old_index_value else "null"
+                    query_builder.append(if_prefix)
+                    query_builder.append('"')
+                    query_builder.append(USER_PREFIX)
+                    query_builder.append(index_def.attribute_to_index)
+                    query_builder.append('"=')
+                    _encode_and_append_predefined_attr_value(
+                        old_index_value, query_builder=query_builder
                     )
                     if_prefix = " AND "
 
@@ -917,8 +1046,8 @@ class CassandraStorageImpl(object):
                     query_builder, rewrite=True
                 )
                 if len(query_builder) > qb_len:
-                    query_builder.insert(0, self._get_batch_begin_clause())
-                    query_builder.append(self._get_batch_apply_clause())
+                    query_builder.appendleft("BEGIN UNLOGGED BATCH ")
+                    query_builder.append(" APPLY BATCH")
                 result = self._execute_query("".join(query_builder),
                                              consistent=True)
 
@@ -954,11 +1083,14 @@ class CassandraStorageImpl(object):
     def _append_delete_query_with_basic_pk(
             cls, table_info, attribute_map, query_builder=None):
         if query_builder is None:
-            query_builder = []
-        query_builder += (
-            'DELETE FROM "', USER_PREFIX, table_info.tenant, '"."',
-            table_info.internal_name, '"'
-        )
+            query_builder = collections.deque()
+        query_builder.append('DELETE FROM "')
+        query_builder.append(USER_PREFIX)
+        query_builder.append(table_info.tenant)
+        query_builder.append('"."')
+        query_builder.append(table_info.internal_name)
+        query_builder.append('"')
+
         cls._append_primary_key(table_info.schema, attribute_map,
                                 query_builder)
         return query_builder
@@ -984,18 +1116,23 @@ class CassandraStorageImpl(object):
 
     def _select_current_index_values(
             self, table_info, attribute_map):
-        query_buider = ["SELECT "]
+        query_buider = collections.deque()
+        query_buider.append("SELECT ")
         prefix = ""
         for index_def in table_info.schema.index_def_map.itervalues():
-            query_buider += (
-                prefix, '"', USER_PREFIX, index_def.attribute_to_index, '"'
-            )
+            query_buider.append(prefix)
+            query_buider.append('"')
+            query_buider.append(USER_PREFIX)
+            query_buider.append(index_def.attribute_to_index)
+            query_buider.append('"')
             prefix = ","
 
-        query_buider += (
-            ' FROM "', USER_PREFIX, table_info.tenant, '"."',
-            table_info.internal_name, '"'
-        )
+        query_buider.append(' FROM "')
+        query_buider.append(USER_PREFIX)
+        query_buider.append(table_info.tenant)
+        query_buider.append('"."')
+        query_buider.append(table_info.internal_name)
+        query_buider.append('"')
 
         self._append_primary_key(table_info.schema, attribute_map,
                                  query_buider)
@@ -1016,7 +1153,7 @@ class CassandraStorageImpl(object):
                     attr_name
                 ]
                 index_values[attr_name] = (
-                    models.AttributeValue(attr_type, cas_attr_value)
+                    AttributeValue(attr_type, cas_attr_value)
                 )
         return index_values
 
@@ -1039,6 +1176,11 @@ class CassandraStorageImpl(object):
         """
 
         table_info = self._get_table_info(context, delete_request.table_name)
+        if table_info is None:
+            raise TableNotExistsException(
+                "Table '{}' does not exists".format(delete_request.table_name)
+            )
+
         delete_query = "".join(
             self._append_delete_query(
                 table_info, delete_request.key_attribute_map,
@@ -1056,19 +1198,21 @@ class CassandraStorageImpl(object):
                     # Nothing to delete
                     return not expected_condition_map
 
-                query_builder = [delete_query]
+                query_builder = collections.deque()
+                query_builder.append(delete_query)
                 if_prefix = " AND " if expected_condition_map else " IF "
                 for index_name, index_def in (
                         table_info.schema.index_def_map.iteritems()):
                     index_value = old_indexes.get(
                         index_def.attribute_to_index, None
                     )
-                    query_builder += (
-                        if_prefix, '"', USER_PREFIX,
-                        index_def.attribute_to_index, '"=',
-                        _encode_predefined_attr_value(index_value)
-                        if index_value
-                        else "null"
+                    query_builder.append(if_prefix)
+                    query_builder.append('"')
+                    query_builder.append(USER_PREFIX)
+                    query_builder.append(index_def.attribute_to_index)
+                    query_builder.append('"=')
+                    _encode_and_append_predefined_attr_value(
+                        index_value, query_builder=query_builder
                     )
                     if_prefix = " AND "
 
@@ -1079,8 +1223,8 @@ class CassandraStorageImpl(object):
                     query_builder
                 )
                 if len(query_builder) > qb_len:
-                    query_builder.insert(0, self._get_batch_begin_clause())
-                    query_builder.append(self._get_batch_apply_clause())
+                    query_builder.appendleft("BEGIN UNLOGGED BATCH ")
+                    query_builder.append(" APPLY BATCH")
                 result = self._execute_query("".join(query_builder),
                                              consistent=True)
 
@@ -1170,12 +1314,18 @@ class CassandraStorageImpl(object):
     def _append_indexed_condition(self, attr_name, condition, query_builder,
                                   column_prefix=USER_PREFIX):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
         op = CONDITION_TO_OP[condition.type]
-        query_builder += (
-            '"', column_prefix, attr_name, '"', op,
-            _encode_predefined_attr_value(condition.arg)
+
+        query_builder.append('"')
+        query_builder.append(column_prefix)
+        query_builder.append(attr_name)
+        query_builder.append('"')
+        query_builder.append(op)
+        _encode_and_append_predefined_attr_value(
+            condition.arg, query_builder
         )
+
         return query_builder
 
     def _append_hash_key_indexed_condition(
@@ -1188,18 +1338,25 @@ class CassandraStorageImpl(object):
         else:
             op = CONDITION_TO_OP[condition.type]
             if query_builder is None:
-                query_builder = []
-            query_builder += (
-                'token("', column_prefix, attr_name, '")', op, "token(",
-                _encode_predefined_attr_value(condition.arg), ")"
+                query_builder = collections.deque()
+            query_builder.append('token("')
+            query_builder.append(column_prefix)
+            query_builder.append(attr_name)
+            query_builder.append('")')
+            query_builder.append(op)
+            query_builder.append("token(")
+            _encode_and_append_predefined_attr_value(
+                condition.arg, query_builder
             )
+            query_builder.append(")")
+
             return query_builder
 
     @classmethod
     def _append_expected_conditions(cls, expected_condition_map, schema,
                                     query_builder, prefix=" IF "):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
         for attr_name, cond_list in expected_condition_map.iteritems():
             for condition in cond_list:
                 query_builder.append(prefix)
@@ -1214,32 +1371,39 @@ class CassandraStorageImpl(object):
     def _append_expected_condition(attr, condition, query_builder,
                                    is_predefined):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
         if condition.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
             if condition.arg:
-                query_builder += (
-                    SYSTEM_COLUMN_ATTR_EXIST, "={'", attr, "'}"
-                )
+                query_builder.append(SYSTEM_COLUMN_ATTR_EXIST)
+                query_builder.append("={'")
+                query_builder.append(attr)
+                query_builder.append("'}")
             else:
                 if is_predefined:
-                    query_builder += (
-                        '"', USER_PREFIX, attr, '"=null'
-                    )
+                    query_builder.append('"')
+                    query_builder.append(USER_PREFIX)
+                    query_builder.append(attr)
+                    query_builder.append('"=null')
                 else:
-                    query_builder += (
-                        SYSTEM_COLUMN_EXTRA_ATTR_DATA, "['", attr, "']=null"
-                    )
+                    query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_DATA)
+                    query_builder.append("['")
+                    query_builder.append(attr)
+                    query_builder.append("']=null")
         elif condition.type == models.ExpectedCondition.CONDITION_TYPE_EQUAL:
             if is_predefined:
-                query_builder += (
-                    '"', USER_PREFIX, attr, '"=',
-                    _encode_predefined_attr_value(condition.arg)
+                query_builder.append('"')
+                query_builder.append(USER_PREFIX)
+                query_builder.append(attr)
+                query_builder.append('"=')
+                _encode_and_append_predefined_attr_value(
+                    condition.arg, query_builder=query_builder
                 )
             else:
-                query_builder += (
-                    SYSTEM_COLUMN_EXTRA_ATTR_DATA, "['", attr, "']=",
-                    _encode_dynamic_attr_value(condition.arg)
-                )
+                query_builder.append(SYSTEM_COLUMN_EXTRA_ATTR_DATA)
+                query_builder.append("['")
+                query_builder.append(attr)
+                query_builder.append("']=")
+                query_builder.append(_encode_dynamic_attr_value(condition.arg))
         else:
             assert False
         return query_builder
@@ -1248,11 +1412,15 @@ class CassandraStorageImpl(object):
     def _append_primary_key(table_schema, attribute_map, query_builder,
                             prefix=" WHERE "):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
         for key_attr in table_schema.key_attributes:
-            query_builder += (
-                prefix, '"', USER_PREFIX, key_attr, '"=',
-                _encode_predefined_attr_value(attribute_map[key_attr])
+            query_builder.append(prefix)
+            query_builder.append('"')
+            query_builder.append(USER_PREFIX)
+            query_builder.append(key_attr)
+            query_builder.append('"=')
+            _encode_and_append_predefined_attr_value(
+                attribute_map[key_attr], query_builder=query_builder
             )
             prefix = " AND "
         return query_builder
@@ -1262,68 +1430,38 @@ class CassandraStorageImpl(object):
                                         index_name=None, index_value=None,
                                         prefix=" AND "):
         if query_builder is None:
-            query_builder = []
+            query_builder = collections.deque()
 
         res_index_values = [
-            ENCODED_DEFAULT_STRING_VALUE,
-            ENCODED_DEFAULT_STRING_VALUE,
-            ENCODED_DEFAULT_NUMBER_VALUE,
-            ENCODED_DEFAULT_BLOB_VALUE
+            ENCODED_DEFAULT_STRING_VALUE_BUILDER,
+            ENCODED_DEFAULT_STRING_VALUE_BUILDER,
+            ENCODED_DEFAULT_NUMBER_VALUE_BUILDER,
+            ENCODED_DEFAULT_BLOB_VALUE_BUILDER
         ]
 
         if index_name:
-            res_index_values[0] = _encode_single_value_as_predefined_attr(
-                index_name, models.AttributeType.ELEMENT_TYPE_STRING
+            res_index_values[0] = (
+                _encode_and_append_single_string_value_as_predefined_attr(
+                    index_name, collections.deque()
+                )
             )
 
             res_index_values[INDEX_TYPE_TO_INDEX_POS_MAP[index_value.type]] = (
-                _encode_predefined_attr_value(index_value)
+                _encode_and_append_single_value_as_predefined_attr(
+                    index_value.value, index_value.type.element_type,
+                    collections.deque()
+                )
             )
 
         for i in xrange(len(LOCAL_INDEX_FIELD_LIST)):
-            query_builder += (
-                prefix, LOCAL_INDEX_FIELD_LIST[i], "=", res_index_values[i]
-            )
+            query_builder.append(prefix)
+            query_builder.append(LOCAL_INDEX_FIELD_LIST[i])
+            query_builder.append("=")
+            query_builder.extend(res_index_values[i])
+
             prefix = " AND "
 
         return query_builder
-
-    @staticmethod
-    def _get_batch_begin_clause(durable=True):
-        if durable:
-            return 'BEGIN BATCH '
-        return 'BEGIN UNLOGGED BATCH '
-
-    @staticmethod
-    def _get_batch_apply_clause():
-        return ' APPLY BATCH'
-
-    def execute_write_batch(self, context, write_request_list):
-        """
-        @param context: current request context
-        @param write_request_list: contains WriteItemBatchableRequest items to
-                    perform batch
-
-        @return: List of unprocessed items
-
-        @raise BackendInteractionException
-        """
-
-        assert write_request_list
-        unprocessed_items = []
-        for req in write_request_list:
-            try:
-                if isinstance(req, models.PutItemRequest):
-                    self.put_item(context, req)
-                elif isinstance(req, models.DeleteItemRequest):
-                    self.delete_item(context, req)
-                else:
-                    assert False, 'Wrong WriteItemRequest'
-            except BackendInteractionException:
-                unprocessed_items.append(req)
-                LOG.exception("Can't process WriteItemRequest")
-
-        return unprocessed_items
 
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
@@ -1346,6 +1484,10 @@ class CassandraStorageImpl(object):
         attribute_action_map = attribute_action_map or {}
 
         table_info = self._get_table_info(context, table_name)
+        if table_info is None:
+            raise TableNotExistsException(
+                "Table '{}' does not exists".format(table_name)
+            )
 
         if table_info.schema.index_def_map:
             index_actions = {}
@@ -1401,12 +1543,17 @@ class CassandraStorageImpl(object):
                     old_index_value = old_indexes.get(
                         index_def.attribute_to_index, None
                     )
-                    query_builder += (
-                        if_prefix, '"', USER_PREFIX,
-                        index_def.attribute_to_index, '"=',
-                        _encode_predefined_attr_value(old_index_value)
-                        if old_index_value else "null"
+                    query_builder.append(if_prefix)
+                    query_builder.append('"')
+                    query_builder.append(USER_PREFIX)
+                    query_builder.append(index_def.attribute_to_index)
+                    query_builder.append('"=')
+                    _encode_and_append_single_value_as_predefined_attr(
+                        old_index_value.value,
+                        old_index_value.type.element_type,
+                        query_builder=query_builder
                     )
+
                     if_prefix = " AND "
 
                 qb_len = len(query_builder)
@@ -1416,8 +1563,8 @@ class CassandraStorageImpl(object):
                     query_builder
                 )
                 if len(query_builder) > qb_len:
-                    query_builder.insert(0, self._get_batch_begin_clause())
-                    query_builder.append(self._get_batch_apply_clause())
+                    query_builder.appendleft("BEGIN UNLOGGED BATCH ")
+                    query_builder.append(" APPLY BATCH")
                 result = self._execute_query("".join(query_builder),
                                              consistent=True)
 
@@ -1484,6 +1631,10 @@ class CassandraStorageImpl(object):
         """
 
         table_info = self._get_table_info(context, table_name)
+        if table_info is None:
+            raise TableNotExistsException(
+                "Table '{}' does not exists".format(table_name)
+            )
 
         assert (
             not index_name or (
@@ -1495,10 +1646,15 @@ class CassandraStorageImpl(object):
         )
         select_type = select_type or models.SelectType.all()
 
-        query_builder = [
-            "SELECT ", 'COUNT(*)' if select_type.is_count else '*', ' FROM "',
-            USER_PREFIX, context.tenant, '"."', table_info.internal_name, '"'
-        ]
+        query_builder = collections.deque()
+        query_builder.append("SELECT ")
+        query_builder.append('COUNT(*)' if select_type.is_count else '*')
+        query_builder.append(' FROM "')
+        query_builder.append(USER_PREFIX)
+        query_builder.append(context.tenant)
+        query_builder.append('"."')
+        query_builder.append(table_info.internal_name)
+        query_builder.append('"')
 
         hash_name = table_info.schema.key_attributes[0]
 
@@ -1602,7 +1758,7 @@ class CassandraStorageImpl(object):
             local_indexes_conditions = {
                 SYSTEM_COLUMN_INDEX_NAME: [
                     models.IndexedCondition.eq(
-                        models.AttributeValue.str(index_name)
+                        AttributeValue.str(index_name)
                         if index_name else DEFAULT_STRING_VALUE
                     )
                 ],
@@ -1678,21 +1834,23 @@ class CassandraStorageImpl(object):
 
         #add limit
         if limit:
-            query_builder += (" LIMIT ", str(limit))
+            query_builder.append(" LIMIT ")
+            query_builder.append(str(limit))
 
         #add ordering
         if order_type:
             query_builder.append(' ORDER BY ')
             if table_info.schema.index_def_map:
-                query_builder += (
-                    SYSTEM_COLUMN_INDEX_NAME, " ", order_type
-                )
+                query_builder.append(SYSTEM_COLUMN_INDEX_NAME)
+                query_builder.append(" ")
             elif range_name:
-                query_builder += (
-                    '"', USER_PREFIX, range_name, '" ', order_type
-                )
+                query_builder.append('"')
+                query_builder.append(USER_PREFIX)
+                query_builder.append(range_name)
+                query_builder.append('" ')
             else:
                 assert False
+            query_builder.append(order_type)
 
         if not hash_key_cond_list or (
                 hash_key_cond_list[0].type !=
@@ -1776,7 +1934,13 @@ class CassandraStorageImpl(object):
         """
         if not condition_map:
             condition_map = {}
+
         table_info = self._get_table_info(context, table_name)
+        if table_info is None:
+            raise TableNotExistsException(
+                "Table '{}' does not exists".format(table_name)
+            )
+
         hash_name = table_info.schema.key_attributes[0]
         try:
             range_name = table_info.schema.key_attributes[1]
@@ -1961,20 +2125,22 @@ class TableInfo(object):
     @classmethod
     def load_tenant_table_names(cls, storage_driver, tenant,
                                 exclusive_start_table_name=None, limit=None):
-        query_builder = [
-            "SELECT name",
-            " FROM ", cls.SYSTEM_TABLE_TABLE_INFO,
-            " WHERE tenant='", tenant, "'"
-        ]
+        query_builder = collections.deque()
+        query_builder.append("SELECT name")
+        query_builder.append(" FROM ")
+        query_builder.append(cls.SYSTEM_TABLE_TABLE_INFO)
+        query_builder.append(" WHERE tenant='")
+        query_builder.append(tenant)
+        query_builder.append("'")
 
         if exclusive_start_table_name:
-            query_builder += (
-                " AND name > '",
-                exclusive_start_table_name, "'"
-            )
+            query_builder.append(" AND name > '")
+            query_builder.append(exclusive_start_table_name)
+            query_builder.append("'")
 
         if limit:
-            query_builder += (" LIMIT ", str(limit))
+            query_builder.append(" LIMIT ")
+            query_builder.append(str(limit))
 
         tables = storage_driver._execute_query("".join(query_builder),
                                                consistent=True)
@@ -1985,15 +2151,22 @@ class TableInfo(object):
         if not field_list:
             field_list = self.__field_list
 
-        query_builder = ["SELECT "]
+        query_builder = collections.deque()
+        query_builder.append("SELECT ")
         for field in field_list:
-            query_builder += ('"', field, '"', ",")
+            query_builder.append('"')
+            query_builder.append(field)
+            query_builder.append('"')
+            query_builder.append(",")
         query_builder.pop()
 
-        query_builder += (
-            " FROM ", self.SYSTEM_TABLE_TABLE_INFO,
-            " WHERE tenant='", self.tenant, "' AND name='", self.name, "'"
-        )
+        query_builder.append(" FROM ")
+        query_builder.append(self.SYSTEM_TABLE_TABLE_INFO)
+        query_builder.append(" WHERE tenant='")
+        query_builder.append(self.tenant)
+        query_builder.append("' AND name='")
+        query_builder.append(self.name)
+        query_builder.append("'")
 
         result = self.__storage_driver._execute_query(
             "".join(query_builder), consistent=True
@@ -2012,20 +2185,25 @@ class TableInfo(object):
         if not field_list:
             field_list = self.__field_list
 
-        query_builder = [
-            "UPDATE ", self.SYSTEM_TABLE_TABLE_INFO, " SET "
-        ]
+        query_builder = collections.deque()
+        query_builder.append("UPDATE ")
+        query_builder.append(self.SYSTEM_TABLE_TABLE_INFO)
+        query_builder.append(" SET ")
 
         for field in field_list:
-            query_builder += (
-                '"', field, '"=\'', getattr(self, field), "'", ", "
-            )
+            query_builder.append('"')
+            query_builder.append(field)
+            query_builder.append('"=\'')
+            query_builder.append(getattr(self, field))
+            query_builder.append("'")
+            query_builder.append(",")
         query_builder.pop()
 
-        query_builder += (
-            " WHERE tenant='", self.tenant, "' AND name='", self.name,
-            "' IF exists=1"
-        )
+        query_builder.append(" WHERE tenant='")
+        query_builder.append(self.tenant)
+        query_builder.append("' AND name='")
+        query_builder.append(self.name)
+        query_builder.append("' IF exists=1")
 
         result = self.__storage_driver._execute_query(
             "".join(query_builder), consistent=True
@@ -2034,24 +2212,36 @@ class TableInfo(object):
         return result[0]['[applied]']
 
     def save(self):
-        query_builder = [
-            "INSERT INTO ", self.SYSTEM_TABLE_TABLE_INFO,
+        query_builder = collections.deque()
+        query_builder.append("INSERT INTO ")
+        query_builder.append(self.SYSTEM_TABLE_TABLE_INFO)
+        query_builder.append(
             '(exists, tenant, name, "schema", status, internal_name)'
-            "VALUES(1,'", self.tenant, "','", self.name, "'"
-        ]
+        )
+        query_builder.append("VALUES(1,'")
+        query_builder.append(self.tenant)
+        query_builder.append("','")
+        query_builder.append(self.name)
+        query_builder.append("'")
 
         if self.schema:
-            query_builder += (",'", self.schema.to_json(), "'")
+            query_builder.append(",'")
+            query_builder.append(self.schema.to_json())
+            query_builder.append("'")
         else:
             query_builder.append(",null")
 
         if self.status:
-            query_builder += (",'", self.status, "'")
+            query_builder.append(",'")
+            query_builder.append(self.status)
+            query_builder.append("'")
         else:
             query_builder.append(",null")
 
         if self.internal_name:
-            query_builder += (",'", self.internal_name, "'")
+            query_builder.append(",'")
+            query_builder.append(self.internal_name)
+            query_builder.append("'")
         else:
             query_builder.append(",null")
 
@@ -2064,10 +2254,13 @@ class TableInfo(object):
         return result[0]['[applied]']
 
     def delete(self):
-        query_builder = [
-            "DELETE FROM ", self.SYSTEM_TABLE_TABLE_INFO,
-            " WHERE tenant='", self.tenant, "' AND name='", self.name, "'"
-        ]
-
+        query_builder = collections.deque()
+        query_builder.append("DELETE FROM ")
+        query_builder.append(self.SYSTEM_TABLE_TABLE_INFO)
+        query_builder.append(" WHERE tenant='")
+        query_builder.append(self.tenant)
+        query_builder.append("' AND name='")
+        query_builder.append(self.name)
+        query_builder.append("'")
         self.__storage_driver._execute_query("".join(query_builder),
                                              consistent=True)

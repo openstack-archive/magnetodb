@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import decimal
+
 import json
 
 
@@ -48,7 +48,7 @@ class ModelBase(object):
 
     def __hash__(self):
         if not self._hash:
-            self._hash = hash(tuple(sorted(self._data.items())))
+            self._hash = hash(frozenset(self._data.items()))
 
         return self._hash
 
@@ -60,7 +60,8 @@ class ModelBase(object):
                 return data
             raise TypeError(repr(obj) + " is not JSON serializable")
 
-        return json.dumps(self, default=encode_model, sort_keys=True)
+        return json.dumps(self, default=encode_model, sort_keys=True,
+                          encoding="utf8")
 
     @staticmethod
     def from_json(jsn):
@@ -70,7 +71,7 @@ class ModelBase(object):
                 return eval(model_cls)(**dct)
             return dct
 
-        return json.loads(jsn, object_hook=as_model)
+        return json.loads(jsn, object_hook=as_model, encoding="utf8")
 
 
 class AttributeType(ModelBase):
@@ -114,22 +115,7 @@ ORDER_TYPE_DESC = "DESC"
 
 class AttributeValue(ModelBase):
     def __init__(self, attr_type, attr_value):
-        if attr_type == ATTRIBUTE_TYPE_STRING:
-            value = self.__create_str(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_NUMBER:
-            value = self.__create_number(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_BLOB:
-            value = self.__create_blob(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_STRING_SET:
-            value = self.__create_str_set(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_NUMBER_SET:
-            value = self.__create_number_set(attr_value)
-        elif attr_type == ATTRIBUTE_TYPE_BLOB_SET:
-            value = self.__create_blob_set(attr_value)
-        else:
-            assert False, "Attribute type wasn't recognized"
-
-        super(AttributeValue, self).__init__(type=attr_type, value=value)
+        super(AttributeValue, self).__init__(type=attr_type, value=attr_value)
 
     @property
     def is_str(self):
@@ -152,34 +138,8 @@ class AttributeValue(ModelBase):
         return self.type == ATTRIBUTE_TYPE_BLOB_SET
 
     @classmethod
-    def __create_str(cls, str_value):
-        assert isinstance(str_value, (str, unicode))
-        return str_value
-
-    @classmethod
-    def __create_number(cls, number_value):
-        return decimal.Decimal(number_value)
-
-    @classmethod
-    def __create_blob(cls, blob_value):
-        assert isinstance(blob_value, (str, unicode))
-        return blob_value
-
-    @classmethod
-    def __create_str_set(cls, str_set_value):
-        return frozenset(map(cls.__create_str, str_set_value))
-
-    @classmethod
-    def __create_number_set(cls, number_set_value):
-        return frozenset(map(cls.__create_number, number_set_value))
-
-    @classmethod
-    def __create_blob_set(cls, blob_set_value):
-        return frozenset(map(cls.__create_blob, blob_set_value))
-
-    @classmethod
     def str(cls, str_value):
-        assert isinstance(str_value, (str, unicode))
+        assert isinstance(str_value, basestring)
         return cls(ATTRIBUTE_TYPE_STRING, str_value)
 
     @classmethod

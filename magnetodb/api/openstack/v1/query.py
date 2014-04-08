@@ -82,55 +82,58 @@ class QueryController(object):
     }
 
     def query(self, req, body, project_id, table_name):
-        jsonschema.validate(body, self.schema)
-        req.context.tenant = project_id
+        try:
+            req.context.tenant = project_id
 
-        # parse select_type
-        attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
+            # parse select_type
+            attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
 
-        if attributes_to_get is not None:
-            attributes_to_get = frozenset(attributes_to_get)
+            if attributes_to_get is not None:
+                attributes_to_get = frozenset(attributes_to_get)
 
-        select = body.get(parser.Props.SELECT)
+            select = body.get(parser.Props.SELECT)
 
-        index_name = body.get(parser.Props.INDEX_NAME)
+            index_name = body.get(parser.Props.INDEX_NAME)
 
-        select_type = parser.Parser.parse_select_type(select,
-                                                      attributes_to_get,
-                                                      index_name)
+            select_type = parser.Parser.parse_select_type(select,
+                                                          attributes_to_get,
+                                                          index_name)
 
-        # parse exclusive_start_key_attributes
-        exclusive_start_key_attributes = body.get(
-            parser.Props.EXCLUSIVE_START_KEY)
+            # parse exclusive_start_key_attributes
+            exclusive_start_key_attributes = body.get(
+                parser.Props.EXCLUSIVE_START_KEY)
 
-        if exclusive_start_key_attributes is not None:
-            exclusive_start_key_attributes = (
-                parser.Parser.parse_item_attributes(
-                    exclusive_start_key_attributes
+            if exclusive_start_key_attributes is not None:
+                exclusive_start_key_attributes = (
+                    parser.Parser.parse_item_attributes(
+                        exclusive_start_key_attributes
+                    )
                 )
-            )
 
-        # parse indexed_condition_map
-        indexed_condition_map = parser.Parser.parse_attribute_conditions(
-            body.get(parser.Props.KEY_CONDITIONS))
+            # parse indexed_condition_map
+            indexed_condition_map = parser.Parser.parse_attribute_conditions(
+                body.get(parser.Props.KEY_CONDITIONS))
 
-        # TODO(dukhlov):
-        # it would be nice to validate given table_name, key_attributes and
-        # attributes_to_get to schema expectation
+            # TODO(dukhlov):
+            # it would be nice to validate given table_name, key_attributes and
+            # attributes_to_get to schema expectation
 
-        consistent_read = body.get(
-            parser.Props.CONSISTENT_READ, False)
+            consistent_read = body.get(
+                parser.Props.CONSISTENT_READ, False)
 
-        limit = body.get(parser.Props.LIMIT)
+            limit = body.get(parser.Props.LIMIT)
 
-        order_asc = body.get(parser.Props.SCAN_INDEX_FORWARD)
+            order_asc = body.get(parser.Props.SCAN_INDEX_FORWARD)
 
-        if order_asc is None:
-            order_type = None
-        elif order_asc:
-            order_type = models.ORDER_TYPE_ASC
-        else:
-            order_type = models.ORDER_TYPE_DESC
+            if order_asc is None:
+                order_type = None
+            elif order_asc:
+                order_type = models.ORDER_TYPE_ASC
+            else:
+                order_type = models.ORDER_TYPE_DESC
+        except Exception as e:
+            jsonschema.validate(body, self.schema)
+            raise e
 
         # select item
         result = storage.select_item(
