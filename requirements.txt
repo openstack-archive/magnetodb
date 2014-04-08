@@ -8,6 +8,7 @@ oslo.config>=1.2.0
 pbr>=0.5.21,<1.0
 python-keystoneclient>=0.3.2
 scales
+ujson>=1.33
 Babel>=0.9.6
 PasteDeploy>=1.5.0
 Routes>=1.12.3

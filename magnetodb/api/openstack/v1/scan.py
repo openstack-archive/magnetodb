@@ -77,35 +77,37 @@ class ScanController(object):
     }
 
     def scan(self, req, body, project_id, table_name):
-        jsonschema.validate(body, self.schema)
+        try:
+            req.context.tenant = project_id
 
-        req.context.tenant = project_id
+            #TODO ikhudoshyn: table_name may be index name
 
-        #TODO ikhudoshyn: table_name may be index name
+            attrs_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
 
-        attrs_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
+            select = body.get(parser.Props.SELECT)
 
-        select = body.get(parser.Props.SELECT)
+            select_type = parser.Parser.parse_select_type(select, attrs_to_get)
 
-        select_type = parser.Parser.parse_select_type(select, attrs_to_get)
+            limit = body.get(parser.Props.LIMIT)
 
-        limit = body.get(parser.Props.LIMIT)
+            exclusive_start_key = body.get(parser.Props.EXCLUSIVE_START_KEY)
 
-        exclusive_start_key = body.get(parser.Props.EXCLUSIVE_START_KEY)
+            exclusive_start_key = parser.Parser.parse_item_attributes(
+                exclusive_start_key) if exclusive_start_key else None
 
-        exclusive_start_key = parser.Parser.parse_item_attributes(
-            exclusive_start_key) if exclusive_start_key else None
+            scan_filter = body.get(parser.Props.SCAN_FILTER, {})
 
-        scan_filter = body.get(parser.Props.SCAN_FILTER, {})
+            condition_map = parser.Parser.parse_attribute_conditions(
+                scan_filter
+            )
 
-        condition_map = parser.Parser.parse_attribute_conditions(
-            scan_filter
-        )
+            segment = body.get(parser.Props.SEGMENT, 0)
+            total_segments = body.get(parser.Props.TOTAL_SEGMENTS, 1)
 
-        segment = body.get(parser.Props.SEGMENT, 0)
-        total_segments = body.get(parser.Props.TOTAL_SEGMENTS, 1)
-
-        assert segment < total_segments
+            assert segment < total_segments
+        except Exception as e:
+            jsonschema.validate(body, self.schema)
+            raise e
 
         result = storage.scan(
             req.context, table_name, condition_map,
