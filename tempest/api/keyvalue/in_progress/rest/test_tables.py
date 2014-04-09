@@ -61,15 +61,6 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                                     self.one_attr, tname,
                                     self.schema_hash_only)
 
-    def test_describe_table(self):
-        tname = rand_name().replace('-', '')
-        headers, body = self.client.create_table(self.smoke_attrs, tname,
-                                                 self.smoke_schema)
-        headers, body = self.client.describe_table(tname)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('describe_table', body, self.smoke_attrs,
-                                    tname, self.smoke_schema)
-
     def test_describe_table_with_indexes(self):
         tname = rand_name().replace('-', '')
         self.client.create_table(self.smoke_attrs + self.index_attrs,

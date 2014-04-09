@@ -142,3 +142,11 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
+
+    def test_describe_table(self):
+        tname = rand_name().replace('-', '')
+        self.client.create_table(self.smoke_attrs, tname, self.smoke_schema)
+        headers, body = self.client.describe_table(tname)
+        self.assertEqual(dict, type(body))
+        self._verify_table_response('describe_table', body, self.smoke_attrs,
+                                    tname, self.smoke_schema)
