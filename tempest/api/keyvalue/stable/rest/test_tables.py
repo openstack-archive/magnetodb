@@ -13,8 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
+from tempest.test import attr
 
 
 class MagnetoDBTablesTest(MagnetoDBTestCase):
@@ -52,6 +55,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         self.assertIn(content['table_status'], ['CREATING', 'ACTIVE'])
 
+    @attr(type=['CreT-1'])
     def test_create_table(self):
         tname = rand_name().replace('-', '')
         headers, body = self.client.create_table(self.smoke_attrs, tname,
@@ -60,15 +64,16 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         self._verify_table_response('create_table', body, self.smoke_attrs,
                                     tname, self.smoke_schema)
 
+    @attr(type=['CreT-44'])
     def test_create_table_min_table_name(self):
         tname = 'qqq'
         headers, body = self.client.create_table(self.smoke_attrs, tname,
                                                  self.smoke_schema)
         self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body, self.smoke_attrs,
-                                    tname, self.smoke_schema)
+        self.assertEqual(tname, body['table_description']['table_name'])
 
-    def test_create_table_with_indexes(self):
+    @attr(type=['CreT-2', 'Cret-93', 'Cret-94', 'Cret-95', 'Cret-97'])
+    def test_create_table_all_params(self):
         tname = rand_name().replace('-', '')
         headers, body = self.client.create_table(
             self.smoke_attrs + self.index_attrs,
@@ -83,6 +88,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                                     self.smoke_schema,
                                     self.smoke_lsi)
 
+    @attr(type=['CreT-17.1'])
     def test_create_table_min_attr_length(self):
         tname = rand_name().replace('-', '')
         attr_def = [
@@ -98,6 +104,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
 
+    @attr(type=['CreT-17.2'])
     def test_create_table_max_attr_length(self):
         tname = rand_name().replace('-', '')
         attr_def = [
@@ -113,6 +120,23 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
 
+    @attr(type=['CreT-21.1'])
+    def test_create_table_s(self):
+        tname = rand_name().replace('-', '')
+        attr_def = [
+            {'attribute_name': 'forum', 'attribute_type': 'S'},
+            {'attribute_name': 'subject', 'attribute_type': 'S'}
+        ]
+        schema = [
+            {'attribute_name': 'forum', 'key_type': 'HASH'},
+            {'attribute_name': 'subject', 'key_type': 'RANGE'}
+        ]
+        headers, body = self.client.create_table(attr_def, tname, schema)
+        self.assertEqual(dict, type(body))
+        self._verify_table_response('create_table', body, attr_def, tname,
+                                    schema)
+
+    @attr(type=['CreT-21.2'])
     def test_create_table_n(self):
         tname = rand_name().replace('-', '')
         attr_def = [
@@ -128,6 +152,40 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
 
+    @attr(type=['CreT-28'])
+    def test_create_table_hash_range(self):
+        tname = rand_name().replace('-', '')
+        attr_def = [
+            {'attribute_name': 'forum', 'attribute_type': 'N'},
+            {'attribute_name': 'subject', 'attribute_type': 'N'}
+        ]
+        schema = [
+            {'attribute_name': 'forum', 'key_type': 'HASH'},
+            {'attribute_name': 'subject', 'key_type': 'RANGE'}
+        ]
+        headers, body = self.client.create_table(attr_def, tname, schema)
+        self.assertEqual(dict, type(body))
+        self.assertEqual(schema, body['table_description']['key_schema'])
+        self.assertEqual(attr_def,
+                         body['table_description']['attribute_definitions'])
+
+    @attr(type=['CreT-29'])
+    def test_create_table_wrong_order(self):
+        tname = rand_name().replace('-', '')
+        attr_def = [
+            {'attribute_name': 'forum', 'attribute_type': 'N'},
+            {'attribute_name': 'subject', 'attribute_type': 'N'}
+        ]
+        schema = [
+            {'attribute_name': 'subject', 'key_type': 'RANGE'},
+            {'attribute_name': 'forum', 'key_type': 'HASH'}
+        ]
+        headers, body = self.client.create_table(attr_def, tname, schema)
+        self.assertEqual(dict, type(body))
+        schema.reverse()
+        self.assertEqual(body['table_description']['key_schema'], schema)
+
+    @attr(type=['CreT-21.3'])
     def test_create_table_b(self):
         tname = rand_name().replace('-', '')
         attr_def = [
@@ -150,3 +208,153 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         self.assertEqual(dict, type(body))
         self._verify_table_response('describe_table', body, self.smoke_attrs,
                                     tname, self.smoke_schema)
+
+    @attr(type=['CreT-14'])
+    def test_create_table_non_key_attr_s(self):
+        tname = rand_name().replace('-', '')
+        additional_attr = [{'attribute_name': 'str', 'attribute_type': 'S'}]
+        headers, body = self.client.create_table(
+            self.smoke_attrs + additional_attr,
+            tname,
+            self.smoke_schema)
+        self.assertEqual(dict, type(body))
+        self._verify_table_response('create_table', body,
+                                    self.smoke_attrs + additional_attr,
+                                    tname, self.smoke_schema)
+
+    @attr(type=['CreT-23'])
+    def test_create_table_non_key_attr_ss(self):
+        tname = rand_name().replace('-', '')
+        additional_attr = [{'attribute_name': 'set', 'attribute_type': 'SS'}]
+        headers, body = self.client.create_table(
+            self.smoke_attrs + additional_attr,
+            tname,
+            self.smoke_schema)
+        self.assertEqual(dict, type(body))
+        self._verify_table_response('create_table', body,
+                                    self.smoke_attrs + additional_attr,
+                                    tname, self.smoke_schema)
+
+    @attr(type=['CreT-54'])
+    def test_create_table_one_index(self):
+        tname = rand_name().replace('-', '')
+        request_lsi = copy.deepcopy(self.smoke_lsi)
+        headers, body = self.client.create_table(
+            self.smoke_attrs + self.index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body))
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertEqual(1, len(indexes))
+        for request_index in request_lsi:
+            request_index['index_size_bytes'] = 0
+            request_index['item_count'] = 0
+        self.assertEqual(request_lsi, indexes)
+
+    @attr(type=['CreT-55'])
+    def test_create_table_five_indexes(self):
+        tname = rand_name().replace('-', '')
+        index_attrs = [{'attribute_name': 'attr_name' + str(i),
+                        'attribute_type': 'S'} for i in range(0, 5)]
+        request_lsi = []
+        for attribute in index_attrs:
+            index_attr_name = attribute['attribute_name']
+            request_lsi.append(
+                {
+                    'index_name': index_attr_name + '_index',
+                    'key_schema': [
+                        {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                        {'attribute_name': index_attr_name,
+                         'key_type': 'RANGE'}
+                    ],
+                    'projection': {'projection_type': 'ALL'}
+                }
+            )
+        headers, body = self.client.create_table(
+            self.smoke_attrs + index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body))
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertEqual(5, len(indexes))
+        for lsi in request_lsi:
+            lsi['index_size_bytes'] = 0
+            lsi['item_count'] = 0
+            self.assertIn(lsi, indexes)
+
+    @attr(type=['CreT-61'])
+    def test_create_table_index_name_3_char(self):
+        tname = rand_name().replace('-', '')
+        request_lsi = copy.deepcopy(self.smoke_lsi)
+        request_index_name = 'qqq'
+        request_lsi[0]['index_name'] = request_index_name
+        headers, body = self.client.create_table(
+            self.smoke_attrs + self.index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body))
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertEqual(1, len(indexes))
+        self.assertEqual(request_index_name, indexes[0]['index_name'])
+
+    @attr(type=['CreT-62'])
+    def test_create_table_index_name_255_char(self):
+        tname = rand_name().replace('-', '')
+        request_lsi = copy.deepcopy(self.smoke_lsi)
+        request_index_name = 'q' * 255
+        request_lsi[0]['index_name'] = request_index_name
+        headers, body = self.client.create_table(
+            self.smoke_attrs + self.index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body))
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertEqual(1, len(indexes))
+        self.assertEqual(request_index_name, indexes[0]['index_name'])
+
+    @attr(type=['CreT-65'])
+    def test_create_table_index_name_upper_case(self):
+        #TODO(aostapenko) clarify behavior on dynamodb
+        tname = rand_name().replace('-', '')
+        request_lsi = copy.deepcopy(self.smoke_lsi)
+        request_index_name = 'INDEX_NAME'
+        request_lsi[0]['index_name'] = request_index_name
+        headers, body = self.client.create_table(
+            self.smoke_attrs + self.index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body))
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertEqual(1, len(indexes))
+        self.assertEqual(request_index_name, indexes[0]['index_name'])
+
+    @attr(type=['CreT-66'])
+    def test_create_table_index_name_same_two_tables(self):
+        tname1 = rand_name().replace('-', '')
+        tname2 = rand_name().replace('-', '')
+        request_lsi = copy.deepcopy(self.smoke_lsi)
+        request_index_name = 'INDEX_NAME'
+        request_lsi[0]['index_name'] = request_index_name
+        headers1, body1 = self.client.create_table(
+            self.smoke_attrs + self.index_attrs,
+            tname1,
+            self.smoke_schema,
+            request_lsi)
+        headers2, body2 = self.client.create_table(
+            self.smoke_attrs + self.index_attrs,
+            tname2,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body1))
+        self.assertEqual(dict, type(body2))
+        indexes1 = body1['table_description']['local_secondary_indexes']
+        indexes2 = body2['table_description']['local_secondary_indexes']
+        self.assertEqual(1, len(indexes1))
+        self.assertEqual(1, len(indexes2))
+        self.assertEqual(request_index_name, indexes1[0]['index_name'])
+        self.assertEqual(request_index_name, indexes2[0]['index_name'])
