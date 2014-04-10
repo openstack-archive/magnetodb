@@ -15,6 +15,7 @@
 
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
+from tempest.test import attr
 
 
 class MagnetoDBTablesTest(MagnetoDBTestCase):
@@ -52,7 +53,8 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         self.assertIn(content['table_status'], ['CREATING', 'ACTIVE'])
 
-    def test_create_table_one_attr(self):
+    @attr(type=['CreT-27'])
+    def test_create_table_only_hash(self):
         tname = rand_name().replace('-', '')
         headers, body = self.client.create_table(self.one_attr, tname,
                                                  self.schema_hash_only)
@@ -86,8 +88,131 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                                     self.smoke_attrs, tname,
                                     self.schema_hash_only)
 
+    @attr(type=['CreT-48'])
     def test_create_table_symbols(self):
         tname = 'Aa5-._'
         headers, body = self.client.create_table(self.smoke_attrs, tname,
                                                  self.smoke_schema)
         self.assertEqual(body['table_description']['table_name'], tname)
+
+    @attr(type=['CreT-45'])
+    def test_create_table_max_table_name(self):
+        tname = rand_name().replace('-', '')
+        tname = tname + 'q' * (255 - len(tname))
+        headers, body = self.client.create_table(self.smoke_attrs, tname,
+                                                 self.smoke_schema)
+        self.assertEqual(dict, type(body))
+        self._verify_table_response('create_table', body, self.smoke_attrs,
+                                    tname, self.smoke_schema)
+
+    def test_create_table_with_indexes(self):
+        tname = rand_name().replace('-', '')
+        headers, body = self.client.create_table(
+            self.smoke_attrs + self.index_attrs,
+            tname,
+            self.smoke_schema,
+            self.smoke_lsi)
+        self.assertEqual(dict, type(body))
+        self._verify_table_response('create_table',
+                                    body,
+                                    self.smoke_attrs + self.index_attrs,
+                                    tname,
+                                    self.smoke_schema,
+                                    self.smoke_lsi)
+
+    @attr(type=['CreT-81'])
+    def test_create_table_index_1_non_key(self):
+        tname = rand_name().replace('-', '')
+        index_attrs = [{'attribute_name': 'attr_name1',
+                        'attribute_type': 'S'},
+                       ]
+        non_key_attributes = ['non_key_attr1']
+        request_lsi = [
+            {
+                'index_name': 'index_name',
+                'key_schema': [
+                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                    {'attribute_name': 'attr_name1', 'key_type': 'RANGE'}
+                ],
+                'projection': {
+                    'projection_type': 'INCLUDE',
+                    'non_key_attributes': non_key_attributes}
+            }
+        ]
+        headers, body = self.client.create_table(
+            self.smoke_attrs + index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body))
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertIn('non_key_attributes', indexes[0]['projection'])
+        self.assertEqual(non_key_attributes,
+                         indexes[0]['projection']['non_key_attributes'])
+
+    @attr(type=['CreT-85'])
+    def test_create_table_index_20_non_key_1_index(self):
+        tname = rand_name().replace('-', '')
+        index_attrs = [{'attribute_name': 'attr_name1',
+                        'attribute_type': 'S'},
+                       ]
+        non_key_attributes = ['non_key_attr' + str(i) for i in range(0, 20)]
+        request_lsi = [
+            {
+                'index_name': 'index_name',
+                'key_schema': [
+                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                    {'attribute_name': 'attr_name1', 'key_type': 'RANGE'}
+                ],
+                'projection': {
+                    'projection_type': 'INCLUDE',
+                    'non_key_attributes': non_key_attributes}
+            }
+        ]
+        headers, body = self.client.create_table(
+            self.smoke_attrs + index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body))
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertIn('non_key_attributes', indexes[0]['projection'])
+        self.assertEqual(20,
+                         len(indexes[0]['projection']['non_key_attributes']))
+
+    @attr(type=['CreT-87'])
+    def test_create_table_index_20_non_key_3_indexes(self):
+        tname = rand_name().replace('-', '')
+        index_attrs = [{'attribute_name': 'attr_name' + str(i),
+                        'attribute_type': 'S'} for i in range(1, 4)
+                       ]
+        non_key_attributes = (['non_key_attr' + str(i) for i in range(1, 8)],
+                              ['non_key_attr' + str(i) for i in range(8, 15)],
+                              ['non_key_attr' + str(i) for i in range(15, 21)])
+        request_lsi = []
+        for i, attr_name in enumerate(index_attrs):
+            request_lsi.append(
+                {
+                    'index_name': '%s_index' % attr_name['attribute_name'],
+                    'key_schema': [
+                        {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                        {'attribute_name': attr_name['attribute_name'],
+                         'key_type': 'RANGE'}
+                    ],
+                    'projection': {
+                        'projection_type': 'INCLUDE',
+                        'non_key_attributes': non_key_attributes[i]}
+                }
+            )
+        headers, body = self.client.create_table(
+            self.smoke_attrs + index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        self.assertEqual(dict, type(body))
+        indexes = body['table_description']['local_secondary_indexes']
+        for i in range(0, 3):
+            self.assertIn('non_key_attributes', indexes[i]['projection'])
+            self.assertEqual(len(non_key_attributes[i]),
+                             len(indexes[i]['projection']
+                                        ['non_key_attributes']))
