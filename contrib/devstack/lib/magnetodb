@@ -39,7 +39,7 @@ Cassandra_KEYSPACE_ReplicationFactor=${Cassandra_KEYSPACE_ReplicationFactor:-3}
 # Set up default directories
 MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
 MAGNETODB_LOG_DIR=${MAGNETODB_LOG_DIR:-/var/log/magnetodb}
-MAGNETODB_USER=${MAGNETODB_USER:-$STACK_USER}
+MAGNETODB_RUN_USER=${MAGNETODB_RUN_USER:-$STACK_USER}
 
 
 # Set up additional requirements
@@ -47,8 +47,52 @@ MAGNETODB_USER=${MAGNETODB_USER:-$STACK_USER}
 # Example: MAGNETODB_ADDITIONAL_REQ="tox<1.7.0\nBabel>=0.9.6\ncassandra-driver>=1.0.0"
 MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
 
+
+#Keystone variables
+MAGNETODB_USER=${MAGNETODB_USER:-magnetodb}
+MAGNETODB_SERVICE=${MAGNETODB_SERVICE:-magnetodb}
+MAGNETODB_SERVICE_HOST=${MAGNETODB_SERVICE_HOST:-$SERVICE_HOST}
+MAGNETODB_SERVICE_PORT=${MAGNETODB_SERVICE_PORT:-8480}
+MAGNETODB_SERVICE_PROTOCOL=${MAGNETODB_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
 # Functions
 # ---------
+
+# create_magnetodb_credentials() - Set up common required magnetodb credentials
+#
+# Tenant      User       Roles
+# ------------------------------
+# service     magnetodb     admin
+function create_magnetodb_credentials() {
+
+    SERVICE_TENANT=$(openstack project list | awk "/ $SERVICE_TENANT_NAME / { print \$2 }")
+    ADMIN_ROLE=$(openstack role list | awk "/ admin / { print \$2 }")
+
+    MAGNETODB_USER_ID=$(openstack user create \
+        $MAGNETODB_USER \
+        --password "$SERVICE_PASSWORD" \
+        --project $SERVICE_TENANT \
+        --email $MAGNETODB_USER@example.com \
+        | grep " id " | get_field 2)
+
+    openstack role add \
+        $ADMIN_ROLE \
+        --project $SERVICE_TENANT \
+        --user $MAGNETODB_USER_ID
+
+    if [[ "$KEYSTONE_CATALOG_BACKEND" = 'sql' ]]; then
+        MAGNETODB_SERVICE=$(openstack service create \
+            $MAGNETODB_SERVICE \
+            --type=nosql-storage \
+            --description="MagnetoDB" \
+            | grep " id " | get_field 2)
+        openstack endpoint create \
+            $MAGNETODB_SERVICE \
+            --region RegionOne \
+            --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1" \
+            --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1" \
+            --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1"
+    fi
+}
 
 function install_python27() {
 
@@ -176,7 +220,7 @@ function configure_magnetodb() {
         sudo mkdir -p $MAGNETODB_LOG_DIR
     fi
     sudo touch $MAGNETODB_LOG_DIR/magnetodb.log
-    sudo chown -R $MAGNETODB_USER $MAGNETODB_LOG_DIR
+    sudo chown -R $MAGNETODB_RUN_USER $MAGNETODB_LOG_DIR
 }
 
 

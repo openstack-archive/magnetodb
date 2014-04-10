@@ -8,6 +8,7 @@ if is_service_enabled magnetodb; then
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configuring Magnetodb"
         configure_magnetodb
+        create_magnetodb_credentials
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Starting Magnetodb"
         start_magnetodb
