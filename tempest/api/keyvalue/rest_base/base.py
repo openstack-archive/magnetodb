@@ -31,6 +31,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         super(MagnetoDBTestCase, cls).setUpClass()
         cls.os = tempest.clients.Manager()
         cls.client = cls.os.magnetodb_client
+        cls._sequence = -1
         cls._resource_trash_bin = {}
 
         # SMOKE TABLE: THREADS
