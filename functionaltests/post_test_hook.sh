@@ -37,6 +37,14 @@ sudo sed -e "s/#aws_secret=<None>/aws_secret = ''/" -e "s/#aws_access=<None>/aws
 sudo ./run_tests.sh
 RETVAL=$?
 
+# Convert to html
+FILES=`ls tempest-[ins]*`
+if [ -n $FILES ]; then
+    for i in $FILES; do
+        sudo python /usr/local/jenkins/slave_scripts/subunit2html.py $LOGS_DIR/$i $LOGS_DIR/$i.html
+    done
+fi
+
 # Preparing artifacts for publishing
 
 cd $DEST_DIR/magnetodb/
