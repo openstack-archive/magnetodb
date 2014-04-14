@@ -47,7 +47,7 @@ class MagnetoDBItemsTest(MagnetoDBTestCase):
         key = {self.hashkey: item[self.hashkey],
                self.rangekey: item[self.rangekey]}
 
-        resp = self.client.get_item(self.tname, key)
+        resp = self.client.get_item(self.tname, key, consistent_read=True)
         self.assertEqual(item, resp['Item'])
 
         attribute_updates = {
