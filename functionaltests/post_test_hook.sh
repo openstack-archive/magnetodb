@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xe
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -36,6 +36,17 @@ sudo sed -e "s/#aws_secret=<None>/aws_secret = ''/" -e "s/#aws_access=<None>/aws
 
 sudo ./run_tests.sh
 RETVAL=$?
+
+# Convert to html
+FILES=`ls $LOGS_DIR/tempest-[ins]*`
+echo "$FILES"
+
+if [ -n "$FILES" ]; then
+    for i in $FILES; do
+        echo $i
+        sudo python /usr/local/jenkins/slave_scripts/subunit2html.py $i $i.html
+    done
+fi
 
 # Preparing artifacts for publishing
 
