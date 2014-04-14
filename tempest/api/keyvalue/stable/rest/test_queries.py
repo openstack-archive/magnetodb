@@ -17,6 +17,7 @@ import base64
 
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
+from tempest.test import attr
 
 
 class MagnetoDBQueriesTest(MagnetoDBTestCase):
@@ -25,6 +26,7 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         super(MagnetoDBQueriesTest, self).setUp()
         self.tname = rand_name().replace('-', '')
 
+    @attr(type=['Q-1'])
     def test_query_mandatory(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
@@ -47,8 +49,98 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           key_conditions=key_conditions)
         self.assertIn('items', body)
 
+    @attr(type=['Q-5'])
+    def test_query_valid_name(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                                   'message text', 'John', '10')
+
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          consistent_read=True)
+        self.assertIn('items', body)
+        self.assertIn(item, body['items'])
+
+    @attr(type=['Q-14'])
+    def test_query_attributes_to_get_not_specified(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          consistent_read=True)
+        self.assertIn('items', body)
+        self.assertEqual(5, len(body['items'][0]))
+
+    @attr(type=['Q-2'])
+    def test_query_all_params(self):
+        self.client.create_table(self.smoke_attrs + self.index_attrs,
+                                 self.tname,
+                                 self.smoke_schema,
+                                 self.smoke_lsi)
+        self.wait_for_table_active(self.tname)
+        item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                                   'message text', 'John', '10')
+
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'last_posted_by': {
+                'attribute_value_list': [{'S': 'John'}],
+                'comparison_operator': 'EQ'
+            }
+        }
+        attributes_to_get = ['forum', 'subject']
+
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          attributes_to_get=attributes_to_get,
+                                          select='SPECIFIC_ATTRIBUTES',
+                                          scan_index_forward=True,
+                                          index_name='last_posted_by_index',
+                                          consistent_read=True
+                                          )
+        self.assertIn('items', body)
+        result_items = body['items']
+        self.assertEqual(1, len(result_items))
+        result_item = result_items[0]
+        self.assertEqual(2, len(result_item))
+        for attr in attributes_to_get:
+            self.assertIn(attr, result_item)
+            self.assertEqual(item[attr], result_item[attr])
+
+    @attr(type=['Q-10.1'])
     def test_query_min_table_name(self):
-        tname = 'xxx'
+        tname = 'a01'
         self.client.create_table(self.smoke_attrs, tname, self.smoke_schema)
         self.wait_for_table_active(tname)
         self.put_smoke_item(tname, 'forum1', 'subject2',
@@ -69,6 +161,7 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           key_conditions=key_conditions)
         self.assertTrue(body['count'] > 0)
 
+    @attr(type=['Q-46'])
     def test_query_consistent_read_false(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
@@ -76,39 +169,6 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         self.wait_for_table_active(self.tname)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
-        headers, body = self.client.query(table_name=self.tname,
-                                          key_conditions={},
-                                          consistent_read=False)
-        self.assertIn('items', body)
-        if len(body['items']):
-            self.assertEqual(body['items'][0], item)
-
-    def test_query_only_hash_in_key_cond(self):
-        self.client.create_table(self.smoke_attrs,
-                                 self.tname,
-                                 self.smoke_schema)
-        self.wait_for_table_active(self.tname)
-        self.put_smoke_item(self.tname, 'forum1', 'subject2',
-                            'message text', 'John', '10')
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'S': 'forum1'}],
-                'comparison_operator': 'EQ'
-            }
-        }
-        headers, body = self.client.query(table_name=self.tname,
-                                          key_conditions=key_conditions,
-                                          consistent_read=True)
-        self.assertTrue(body['count'] > 0)
-
-    def test_query_attributes_to_get_hash(self):
-        self.client.create_table(self.smoke_attrs,
-                                 self.tname,
-                                 self.smoke_schema)
-        self.wait_for_table_active(self.tname)
-        self.put_smoke_item(self.tname, 'forum1', 'subject2',
-                            'message text', 'John', '10')
-        attributes_to_get = ['forum']
         key_conditions = {
             'forum': {
                 'attribute_value_list': [{'S': 'forum1'}],
@@ -121,10 +181,60 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         }
         headers, body = self.client.query(table_name=self.tname,
                                           key_conditions=key_conditions,
-                                          attributes_to_get=attributes_to_get,
-                                          consistent_read=True)
-        self.assertEqual(len(body['items'][0]), 1)
+                                          consistent_read=False)
+        self.assertIn('items', body)
+        if len(body['items']):
+            self.assertEqual(body['items'][0], item)
 
+    @attr(type=['Q-44'])
+    def test_query_consistent_read_not_specified(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                                   'message text', 'John', '10')
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions)
+        self.assertIn('items', body)
+        if len(body['items']):
+            self.assertEqual(body['items'][0], item)
+
+    @attr(type=['Q-43'])
+    def test_query_consistent_read_true(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                                   'message text', 'John', '10')
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          consistent_read=False)
+        self.assertIn('items', body)
+        self.assertEqual(body['items'][0], item)
+
+    @attr(type=['Q-13'])
     def test_query_attributes_to_get_hash_and_range(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
@@ -149,14 +259,16 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           consistent_read=True)
         self.assertEqual(len(body['items'][0]), 2)
 
-    def test_query_attributes_to_get_non_key_atr(self):
+    @attr(type=['Q-15'])
+    def test_query_attributes_to_get_more_than_in_attr_def(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
-        attributes_to_get = ['last_posted_by']
+        attributes_to_get = ['forum', 'subject', 'last_posted_by', 'message',
+                             'replies', 'attr1', 'attr2']
         key_conditions = {
             'forum': {
                 'attribute_value_list': [{'S': 'forum1'}],
@@ -171,8 +283,9 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           key_conditions=key_conditions,
                                           attributes_to_get=attributes_to_get,
                                           consistent_read=True)
-        self.assertEqual(len(body['items'][0]), 1)
+        self.assertEqual(len(body['items'][0]), 5)
 
+    @attr(type=['Q-18', 'Q-96'])
     def test_query_attributes_to_get_select_specific(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
@@ -198,7 +311,8 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           select='SPECIFIC_ATTRIBUTES')
         self.assertEqual(len(body['items'][0]), 1)
 
-    def test_query_attributes_to_get_totally_incorrect(self):
+    @attr(type=['Q-25'])
+    def test_query_attributes_to_get_totally_non_existent_fields(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
@@ -222,6 +336,7 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           consistent_read=True)
         self.assertEqual(len(body['items'][0]), 0)
 
+    @attr(type=['Q-26'])
     def test_query_attributes_to_get_partially_incorrect(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
@@ -246,196 +361,14 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           consistent_read=True)
         self.assertEqual(len(body['items'][0]), 2)
 
-    def test_query_key_cond_b(self):
-        attrs = [
-            {'attribute_name': 'forum', 'attribute_type': 'B'},
-            {'attribute_name': 'subject', 'attribute_type': 'B'}
-        ]
-        schema = [
-            {'attribute_name': 'forum', 'key_type': 'HASH'},
-            {'attribute_name': 'subject', 'key_type': 'RANGE'}
-        ]
-        self.client.create_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
-        value = base64.b64encode('\xFF')
-        item = {
-            "forum": {"B": value},
-            "subject": {"B": value}
-        }
-        self.client.put_item(self.tname, item)
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'B': value}],
-                'comparison_operator': 'EQ'
-            }
-        }
-        headers, body = self.client.query(table_name=self.tname,
-                                          key_conditions=key_conditions,
-                                          consistent_read=True)
-        self.assertTrue(body['count'] > 0)
-
-    def test_query_key_cond_n(self):
-        attrs = [
-            {'attribute_name': 'forum', 'attribute_type': 'N'},
-            {'attribute_name': 'subject', 'attribute_type': 'N'}
-        ]
-        schema = [
-            {'attribute_name': 'forum', 'key_type': 'HASH'},
-            {'attribute_name': 'subject', 'key_type': 'RANGE'}
-        ]
-        self.client.create_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
-        item = {
-            "forum": {"N": '1'},
-            "subject": {"N": '1'}
-        }
-        self.client.put_item(self.tname, item)
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'N': '1'}],
-                'comparison_operator': 'EQ'
-            }
-        }
-        headers, body = self.client.query(table_name=self.tname,
-                                          key_conditions=key_conditions,
-                                          consistent_read=True)
-        self.assertTrue(body['count'] > 0)
-
-    def test_query_key_cond_bn(self):
-        attrs = [
-            {'attribute_name': 'forum', 'attribute_type': 'B'},
-            {'attribute_name': 'subject', 'attribute_type': 'N'}
-        ]
-        schema = [
-            {'attribute_name': 'forum', 'key_type': 'HASH'},
-            {'attribute_name': 'subject', 'key_type': 'RANGE'}
-        ]
-        self.client.create_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
-        value = base64.b64encode('\xFF')
-        item = {
-            "forum": {"B": value},
-            "subject": {"N": '1'}
-        }
-        self.client.put_item(self.tname, item)
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'B': value}],
-                'comparison_operator': 'EQ'
-            },
-            'subject': {
-                'attribute_value_list': [{'N': '1'}],
-                'comparison_operator': 'EQ'
-            }
-        }
-        headers, body = self.client.query(table_name=self.tname,
-                                          key_conditions=key_conditions,
-                                          consistent_read=True)
-        self.assertTrue(body['count'] > 0)
-
-    def test_query_key_cond_bs(self):
-        attrs = [
-            {'attribute_name': 'forum', 'attribute_type': 'B'},
-            {'attribute_name': 'subject', 'attribute_type': 'S'}
-        ]
-        schema = [
-            {'attribute_name': 'forum', 'key_type': 'HASH'},
-            {'attribute_name': 'subject', 'key_type': 'RANGE'}
-        ]
-        self.client.create_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
-        value = base64.b64encode('\xFF')
-        item = {
-            "forum": {"B": value},
-            "subject": {"S": '1'}
-        }
-        self.client.put_item(self.tname, item)
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'B': value}],
-                'comparison_operator': 'EQ'
-            },
-            'subject': {
-                'attribute_value_list': [{'S': '1'}],
-                'comparison_operator': 'EQ'
-            }
-        }
-        headers, body = self.client.query(table_name=self.tname,
-                                          key_conditions=key_conditions,
-                                          consistent_read=True)
-        self.assertTrue(body['count'] > 0)
-
-    def test_query_key_cond_ns(self):
-        attrs = [
-            {'attribute_name': 'forum', 'attribute_type': 'N'},
-            {'attribute_name': 'subject', 'attribute_type': 'S'}
-        ]
-        schema = [
-            {'attribute_name': 'forum', 'key_type': 'HASH'},
-            {'attribute_name': 'subject', 'key_type': 'RANGE'}
-        ]
-        self.client.create_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
-        item = {
-            "forum": {"N": '1'},
-            "subject": {"S": '1'}
-        }
-        self.client.put_item(self.tname, item)
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'N': '1'}],
-                'comparison_operator': 'EQ'
-            },
-            'subject': {
-                'attribute_value_list': [{'S': '1'}],
-                'comparison_operator': 'EQ'
-            }
-        }
-        headers, body = self.client.query(table_name=self.tname,
-                                          key_conditions=key_conditions,
-                                          consistent_read=True)
-        self.assertTrue(body['count'] > 0)
-
-    def test_query_limit(self):
+    @attr(type=['Q-63'])
+    def test_query_exclusive_start_key_not_specified(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
         self.wait_for_table_active(self.tname)
-        items = self.populate_smoke_table(self.tname, 1, 10)
+        items = self.populate_smoke_table(self.tname, 1, 3)
 
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [items[0]['forum']],
-                'comparison_operator': 'EQ'
-            },
-            'subject': {
-                'attribute_value_list': [{'S': 'subject'}],
-                'comparison_operator': 'BEGINS_WITH'
-            }
-        }
-
-        headers1, body1 = self.client.query(table_name=self.tname,
-                                            key_conditions=key_conditions,
-                                            limit=2,
-                                            consistent_read=True)
-        self.assertEqual(2, body1['count'])
-        last = body1['last_evaluated_key']
-        # query remaining records
-        headers2, body2 = self.client.query(table_name=self.tname,
-                                            key_conditions=key_conditions,
-                                            exclusive_start_key=last,
-                                            consistent_read=True)
-        self.assertEqual(8, body2['count'])
-        self.assertNotIn(body1['items'][0], body2['items'])
-        self.assertNotIn(body1['items'][1], body2['items'])
-
-    def test_query_limit_check_last_evaluated(self):
-        self.client.create_table(self.smoke_attrs,
-                                 self.tname,
-                                 self.smoke_schema)
-        self.wait_for_table_active(self.tname)
-        items = self.populate_smoke_table(self.tname, 1, 2)
-        attributes_to_get = ['forum', 'subject']
         key_conditions = {
             'forum': {
                 'attribute_value_list': [items[0]['forum']],
@@ -449,13 +382,10 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
 
         headers, body = self.client.query(table_name=self.tname,
                                           key_conditions=key_conditions,
-                                          attributes_to_get=attributes_to_get,
-                                          limit=1,
                                           consistent_read=True)
-        last = body['last_evaluated_key']
-        # query remaining records
-        self.assertEqual(last, body['items'][0])
+        self.assertEqual(3, body['count'])
 
+    @attr(type=['Q-81'])
     def test_query_limit_10_items_5(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
@@ -481,7 +411,8 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
         self.assertEqual(5, body['count'])
         self.assertNotIn('last_evaluated_key', body)
 
-    def test_query_limit_0_items_5(self):
+    @attr(type=['Q-87'])
+    def test_query_scan_index_true(self):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
@@ -501,11 +432,94 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
 
         headers, body = self.client.query(table_name=self.tname,
                                           key_conditions=key_conditions,
-                                          limit=0,
+                                          scan_index_forward=True,
                                           consistent_read=True)
         self.assertEqual(5, body['count'])
+        self.assertEqual(items, body['items'])
+
+    @attr(type=['Q-88'])
+    def test_query_scan_index_false(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        items = self.populate_smoke_table(self.tname, 1, 5)
+
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [items[0]['forum']],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          scan_index_forward=False,
+                                          consistent_read=True)
+        items.reverse()
+        self.assertEqual(5, body['count'])
+        self.assertEqual(items, body['items'])
+
+    @attr(type=['Q-82'])
+    def test_query_limit_5_items_3(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        items = self.populate_smoke_table(self.tname, 1, 3)
+
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [items[0]['forum']],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          limit=5,
+                                          consistent_read=True)
+        self.assertEqual(3, body['count'])
         self.assertNotIn('last_evaluated_key', body)
 
+    @attr(type=['Q-80'])
+    def test_query_limit_5_items_11(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        items = self.populate_smoke_table(self.tname, 1, 11)
+
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [items[0]['forum']],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          limit=5,
+                                          consistent_read=True)
+        self.assertEqual(5, body['count'])
+        last_item = body['items'][4]
+        for k, v in body['last_evaluated_key'].iteritems():
+            self.assertIn(k, last_item)
+            self.assertEqual(v, last_item[k])
+
+    @attr(type=['Q-102.1'])
     def test_query_one_key_cond_eq_n(self):
         attrs = [
             {'attribute_name': 'forum', 'attribute_type': 'N'},
@@ -533,6 +547,7 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           consistent_read=True)
         self.assertTrue(body['count'] > 0)
 
+    @attr(type=['Q-102.2'])
     def test_query_one_key_cond_eq_s(self):
         attrs = [
             {'attribute_name': 'forum', 'attribute_type': 'S'},
@@ -560,6 +575,36 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           consistent_read=True)
         self.assertTrue(body['count'] > 0)
 
+    @attr(type=['Q-102.3'])
+    def test_query_one_key_cond_eq_b(self):
+        attrs = [
+            {'attribute_name': 'forum', 'attribute_type': 'B'},
+            {'attribute_name': 'subject', 'attribute_type': 'B'}
+        ]
+        schema = [
+            {'attribute_name': 'forum', 'key_type': 'HASH'},
+            {'attribute_name': 'subject', 'key_type': 'RANGE'}
+        ]
+        self.client.create_table(attrs, self.tname, schema)
+        self.wait_for_table_active(self.tname)
+        value = base64.b64encode('\xFF')
+        item = {
+            "forum": {"B": value},
+            "subject": {"B": value}
+        }
+        self.client.put_item(self.tname, item)
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'B': value}],
+                'comparison_operator': 'EQ'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          consistent_read=True)
+        self.assertTrue(body['count'] > 0)
+
+    @attr(type=['Q-107'])
     def test_query_one_key_cond_zero_return(self):
         attrs = [
             {'attribute_name': 'forum', 'attribute_type': 'S'},
@@ -587,7 +632,7 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           consistent_read=True)
         self.assertTrue(body['count'] == 0)
 
-    def _query_key_cond_comparison(self, attr_type, value, compare_value,
+    def _query_key_cond_comparison(self, attr_type, value, compare_values,
                                    compare_op, result):
         attrs = [
             {'attribute_name': 'forum', 'attribute_type': 'N'},
@@ -610,7 +655,7 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                 'comparison_operator': 'EQ'
             },
             'subject': {
-                'attribute_value_list': [{attr_type: compare_value}],
+                'attribute_value_list': compare_values,
                 'comparison_operator': compare_op
             }
         }
@@ -619,134 +664,307 @@ class MagnetoDBQueriesTest(MagnetoDBTestCase):
                                           consistent_read=True)
         self.assertEqual(body['count'], result)
 
+    @attr(type=['Q-109.1'])
     def test_query_one_key_cond_le_n_01(self):
-        self._query_key_cond_comparison('N', '1', '2', 'LE', 1)
+        self._query_key_cond_comparison('N', '1', [{'N': '2'}], 'LE', 1)
 
+    @attr(type=['Q-109.2'])
     def test_query_one_key_cond_le_n_02(self):
-        self._query_key_cond_comparison('N', '1', '1', 'LE', 1)
+        self._query_key_cond_comparison('N', '1', [{'N': '1'}], 'LE', 1)
 
+    @attr(type=['Q-109.3'])
     def test_query_one_key_cond_le_n_03(self):
-        self._query_key_cond_comparison('N', '1', '0', 'LE', 0)
+        self._query_key_cond_comparison('N', '1', [{'N': '0'}], 'LE', 0)
 
+    @attr(type=['Q-112.1'])
     def test_query_one_key_cond_lt_n_01(self):
-        self._query_key_cond_comparison('N', '1', '2', 'LT', 1)
+        self._query_key_cond_comparison('N', '1', [{'N': '2'}], 'LT', 1)
 
+    @attr(type=['Q-112.2'])
     def test_query_one_key_cond_lt_n_02(self):
-        self._query_key_cond_comparison('N', '1', '1', 'LT', 0)
+        self._query_key_cond_comparison('N', '1', [{'N': '1'}], 'LT', 0)
 
+    @attr(type=['Q-112.3'])
     def test_query_one_key_cond_lt_n_03(self):
-        self._query_key_cond_comparison('N', '1', '0', 'LT', 0)
+        self._query_key_cond_comparison('N', '1', [{'N': '0'}], 'LT', 0)
 
+    @attr(type=['Q-115.1'])
     def test_query_one_key_cond_ge_n_01(self):
-        self._query_key_cond_comparison('N', '1', '2', 'GE', 0)
+        self._query_key_cond_comparison('N', '1', [{'N': '2'}], 'GE', 0)
 
+    @attr(type=['Q-115.2'])
     def test_query_one_key_cond_ge_n_02(self):
-        self._query_key_cond_comparison('N', '1', '1', 'GE', 1)
+        self._query_key_cond_comparison('N', '1', [{'N': '1'}], 'GE', 1)
 
+    @attr(type=['Q-115.3'])
     def test_query_one_key_cond_ge_n_03(self):
-        self._query_key_cond_comparison('N', '1', '0', 'GE', 1)
+        self._query_key_cond_comparison('N', '1', [{'N': '0'}], 'GE', 1)
 
+    @attr(type=['Q-118.1'])
     def test_query_one_key_cond_gt_n_01(self):
-        self._query_key_cond_comparison('N', '1', '2', 'GT', 0)
+        self._query_key_cond_comparison('N', '1', [{'N': '2'}], 'GT', 0)
 
+    @attr(type=['Q-118.2'])
     def test_query_one_key_cond_gt_n_02(self):
-        self._query_key_cond_comparison('N', '1', '1', 'GT', 0)
+        self._query_key_cond_comparison('N', '1', [{'N': '1'}], 'GT', 0)
 
+    @attr(type=['Q-118.3'])
     def test_query_one_key_cond_gt_n_03(self):
-        self._query_key_cond_comparison('N', '1', '0', 'GT', 1)
+        self._query_key_cond_comparison('N', '1', [{'N': '0'}], 'GT', 1)
 
+    @attr(type=['Q-109.4'])
     def test_query_one_key_cond_le_s_01(self):
-        self._query_key_cond_comparison('S', '1', '2', 'LE', 1)
+        self._query_key_cond_comparison('S', '1', [{'S': '2'}], 'LE', 1)
 
+    @attr(type=['Q-109.5'])
     def test_query_one_key_cond_le_s_02(self):
-        self._query_key_cond_comparison('S', '1', '1', 'LE', 1)
+        self._query_key_cond_comparison('S', '1', [{'S': '1'}], 'LE', 1)
 
+    @attr(type=['Q-109.6'])
     def test_query_one_key_cond_le_s_03(self):
-        self._query_key_cond_comparison('S', '1', '0', 'LE', 0)
+        self._query_key_cond_comparison('S', '1', [{'S': '0'}], 'LE', 0)
 
+    @attr(type=['Q-112.4'])
     def test_query_one_key_cond_lt_s_01(self):
-        self._query_key_cond_comparison('S', '1', '2', 'LT', 1)
+        self._query_key_cond_comparison('S', '1', [{'S': '2'}], 'LT', 1)
 
+    @attr(type=['Q-112.5'])
     def test_query_one_key_cond_lt_s_02(self):
-        self._query_key_cond_comparison('S', '1', '1', 'LT', 0)
+        self._query_key_cond_comparison('S', '1', [{'S': '1'}], 'LT', 0)
 
+    @attr(type=['Q-112.6'])
     def test_query_one_key_cond_lt_s_03(self):
-        self._query_key_cond_comparison('S', '1', '0', 'LT', 0)
+        self._query_key_cond_comparison('S', '1', [{'S': '0'}], 'LT', 0)
 
+    @attr(type=['Q-115.4'])
     def test_query_one_key_cond_ge_s_01(self):
-        self._query_key_cond_comparison('S', '1', '2', 'GE', 0)
+        self._query_key_cond_comparison('S', '1', [{'S': '2'}], 'GE', 0)
 
+    @attr(type=['Q-115.5'])
     def test_query_one_key_cond_ge_s_02(self):
-        self._query_key_cond_comparison('S', '1', '1', 'GE', 1)
+        self._query_key_cond_comparison('S', '1', [{'S': '1'}], 'GE', 1)
 
+    @attr(type=['Q-115.6'])
     def test_query_one_key_cond_ge_s_03(self):
-        self._query_key_cond_comparison('S', '1', '0', 'GE', 1)
+        self._query_key_cond_comparison('S', '1', [{'S': '0'}], 'GE', 1)
 
+    @attr(type=['Q-118.4'])
     def test_query_one_key_cond_gt_s_01(self):
-        self._query_key_cond_comparison('S', '1', '2', 'GT', 0)
+        self._query_key_cond_comparison('S', '1', [{'S': '2'}], 'GT', 0)
 
+    @attr(type=['Q-118.5'])
     def test_query_one_key_cond_gt_s_02(self):
-        self._query_key_cond_comparison('S', '1', '1', 'GT', 0)
+        self._query_key_cond_comparison('S', '1', [{'S': '1'}], 'GT', 0)
 
+    @attr(type=['Q-118.6'])
     def test_query_one_key_cond_gt_s_03(self):
-        self._query_key_cond_comparison('S', '1', '0', 'GT', 1)
+        self._query_key_cond_comparison('S', '1', [{'S': '0'}], 'GT', 1)
 
+    @attr(type=['Q-109.7'])
     def test_query_one_key_cond_le_b_01(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFF')
-        self._query_key_cond_comparison('B', value1, value2, 'LE', 1)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'LE', 1)
 
+    @attr(type=['Q-109.8'])
     def test_query_one_key_cond_le_b_02(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFE')
-        self._query_key_cond_comparison('B', value1, value2, 'LE', 1)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'LE', 1)
 
+    @attr(type=['Q-109.9'])
     def test_query_one_key_cond_le_b_03(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFD')
-        self._query_key_cond_comparison('B', value1, value2, 'LE', 0)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'LE', 0)
 
+    @attr(type=['Q-112.7'])
     def test_query_one_key_cond_lt_b_01(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFF')
-        self._query_key_cond_comparison('B', value1, value2, 'LT', 1)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'LT', 1)
 
+    @attr(type=['Q-112.8'])
     def test_query_one_key_cond_lt_b_02(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFE')
-        self._query_key_cond_comparison('B', value1, value2, 'LT', 0)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'LT', 0)
 
+    @attr(type=['Q-112.9'])
     def test_query_one_key_cond_lt_b_03(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFD')
-        self._query_key_cond_comparison('B', value1, value2, 'LT', 0)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'LT', 0)
 
+    @attr(type=['Q-115.7'])
     def test_query_one_key_cond_ge_b_01(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFF')
-        self._query_key_cond_comparison('B', value1, value2, 'GE', 0)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'GE', 0)
 
+    @attr(type=['Q-115.8'])
     def test_query_one_key_cond_ge_b_02(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFE')
-        self._query_key_cond_comparison('B', value1, value2, 'GE', 1)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'GE', 1)
 
+    @attr(type=['Q-115.9'])
     def test_query_one_key_cond_ge_b_03(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFD')
-        self._query_key_cond_comparison('B', value1, value2, 'GE', 1)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'GE', 1)
 
+    @attr(type=['Q-118.7'])
     def test_query_one_key_cond_gt_b_01(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFF')
-        self._query_key_cond_comparison('B', value1, value2, 'GT', 0)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'GT', 0)
 
+    @attr(type=['Q-118.8'])
     def test_query_one_key_cond_gt_b_02(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFE')
-        self._query_key_cond_comparison('B', value1, value2, 'GT', 0)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'GT', 0)
 
+    @attr(type=['Q-118.9'])
     def test_query_one_key_cond_gt_b_03(self):
         value1 = base64.b64encode('\xFE')
         value2 = base64.b64encode('\xFD')
-        self._query_key_cond_comparison('B', value1, value2, 'GT', 1)
+        self._query_key_cond_comparison('B', value1, [{'B': value2}], 'GT', 1)
+
+    @attr(type=['Q-121.1'])
+    def test_query_one_key_cond_begins_with_s(self):
+        self._query_key_cond_comparison('S', 'startend', [{'S': 'start'}],
+                                        'BEGINS_WITH', 1)
+
+    @attr(type=['Q-121.2'])
+    def test_query_one_key_cond_begins_with_b(self):
+        value1 = base64.b64encode('\x00')
+        value2 = base64.b64encode('\x00')
+        self._query_key_cond_comparison('B', value1, [{'B': value2}],
+                                        'BEGINS_WITH', 1)
+
+    @attr(type=['Q-125.1'])
+    def test_query_one_key_cond_between_n_01(self):
+        self._query_key_cond_comparison('N', '1', [{'N': '0'}, {'N': '2'}],
+                                        'BETWEEN', 1)
+
+    @attr(type=['Q-125.2'])
+    def test_query_one_key_cond_between_n_02(self):
+        self._query_key_cond_comparison('N', '1', [{'N': '1'}, {'N': '2'}],
+                                        'BETWEEN', 1)
+
+    @attr(type=['Q-125.3'])
+    def test_query_one_key_cond_between_n_03(self):
+        self._query_key_cond_comparison('N', '1', [{'N': '1'}, {'N': '1'}],
+                                        'BETWEEN', 1)
+
+    @attr(type=['Q-125.4'])
+    def test_query_one_key_cond_between_n_04(self):
+        self._query_key_cond_comparison('N', '1', [{'N': '2'}, {'N': '3'}],
+                                        'BETWEEN', 0)
+
+    @attr(type=['Q-125.5'])
+    def test_query_one_key_cond_between_n_05(self):
+        self._query_key_cond_comparison('N', '1', [{'N': '-1'}, {'N': '0'}],
+                                        'BETWEEN', 0)
+
+    @attr(type=['Q-67'])
+    def test_query_index_correct(self):
+        self.client.create_table(self.smoke_attrs + self.index_attrs,
+                                 self.tname,
+                                 self.smoke_schema,
+                                 self.smoke_lsi)
+        self.wait_for_table_active(self.tname)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        index_name = 'last_posted_by_index'
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'last_posted_by': {
+                'attribute_value_list': [{'S': 'John'}],
+                'comparison_operator': 'EQ'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          index_name=index_name,
+                                          consistent_read=True)
+        self.assertEqual(len(body['items']), 1)
+
+    @attr(type=['Q-71'])
+    def test_query_index_not_specified(self):
+        self.client.create_table(self.smoke_attrs + self.index_attrs,
+                                 self.tname,
+                                 self.smoke_schema,
+                                 self.smoke_lsi)
+        self.wait_for_table_active(self.tname)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject2'}],
+                'comparison_operator': 'EQ'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          consistent_read=True)
+        self.assertEqual(len(body['items']), 1)
+
+    @attr(type=['Q-93'])
+    def test_query_select_all(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          consistent_read=True,
+                                          select='ALL_ATTRIBUTES')
+        self.assertEqual(body['count'], 1)
+        self.assertEqual(len(body['items'][0]), 5)
+
+    @attr(type=['Q-95'])
+    def test_query_select_count(self):
+        self.client.create_table(self.smoke_attrs,
+                                 self.tname,
+                                 self.smoke_schema)
+        self.wait_for_table_active(self.tname)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        headers, body = self.client.query(table_name=self.tname,
+                                          key_conditions=key_conditions,
+                                          consistent_read=True,
+                                          select='COUNT')
+        self.assertEqual(body['count'], 1)
+        self.assertNotIn('items', body)
