@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     table_def_filename, data_filename = sys.argv[1:]
 
-    r = requests.post('http://localhost:9999',
+    r = requests.post('http://localhost:9999/v1/default_tenant/data/tables/bigdata/bulk_load',
                       data=get_items(table_def_filename, data_filename),
                       headers={'Content-Type': 'application/json'})
 
