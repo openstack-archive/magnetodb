@@ -1,18 +1,20 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
 # Copyright 2012 OpenStack Foundation
 # Copyright 2013 IBM Corp.
 # All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#         http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
 
 import collections
 import hashlib
@@ -21,11 +23,9 @@ import re
 import time
 
 from tempest.common import http
-from tempest import config
 from tempest import exceptions
 from tempest.openstack.common import log as logging
-
-CONF = config.TempestConfig()
+#from tempest.services.compute.xml.common import xml_to_json
 
 # redrive rate limited calls at most twice
 MAX_RECURSION_DEPTH = 2
@@ -48,7 +48,7 @@ class RestClient(object):
         self.tenant_name = tenant_name
         self.auth_version = auth_version
 
-        self.service = None
+        self.service = 'keyvalue'
         self.token = None
         self.base_url = None
         self.region = {}
@@ -373,7 +373,7 @@ class RestClient(object):
             raise exceptions.ResponseWithNonEmptyBody(status=resp.status)
         # NOTE(afazekas):
         # If the HTTP Status Code is 205
-        # 'The response MUST NOT include an entity.'
+        #   'The response MUST NOT include an entity.'
         # A HTTP entity has an entity-body and an 'entity-header'.
         # In the HTTP response specification (Section 6) the 'entity-header'
         # 'generic-header' and 'response-header' are in OR relation.
@@ -399,10 +399,9 @@ class RestClient(object):
                  headers=None, body=None):
         """A simple HTTP request interface."""
 
-        url = '/'.join([CONF.boto.magnetodb_url, url])
-        url = url % {'project_id': 'default_tenant'}
-        self._log_request(method, url, headers, body)
-        resp, resp_body = self.http_obj.request(url, method,
+        req_url = "%s/%s" % (self.base_url, url)
+        self._log_request(method, req_url, headers, body)
+        resp, resp_body = self.http_obj.request(req_url, method,
                                                 headers=headers, body=body)
         self._log_response(resp, resp_body)
         self.response_checker(method, url, headers, body, resp, resp_body)
@@ -412,12 +411,12 @@ class RestClient(object):
     def request(self, method, url,
                 headers=None, body=None):
         retry = 0
-        #if (self.token is None) or (self.base_url is None):
-        #    self._set_auth()
+        if (self.token is None) or (self.base_url is None):
+            self._set_auth()
 
-        #if headers is None:
-        #    headers = {}
-        #headers['X-Auth-Token'] = self.token
+        if headers is None:
+            headers = {}
+        headers['X-Auth-Token'] = self.token
 
         resp, resp_body = self._request(method, url,
                                         headers=headers, body=body)

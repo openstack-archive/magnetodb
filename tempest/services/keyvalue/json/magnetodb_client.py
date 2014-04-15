@@ -23,7 +23,8 @@ CONF = config.TempestConfig()
 
 class MagnetoDBClientJSON(rest_client.RestClient):
 
-    base_url = 'v1/%(project_id)s/data'
+    base_url = 'v1/%(project_id)s/data' % {'project_id':
+                                           '25ef4dd3be104bbcbe1f203fc291e5ed'}
     tables_base_url = '/'.join([base_url, 'tables'])
 
     def create_table(self, attr_def, table_name, schema, lsi_indexes=None):
