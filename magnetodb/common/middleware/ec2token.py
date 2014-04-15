@@ -134,6 +134,8 @@ class EC2Token(wsgi.Middleware):
         if not signature:
             if 'X-Auth-User' in req.headers:
                 return self.application
+            elif 'X-Auth-Token' in req.headers:
+                return self.application
             else:
                 logger.info(_("No AWS Signature found."))
                 raise exception.IncompleteSignatureException()
