@@ -134,6 +134,8 @@ class EC2Token(wsgi.Middleware):
         if not signature:
             if 'X-Auth-User' in req.headers:
                 return self.application
+            elif 'X-Auth-Token' in req.headers:
+                return self.application
             else:
                 logger.info(_("No AWS Signature found."))
                 raise exception.IncompleteSignatureException()
@@ -178,6 +180,7 @@ class EC2Token(wsgi.Middleware):
         response = requests.post(keystone_ec2_uri, data=creds_json,
                                  headers=headers)
         result = response.json()
+        logger.info(str(result))
         try:
             token_id = result['access']['token']['id']
             tenant = result['access']['token']['tenant']['name']

@@ -19,6 +19,7 @@ import jsonschema
 from magnetodb import storage
 
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api.openstack.v1 import utils
 
 
 class BatchWriteItemController(object):
@@ -83,6 +84,7 @@ class BatchWriteItemController(object):
     }
 
     def process_request(self, req, body, project_id):
+        utils.check_project_id(req.context, project_id)
         jsonschema.validate(body, self.schema)
 
         # parse request_items

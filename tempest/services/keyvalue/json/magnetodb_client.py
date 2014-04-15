@@ -18,12 +18,14 @@ import json
 from tempest.common import rest_client
 from tempest import config
 
+
 CONF = config.TempestConfig()
 
 
 class MagnetoDBClientJSON(rest_client.RestClient):
 
-    base_url = 'v1/%(project_id)s/data'
+    base_url = '%(project_id)s/data' % {'project_id':
+                                        CONF.magnetodb.tenant_id}
     tables_base_url = '/'.join([base_url, 'tables'])
 
     def create_table(self, attr_def, table_name, schema, lsi_indexes=None):

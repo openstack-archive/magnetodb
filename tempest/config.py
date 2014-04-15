@@ -627,6 +627,19 @@ DebugGroup = [
 ]
 
 
+magnetodb_group = cfg.OptGroup(name="magnetodb",
+                               title="Key-Value storage options")
+
+MagnetoDBGroup = [
+    cfg.StrOpt('tenant_id',
+               default=None,
+               help="Tenant id"),
+    cfg.StrOpt('service_type',
+               default="kv-storage",
+               help="The name of the MagnetoDB service type"),
+]
+
+
 @singleton
 class TempestConfig:
     """Provides OpenStack configuration information."""
@@ -690,6 +703,7 @@ class TempestConfig:
         register_opt_group(cfg.CONF, service_available_group,
                            ServiceAvailableGroup)
         register_opt_group(cfg.CONF, debug_group, DebugGroup)
+        register_opt_group(cfg.CONF, magnetodb_group, MagnetoDBGroup)
         self.compute = cfg.CONF.compute
         self.compute_feature_enabled = cfg.CONF['compute-feature-enabled']
         self.identity = cfg.CONF.identity
@@ -709,6 +723,7 @@ class TempestConfig:
         self.scenario = cfg.CONF.scenario
         self.service_available = cfg.CONF.service_available
         self.debug = cfg.CONF.debug
+        self.magnetodb = cfg.CONF.magnetodb
         if not self.compute_admin.username:
             self.compute_admin.username = self.identity.admin_username
             self.compute_admin.password = self.identity.admin_password
