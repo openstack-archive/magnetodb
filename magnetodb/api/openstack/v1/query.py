@@ -19,6 +19,7 @@ from magnetodb.openstack.common.log import logging
 from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api.openstack.v1 import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ class QueryController(object):
     }
 
     def query(self, req, body, project_id, table_name):
+        utils.check_project_id(req.context, project_id)
         jsonschema.validate(body, self.schema)
         req.context.tenant = project_id
 
