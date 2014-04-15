@@ -60,4 +60,4 @@ class ContextMiddleware(wsgi.Middleware):
 
     @staticmethod
     def tenant_id_to_keyspace_name(tenant_id):
-        return filter(lambda x: x != '-', tenant_id)[:30]
+        return filter(lambda x: x != '-', tenant_id)
