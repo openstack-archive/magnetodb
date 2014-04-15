@@ -17,6 +17,7 @@ from magnetodb import storage
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api.openstack.v1 import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ LOG = logging.getLogger(__name__)
 
 class ListTablesController():
     def list_tables(self, req, project_id):
+        utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
         exclusive_start_table_name = req.params.get(
             parser.Props.EXCLUSIVE_START_TABLE_NAME)
