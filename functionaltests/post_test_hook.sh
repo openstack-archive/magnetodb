@@ -46,6 +46,4 @@ if [ -f tempest/tempest.log ] ; then
     sudo cp tempest/tempest.log $LOGS_DIR/magnetodb_tempest.log
 fi
 
-sudo mkdir $LOGS_DIR/magnetodb_etc/
-sudo cp -r etc/* $LOGS_DIR/magnetodb_etc/
 exit $RETVAL

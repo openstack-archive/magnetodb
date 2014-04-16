@@ -37,6 +37,7 @@ CassandraClusterAmountNodes=${CassandraClusterAmountNodes:-3}
 Cassandra_KEYSPACE_ReplicationFactor=${Cassandra_KEYSPACE_ReplicationFactor:-3}
 
 # Set up default directories
+MAGNETODB_CONF_DIR=${MAGNETODB_CONF_DIR:-/etc/magnetodb}
 MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
 MAGNETODB_LOG_DIR=${MAGNETODB_LOG_DIR:-/var/log/magnetodb}
 MAGNETODB_RUN_USER=${MAGNETODB_RUN_USER:-$STACK_USER}
@@ -211,7 +212,6 @@ function configure_cassandra() {
 
 # configure_magnetodb() - Set config files, create data dirs, etc
 function configure_magnetodb() {
-
     if [ "$MAGNETODB_BACKEND" == "cassandra" ]; then
         configure_cassandra
     fi
@@ -219,8 +219,14 @@ function configure_magnetodb() {
     if [[ ! -d $MAGNETODB_LOG_DIR ]]; then
         sudo mkdir -p $MAGNETODB_LOG_DIR
     fi
+
+    if [[ ! -d $MAGNETODB_CONF_DIR ]]; then
+        sudo mkdir -p $MAGNETODB_CONF_DIR
+    fi
+    sudo chown $MAGNETODB_RUN_USER $MAGNETODB_CONF_DIR
     sudo touch $MAGNETODB_LOG_DIR/magnetodb.log
     sudo chown -R $MAGNETODB_RUN_USER $MAGNETODB_LOG_DIR
+    cp -r $MAGNETODB_DIR/etc/* $MAGNETODB_CONF_DIR
 }
 
 
@@ -247,7 +253,7 @@ function start_magnetodb() {
     elif is_fedora; then
         use_Python="python2.7"
     fi
-    screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_DIR/etc/"
+    screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_CONF_DIR"
 }
 
 
