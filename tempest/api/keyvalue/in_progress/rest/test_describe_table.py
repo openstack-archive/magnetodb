@@ -17,19 +17,13 @@ from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
 
 
-class MagnetoDBTablesTest(MagnetoDBTestCase):
+class MagnetoDBDescribeTableTestCase(MagnetoDBTestCase):
 
-    def _verify_table_response(self, method, response,
-                               attributes, table_name,
-                               key_schema,
-                               local_secondary_indexes=None):
+    def _verify_table_response(self, response, attributes, table_name,
+                               key_schema, local_secondary_indexes=None):
 
-        if method == 'create_table':
-            self.assertTrue('table_description' in response)
-            content = response['table_description']
-        elif method == 'describe_table':
-            self.assertTrue('table' in response)
-            content = response['table']
+        self.assertTrue('table' in response)
+        content = response['table']
         self.assertEqual(table_name, content['table_name'])
         self.assertEqual(len(attributes),
                          len(content['attribute_definitions']))
@@ -52,15 +46,6 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
 
         self.assertIn(content['table_status'], ['CREATING', 'ACTIVE'])
 
-    def test_create_table_one_attr(self):
-        tname = rand_name().replace('-', '')
-        headers, body = self.client.create_table(self.one_attr, tname,
-                                                 self.schema_hash_only)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body,
-                                    self.one_attr, tname,
-                                    self.schema_hash_only)
-
     def test_describe_table_with_indexes(self):
         tname = rand_name().replace('-', '')
         self.client.create_table(self.smoke_attrs + self.index_attrs,
@@ -69,8 +54,7 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                                  self.smoke_lsi)
         headers, body = self.client.describe_table(tname)
         self.assertEqual(dict, type(body))
-        self._verify_table_response('describe_table',
-                                    body,
+        self._verify_table_response(body,
                                     self.smoke_attrs + self.index_attrs,
                                     tname,
                                     self.smoke_schema,
@@ -82,12 +66,6 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
                                  self.schema_hash_only)
         headers, body = self.client.describe_table(tname)
         self.assertEqual(dict, type(body))
-        self._verify_table_response('describe_table', body,
+        self._verify_table_response(body,
                                     self.smoke_attrs, tname,
                                     self.schema_hash_only)
-
-    def test_create_table_symbols(self):
-        tname = 'Aa5-._'
-        headers, body = self.client.create_table(self.smoke_attrs, tname,
-                                                 self.smoke_schema)
-        self.assertEqual(body['table_description']['table_name'], tname)
