@@ -31,6 +31,10 @@ sudo sed -e '{ /\[boto\]/ a\
 magnetodb_url = http://'$ip':8480
 }' -i $DEST_DIR/magnetodb/tempest/tempest.conf
 sudo sed -e "s/#aws_secret=<None>/aws_secret = ''/" -e "s/#aws_access=<None>/aws_access = ''/" -i $DEST_DIR/magnetodb/tempest/tempest.conf
+sudo cat <<EOF >>$DEST_DIR/magnetodb/tempest/tempest.conf
+[magnetodb]
+service_type = kv-storage
+EOF
 
 # Run tempest tests
 

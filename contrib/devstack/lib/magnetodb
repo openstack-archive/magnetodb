@@ -29,12 +29,12 @@ MAGNETODB_BRANCH=${MAGNETODB_BRANCH:-master}
 CCM_REPO=${CCM_REPO:-'https://github.com/pcmanus/ccm.git'}
 CCM_BRANCH=${CCM_BRANCH:-master}
 CCM_DIR=${CCM_DIR:-$DEST/ccm}
-CassandraVersion=${CassandraVersion:-2.0.6}
-CassandraClusterName=${CassandraClusterName:-test}
-# By default CassandraClusterAmountNodes = 3
+CASSANDRA_VER=${CASSANDRA_VER:-2.0.6}
+CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-test}
+# By default CASSANDRA_AMOUNT_NODES = 3
 # If you need more, then you need to change the number of loopback network interface aliases below
-CassandraClusterAmountNodes=${CassandraClusterAmountNodes:-3}
-Cassandra_KEYSPACE_ReplicationFactor=${Cassandra_KEYSPACE_ReplicationFactor:-3}
+CASSANDRA_AMOUNT_NODES=${CASSANDRA_AMOUNT_NODES:-3}
+CASSANDRA_REPL_FACTOR=${CASSANDRA_REPL_FACTOR:-3}
 
 # Set up default directories
 MAGNETODB_CONF_DIR=${MAGNETODB_CONF_DIR:-/etc/magnetodb}
@@ -42,12 +42,10 @@ MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
 MAGNETODB_LOG_DIR=${MAGNETODB_LOG_DIR:-/var/log/magnetodb}
 MAGNETODB_RUN_USER=${MAGNETODB_RUN_USER:-$STACK_USER}
 
-
 # Set up additional requirements
 # Use this pattern: MAGNETODB_ADDITIONAL_REQ="Requirement_1\nRequirement_2\nRequirement_N"
 # Example: MAGNETODB_ADDITIONAL_REQ="tox<1.7.0\nBabel>=0.9.6\ncassandra-driver>=1.0.0"
 MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
-
 
 #Keystone variables
 MAGNETODB_USER=${MAGNETODB_USER:-magnetodb}
@@ -64,7 +62,6 @@ MAGNETODB_SERVICE_PROTOCOL=${MAGNETODB_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
 # ------------------------------
 # service     magnetodb     admin
 function create_magnetodb_credentials() {
-
     SERVICE_TENANT=$(openstack project list | awk "/ $SERVICE_TENANT_NAME / { print \$2 }")
     ADMIN_ROLE=$(openstack role list | awk "/ admin / { print \$2 }")
 
@@ -96,7 +93,6 @@ function create_magnetodb_credentials() {
 }
 
 function install_python27() {
-
     if is_ubuntu; then
         # Ubuntu 12.04 already has python2.7
         :
@@ -117,9 +113,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-puias' > /etc/yum.repos.d/puias-compu
     sudo easy_install-2.7 pip
 }
 
-
 function install_jdk() {
-
      if is_ubuntu; then
          sudo apt-get -y install openjdk-7-jdk
          sudo update-alternatives --set java /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java
@@ -129,9 +123,7 @@ function install_jdk() {
      fi
 }
 
-
 function install_jna() {
-
     echo "---  Installing JNA  ---"
     if is_ubuntu; then
         sudo apt-get -y install libjna-java
@@ -140,9 +132,7 @@ function install_jna() {
     fi
 }
 
-
 function install_cassandra() {
-
     # for cassandra.io.libevwrapper extension.
     # The C extensions are not required for the driver to run, but they add support
     # for libev and token-aware routing with the Murmur3Partitioner.
@@ -166,7 +156,6 @@ function install_cassandra() {
     install_jna
 }
 
-
 # install_magnetodb() - Collect source and prepare
 function install_magnetodb() {
 
@@ -186,13 +175,16 @@ function install_magnetodb() {
     fi
 }
 
+function create_keyspace_cassandra() {
+    local k_name=$1
+    echo "CREATE KEYSPACE $k_name WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : $CASSANDRA_REPL_FACTOR};" >> ~/.ccm/cql.txt
+    }
 
 function configure_cassandra() {
     #allocate loopback interfaces 127.0.0.2 - its a first address for second cassandra, the first node will be use 127.0.0.1
-
     n=1
     addr=2
-    while [ $n -lt $CassandraClusterAmountNodes ]; do
+    while [ $n -lt $CASSANDRA_AMOUNT_NODES ]; do
         echo "add secondary loopback 127.0.0.${addr}/8"
         #adding adresses only if doesnt exist
         sudo ip addr add 127.0.0.${addr}/8 dev lo || [ $? -eq 2 ] && true
@@ -200,15 +192,15 @@ function configure_cassandra() {
         let n=$n+1
     done
 
-    ccm status $CassandraClusterName || ccm create $CassandraClusterName -v $CassandraVersion
-    ccm populate -n $CassandraClusterAmountNodes || true
+    ccm status $CASSANDRA_CLUSTER_NAME || ccm create $CASSANDRA_CLUSTER_NAME -v $CASSANDRA_VER
+    ccm populate -n $CASSANDRA_AMOUNT_NODES || true
 
-    echo "CREATE KEYSPACE magnetodb  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : $Cassandra_KEYSPACE_ReplicationFactor};" > ~/.ccm/KeySpace.txt
-    echo "CREATE KEYSPACE user_default_tenant  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : $Cassandra_KEYSPACE_ReplicationFactor};"  >> ~/.ccm/KeySpace.txt
-    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, PRIMARY KEY(tenant, name));' >> ~/.ccm/KeySpace.txt
+    create_keyspace_cassandra magnetodb
+    create_keyspace_cassandra user_default_tenant
+    create_keyspace_cassandra user_$DEMO_TENANT
 
+    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, PRIMARY KEY(tenant, name));' >> ~/.ccm/cql.txt
 }
-
 
 # configure_magnetodb() - Set config files, create data dirs, etc
 function configure_magnetodb() {
@@ -227,19 +219,25 @@ function configure_magnetodb() {
     sudo touch $MAGNETODB_LOG_DIR/magnetodb.log
     sudo chown -R $MAGNETODB_RUN_USER $MAGNETODB_LOG_DIR
     cp -r $MAGNETODB_DIR/etc/* $MAGNETODB_CONF_DIR
-}
 
+    iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:tokenauth auth_host $KEYSTONE_AUTH_HOST
+    iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:tokenauth auth_port $KEYSTONE_AUTH_PORT
+    iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:tokenauth auth_protocol $KEYSTONE_AUTH_PROTOCOL
+    iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:tokenauth admin_tenant_name $SERVICE_TENANT_NAME
+    iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:tokenauth admin_user $MAGNETODB_USER
+    iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:tokenauth admin_password $SERVICE_PASSWORD
+    iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:ec2authtoken auth_uri $KEYSTONE_AUTH_PROTOCOL://$KEYSTONE_AUTH_HOST:$KEYSTONE_AUTH_PORT/v2.0
+}
 
 function start_cassandra() {
 
     echo "===  Starting Cassandra Cluster  ==="
     ccm start
-    screen_rc 'cassandra' "n=1; addr=2; while [ \\\$n -lt $CassandraClusterAmountNodes ]; do sudo ip addr add 127.0.0.\\\${addr}/8 dev lo || [ \\\$? -eq 2 ] && true; let addr=\\\$addr+1; let n=\\\$n+1; done; ccm start"
-    echo "===  Creating KeySpace  ==="
+    screen_rc 'cassandra' "n=1; addr=2; while [ \\\$n -lt $CASSANDRA_AMOUNT_NODES ]; do sudo ip addr add 127.0.0.\\\${addr}/8 dev lo || [ \\\$? -eq 2 ] && true; let addr=\\\$addr+1; let n=\\\$n+1; done; ccm start"
+    echo "===  Load cql.txt  ==="
     timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
-    ccm node1 cqlsh -f ~/.ccm/KeySpace.txt
+    ccm node1 cqlsh -f ~/.ccm/cql.txt
 }
-
 
 # start_magnetodb() - Start running processes, including screen
 function start_magnetodb() {
@@ -256,19 +254,15 @@ function start_magnetodb() {
     screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-dir $MAGNETODB_CONF_DIR"
 }
 
-
 function stop_cassandra(){
-
     # Stopping cluster
-    ccm stop $CassandraClusterName
+    ccm stop $CASSANDRA_CLUSTER_NAME
     # Kill the cassandra screen windows
     screen -S $SCREEN_NAME -p cassandra -X kill
 }
 
-
 # stop_magnetodb() - Stop running processes
 function stop_magnetodb() {
-
     if [ "$MAGNETODB_BACKEND" == "cassandra" ]; then
         stop_cassandra
     fi
@@ -277,10 +271,8 @@ function stop_magnetodb() {
     screen -S $SCREEN_NAME -p magnetodb -X kill
 }
 
-
 function clean_magnetodb() {
-
-    ccm remove $CassandraClusterName
+    ccm remove $CASSANDRA_CLUSTER_NAME
     for i in `sudo ip addr show dev lo | grep 'secondary' | awk '{print $2}'`
         do
             sudo ip addr del $i dev lo
