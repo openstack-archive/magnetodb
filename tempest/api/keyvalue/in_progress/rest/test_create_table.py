@@ -52,6 +52,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         tname = rand_name().replace('-', '')
         headers, body = self.client.create_table(self.one_attr, tname,
                                                  self.schema_hash_only)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body,
                                     self.one_attr, tname,
@@ -62,6 +63,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         tname = 'Aa5-._'
         headers, body = self.client.create_table(self.smoke_attrs, tname,
                                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(body['table_description']['table_name'], tname)
 
     @attr(type=['CreT-45'])
@@ -70,6 +72,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         tname = tname + 'q' * (255 - len(tname))
         headers, body = self.client.create_table(self.smoke_attrs, tname,
                                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, self.smoke_attrs,
                                     tname, self.smoke_schema)
@@ -98,6 +101,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertIn('non_key_attributes', indexes[0]['projection'])
@@ -128,6 +132,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertIn('non_key_attributes', indexes[0]['projection'])
@@ -163,6 +168,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         for i in range(0, 3):
