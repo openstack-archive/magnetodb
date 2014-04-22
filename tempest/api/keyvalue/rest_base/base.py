@@ -131,6 +131,23 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
             "replies": {"N": replies},
         }
 
+    @classmethod
+    def build_x_item(cls, attr_type, forum, subject, *args):
+        item_dict = {
+            cls.hashkey: {attr_type: forum},
+            cls.rangekey: {attr_type: subject},
+        }
+        for n, t, v in args:
+            item_dict[n] = {t: v}
+        return item_dict
+
+    @classmethod
+    def build_x_attrs(cls, attr_type):
+        return [
+            {'attribute_name': cls.hashkey, 'attribute_type': attr_type},
+            {'attribute_name': cls.rangekey, 'attribute_type': attr_type}
+        ]
+
     def put_smoke_item(self, table_name,
                        forum, subject, message='message_text',
                        last_posted_by='John', replies='1'):

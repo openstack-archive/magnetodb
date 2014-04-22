@@ -23,8 +23,8 @@ CONF = config.TempestConfig()
 
 class MagnetoDBClientJSON(rest_client.RestClient):
 
-    base_url = 'v1/%(project_id)s/data'
-    tables_base_url = '/'.join([base_url, 'tables'])
+    v1_url = 'v1/%(project_id)s/data'
+    tables_base_url = '/'.join([v1_url, 'tables'])
 
     def create_table(self, attr_def, table_name, schema, lsi_indexes=None):
         url = self.tables_base_url
@@ -156,13 +156,13 @@ class MagnetoDBClientJSON(rest_client.RestClient):
         return resp, self._parse_resp(body)
 
     def batch_get_item(self, request_items):
-        url = '/'.join([self.base_url, 'batch_get_item'])
+        url = '/'.join([self.v1_url, 'batch_get_item'])
         post_body = json.dumps(request_items)
         resp, body = self.post(url, post_body, self.headers)
         return resp, self._parse_resp(body)
 
     def batch_write_item(self, request_items):
-        url = '/'.join([self.base_url, 'batch_write_item'])
+        url = '/'.join([self.v1_url, 'batch_write_item'])
         post_body = json.dumps(request_items)
         resp, body = self.post(url, post_body, self.headers)
         return resp, self._parse_resp(body)
