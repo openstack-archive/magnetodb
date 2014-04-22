@@ -299,6 +299,48 @@ class BotoIntegrationTest(unittest.TestCase):
         except Exception as e:
             self.fail()
 
+    def test_create_table_no_range(self):
+        self.storage_mocker.StubOutWithMock(storage, 'create_table')
+        storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
+            models.TableMeta(
+                models.TableSchema(
+                    {
+                        'hash': models.ATTRIBUTE_TYPE_NUMBER,
+                        'indexed_field': models.ATTRIBUTE_TYPE_STRING
+                    },
+                    ['hash'],
+                    {
+                        "index_name": models.IndexDefinition('indexed_field')
+                    }
+                ),
+                models.TableMeta.TABLE_STATUS_ACTIVE
+            )
+        )
+        self.storage_mocker.ReplayAll()
+
+        Table.create(
+            "test",
+            schema=[
+                fields.HashKey('hash', data_type=schema_types.NUMBER),
+            ],
+            throughput={
+                'read': 20,
+                'write': 10,
+            },
+            indexes=[
+                fields.KeysOnlyIndex(
+                    'index_name',
+                    parts=[
+                        fields.RangeKey('indexed_field',
+                                        data_type=schema_types.STRING)
+                    ]
+                )
+            ],
+            connection=self.DYNAMODB_CON
+        )
+
+        self.storage_mocker.VerifyAll()
+
     def test_put_item(self):
         self.storage_mocker.StubOutWithMock(storage, 'put_item')
         storage.put_item(
