@@ -37,6 +37,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "author": {"S": "Bob"},
@@ -68,6 +69,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "author": {"S": "Bob"},
@@ -103,6 +105,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "author": {"S": "Bob"},
@@ -137,6 +140,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"B": "qazw"},
             "author": {"B": "qwer"},
@@ -157,6 +161,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": "message"},
             "author": {"BS": ["qqqq", "wwww"]},
@@ -178,6 +183,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": "message"},
             "author": {"SS": ["eeee", "qqqq", "nnnn"]},
@@ -206,6 +212,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "authors": {"SS": ["Alice", "Bob"]},
@@ -309,6 +316,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "author": {"S": "Bob"},
@@ -340,6 +348,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "author": {"S": "Bob"},
@@ -371,6 +380,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "author": {"S": "Bob"},
@@ -403,6 +413,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "author": {},
