@@ -56,6 +56,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         tname = rand_name().replace('-', '')
         headers, body = self.client.create_table(self.smoke_attrs, tname,
                                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, self.smoke_attrs,
                                     tname, self.smoke_schema)
@@ -65,6 +66,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         tname = 'qqq'
         headers, body = self.client.create_table(self.smoke_attrs, tname,
                                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self.assertEqual(tname, body['table_description']['table_name'])
 
@@ -76,6 +78,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             self.smoke_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table',
                                     body,
@@ -96,6 +99,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 's', 'key_type': 'RANGE'}
         ]
         headers, body = self.client.create_table(attr_def, tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -112,6 +116,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 's' * 255, 'key_type': 'RANGE'}
         ]
         headers, body = self.client.create_table(attr_def, tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -128,6 +133,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         headers, body = self.client.create_table(attr_def, tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -144,6 +150,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         headers, body = self.client.create_table(attr_def, tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -160,6 +167,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         headers, body = self.client.create_table(attr_def, tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self.assertEqual(schema, body['table_description']['key_schema'])
         self.assertEqual(attr_def,
@@ -177,6 +185,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'}
         ]
         headers, body = self.client.create_table(attr_def, tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         schema.reverse()
         self.assertEqual(body['table_description']['key_schema'], schema)
@@ -193,6 +202,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         headers, body = self.client.create_table(attr_def, tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -205,6 +215,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             self.smoke_attrs + additional_attr,
             tname,
             self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body,
                                     self.smoke_attrs + additional_attr,
@@ -218,6 +229,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             self.smoke_attrs + additional_attr,
             tname,
             self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body,
                                     self.smoke_attrs + additional_attr,
@@ -232,6 +244,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(1, len(indexes))
@@ -264,6 +277,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(5, len(indexes))
@@ -283,6 +297,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(1, len(indexes))
@@ -299,6 +314,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(1, len(indexes))
@@ -316,6 +332,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(1, len(indexes))
@@ -333,11 +350,13 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname1,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname1)
         headers2, body2 = self.client.create_table(
             self.smoke_attrs + self.index_attrs,
             tname2,
             self.smoke_schema,
             request_lsi)
+        self.addResourceCleanUp(self.client.delete_table, tname2)
         self.assertEqual(dict, type(body1))
         self.assertEqual(dict, type(body2))
         indexes1 = body1['table_description']['local_secondary_indexes']

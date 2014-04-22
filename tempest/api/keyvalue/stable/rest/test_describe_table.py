@@ -49,6 +49,7 @@ class MagnetoDBDescribeTableTestCase(MagnetoDBTestCase):
     def test_describe_table(self):
         tname = rand_name().replace('-', '')
         self.client.create_table(self.smoke_attrs, tname, self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         headers, body = self.client.describe_table(tname)
         self.assertEqual(dict, type(body))
         self._verify_table_response(body, self.smoke_attrs, tname,
