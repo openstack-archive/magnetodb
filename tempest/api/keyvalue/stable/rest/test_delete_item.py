@@ -39,12 +39,11 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-1')
     def test_delete_item_mandatory_fields_only(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'subject', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
 
         item = {
             "message": {"S": 'message_text'},
@@ -68,7 +67,7 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-2')
     def test_delete_item_all_fields(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'messageId', 'attribute_type': 'S'},
              {'attribute_name': 'subject', 'attribute_type': 'S'},
@@ -77,7 +76,6 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'},
              {'attribute_name': 'messageId', 'key_type': 'RANGE'}])
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
 
         item = {
             "message": {"S": 'message_text'},
@@ -113,11 +111,10 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-10')
     def test_delete_item_one_table(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
 
         item = {
             "message": {"S": 'message_text'}
@@ -140,14 +137,13 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-12')
     def test_delete_item_short_name(self):
         self.table_name = self.random_name(3)
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
         item = {
             "message": {"S": 'message_text'}
         }
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
 
         self.client.put_item(self.table_name, item)
         get_resp = self.client.get_item(self.table_name,
@@ -167,14 +163,13 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-19')
     def test_delete_item_mixed_case(self):
         self.table_name = self.random_name_cases(8).replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
         item = {
             "message": {"S": 'message_text'}
         }
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
 
         self.client.put_item(self.table_name, item)
         get_resp = self.client.get_item(self.table_name,
@@ -194,11 +189,10 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-30')
     def test_delete_item_type_b(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'B'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
 
         value = base64.b64encode('\xFF')
 
@@ -224,14 +218,13 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-31')
     def test_delete_item_type_n(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'dateTime', 'attribute_type': 'N'},
              {'attribute_name': 'subject', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'},
              {'attribute_name': 'dateTime', 'key_type': 'RANGE'}])
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
 
         item = {
             "message": {"S": 'message_text'},
@@ -261,12 +254,11 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-32')
     def test_delete_item_type_s(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'subject', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
 
         item = {
             "message": {"S": 'message_text'},

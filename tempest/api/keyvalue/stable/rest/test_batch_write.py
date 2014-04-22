@@ -26,10 +26,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-1'])
     def test_batch_write_mandatory(self):
-        self.client.create_table(self.build_x_attrs('S'),
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.build_x_attrs('S'),
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         item = self.build_x_item('S', 'forum1', 'subject2',
                                  ('message', 'S', 'message text'))
@@ -51,10 +50,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-2'])
     def test_batch_write_all_params(self):
-        self.client.create_table(self.build_x_attrs('S'),
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.build_x_attrs('S'),
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         item = self.build_x_item('S', 'forum1', 'subject2',
                                  ('message', 'S', 'message text'))
@@ -76,10 +74,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-10'])
     def test_batch_write_put_n(self):
-        self.client.create_table(self.build_x_attrs('N'),
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.build_x_attrs('N'),
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         item = self.build_x_item('N', '1000', '2000', ('message', 'N', '1001'))
         request_body = {'request_items': {self.tname: [{'put_request':
@@ -100,10 +97,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-13'])
     def test_batch_write_put_n_ns(self):
-        self.client.create_table(self.build_x_attrs('N'),
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.build_x_attrs('N'),
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         item = self.build_x_item('N', '1000', '2000',
                                  ('message', 'NS', ['1001', '1002']))
@@ -125,10 +121,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-36'])
     def test_batch_write_delete_s(self):
-        self.client.create_table(self.smoke_attrs,
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -160,10 +155,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-53'])
     def test_batch_write_delete(self):
-        self.client.create_table(self.smoke_attrs,
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -195,10 +189,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-40'])
     def test_batch_write_put_delete(self):
-        self.client.create_table(self.smoke_attrs,
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -238,10 +231,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_put_25_tables(self):
         tnames = [rand_name().replace('-', '') for i in range(0, 25)]
         for tname in tnames:
-            self.client.create_table(self.smoke_attrs,
-                                     tname,
-                                     self.smoke_schema)
-            self.addResourceCleanUp(self.client.delete_table, tname)
+            self._create_test_table(self.smoke_attrs,
+                                    tname,
+                                    self.smoke_schema)
             self.wait_for_table_active(tname)
         item = self.build_smoke_item('forum1', 'subject3',
                                      'message text', 'John', '10')
@@ -270,10 +262,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-16'])
     def test_batch_write_put_s(self):
-        self.client.create_table(self.build_x_attrs('S'),
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.build_x_attrs('S'),
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         item = self.build_x_item('S', 'forum1', 'subject2',
                                  ('message', 'S', 'message text'))
@@ -295,10 +286,9 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
 
     @attr(type=['BWI-50'])
     def test_batch_write_correct_tname_and_put_request(self):
-        self.client.create_table(self.build_x_attrs('S'),
-                                 self.tname,
-                                 self.smoke_schema)
-        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        self._create_test_table(self.build_x_attrs('S'),
+                                self.tname,
+                                self.smoke_schema)
         self.wait_for_table_active(self.tname)
         item = self.build_x_item('S', 'forum1', 'subject2')
         request_body = {'request_items': {self.tname: [{'put_request':
