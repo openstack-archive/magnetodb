@@ -33,7 +33,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
 
     def test_put_item_update_one_attribute(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -64,7 +64,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
 
     def test_put_item_update_few_attributes(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -99,7 +99,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
 
     def test_put_item_update_few_lines_without_exist_state(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -133,7 +133,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
 
     def test_put_item_with_few_attributes_of_type_b(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -153,7 +153,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
 
     def test_put_item_with_few_attributes_of_type_bs(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -174,7 +174,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
 
     def test_put_item_with_attributes_of_all_types(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -202,7 +202,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
 
     def test_put_item_with_returned_all_old(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -307,7 +307,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
     @attr(type='negative')
     def test_put_item_conditional_check_failed(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -338,7 +338,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
     @attr(type='negative')
     def test_put_item_wrong_expected_section(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -369,7 +369,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
     @attr(type='negative')
     def test_put_item_wrong_data_type_in_expected(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
@@ -401,7 +401,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
     @attr(type='negative')
     def test_put_item_no_attribute_value(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])

@@ -33,9 +33,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-12')
     def test_get_item_long_table_name(self):
         table_name = self.random_name(255)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],

@@ -34,9 +34,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-1')
     def test_get_item_correct_mandatory_attributes(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -56,9 +56,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-2')
     def test_get_item_correct_mandatory_attributes_and_optional(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -85,9 +85,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-10')
     def test_get_item_valid_name(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -106,9 +106,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-11')
     def test_get_item_short_table_name(self):
         table_name = self.random_name(3)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -146,9 +146,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-20')
     def test_get_item_valid_attribute_to_get(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -167,9 +167,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-21')
     def test_get_item_no_attributes_to_get(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -183,9 +183,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-23')
     def test_get_item_attributes_to_get_none(self):
         table_name = self.random_name(10)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -203,9 +203,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-24')
     def test_get_item_more_attribute_to_get_than_exist(self):
         table_name = self.random_name(10)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -223,9 +223,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-25')
     def test_get_item_wrong_attribute_to_get(self):
         table_name = self.random_name(10)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -243,9 +243,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type=['GI-26', 'negative'])
     def test_get_item_empty_names_of_attribute_to_get(self):
         table_name = self.random_name(10)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -265,7 +265,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-30')
     def test_get_item_key_type_b(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'key', 'attribute_type': 'B'}],
             table_name,
             [{'attribute_name': 'key', 'key_type': 'HASH'}])
@@ -285,7 +285,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-31')
     def test_get_item_key_type_n(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'key', 'attribute_type': 'N'}],
             table_name,
             [{'attribute_name': 'key', 'key_type': 'HASH'}])
@@ -304,7 +304,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-32')
     def test_get_item_key_type_s(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'key', 'attribute_type': 'S'}],
             table_name,
             [{'attribute_name': 'key', 'key_type': 'HASH'}])
@@ -324,9 +324,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type=['GI-33', 'negative'])
     def test_get_item_nonexistent_key_attribute(self):
         table_name = self.random_name(10)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
 
         self.put_smoke_item(table_name, 'forum1', 'subject2')
 
@@ -343,9 +343,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type=['GI-34', 'negative'])
     def test_get_item_empty_key_attribute(self):
         table_name = self.random_name(10)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
 
         self.put_smoke_item(table_name, 'forum1', 'subject2')
 
@@ -361,9 +361,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type=['GI-35', 'negative'])
     def test_get_item_wrong_key_attribute(self):
         table_name = self.random_name(10)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
 
         self.put_smoke_item(table_name, 'forum1', 'subject2')
 
@@ -379,9 +379,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type=['GI-36', 'negative'])
     def test_get_item_no_match_key(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: {'S': 'no_match_key'},
@@ -396,9 +396,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-40')
     def test_get_item_consistent_read_true(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -417,9 +417,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-41')
     def test_get_item_consistent_read_false(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -438,9 +438,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type='GI-42')
     def test_get_item_consistent_read_none(self):
         table_name = rand_name().replace('-', '')
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -458,9 +458,9 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @attr(type=['GI-43', 'negative'])
     def test_get_item_wrong_consistency(self):
         table_name = self.random_name(10)
-        self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 table_name,
-                                 self.smoke_schema)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema)
 
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
