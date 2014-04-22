@@ -15,32 +15,97 @@
 
 import random
 import string
+
+from tempest import exceptions
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
+from tempest.test import attr
 
 
-class MagnetoDBPutGetItemTest(MagnetoDBTestCase):
+class MagnetoDBGetItemTest(MagnetoDBTestCase):
     @classmethod
     def setUpClass(cls):
-        super(MagnetoDBPutGetItemTest, cls).setUpClass()
+        super(MagnetoDBGetItemTest, cls).setUpClass()
 
     def random_name(self, length):
         return ''.join(random.choice(string.lowercase + string.digits)
                        for i in range(length))
 
+    @attr(type='GI-12')
     def test_get_item_long_table_name(self):
-        self.table_name = self.random_name(255)
+        table_name = self.random_name(255)
         self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                 self.table_name,
+                                 table_name,
                                  self.smoke_schema)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
                self.rangekey: item[self.rangekey]}
 
-        self.put_smoke_item(self.table_name, 'forum1', 'subject2')
+        self.put_smoke_item(table_name, 'forum1', 'subject2')
 
         attributes_to_get = ['last_posted_by']
-        get_resp = self.client.get_item(self.table_name,
-                                        key, attributes_to_get,
+        get_resp = self.client.get_item(table_name,
+                                        key,
+                                        attributes_to_get,
                                         True)
         self.assertEqual(get_resp[1]['item']['last_posted_by'], {'S': 'John'})
+
+    @attr(type=['GI-13', 'negative'])
+    def test_get_item_non_existent_table_name(self):
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     last_posted_by='John')
+        key = {self.hashkey: item[self.hashkey],
+               self.rangekey: item[self.rangekey]}
+
+        attributes_to_get = ['last_posted_by']
+        with self.assertRaises(exceptions.NotFound):
+            self.client.get_item("nonexistenttable",
+                                 key,
+                                 attributes_to_get,
+                                 True)
+
+    #TODO(ValidationException or simple NotFound)
+    @attr(type=['GI-15', 'negative'])
+    def test_get_item_two_symbol_table_name(self):
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     last_posted_by='John')
+        key = {self.hashkey: item[self.hashkey],
+               self.rangekey: item[self.rangekey]}
+
+        attributes_to_get = ['last_posted_by']
+        with self.assertRaises(exceptions.NotFound):
+            self.client.get_item(self.random_name(2),
+                                 key,
+                                 attributes_to_get,
+                                 True)
+
+    #TODO(ValidationException or simple NotFound)
+    @attr(type=['GI-16', 'negative'])
+    def test_get_item_more_than_255_symbol_table_name(self):
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     last_posted_by='John')
+        key = {self.hashkey: item[self.hashkey],
+               self.rangekey: item[self.rangekey]}
+
+        attributes_to_get = ['last_posted_by']
+        with self.assertRaises(exceptions.NotFound):
+            self.client.get_item(self.random_name(260),
+                                 key,
+                                 attributes_to_get,
+                                 True)
+
+    @attr(type=['GI-51', 'negative'])
+    def test_get_item_resource_not_found_exception(self):
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     last_posted_by='John')
+        key = {self.hashkey: item[self.hashkey],
+               self.rangekey: item[self.rangekey]}
+
+        attributes_to_get = ['last_posted_by']
+        with self.assertRaises(exceptions.NotFound) as raises_cm:
+            self.client.get_item("nonexistenttable",
+                                 key,
+                                 attributes_to_get,
+                                 True)
+        exception = raises_cm.exception
+        self.assertIn("ResourceNotFoundException", exception._error_string)
