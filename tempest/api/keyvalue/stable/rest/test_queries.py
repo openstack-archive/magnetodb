@@ -31,6 +31,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -54,6 +55,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
@@ -79,6 +81,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -105,6 +108,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
                                  self.tname,
                                  self.smoke_schema,
                                  self.smoke_lsi)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
@@ -142,6 +146,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_min_table_name(self):
         tname = 'a01'
         self.client.create_table(self.smoke_attrs, tname, self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, tname)
         self.wait_for_table_active(tname)
         self.put_smoke_item(tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -166,6 +171,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
@@ -191,6 +197,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
@@ -215,6 +222,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
@@ -239,6 +247,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -264,6 +273,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -290,6 +300,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -316,6 +327,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -341,6 +353,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -366,6 +379,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         items = self.populate_smoke_table(self.tname, 1, 3)
 
@@ -390,6 +404,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         items = self.populate_smoke_table(self.tname, 1, 5)
 
@@ -416,6 +431,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         items = self.populate_smoke_table(self.tname, 1, 5)
 
@@ -442,6 +458,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         items = self.populate_smoke_table(self.tname, 1, 5)
 
@@ -469,6 +486,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         items = self.populate_smoke_table(self.tname, 1, 3)
 
@@ -495,6 +513,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         items = self.populate_smoke_table(self.tname, 1, 11)
 
@@ -530,6 +549,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         self.client.create_table(attrs, self.tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = {
             "forum": {"N": '1'},
@@ -558,6 +578,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         self.client.create_table(attrs, self.tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = {
             "forum": {"S": '1'},
@@ -586,6 +607,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         self.client.create_table(attrs, self.tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         value = base64.b64encode('\xFF')
         item = {
@@ -615,6 +637,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         self.client.create_table(attrs, self.tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = {
             "forum": {"S": '1'},
@@ -643,6 +666,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         self.client.create_table(attrs, self.tname, schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         item = {
             "forum": {"N": '1'},
@@ -875,6 +899,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
                                  self.tname,
                                  self.smoke_schema,
                                  self.smoke_lsi)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -901,6 +926,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
                                  self.tname,
                                  self.smoke_schema,
                                  self.smoke_lsi)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -924,6 +950,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
@@ -949,6 +976,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs,
                                  self.tname,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
         self.wait_for_table_active(self.tname)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')

@@ -88,6 +88,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs + self.index_attrs,
                                  table_name,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -149,6 +150,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs + self.index_attrs,
                                  table_name,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -170,6 +172,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs + self.index_attrs,
                                  table_name,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -186,6 +189,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs + self.index_attrs,
                                  table_name,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],
@@ -289,6 +293,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'key', 'attribute_type': 'N'}],
             table_name,
             [{'attribute_name': 'key', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             'key': {'N': '111'},
             'last_posted_by': {'S': 'John'}
@@ -308,6 +313,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'key', 'attribute_type': 'S'}],
             table_name,
             [{'attribute_name': 'key', 'key_type': 'HASH'}])
+        self.addResourceCleanUp(self.client.delete_table, self.table_name)
         item = {
             'key': {'S': 'sss'},
             'last_posted_by': {'S': 'John'}
@@ -327,6 +333,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         self.client.create_table(self.smoke_attrs + self.index_attrs,
                                  table_name,
                                  self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, table_name)
 
         self.put_smoke_item(table_name, 'forum1', 'subject2')
 

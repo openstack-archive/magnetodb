@@ -32,75 +32,69 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
     def test_duplicate_table(self):
         self.client.create_table(self.smoke_attrs, self.tname,
                                  self.smoke_schema)
-        self.assertRaises(exceptions.Duplicate,
-                          self.client.create_table,
-                          self.smoke_attrs, self.tname,
-                          self.smoke_schema)
+        self.addResourceCleanUp(self.client.delete_table, self.tname)
+        with self.assertRaises(exceptions.Duplicate):
+            self.client.create_table(self.smoke_attrs, self.tname,
+                                     self.smoke_schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-35', 'negative'])
     def test_create_table_other_keys_in_schema(self):
         schema = [{'attribute_name': 'subject', 'key_type': 'HASH'}]
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=self.one_attr,
-                          table_name=self.tname,
-                          schema=schema)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=self.one_attr,
+                                     table_name=self.tname,
+                                     schema=schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-8_1', 'negative'])
     def test_create_table_malformed_01(self):
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=None,
-                          table_name=self.tname,
-                          schema=None)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=None, table_name=self.tname,
+                                     schema=None)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-8_2', 'negative'])
     def test_create_table_malformed_02(self):
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=self.smoke_attrs,
-                          table_name=self.tname,
-                          schema=None)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=self.smoke_attrs,
+                                     table_name=self.tname,
+                                     schema=None)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-8_3', 'CreT-34', 'negative'])
     def test_create_table_malformed_03(self):
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=None,
-                          table_name=self.tname,
-                          schema=self.smoke_schema)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=None,
+                                     table_name=self.tname,
+                                     schema=self.smoke_schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-8_4', 'negative'])
     def test_create_table_malformed_04(self):
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=self.smoke_attrs,
-                          table_name=None,
-                          schema=self.smoke_schema)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=self.smoke_attrs,
+                                     table_name=None,
+                                     schema=self.smoke_schema)
 
     @test.attr(type=['CreT-8_5', 'negative'])
     def test_create_table_malformed_05(self):
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=None,
-                          table_name=None,
-                          schema=self.smoke_schema)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=None, table_name=None,
+                                     schema=self.smoke_schema)
 
     @test.attr(type=['CreT-8_6', 'negative'])
     def test_create_table_malformed_06(self):
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=self.smoke_attrs,
-                          table_name=None,
-                          schema=None)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=self.smoke_attrs,
+                                     table_name=None,
+                                     schema=None)
 
     @test.attr(type=['CreT-8_7', 'negative'])
     def test_create_table_malformed_07(self):
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=None,
-                          table_name=None,
-                          schema=None)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=None, table_name=None,
+                                     schema=None)
 
     @test.attr(type=['CreT-20_1', 'negative'])
     def test_create_table_malformed_attrs_02(self):
@@ -110,36 +104,37 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self.client.create_table(attr_def=attr_def,
                                      table_name=self.tname,
                                      schema=key_schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-20_2', 'negative'])
     def test_create_table_malformed_attrs_03(self):
         attr_def = [{'attribute_type': 'S'}]
         key_schema = [{'attribute_name': 'test', 'key_type': 'HASH'}]
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=attr_def,
-                          table_name=self.tname,
-                          schema=key_schema)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=attr_def,
+                                     table_name=self.tname,
+                                     schema=key_schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-36_1', 'negative'])
     def test_create_table_hash_key_set(self):
         attr_def = [{'attribute_name': 'set', 'attribute_type': 'SS'}]
-        schema = [{'attribute_name': 'set', 'key_type': 'HASH'}]
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=attr_def,
-                          table_name=self.tname,
-                          schema=schema)
+        key_schema = [{'attribute_name': 'set', 'key_type': 'HASH'}]
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=attr_def,
+                                     table_name=self.tname,
+                                     schema=key_schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-36_2', 'negative'])
     def test_create_table_range_key_set(self):
         attr_def = [{'attribute_name': 'set', 'attribute_type': 'SS'}]
         schema = [{'attribute_name': 'set', 'key_type': 'RANGE'}]
-        self.assertRaises(exceptions.BadRequest,
-                          self.client.create_table,
-                          attr_def=self.one_attr + attr_def,
-                          table_name=self.tname,
-                          schema=self.schema_hash_only + schema)
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.create_table(attr_def=self.one_attr + attr_def,
+                                     table_name=self.tname,
+                                     schema=self.schema_hash_only + schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-29', 'negative'])
     def test_create_table_only_range_key(self):
@@ -149,6 +144,7 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self.client.create_table(attr_def=attr_def,
                                      table_name=self.tname,
                                      schema=schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-30', 'negative'])
     def test_create_table_empty_schema(self):
@@ -158,6 +154,7 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self.client.create_table(attr_def=attr_def,
                                      table_name=self.tname,
                                      schema=schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-32_1', 'negative'])
     def test_create_table_redundand_schema_hash(self):
@@ -166,6 +163,7 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self.client.create_table(self.smoke_attrs + self.index_attrs,
                                      self.tname,
                                      self.smoke_schema + schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-32_2', 'negative'])
     def test_create_table_redundand_schema_range(self):
@@ -174,12 +172,14 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self.client.create_table(self.smoke_attrs + self.index_attrs,
                                      self.tname,
                                      self.smoke_schema + schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-33', 'negative'])
     def test_create_table_invalid_schema_key_type(self):
         schema = [{'attribute_name': 'forum', 'key_type': 'INVALID'}]
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.one_attr, self.tname, schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-46', 'negative'])
     def test_create_table_too_short_name(self):
@@ -189,6 +189,7 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                      tname,
                                      self.smoke_schema,
                                      self.smoke_lsi)
+            self.addResourceCleanUp(self.client.delete_table, tname)
 
     @test.attr(type=['CreT-47', 'negative'])
     def test_create_table_too_long_name(self):
@@ -198,6 +199,7 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                      tname,
                                      self.smoke_schema,
                                      self.smoke_lsi)
+            self.addResourceCleanUp(self.client.delete_table, tname)
 
     @test.attr(type=['CreT-49', 'negative'])
     def test_create_table_empty_table_name(self):
@@ -207,10 +209,10 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                      tname,
                                      self.schema_hash_only,
                                      self.smoke_lsi)
+            self.addResourceCleanUp(self.client.delete_table, tname)
 
     @test.attr(type=['CreT-18', 'negative'])
     def test_create_table_too_long_attr_names(self):
-        tname = rand_name().replace('-', '')
         attr_def = [
             {'attribute_name': 'f' * 256, 'attribute_type': 'S'},
             {'attribute_name': 's' * 256, 'attribute_type': 'S'}
@@ -220,44 +222,44 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             {'attribute_name': 's' * 256, 'key_type': 'RANGE'}
         ]
         with self.assertRaises(exceptions.BadRequest):
-            self.client.create_table(attr_def, tname, schema)
+            self.client.create_table(attr_def, self.tname, schema)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-53_1', 'negative'])
     def test_create_table_index_without_name_param(self):
-        tname = rand_name().replace('-', '')
         lsi = copy.deepcopy(self.smoke_lsi)
         del lsi[0]['index_name']
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-53_2', 'negative'])
     def test_create_table_index_without_schema_param(self):
-        tname = rand_name().replace('-', '')
         lsi = copy.deepcopy(self.smoke_lsi)
         del lsi[0]['key_schema']
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-53_3', 'negative'])
     def test_create_table_index_without_projection_param(self):
-        tname = rand_name().replace('-', '')
         lsi = copy.deepcopy(self.smoke_lsi)
         del lsi[0]['projection']
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-56', 'negative'])
     def test_create_table_six_indexes(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name' + str(i),
                         'attribute_type': 'S'} for i in range(0, 6)]
         request_lsi = []
@@ -276,60 +278,60 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             )
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-57', 'negative'])
     def test_create_table_empty_indexes(self):
-        tname = rand_name().replace('-', '')
         request_lsi = []
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-63', 'negative'])
     def test_create_table_index_name_2_char(self):
-        tname = rand_name().replace('-', '')
         request_lsi = copy.deepcopy(self.smoke_lsi)
         request_index_name = 'qq'
         request_lsi[0]['index_name'] = request_index_name
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-64', 'negative'])
     def test_create_table_index_name_256_char(self):
-        tname = rand_name().replace('-', '')
         request_lsi = copy.deepcopy(self.smoke_lsi)
         request_index_name = 'q' * 256
         request_lsi[0]['index_name'] = request_index_name
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-65', 'negative'])
     def test_create_table_index_name_upper_case(self):
         #TODO(aostapenko) clarify behavior on dynamodb
-        tname = rand_name().replace('-', '')
         request_lsi = copy.deepcopy(self.smoke_lsi)
         request_index_name = 'INDEX_NAME'
         request_lsi[0]['index_name'] = request_index_name
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + self.index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-67', 'negative'])
     def test_create_table_2_same_index_name_in_one_table(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name' + str(i),
                         'attribute_type': 'S'} for i in range(0, 2)]
         request_lsi = []
@@ -348,13 +350,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             )
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-70', 'negative'])
     def test_create_table_index_hash_key_differs_from_table_hash(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name1',
                         'attribute_type': 'S'},
                        {'attribute_name': 'attr_name2',
@@ -373,13 +375,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         )
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-73', 'negative'])
     def test_create_table_index_schema_only_hash(self):
-        tname = rand_name().replace('-', '')
         request_lsi = []
         request_lsi.append(
             {
@@ -392,13 +394,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         )
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-72', 'negative'])
     def test_create_table_two_indexes_with_same_key(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name',
                         'attribute_type': 'S'}]
         request_lsi = [
@@ -421,13 +423,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         ]
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-71', 'negative'])
     def test_create_table_schema_hash_only_with_index(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name1',
                         'attribute_type': 'S'},
                        ]
@@ -443,13 +445,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         ]
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.one_attr + index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.schema_hash_only,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-74', 'negative'])
     def test_create_table_index_schema_repeats_table_schema(self):
-        tname = rand_name().replace('-', '')
         request_lsi = [
             {
                 'index_name': 'index_name',
@@ -459,13 +461,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         ]
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-80', 'negative'])
     def test_create_table_index_without_projection_type_with_non_key(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name1',
                         'attribute_type': 'S'},
                        ]
@@ -481,13 +483,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         ]
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-82', 'negative'])
     def test_create_table_index_key_attr_in_non_key(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name1',
                         'attribute_type': 'S'},
                        ]
@@ -506,13 +508,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         ]
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-83', 'negative'])
     def test_create_table_index_non_key_empty(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name1',
                         'attribute_type': 'S'},
                        ]
@@ -531,13 +533,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         ]
         with self.assertRaises(exceptions.BadRequest):
             self.client.create_table(self.smoke_attrs + index_attrs,
-                                     tname,
+                                     self.tname,
                                      self.smoke_schema,
                                      request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-84_1', 'negative'])
     def test_create_table_index_non_key_attrs_all_projection_type(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name1',
                         'attribute_type': 'S'},
                        ]
@@ -555,12 +557,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             }
         ]
         with self.assertRaises(exceptions.BadRequest):
-            self.client.create_table(self.smoke_attrs + index_attrs, tname,
-                                     self.smoke_schema, request_lsi)
+            self.client.create_table(self.smoke_attrs + index_attrs,
+                                     self.tname, self.smoke_schema,
+                                     request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-84_2', 'negative'])
     def test_create_table_index_non_key_attrs_keys_only_projection_type(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name1',
                         'attribute_type': 'S'},
                        ]
@@ -578,12 +581,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             }
         ]
         with self.assertRaises(exceptions.BadRequest):
-            self.client.create_table(self.smoke_attrs + index_attrs, tname,
-                                     self.smoke_schema, request_lsi)
+            self.client.create_table(self.smoke_attrs + index_attrs,
+                                     self.tname, self.smoke_schema,
+                                     request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-86', 'negative'])
     def test_create_table_index_21_non_key(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name1',
                         'attribute_type': 'S'},
                        ]
@@ -601,12 +605,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             }
         ]
         with self.assertRaises(exceptions.BadRequest):
-            self.client.create_table(self.smoke_attrs + index_attrs, tname,
-                                     self.smoke_schema, request_lsi)
+            self.client.create_table(self.smoke_attrs + index_attrs,
+                                     self.tname, self.smoke_schema,
+                                     request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-88', 'negative'])
     def test_create_table_index_21_non_key_3_indexes(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name' + str(i),
                         'attribute_type': 'S'} for i in range(1, 4)
                        ]
@@ -629,12 +634,13 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                 }
             )
         with self.assertRaises(exceptions.BadRequest):
-            self.client.create_table(self.smoke_attrs + index_attrs, tname,
-                                     self.smoke_schema, request_lsi)
+            self.client.create_table(self.smoke_attrs + index_attrs,
+                                     self.tname, self.smoke_schema,
+                                     request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 
     @test.attr(type=['CreT-89', 'negative'])
     def test_create_table_index_21_non_key_3_indexes_repetitions(self):
-        tname = rand_name().replace('-', '')
         index_attrs = [{'attribute_name': 'attr_name' + str(i),
                         'attribute_type': 'S'} for i in range(1, 4)
                        ]
@@ -657,8 +663,10 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                 }
             )
         with self.assertRaises(exceptions.BadRequest):
-            self.client.create_table(self.smoke_attrs + index_attrs, tname,
-                                     self.smoke_schema, request_lsi)
+            self.client.create_table(self.smoke_attrs + index_attrs,
+                                     self.tname, self.smoke_schema,
+                                     request_lsi)
+            self.addResourceCleanUp(self.client.delete_table, self.tname)
 #
 #    @test.attr(type=['CreT-103', 'negative'])
 #    def test_create_table_more_than_255(self):
@@ -666,7 +674,7 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
 #            tname = rand_name().replace('-', '')
 #            self.client.create_table(self.smoke_attrs, tname,
 #                                     self.smoke_schema)
-#        self.assertRaises(exceptions.BadRequest,
-#                          self.client.create_table,
-#                          self.smoke_attrs, self.tname,
-#                          self.smoke_schema)
+#            self.addResourceCleanUp(self.client.delete_table, tname)
+#        with self.assertRaises(exceptions.BadRequest):
+#            self.client.create_table(self.smoke_attrs, self.tname,
+#                                     self.smoke_schema)
