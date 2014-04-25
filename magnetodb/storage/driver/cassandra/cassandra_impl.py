@@ -16,19 +16,12 @@
 from decimal import Decimal
 import json
 import binascii
-import time
 
-from cassandra import query, ConsistencyLevel
-from cassandra.query import SimpleStatement
-from magnetodb.common.cassandra.cluster import Cluster
-from magnetodb.common.cassandra.cluster import NoHostAvailable
+from magnetodb.common import exception
 
-from magnetodb.common.exception import BackendInteractionException
-from magnetodb.common.exception import TableNotExistsException
-from magnetodb.common.exception import TableAlreadyExistsException
-from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
+from magnetodb.storage.driver import StorageDriver
 
 LOG = logging.getLogger(__name__)
 
@@ -175,197 +168,22 @@ ENCODED_DEFAULT_BLOB_VALUE = _encode_predefined_attr_value(
 )
 
 
-class CassandraStorageImpl(object):
-    __table_info_cache = {}
+class CassandraStorageDriver(StorageDriver):
+    def __init__(self, cluster_handler, table_info_repo):
+        self.__cluster_handler = cluster_handler
+        self.__table_info_repo = table_info_repo
 
-    @classmethod
-    def _save_table_info_to_cache(cls, tenant, table_name, table_info):
-        tenant_tables_cache = cls.__table_info_cache.get(tenant)
-        if tenant_tables_cache is None:
-            tenant_tables_cache = {}
-            cls.__table_info_cache[tenant] = tenant_tables_cache
-        tenant_tables_cache[table_name] = table_info
+    def create_table(self, context, table_name):
+        table_info = self.__table_info_repo.get(context, table_name)
+        table_schema = table_info.schema
 
-    @classmethod
-    def _get_table_info_from_cache(cls, tenant, table_name):
-        tenant_tables_cache = cls.__table_info_cache.get(tenant)
-        if tenant_tables_cache is None:
-            return None
-        return tenant_tables_cache.get(table_name)
-
-    @classmethod
-    def _remove_table_schema_from_cache(cls, tenant, table_name):
-        tenant_tables_cache = cls.__table_info_cache.get(tenant)
-        if tenant_tables_cache is None:
-            return None
-
-        return tenant_tables_cache.pop(table_name, None)
-
-    def __init__(self, contact_points=("127.0.0.1",),
-                 port=9042,
-                 compression=True,
-                 auth_provider=None,
-                 load_balancing_policy=None,
-                 reconnection_policy=None,
-                 default_retry_policy=None,
-                 conviction_policy_factory=None,
-                 metrics_enabled=False,
-                 connection_class=None,
-                 ssl_options=None,
-                 sockopts=None,
-                 cql_version=None,
-                 executor_threads=2,
-                 max_schema_agreement_wait=10,
-                 control_connection_timeout=2.0,
-                 query_timeout=10.0):
-
-        if connection_class:
-            connection_class = importutils.import_class(connection_class)
-
-        self.cluster = Cluster(
-            contact_points=contact_points,
-            port=port,
-            compression=compression,
-            auth_provider=auth_provider,
-            load_balancing_policy=load_balancing_policy,
-            reconnection_policy=reconnection_policy,
-            default_retry_policy=default_retry_policy,
-            conviction_policy_factory=conviction_policy_factory,
-            metrics_enabled=metrics_enabled,
-            connection_class=connection_class,
-            ssl_options=ssl_options,
-            sockopts=sockopts,
-            cql_version=cql_version,
-            executor_threads=executor_threads,
-            max_schema_agreement_wait=max_schema_agreement_wait,
-            control_connection_timeout=control_connection_timeout,
-            schema_change_listeners=(self.schema_change_listener,)
-        )
-
-        self.session = self.cluster.connect()
-        self.session.row_factory = query.dict_factory
-        self.session.default_timeout = query_timeout
-
-    def schema_change_listener(self, event):
-        LOG.debug("Schema change event captured: %s" % event)
-
-        keyspace = event.get('keyspace')
-        table_name = event.get('table')
-
-        if (keyspace is None) or (table_name is None):
-            return
-
-        tenant = keyspace[USER_PREFIX_LENGTH:]
-        table_name = table_name[USER_PREFIX_LENGTH:]
-
-        if event['change_type'] == "DROPPED":
-            self._remove_table_schema_from_cache(
-                tenant, table_name)
-
-    def _execute_query(self, query, consistent=False):
-        ex = None
-        if consistent:
-            query = SimpleStatement(
-                query, consistency_level=ConsistencyLevel.QUORUM
-            )
-        LOG.debug("Executing query {}".format(query))
-        for x in range(3):
-            try:
-                return self.session.execute(query)
-            except NoHostAvailable:
-                LOG.warning("It seems connection was lost. Retrying...",
-                            exc_info=1)
-            except Exception as e:
-                ex = e
-                break
-        if ex:
-            msg = "Error executing query {}:{}".format(query, e.message)
-            LOG.exception(msg)
-            raise BackendInteractionException(msg)
-
-    def _wait_for_table_status(self, keyspace_name, table_name,
-                               expected_exists, indexed_column_names=None):
-        LOG.debug("Start waiting for table status changing...")
-
-        while True:
-            keyspace_meta = self.cluster.metadata.keyspaces.get(keyspace_name)
-
-            if keyspace_meta is None:
-                raise BackendInteractionException(
-                    "Keyspace '{}' does not exist".format(keyspace_name)
-                )
-
-            table_meta = keyspace_meta.tables.get(table_name)
-            if expected_exists == (table_meta is not None):
-                if table_meta is None or not indexed_column_names:
-                    break
-
-                for indexed_column in indexed_column_names:
-                    column = table_meta.columns.get(indexed_column)
-                    if not column.index:
-                        break
-                else:
-                    break
-            LOG.debug("Table status isn't correct"
-                      "(expected_exists: %s, table_meta: %s)."
-                      " Wait and check again" %
-                      (expected_exists, table_meta))
-            time.sleep(1)
-
-        LOG.debug("Table status is correct"
-                  "(expected_exists: %s, table_meta: %s)" %
-                  (expected_exists, table_meta))
-
-    def create_table(self, context, table_name, table_schema):
-        """
-        Creates table
-
-        @param context: current request context
-        @param table_name: String, name of the table to create
-        @param table_schema: TableSchema instance which define table to create
-
-        @return TableMeta instance with metadata of created table
-
-        @raise BackendInteractionException
-        """
-
-        try:
-            table_info = TableInfo(
-                self, context.tenant, table_name, table_schema,
-                models.TableMeta.TABLE_STATUS_CREATING
-            )
-
-            res = table_info.save()
-
-            if not res:
-                raise TableAlreadyExistsException(
-                    "Table '{}' already exists".format(table_name)
-                )
-
-            internal_table_name = self._do_create_table(
-                context, table_name, table_schema
-            )
-
-            table_info.internal_name = internal_table_name
-            table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
-            res = table_info.update("internal_name", "status")
-
-            if not res:
-                raise BackendInteractionException("Can't update table status")
-        except Exception as e:
-            LOG.exception("Table {} creation failed.".format(table_name))
-
-            raise e
-
-        return models.TableMeta(table_info.schema, table_info.status)
-
-    def _do_create_table(self, context, table_name, table_schema):
         cas_table_name = USER_PREFIX + table_name
         cas_keyspace = USER_PREFIX + context.tenant
+
         key_count = len(table_schema.key_attributes)
 
         if key_count < 1 or key_count > 2:
-            raise BackendInteractionException(
+            raise exception.BackendInteractionException(
                 "Expected 1 or 2 key attribute(s). Found {}: {}".format(
                     key_count, table_schema.key_attributes))
 
@@ -417,36 +235,22 @@ class CassandraStorageImpl(object):
 
         query_builder.append("))")
 
-        self._execute_query("".join(query_builder))
-
+        self.__cluster_handler.execute_query("".join(query_builder))
         LOG.debug("Create Table CQL request executed. "
                   "Waiting for schema agreement...")
 
-        self._wait_for_table_status(keyspace_name=cas_keyspace,
-                                    table_name=cas_table_name,
-                                    expected_exists=True)
+        self.__cluster_handler.wait_for_table_status(
+            keyspace_name=cas_keyspace, table_name=cas_table_name,
+            expected_exists=True)
         LOG.debug("Waiting for schema agreement... Done")
 
-        return cas_table_name
+        table_info.internal_name = cas_table_name
+        self.__table_info_repo.update(
+            context, table_info, ["internal_name"]
+        )
 
     def delete_table(self, context, table_name):
-        """
-        Creates table
-
-        @param context: current request context
-        @param table_name: String, name of table to delete
-
-        @raise BackendInteractionException
-        """
-        table_info = self._get_table_info(context, table_name)
-
-        if table_info is None:
-            raise TableNotExistsException(
-                "Table '{}' does not exists".format(table_name)
-            )
-
-        table_info.status = models.TableMeta.TABLE_STATUS_DELETING
-        table_info.update("status")
+        table_info = self.__table_info_repo.get(context, table_name)
 
         cas_table_name = table_info.internal_name
         cas_keyspace_name = USER_PREFIX + context.tenant
@@ -454,74 +258,17 @@ class CassandraStorageImpl(object):
         query = 'DROP TABLE "{}"."{}"'.format(cas_keyspace_name,
                                               cas_table_name)
 
-        self._execute_query(query)
+        self.__cluster_handler.execute_query(query)
 
         LOG.debug("Delete Table CQL request executed. "
                   "Waiting for schema agreement...")
 
-        self._wait_for_table_status(keyspace_name=cas_keyspace_name,
-                                    table_name=cas_table_name,
-                                    expected_exists=False)
-
-        table_info.delete()
+        self.__cluster_handler.wait_for_table_status(
+            keyspace_name=cas_keyspace_name, table_name=cas_table_name,
+            expected_exists=False
+        )
 
         LOG.debug("Waiting for schema agreement... Done")
-
-    def _get_table_info(self, context, table_name):
-        """
-        Describes table
-
-        @param context: current request context
-        @param table_name: String, name of table to describes
-
-        @return: TableSchema instance
-
-        @raise BackendInteractionException
-        """
-
-        table_info = self._get_table_info_from_cache(context.tenant,
-                                                     table_name)
-        if table_info:
-            return table_info
-
-        table_info = TableInfo.load(self, context.tenant, table_name)
-
-        if table_info is None:
-            return None
-
-        self._save_table_info_to_cache(context.tenant, table_name, table_info)
-        return table_info
-
-    def describe_table(self, context, table_name):
-        """
-        Describes table
-
-        @param context: current request context
-        @param table_name: String, name of table to describes
-
-        @return: TableSchema instance
-
-        @raise BackendInteractionException
-        """
-
-        table_info = self._get_table_info(context, table_name)
-        table_info.refresh("status")
-
-        return models.TableMeta(table_info.schema, table_info.status)
-
-    def list_tables(self, context, exclusive_start_table_name=None,
-                    limit=None):
-        """
-        @param context: current request context
-        @param exclusive_start_table_name
-        @param limit: limit of returned table names
-        @return list of table names
-
-        @raise BackendInteractionException
-        """
-        return TableInfo.load_tenant_table_names(
-            self, context.tenant, exclusive_start_table_name, limit
-        )
 
     @staticmethod
     def _append_types_system_attr_value(table_schema, attribute_map,
@@ -563,7 +310,7 @@ class CassandraStorageImpl(object):
             query_builder = []
 
         query_builder += (
-            'INSERT INTO "', USER_PREFIX, table_info.tenant, '"."',
+            'INSERT INTO "', table_info.internal_keyspace, '"."',
             table_info.internal_name, '" ('
         )
         attr_values = []
@@ -656,7 +403,7 @@ class CassandraStorageImpl(object):
         )
 
         query_builder += (
-            'UPDATE "', USER_PREFIX, table_info.tenant, '"."',
+            'UPDATE "', table_info.internal_keyspace, '"."',
             table_info.internal_name, '" SET '
         )
 
@@ -843,7 +590,7 @@ class CassandraStorageImpl(object):
                 query_builder.insert(0, self._get_batch_begin_clause())
                 query_builder.append(self._get_batch_apply_clause())
 
-            result = self._execute_query(
+            result = self.__cluster_handler.execute_query(
                 "".join(query_builder), consistent=True)
 
             return result[0]['[applied]']
@@ -867,11 +614,12 @@ class CassandraStorageImpl(object):
         @raise BackendInteractionException
         """
 
-        table_info = self._get_table_info(context, put_request.table_name)
+        table_info = self.__table_info_repo.get(context,
+                                                put_request.table_name)
 
         if if_not_exist:
             if expected_condition_map:
-                raise BackendInteractionException(
+                raise exception.BackendInteractionException(
                     "Specifying expected_condition_map and"
                     "if_not_exist is not allowed both"
                 )
@@ -919,8 +667,9 @@ class CassandraStorageImpl(object):
                 if len(query_builder) > qb_len:
                     query_builder.insert(0, self._get_batch_begin_clause())
                     query_builder.append(self._get_batch_apply_clause())
-                result = self._execute_query("".join(query_builder),
-                                             consistent=True)
+                result = self.__cluster_handler.execute_query(
+                    "".join(query_builder), consistent=True
+                )
 
                 if result[0]['[applied]']:
                     return True
@@ -940,14 +689,16 @@ class CassandraStorageImpl(object):
                 table_info, put_request.attribute_map,
                 expected_condition_map=expected_condition_map, rewrite=True
             )
-            result = self._execute_query("".join(query_builder),
-                                         consistent=True)
+            result = self.__cluster_handler.execute_query(
+                "".join(query_builder), consistent=True
+            )
             return result[0]['[applied]']
         else:
             query_builder = self._append_insert_query(
                 table_info, put_request.attribute_map
             )
-            self._execute_query("".join(query_builder), consistent=True)
+            self.__cluster_handler.execute_query("".join(query_builder),
+                                                 consistent=True)
             return True
 
     @classmethod
@@ -956,7 +707,7 @@ class CassandraStorageImpl(object):
         if query_builder is None:
             query_builder = []
         query_builder += (
-            'DELETE FROM "', USER_PREFIX, table_info.tenant, '"."',
+            'DELETE FROM "', table_info.internal_keyspace, '"."',
             table_info.internal_name, '"'
         )
         cls._append_primary_key(table_info.schema, attribute_map,
@@ -993,7 +744,7 @@ class CassandraStorageImpl(object):
             prefix = ","
 
         query_buider += (
-            ' FROM "', USER_PREFIX, table_info.tenant, '"."',
+            ' FROM "', table_info.internal_keyspace, '"."',
             table_info.internal_name, '"'
         )
 
@@ -1001,8 +752,9 @@ class CassandraStorageImpl(object):
                                  query_buider)
         self._append_index_extra_primary_key(query_buider, prefix=" AND ")
 
-        select_result = self._execute_query("".join(query_buider),
-                                            consistent=False)
+        select_result = self.__cluster_handler.execute_query(
+            "".join(query_buider), consistent=False
+        )
         if not select_result:
             return None
 
@@ -1038,7 +790,8 @@ class CassandraStorageImpl(object):
         @raise BackendInteractionException
         """
 
-        table_info = self._get_table_info(context, delete_request.table_name)
+        table_info = self.__table_info_repo.get(context,
+                                                delete_request.table_name)
         delete_query = "".join(
             self._append_delete_query(
                 table_info, delete_request.key_attribute_map,
@@ -1081,8 +834,9 @@ class CassandraStorageImpl(object):
                 if len(query_builder) > qb_len:
                     query_builder.insert(0, self._get_batch_begin_clause())
                     query_builder.append(self._get_batch_apply_clause())
-                result = self._execute_query("".join(query_builder),
-                                             consistent=True)
+                result = self.__cluster_handler.execute_query(
+                    "".join(query_builder), consistent=True
+                )
 
                 if result[0]['[applied]']:
                     return True
@@ -1098,7 +852,8 @@ class CassandraStorageImpl(object):
                     # expected condition wasn't passed
                     return False
         else:
-            result = self._execute_query(delete_query, consistent=True)
+            result = self.__cluster_handler.execute_query(delete_query,
+                                                          consistent=True)
             return (result is None) or result[0]['[applied]']
 
     @staticmethod
@@ -1319,7 +1074,7 @@ class CassandraStorageImpl(object):
                     self.delete_item(context, req)
                 else:
                     assert False, 'Wrong WriteItemRequest'
-            except BackendInteractionException:
+            except exception.BackendInteractionException:
                 unprocessed_items.append(req)
                 LOG.exception("Can't process WriteItemRequest")
 
@@ -1345,7 +1100,7 @@ class CassandraStorageImpl(object):
         """
         attribute_action_map = attribute_action_map or {}
 
-        table_info = self._get_table_info(context, table_name)
+        table_info = self.__table_info_repo.get(context, table_name)
 
         if table_info.schema.index_def_map:
             index_actions = {}
@@ -1418,8 +1173,9 @@ class CassandraStorageImpl(object):
                 if len(query_builder) > qb_len:
                     query_builder.insert(0, self._get_batch_begin_clause())
                     query_builder.append(self._get_batch_apply_clause())
-                result = self._execute_query("".join(query_builder),
-                                             consistent=True)
+                result = self.__cluster_handler.execute_query(
+                    "".join(query_builder), consistent=True
+                )
 
                 if result[0]['[applied]']:
                     return True
@@ -1450,8 +1206,9 @@ class CassandraStorageImpl(object):
                 expected_condition_map=expected_condition_map
             )
 
-            result = self._execute_query("".join(query_builder),
-                                         consistent=True)
+            result = self.__cluster_handler.execute_query(
+                "".join(query_builder), consistent=True
+            )
 
             return (result is None) or result[0]['[applied]']
 
@@ -1483,7 +1240,7 @@ class CassandraStorageImpl(object):
         @raise BackendInteractionException
         """
 
-        table_info = self._get_table_info(context, table_name)
+        table_info = self.__table_info_repo.get(context, table_name)
 
         assert (
             not index_name or (
@@ -1699,7 +1456,9 @@ class CassandraStorageImpl(object):
                 models.IndexedCondition.CONDITION_TYPE_EQUAL):
             query_builder.append(" ALLOW FILTERING")
 
-        rows = self._execute_query("".join(query_builder), consistent)
+        rows = self.__cluster_handler.execute_query(
+            "".join(query_builder), consistent
+        )
 
         if select_type.is_count:
             return models.SelectResult(count=rows[0]['count'])
@@ -1776,7 +1535,7 @@ class CassandraStorageImpl(object):
         """
         if not condition_map:
             condition_map = {}
-        table_info = self._get_table_info(context, table_name)
+        table_info = self.__table_info_repo.get(context, table_name)
         hash_name = table_info.schema.key_attributes[0]
         try:
             range_name = table_info.schema.key_attributes[1]
@@ -1928,146 +1687,3 @@ class CassandraStorageImpl(object):
             return attr_val in cond_arg
 
         return False
-
-
-class TableInfo(object):
-    SYSTEM_TABLE_TABLE_INFO = SYSTEM_KEYSPACE + '.table_info'
-
-    __field_list = ("schema", "internal_name", "status")
-
-    def __init__(self, storage_driver, tenant, name, schema=None,
-                 status=None, internal_name=None):
-        self.__storage_driver = storage_driver
-        self.__tenant = tenant
-        self.__name = name
-
-        self.schema = schema
-        self.internal_name = internal_name
-        self.status = status
-
-    @property
-    def tenant(self):
-        return self.__tenant
-
-    @property
-    def name(self):
-        return self.__name
-
-    @classmethod
-    def load(cls, storage_driver, tenant, table_name):
-        table_info = TableInfo(storage_driver, tenant, table_name)
-        return table_info if table_info.refresh() else None
-
-    @classmethod
-    def load_tenant_table_names(cls, storage_driver, tenant,
-                                exclusive_start_table_name=None, limit=None):
-        query_builder = [
-            "SELECT name",
-            " FROM ", cls.SYSTEM_TABLE_TABLE_INFO,
-            " WHERE tenant='", tenant, "'"
-        ]
-
-        if exclusive_start_table_name:
-            query_builder += (
-                " AND name > '",
-                exclusive_start_table_name, "'"
-            )
-
-        if limit:
-            query_builder += (" LIMIT ", str(limit))
-
-        tables = storage_driver._execute_query("".join(query_builder),
-                                               consistent=True)
-
-        return [row['name'] for row in tables]
-
-    def refresh(self, *field_list):
-        if not field_list:
-            field_list = self.__field_list
-
-        query_builder = ["SELECT "]
-        for field in field_list:
-            query_builder += ('"', field, '"', ",")
-        query_builder.pop()
-
-        query_builder += (
-            " FROM ", self.SYSTEM_TABLE_TABLE_INFO,
-            " WHERE tenant='", self.tenant, "' AND name='", self.name, "'"
-        )
-
-        result = self.__storage_driver._execute_query(
-            "".join(query_builder), consistent=True
-        )
-
-        if result:
-            for name, value in result[0].iteritems():
-                if name == "schema":
-                    value = models.ModelBase.from_json(value)
-                setattr(self, name, value)
-            return True
-        else:
-            return False
-
-    def update(self, *field_list):
-        if not field_list:
-            field_list = self.__field_list
-
-        query_builder = [
-            "UPDATE ", self.SYSTEM_TABLE_TABLE_INFO, " SET "
-        ]
-
-        for field in field_list:
-            query_builder += (
-                '"', field, '"=\'', getattr(self, field), "'", ", "
-            )
-        query_builder.pop()
-
-        query_builder += (
-            " WHERE tenant='", self.tenant, "' AND name='", self.name,
-            "' IF exists=1"
-        )
-
-        result = self.__storage_driver._execute_query(
-            "".join(query_builder), consistent=True
-        )
-
-        return result[0]['[applied]']
-
-    def save(self):
-        query_builder = [
-            "INSERT INTO ", self.SYSTEM_TABLE_TABLE_INFO,
-            '(exists, tenant, name, "schema", status, internal_name)'
-            "VALUES(1,'", self.tenant, "','", self.name, "'"
-        ]
-
-        if self.schema:
-            query_builder += (",'", self.schema.to_json(), "'")
-        else:
-            query_builder.append(",null")
-
-        if self.status:
-            query_builder += (",'", self.status, "'")
-        else:
-            query_builder.append(",null")
-
-        if self.internal_name:
-            query_builder += (",'", self.internal_name, "'")
-        else:
-            query_builder.append(",null")
-
-        query_builder.append(") IF NOT EXISTS")
-
-        result = self.__storage_driver._execute_query(
-            "".join(query_builder), consistent=True
-        )
-
-        return result[0]['[applied]']
-
-    def delete(self):
-        query_builder = [
-            "DELETE FROM ", self.SYSTEM_TABLE_TABLE_INFO,
-            " WHERE tenant='", self.tenant, "' AND name='", self.name, "'"
-        ]
-
-        self.__storage_driver._execute_query("".join(query_builder),
-                                             consistent=True)
