@@ -12,31 +12,28 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 import mock
 import unittest
 
+from concurrent.futures import Future
+
 from magnetodb.storage import models
-from magnetodb.storage.impl import cassandra_impl
+from magnetodb.storage.manager.simple_impl import SimpleStorageManager
 
 
-class CassandraImplTestCase(unittest.TestCase):
+class SimpleStorageManagerTestCase(unittest.TestCase):
     """The test for Cassandra storage implementation."""
 
-    @mock.patch('magnetodb.storage.impl.cassandra_impl.'
-                'CassandraStorageImpl.delete_item')
-    @mock.patch('magnetodb.storage.impl.cassandra_impl.'
-                'CassandraStorageImpl.put_item')
-    @mock.patch('magnetodb.storage.impl.cassandra_impl.'
-                'CassandraStorageImpl._execute_query')
-    @mock.patch('magnetodb.common.cassandra.cluster.Cluster.connect')
-    def test_execute_write_batch(self, mock_connect, mock_execute_query,
-                                 mock_put_item, mock_delete_item):
-        mock_execute_query.return_value = None
-        mock_put_item.return_value = None
-        mock_delete_item.return_value = None
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                'delete_item_async')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                'put_item_async')
+    def test_execute_write_batch(self, mock_put_item, mock_delete_item):
+        future = Future()
+        future.set_result(True)
+        mock_put_item.return_value = future
+        mock_delete_item.return_value = future
 
-        conn = cassandra_impl.CassandraStorageImpl()
         context = mock.Mock(tenant='fake_tenant')
 
         table_name = 'fake_table'
@@ -65,7 +62,11 @@ class CassandraImplTestCase(unittest.TestCase):
                         mock.call(context, request_list[1]), ]
         expected_delete = [mock.call(context, request_list[2])]
 
-        unprocessed_items = conn.execute_write_batch(context, request_list)
+        storage_manager = SimpleStorageManager(None, None)
+
+        unprocessed_items = storage_manager.execute_write_batch(
+            context, request_list
+        )
 
         self.assertEqual(expected_put, mock_put_item.call_args_list)
         self.assertEqual(expected_delete,

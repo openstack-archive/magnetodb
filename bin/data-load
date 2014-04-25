@@ -32,23 +32,23 @@ For help:
     bin/data-load -h (or --help)
 
 """
+import Queue
+from threading import Event
 
 from gevent import monkey
 monkey.patch_all()
 
-import argparse
-import json
+from magnetodb.common import setup_global_env
+from oslo.config.cfg import Opt
+
+import json as json
 import sys
 
-from magnetodb.storage import models
-from magnetodb.storage.impl import cassandra_impl
+from magnetodb.api.openstack.v1.parser import Parser
 
-TYPE_DICT = {'N': models.ATTRIBUTE_TYPE_NUMBER,
-             'S': models.ATTRIBUTE_TYPE_STRING,
-             'B': models.ATTRIBUTE_TYPE_BLOB,
-             'NS': models.ATTRIBUTE_TYPE_NUMBER_SET,
-             'SS': models.ATTRIBUTE_TYPE_STRING_SET,
-             'BS': models.ATTRIBUTE_TYPE_BLOB_SET}
+from magnetodb.storage import models
+from magnetodb import storage
+from magnetodb.common.config import CONF
 
 
 class NameSpace(object):
@@ -61,24 +61,21 @@ def context():
     pass
 
 
-def put_item(storage_impl, table, py_obj):
+def parse_put_item(table, item_json):
     """CassandraStorageImpl put_item method wrapper. """
-    put = {}
-
-    for k, v in py_obj.items():
-        put[k] = models.AttributeValue(TYPE_DICT[v.keys()[0]], v.values()[0])
-
-    put_request = models.PutItemRequest(table, put)
-    storage_impl.put_item(context, put_request)
+    py_obj = json.loads(item_json)
+    return models.PutItemRequest(
+        table, Parser.parse_item_attributes(py_obj)
+    )
 
 
 def string_loader(storage_impl, table, input_string):
     """Load data from specified string. """
-    py_obj = json.loads(input_string)
-    put_item(storage_impl, table, py_obj)
+
+    storage_impl.put_item(context, parse_put_item(table, input_string))
 
 
-def sequence_loader(storage_impl, table, sequence):
+def sequence_loader(table, sequence):
     """Load data from specified text file.
 
     :param table: Table name
@@ -87,53 +84,76 @@ def sequence_loader(storage_impl, table, sequence):
     for example list) with input json data
 
     """
-    line_counter = 0
+    count_sent = 0
+
+    future_ready_event = Event()
+    future_ready_queue = Queue.Queue
+    count_done = [0]
+
     for item in sequence:
-        line_counter += 1
+        future = storage.put_item_async(context, parse_put_item(table, item))
+        count_sent += 1
+
+        def callback(future):
+            count_done[0] += 1
+            future_ready_queue.put_nowait(future)
+            future_ready_event.set()
+
+        future.add_done_callback(callback)
         try:
-            string_loader(storage_impl, table, item)
-        except ValueError as e:
-            print ('Error in json input. Line %s was not processed. '
-                   'Please fix and try again. %s' % (line_counter, e))
+            while True:
+                finished_future = future_ready_queue.get_nowait()
+                finished_future.result()
+        except Queue.Empty:
+            pass
+
+        if count_sent % 1000 == 0:
+            print "sent: {}, done: {}".format(count_sent, count_done[0])
+
+    while count_done[0] < count_sent:
+        future_ready_event.wait()
+        future_ready_event.clear()
+    print "sent: {}, done: {}".format(count_sent, count_done[0])
 
 
 def main():
-    namespace = NameSpace()
+    CONF.register_cli_opt(
+        Opt(
+            name="table", short="t", type=str, dest='table_name',
+            required=True, help='Name of the table in format: tenant.table'
+        )
+    )
+    CONF.register_cli_opt(
+        Opt(
+            name="file", short="f", type=file, dest='input_file',
+            help='File with imported data'
+        )
+    )
+    CONF.register_cli_opt(
+        Opt(
+            name="string", short="s", type=str, dest='input_string',
+            help='String with imported data'
+        )
+    )
 
-    parser = argparse.ArgumentParser(description='CLI tool for data load')
-
-    parser.add_argument('-t', '--table', type=str, dest='table_name',
-                        help='Name of the table in format: tenant.table')
-    parser.add_argument('-f', '--file', type=file, dest='input_file',
-                        help='File with imported data')
-    parser.add_argument('-s', '--string', type=str, dest='input_string',
-                        help='String with imported data')
-
-    parser.parse_args(namespace=namespace)
-
-    if not namespace.table_name:
-        print ("You have not specified table name. Use '-t' or '--table' "
-               "<table_name>")
-        return
+    setup_global_env(args=sys.argv[1:])
 
     try:
-        context.tenant, table = namespace.table_name.split('.')
+        context.tenant, table = CONF.table_name.split('.')
     except ValueError:
         print 'Bad table name. Use format: <tenant_name>.<table_name>'
         return
 
-    storage_impl = cassandra_impl.CassandraStorageImpl(cql_version="3.1.5")
-
     #Checking for stdin
     if not sys.stdin.isatty():
         lines = sys.stdin.readlines()
-        sequence_loader(storage_impl, table, lines)
+        sequence_loader(table, lines)
         return
 
-    if namespace.input_file:
-        sequence_loader(storage_impl, table, namespace.input_file)
-    elif namespace.input_string:
-        string_loader(storage_impl, table, namespace.input_string)
+    if CONF.input_file:
+        sequence_loader(table, CONF.input_file)
+    elif CONF.input_string:
+        string_loader(table, CONF.input_string)
     else:
         print ("You have not specified any input data. Use '-h' or '--help' "
                "keys for script using info")
