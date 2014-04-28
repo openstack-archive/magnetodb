@@ -41,21 +41,15 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         request_list = [
             models.PutItemRequest(table_name, {
-                'id': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_NUMBER, 1),
-                'range': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, '1'),
-                'str': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, 'str1'), }),
+                'id': models.AttributeValue.number('1'),
+                'range': models.AttributeValue.str('1'),
+                'str': models.AttributeValue.str('str1'), }),
             models.PutItemRequest(table_name, {
-                'id': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_NUMBER, 2),
-                'range': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, '1'),
-                'str': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, 'str1'), }),
+                'id': models.AttributeValue.number('2'),
+                'range': models.AttributeValue.str('1'),
+                'str': models.AttributeValue.str('str1'), }),
             models.DeleteItemRequest(table_name, {
-                'id': models.AttributeValue.number(3),
+                'id': models.AttributeValue.number('3'),
                 'range': models.AttributeValue.str('3')})
         ]
 
