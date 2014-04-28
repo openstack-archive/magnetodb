@@ -12,22 +12,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import base64
-import decimal
-
 from magnetodb.storage import models
 from magnetodb.storage.models import IndexDefinition
 from magnetodb.common.exception import MagnetoError
 
-
-#init decimal context to meet DynamoDB number type behaviour expectation
-DECIMAL_CONTEXT = decimal.Context(
-    prec=38, rounding=None,
-    traps=[],
-    flags=[],
-    Emax=126,
-    Emin=-128
-)
 
 TYPE_STRING = "S"
 TYPE_NUMBER = "N"
@@ -579,63 +567,17 @@ class Parser():
             for index_name, index_def in local_secondary_index_map.iteritems()
         ]
 
-    @staticmethod
-    def decode_single_value(single_value_type, encoded_single_value):
-        assert isinstance(encoded_single_value, (str, unicode))
-        if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            return encoded_single_value
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-            return DECIMAL_CONTEXT.create_decimal(encoded_single_value)
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            return base64.decodestring(encoded_single_value)
-        else:
-            assert False, "Value type wasn't recognized"
-
-    @staticmethod
-    def encode_single_value(single_value_type, decoded_single_value):
-        if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            isinstance(decoded_single_value, (str, unicode))
-            return decoded_single_value
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-            assert isinstance(decoded_single_value, decimal.Decimal)
-            return str(decoded_single_value)
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            assert isinstance(decoded_single_value, str)
-            return base64.encodestring(decoded_single_value)
-        else:
-            assert False, "Value type wasn't recognized"
-
     @classmethod
     def decode_attr_value(cls, dynamodb_attr_type, dynamodb_attr_value):
         attr_type = cls.DYNAMODB_TO_STORAGE_TYPE_MAP[dynamodb_attr_type]
-        if attr_type.collection_type is not None:
-            attr_value = {
-                cls.decode_single_value(attr_type.element_type, val)
-                for val in dynamodb_attr_value
-            }
-        else:
-            attr_value = cls.decode_single_value(
-                attr_type.element_type, dynamodb_attr_value
-            )
-        return models.AttributeValue(attr_type, attr_value)
+        return models.AttributeValue(attr_type,
+                                     encoded_value=dynamodb_attr_value)
 
     @classmethod
     def encode_attr_value(cls, attr_value):
-        if attr_value.type.collection_type is not None:
-            dynamodb_attr_value = map(
-                lambda val: cls.encode_single_value(
-                    attr_value.type.element_type,
-                    val),
-                attr_value.value
-            )
-        else:
-            dynamodb_attr_value = cls.encode_single_value(
-                attr_value.type.element_type, attr_value.value
-            )
-
         return {
             cls.STORAGE_TO_DYNAMODB_TYPE_MAP[attr_value.type]:
-            dynamodb_attr_value
+            attr_value.encoded_value
         }
 
     @classmethod

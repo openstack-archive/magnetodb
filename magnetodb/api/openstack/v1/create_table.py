@@ -14,7 +14,6 @@
 #    under the License.
 import jsonschema
 
-
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -59,6 +58,7 @@ class CreateTableController():
 
     def create_table(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
+        req.context.tenant = project_id
         jsonschema.validate(body, self.schema)
 
         table_name = body.get(parser.Props.TABLE_NAME)
@@ -84,7 +84,6 @@ class CreateTableController():
             attribute_definitions, key_attrs, indexed_attr_names)
 
         # creating table
-        req.context.tenant = project_id
         table_meta = storage.create_table(
             req.context, table_name, table_schema)
 
