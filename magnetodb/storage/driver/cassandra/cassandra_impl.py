@@ -617,6 +617,11 @@ class CassandraStorageDriver(StorageDriver):
         table_info = self.__table_info_repo.get(context,
                                                 put_request.table_name)
 
+        if not table_info:
+            raise TableNotExistsException(
+                "Table '{}' does not exists".format(put_request.table_name)
+            )
+
         if if_not_exist:
             if expected_condition_map:
                 raise exception.BackendInteractionException(
