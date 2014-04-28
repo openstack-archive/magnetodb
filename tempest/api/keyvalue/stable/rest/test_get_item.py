@@ -133,11 +133,15 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
 
         attributes_to_get = ['last_posted_by']
 
-        with self.assertRaises(exceptions.NotFound):
+        with self.assertRaises(exceptions.NotFound) as raises_cm:
             self.client.get_item("",
                                  key,
                                  attributes_to_get,
                                  True)
+        exception = raises_cm.exception
+        self.assertIn("Not Found", exception._error_string)
+        self.assertIn("The resource could not be found.",
+                      exception._error_string)
 
     @attr(type='GI-20')
     def test_get_item_valid_attribute_to_get(self):
