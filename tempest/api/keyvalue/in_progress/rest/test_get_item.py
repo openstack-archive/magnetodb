@@ -58,11 +58,18 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
                self.rangekey: item[self.rangekey]}
 
         attributes_to_get = ['last_posted_by']
-        with self.assertRaises(exceptions.NotFound):
+        with self.assertRaises(exceptions.NotFound) as raises_cm:
             self.client.get_item("nonexistenttable",
                                  key,
                                  attributes_to_get,
                                  True)
+        exception = raises_cm.exception
+        self.assertIn("Not Found",
+                      exception._error_string)
+        self.assertIn("The resource could not be found.",
+                      exception._error_string)
+        self.assertIn("Table 'nonexistenttable' does not exists",
+                      exception._error_string)
 
     #TODO(ValidationException or simple NotFound)
     @attr(type=['GI-15', 'negative'])

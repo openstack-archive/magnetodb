@@ -1485,6 +1485,11 @@ class CassandraStorageImpl(object):
 
         table_info = self._get_table_info(context, table_name)
 
+        if not table_info:
+            raise TableNotExistsException(
+                "Table '{}' does not exists".format(table_name)
+            )
+
         assert (
             not index_name or (
                 table_info.schema.index_def_map and
