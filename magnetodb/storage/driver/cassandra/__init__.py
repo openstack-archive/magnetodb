@@ -8,6 +8,3 @@ SYSTEM_COLUMN_EXTRA_ATTR_TYPES = 'extra_attr_types'
 SYSTEM_COLUMN_ATTR_EXIST = 'attr_exist'
 
 USER_PREFIX = 'user_'
-
-
-

@@ -15,7 +15,6 @@
 import jsonschema
 
 from magnetodb import storage
-from magnetodb.common import exception
 from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
@@ -70,35 +69,35 @@ class PutItemController(object):
 
     def process_request(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
+        req.context.tenant = project_id
 
-        # parse expected item conditions
-        expected_item_conditions = (
-            parser.Parser.parse_expected_attribute_conditions(
-                body.get(parser.Props.EXPECTED, {})
+        try:
+            # parse expected item conditions
+            expected_item_conditions = (
+                parser.Parser.parse_expected_attribute_conditions(
+                    body.get(parser.Props.EXPECTED, {})
+                )
             )
-        )
 
-        # parse item
-        item_attributes = parser.Parser.parse_item_attributes(
-            body[parser.Props.ITEM]
-        )
+            # parse item
+            item_attributes = parser.Parser.parse_item_attributes(
+                body[parser.Props.ITEM]
+            )
 
-        # parse return_values param
-        return_values = body.get(
-            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
-        )
+            # parse return_values param
+            return_values = body.get(
+                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+            )
+        except Exception:
+            jsonschema.validate(body, self.schema)
+            raise
 
         # put item
-        req.context.tenant = project_id
-        result = storage.put_item(
+        storage.put_item(
             req.context,
             models.PutItemRequest(table_name, item_attributes),
             if_not_exist=False,
             expected_condition_map=expected_item_conditions)
-
-        if not result:
-            raise exception.InternalFailure()
 
         # format response
         response = {}
