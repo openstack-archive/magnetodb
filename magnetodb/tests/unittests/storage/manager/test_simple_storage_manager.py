@@ -17,8 +17,10 @@ import mock
 import unittest
 
 from concurrent.futures import Future
+from magnetodb.common import exception
 
 from magnetodb.storage import models
+from magnetodb.storage.driver.cassandra import cassandra_impl
 from magnetodb.storage.manager.simple_impl import SimpleStorageManager
 
 
@@ -74,3 +76,37 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                          mock_delete_item.call_args_list)
 
         self.assertEqual(unprocessed_items, [])
+
+    @mock.patch('magnetodb.storage.impl.cassandra_impl.'
+                'CassandraStorageImpl._get_table_info')
+    @mock.patch('magnetodb.common.cassandra.cluster.Cluster.connect')
+    def test_table_not_exist_exception_in_get_item(self,
+                                                   mock_connect,
+                                                   mock_table_info):
+        mock_table_info.return_value = None
+        conn = cassandra_impl.CassandraStorageImpl()
+        context = mock.Mock(tenant='fake_tenant')
+
+        with self.assertRaises(
+                exception.TableNotExistsException) as raises_cm:
+            conn.select_item(context, "nonexistenttable")
+
+        ex = raises_cm.exception
+        self.assertIn("Table 'nonexistenttable' does not exists", ex.message)
+
+    @mock.patch('magnetodb.storage.impl.cassandra_impl.'
+                'CassandraStorageImpl._get_table_info')
+    @mock.patch('magnetodb.common.cassandra.cluster.Cluster.connect')
+    def test_table_not_exist_exception_in_put_item(self,
+                                                   mock_connect,
+                                                   mock_table_info):
+        mock_table_info.return_value = None
+        conn = cassandra_impl.CassandraStorageImpl()
+        context = mock.Mock(tenant='fake_tenant')
+
+        with self.assertRaises(exception.TableNotExistsException) as raises_cm:
+            conn.put_item(context,
+                          models.PutItemRequest("nonexistenttable", {}))
+
+        ex = raises_cm.exception
+        self.assertIn("Table 'nonexistenttable' does not exists", ex.message)
