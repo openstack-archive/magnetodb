@@ -241,12 +241,14 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             "author": {"S": "Bob"}
         }
         with self.assertRaises(exceptions.NotFound) as raises_cm:
-            self.client.put_item("nonexistent_table", item)
+            self.client.put_item("nonexistenttable", item)
 
         exception = raises_cm.exception
-        self.assertEqual(exception.body["message"],
-                         "Requested resource not found")
-        self.assertIn("ResourceNotFoundException", exception.body["__type"])
+        self.assertIn("Not Found", exception._error_string)
+        self.assertIn("The resource could not be found.",
+                      exception._error_string)
+        self.assertIn("Table 'nonexistenttable' does not exists",
+                      exception._error_string)
 
     @attr(type='negative')
     def test_put_item_in_table_with_wrong_name(self):
