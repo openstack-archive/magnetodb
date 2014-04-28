@@ -14,6 +14,7 @@ import jsonschema
 from magnetodb import storage
 from magnetodb.storage import models
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api.openstack.v1 import utils
 
 
 class DeleteItemController(object):
@@ -64,24 +65,30 @@ class DeleteItemController(object):
     }
 
     def process_request(self, req, body, project_id, table_name):
-        jsonschema.validate(body, self.schema)
+        utils.check_project_id(req.context, project_id)
+        req.context.tenant = project_id
 
-        # parse expected item conditions
-        expected_item_conditions = (
-            parser.Parser.parse_expected_attribute_conditions(
-                body.get(parser.Props.EXPECTED, {})
+        try:
+            # parse expected item conditions
+            expected_item_conditions = (
+                parser.Parser.parse_expected_attribute_conditions(
+                    body.get(parser.Props.EXPECTED, {})
+                )
             )
-        )
 
-        # parse key_attributes
-        key_attributes = parser.Parser.parse_item_attributes(
-            body.get(parser.Props.KEY, {})
-        )
+            # parse key_attributes
+            key_attributes = parser.Parser.parse_item_attributes(
+                body[parser.Props.KEY]
+            )
 
-        # parse return_values param
-        return_values = body.get(
-            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
-        )
+            # parse return_values param
+            return_values = body.get(
+                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+            )
+        except Exception:
+            jsonschema.validate(body, self.schema)
+            raise
+
 
         # delete item
         req.context.tenant = project_id
