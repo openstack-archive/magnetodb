@@ -17,72 +17,12 @@ import json
 
 from tempest.common import rest_client
 from tempest import config
-from tempest import exceptions
 
 
 CONF = config.TempestConfig()
 
 
 class MagnetoDBClientJSON(rest_client.RestClient):
-
-    def keystone_auth(self, user, password, auth_url, service, tenant_name):
-        """
-        Provides authentication via Keystone using v2 identity API.
-        """
-
-        # Normalize URI to ensure /tokens is in it.
-        if 'tokens' not in auth_url:
-            auth_url = auth_url.rstrip('/') + '/tokens'
-
-        creds = {
-            'auth': {
-                'passwordCredentials': {
-                    'username': user,
-                    'password': password,
-                },
-                'tenantName': tenant_name,
-            }
-        }
-
-        headers = {'Content-Type': 'application/json'}
-        body = json.dumps(creds)
-        self._log_request('POST', auth_url, headers, body)
-        resp, resp_body = self.http_obj.request(auth_url, 'POST',
-                                                headers=headers, body=body)
-        self._log_response(resp, resp_body)
-
-        if resp.status == 200:
-            try:
-                auth_data = json.loads(resp_body)['access']
-                token = auth_data['token']['id']
-                tenant_id = auth_data['token']['tenant']['id']
-            except Exception as e:
-                print("Failed to obtain token for user: %s" % e)
-                raise
-
-            mgmt_url = None
-            for ep in auth_data['serviceCatalog']:
-                if ep["type"] == service:
-                    for _ep in ep['endpoints']:
-                        if service in self.region and \
-                                _ep['region'] == self.region[service]:
-                            mgmt_url = _ep[self.endpoint_url]
-                    if not mgmt_url:
-                        mgmt_url = ep['endpoints'][0][self.endpoint_url]
-                    break
-
-            if mgmt_url is None:
-                raise exceptions.EndpointNotFound(service)
-
-            return token, '/'.join((mgmt_url, tenant_id))
-
-        elif resp.status == 401:
-            raise exceptions.AuthenticationFailure(user=user,
-                                                   password=password,
-                                                   tenant=tenant_name)
-        raise exceptions.IdentityError('Unexpected status code {0}'.format(
-            resp.status))
-
     def create_table(self, attr_def, table_name, schema, lsi_indexes=None):
         post_body = {'attribute_definitions': attr_def,
                      'table_name': table_name,

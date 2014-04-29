@@ -17,6 +17,7 @@
 
 import ConfigParser
 import contextlib
+import json
 import types
 import urlparse
 
@@ -36,6 +37,8 @@ class BotoClientBase(object):
     def __init__(self, config,
                  username=None, password=None,
                  auth_url=None, tenant_name=None,
+                 user_domain_name='Default',
+                 project_domain_name='Default',
                  *args, **kwargs):
 
         self.connection_timeout = str(config.boto.http_socket_timeout)
@@ -44,7 +47,10 @@ class BotoClientBase(object):
         self.ks_cred = {"username": username,
                         "password": password,
                         "auth_url": auth_url,
-                        "tenant_name": tenant_name}
+                        "tenant_name": tenant_name,
+                        "user_domain_name": user_domain_name,
+                        "project_domain_name": project_domain_name}
+        self.auth_version = 'v3'
 
     def _keystone_aws_get(self):
         import keystoneclient.v2_0.client
@@ -62,6 +68,30 @@ class BotoClientBase(object):
         if not all((ec2_cred, ec2_cred.access, ec2_cred.secret)):
             raise exceptions.NotFound("Unable to get access and secret keys")
         return ec2_cred
+
+    def _keystone_aws_get_v3(self):
+        import keystoneclient.v3.client
+
+        keystone = keystoneclient.v3.client.Client(**self.ks_cred)
+        ec2_cred_list = keystone.credentials.list(
+            type="ec2", user_id=keystone.auth_user_id,
+            project_id=keystone.auth_tenant_id)
+
+        ec2_cred = None
+        for cred in ec2_cred_list:
+            if (cred.project_id == keystone.auth_tenant_id and
+                    cred.user_id == keystone.auth_user_id):
+                ec2_cred = cred
+                break
+            else:
+                ec2_cred_list = keystone.credentials.create()
+
+        cred = json.loads(ec2_cred.blob)
+        access, secret = cred["access"], cred["secret"]
+
+        if not all((access, secret)):
+            raise exceptions.NotFound("Unable to get access and secret keys")
+        return (access, secret)
 
     def _config_boto_timeout(self, timeout, retries):
         try:
@@ -91,9 +121,16 @@ class BotoClientBase(object):
         if not all((self.connection_data["aws_access_key_id"],
                    self.connection_data["aws_secret_access_key"])):
             if all(self.ks_cred.itervalues()):
-                ec2cred = self._keystone_aws_get()
-                self.connection_data["aws_access_key_id"] = ec2cred.access
-                self.connection_data["aws_secret_access_key"] = ec2cred.secret
+                if self.auth_version == 'v2':
+                    ec2cred = self._keystone_aws_get()
+                    access, secret = ec2cred.access, ec2cred.secret
+                elif self.auth_version == 'v3':
+                    access, secret = self._keystone_aws_get_v3()
+                else:
+                    raise exceptions.InvalidConfiguration(
+                        "Wrong identity service version")
+                self.connection_data["aws_access_key_id"] = access
+                self.connection_data["aws_secret_access_key"] = secret
             else:
                 raise exceptions.InvalidConfiguration(
                     "Unable to get access and secret keys")
