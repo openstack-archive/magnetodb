@@ -122,6 +122,12 @@ class EC2Token(wsgi.Middleware):
                     last_failure = e
             raise last_failure or exception.AccessDeniedError()
 
+    def _is_v2_token(self, token_body):
+        return 'access' in token_body
+
+    def _is_v3_token(self, token_body):
+        return 'token' in token_body
+
     def _authorize(self, req, auth_uri):
         # Read request signature and access id.
         # If we find X-Auth-User in the headers we ignore a key error
@@ -181,9 +187,20 @@ class EC2Token(wsgi.Middleware):
                                  headers=headers)
         result = response.json()
         try:
-            token_id = result['access']['token']['id']
-            tenant = result['access']['token']['tenant']['name']
-            tenant_id = result['access']['token']['tenant']['id']
+            if self._is_v2_token(result):
+                token_id = result['access']['token']['id']
+                tenant = result['access']['token']['tenant']['name']
+                tenant_id = result['access']['token']['tenant']['id']
+                metadata = result['access'].get('metadata', {})
+                roles = metadata.get('roles', [])
+            elif self._is_v3_token(result):
+                token_id = response.headers['X-Subject-Token']
+                tenant = result['token']['project']['name']
+                tenant_id = result['token']['project']['id']
+                metadata = result['token']['roles']
+                roles = [r['name'] for r in roles]
+            else:
+                raise exception.InvalidClientTokenIdError()
             logger.info(_("AWS authentication successful."))
         except (AttributeError, KeyError):
             logger.info(_("AWS authentication failure."))
@@ -210,8 +227,6 @@ class EC2Token(wsgi.Middleware):
         req.headers['X-Tenant-Id'] = tenant_id
         req.headers['X-Auth-URL'] = auth_uri
 
-        metadata = result['access'].get('metadata', {})
-        roles = metadata.get('roles', [])
         req.headers['X-Roles'] = ','.join(roles)
 
         return self.application

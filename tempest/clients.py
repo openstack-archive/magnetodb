@@ -45,7 +45,8 @@ class Manager(object):
 
         # If no creds are provided, we fall back on the defaults
         # in the config file for the Compute API.
-        self.username = username or self.config.identity.username
+        # Using admin_username to create ec2 creds.
+        self.username = username or self.config.identity.admin_username
         self.password = password or self.config.identity.password
         self.tenant_name = tenant_name or self.config.identity.tenant_name
 
@@ -56,10 +57,11 @@ class Manager(object):
                    {'u': username, 'p': password, 't': tenant_name})
             raise exceptions.InvalidConfiguration(msg)
 
-        self.auth_url = self.config.identity.uri
+        self.auth_url = self.config.identity.uri_v3
+        self.auth_version = 'v3'
 
         client_args = (self.config, self.username, self.password,
-                       self.auth_url, self.tenant_name)
+                       self.auth_url, self.tenant_name, self.auth_version)
 
         # common clients
         self.dynamodb_client = botoclients.APIClientDynamoDB(*client_args)
