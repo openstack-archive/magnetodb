@@ -16,6 +16,7 @@
 
 DEST_DIR=/opt/stack/new
 LOGS_DIR=/opt/stack/logs
+LOG_BASE_URL=${LOG_PATH}
 
 # Install packages from test-requirements.txt
 
@@ -49,8 +50,17 @@ if [ -n "$FILES" ]; then
     for i in $FILES; do
         echo $i
         sudo python /usr/local/jenkins/slave_scripts/subunit2html.py $i $i.html
+        echo $LOG_BASE_URL/$i.html >> $WORKSPACE/mailreport
     done
 fi
+if [ $RETVAL -eq 0 ]; then
+    echo "Finished: SUCCESS" >> $WORKSPACE/mailreport
+else
+    echo "Finished: FAILURE" >> $WORKSPACE/mailreport
+
+if [ -f $WORKSPACE/mailreport ]; then
+    sendmail achuprin@mirantis.com < $WORKSPACE/mailreport
+
 
 # Preparing artifacts for publishing
 
