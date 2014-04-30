@@ -150,10 +150,14 @@ class APIClientDynamoDB(BotoClientBase):
 
     def __init__(self, config, *args, **kwargs):
         super(APIClientDynamoDB, self).__init__(config, *args, **kwargs)
-        aws_access = config.boto.aws_access
-        aws_secret = config.boto.aws_secret
+        if config.magnetodb.backdoor_endpoint:
+            aws_access, aws_secret = 'foo', 'bar'
+        else:
+            aws_access = config.boto.aws_access
+            aws_secret = config.boto.aws_secret
         region = config.boto.region
-        purl = urlparse.urlparse(config.boto.magnetodb_url)
+        url = config.magnetodb.backdoor_endpoint or config.boto.magnetodb_url
+        purl = urlparse.urlparse(url)
         port = purl.port
         if port is None:
             if purl.scheme is not "https":

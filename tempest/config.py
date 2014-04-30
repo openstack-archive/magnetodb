@@ -634,6 +634,9 @@ MagnetoDBGroup = [
     cfg.StrOpt('service_type',
                default="kv-storage",
                help="The name of the MagnetoDB service type"),
+    cfg.StrOpt('backdoor_endpoint',
+               default=None,
+               help="MagnetoDB endpoint for testing without Keystone"),
 ]
 
 

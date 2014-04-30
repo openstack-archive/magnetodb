@@ -23,6 +23,15 @@ CONF = config.TempestConfig()
 
 
 class MagnetoDBClientJSON(rest_client.RestClient):
+    def __init__(self, config, user, password, auth_url, tenant_name=None,
+                 auth_version='v2'):
+        super(MagnetoDBClientJSON, self).__init__(config, user, password,
+                                                  auth_url, tenant_name,
+                                                  auth_version)
+        if config.magnetodb.backdoor_endpoint:
+            self.token = 'spam'
+            self.base_url = config.magnetodb.backdoor_endpoint
+
     def create_table(self, attr_def, table_name, schema, lsi_indexes=None):
         post_body = {'attribute_definitions': attr_def,
                      'table_name': table_name,
