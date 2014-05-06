@@ -675,24 +675,24 @@ class Parser():
                 (dynamodb_attr_type, dynamodb_attr_value) = (
                     dynamodb_condition_value.items()[0]
                 )
-                expected_attribute_conditions[attr_name] = (
+                expected_attribute_conditions[attr_name] = [
                     models.ExpectedCondition.eq(
                         cls.decode_attr_value(
                             dynamodb_attr_type, dynamodb_attr_value
                         )
                     )
-                )
+                ]
 
             elif Props.EXISTS in dynamodb_condition:
                 dynamodb_condition_value = dynamodb_condition[Props.EXISTS]
 
                 assert isinstance(dynamodb_condition_value, bool)
 
-                expected_attribute_conditions[attr_name] = (
+                expected_attribute_conditions[attr_name] = [
                     models.ExpectedCondition.exists()
                     if dynamodb_condition_value else
                     models.ExpectedCondition.not_exists()
-                )
+                ]
 
         return expected_attribute_conditions
 

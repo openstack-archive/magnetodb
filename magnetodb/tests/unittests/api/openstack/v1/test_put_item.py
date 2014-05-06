@@ -76,6 +76,10 @@ class PutitemTestCase(unittest.TestCase):
         response = conn.getresponse()
 
         self.assertTrue(mock_put_item.called)
+        expected_condition_map = mock_put_item.call_args[1][
+            'expected_condition_map']
+        self.assertTrue(isinstance(expected_condition_map['ForumName'], list))
+        self.assertTrue(isinstance(expected_condition_map['Subject'], list))
 
         json_response = response.read()
         response_payload = json.loads(json_response)
@@ -127,6 +131,10 @@ class PutitemTestCase(unittest.TestCase):
         response = conn.getresponse()
 
         self.assertTrue(mock_put_item.called)
+        expected_condition_map = mock_put_item.call_args[1][
+            'expected_condition_map']
+        self.assertTrue(isinstance(expected_condition_map['ForumName'], list))
+        self.assertTrue(isinstance(expected_condition_map['Subject'], list))
 
         json_response = response.read()
         response_payload = json.loads(json_response)
