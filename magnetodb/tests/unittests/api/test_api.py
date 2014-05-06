@@ -1,4 +1,4 @@
-# Copyright 2013 Mirantis Inc.
+# Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,13 +14,10 @@
 #    under the License.
 
 import httplib
-import json
 import unittest
 
-from magnetodb import storage
-from magnetodb.common.exception import TableNotExistsException
 from magnetodb.tests.fake import magnetodb_api_fake
-from mox import Mox, IgnoreArg
+import mock
 
 
 class APITest(unittest.TestCase):
@@ -36,43 +33,28 @@ class APITest(unittest.TestCase):
     def tearDownClass(cls):
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
-    def setUp(self):
-        self.storage_mocker = Mox()
+    @mock.patch(
+        "magnetodb.common.middleware.fault.FaultWrapper.process_request"
+    )
+    def test_connection_header(self, magnetodb_app_mock):
+        magnetodb_app_mock.return_value = "{}"
 
-    def tearDown(self):
-        self.storage_mocker.UnsetStubs()
-
-    def test_describe_unexisting_table(self):
-        self.storage_mocker.StubOutWithMock(storage, 'describe_table')
-
-        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(
-            TableNotExistsException
-        )
-
-        self.storage_mocker.ReplayAll()
-
-        headers = {'Host': 'localhost:8080',
-                   'Content-Type': 'application/x-amz-json-1.0',
-                   'X-Amz-Target': 'DynamoDB_20120810.DescribeTable'}
+        headers = {}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        conn.request("POST", "/", body='{"TableName": "test_table1"}',
-                     headers=headers)
+        conn.request("POST", "/", body='{}', headers=headers)
 
         response = conn.getresponse()
 
-        json_response = response.read()
-        response_model = json.loads(json_response)
+        self.assertEqual(response.getheader('Connection'), None)
 
-        self.assertEqual(
-            response_model['__type'],
-            'com.amazonaws.dynamodb.v20111205#ResourceNotFoundException')
+        headers = {"Connection": "close"}
 
-        self.assertEqual(
-            response_model['message'],
-            'The resource which is being requested does not exist.')
+        conn = httplib.HTTPConnection('localhost:8080')
+        conn.request("POST", "/", body='{}', headers=headers)
 
-        self.assertEqual(400, response.status)
+        response = conn.getresponse()
 
-        self.assertEqual(
-            response.getheader('Content-Type'), 'application/x-amz-json-1.0')
+        self.assertEqual(response.getheader('Connection'), 'close')
+
+        self.assertEqual(magnetodb_app_mock.call_count, 2)
