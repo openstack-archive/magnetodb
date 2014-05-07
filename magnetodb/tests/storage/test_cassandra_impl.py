@@ -18,7 +18,7 @@ import unittest
 import uuid
 import binascii
 
-from magnetodb.common.cassandra import cluster
+from cassandra import cluster
 from cassandra import query
 from magnetodb.common.cassandra.cluster_handler import ClusterHandler
 from magnetodb.storage import models

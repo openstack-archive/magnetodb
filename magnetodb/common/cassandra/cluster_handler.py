@@ -15,7 +15,7 @@
 import logging
 from threading import BoundedSemaphore
 import time
-from magnetodb.common.cassandra import cluster as cassandra_cluster
+from cassandra import cluster as cassandra_cluster
 from magnetodb.common import exception
 from cassandra import query as cassandra_query
 
@@ -55,11 +55,14 @@ class ClusterHandler(object):
             LOG.exception(msg)
             raise ex
 
-    def wait_for_table_status(self, keyspace_name, table_name, expected_exists):
+    def wait_for_table_status(self, keyspace_name, table_name,
+                              expected_exists):
         LOG.debug("Start waiting for table status changing...")
 
         while True:
-            keyspace_meta = self.__cluster.metadata.keyspaces.get(keyspace_name)
+            keyspace_meta = self.__cluster.metadata.keyspaces.get(
+                keyspace_name
+            )
 
             if keyspace_meta is None:
                 raise exception.BackendInteractionException(
@@ -68,6 +71,7 @@ class ClusterHandler(object):
 
             table_meta = keyspace_meta.tables.get(table_name)
             if expected_exists == (table_meta is not None):
+                self.__cluster.control_connection.wait_for_schema_agreement()
                 break
 
             LOG.debug("Table status isn't correct"
