@@ -56,6 +56,10 @@ class TableAlreadyExistsException(BackendInteractionException):
     pass
 
 
+class ConditionalCheckFailedException(BackendInteractionException):
+    pass
+
+
 # Common Errors
 class InternalFailure(MagnetoError):
     pass
