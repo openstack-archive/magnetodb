@@ -15,7 +15,7 @@
 import logging
 from threading import BoundedSemaphore
 import time
-from magnetodb.common.cassandra import cluster as cassandra_cluster
+from cassandra import cluster as cassandra_cluster
 from magnetodb.common import exception
 from cassandra import query as cassandra_query
 
@@ -68,6 +68,7 @@ class ClusterHandler(object):
 
             table_meta = keyspace_meta.tables.get(table_name)
             if expected_exists == (table_meta is not None):
+                self.__cluster.control_connection.wait_for_schema_agreement()
                 break
 
             LOG.debug("Table status isn't correct"
