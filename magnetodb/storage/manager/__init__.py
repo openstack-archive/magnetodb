@@ -29,9 +29,36 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
+    def create_table_async(self, context, table_name, table_schema):
+        """
+        Creates table asynchronously
+
+        @param context: current request context
+        @param table_name: String, name of the table to create
+        @param table_schema: TableSchema instance which define table to create
+
+        @return TableMeta instance with metadata of created table
+
+        @raise BackendInteractionException
+        """
+        raise NotImplementedError()
+
     def delete_table(self, context, table_name):
         """
         Creates table
+
+        @param context: current request context
+        @param table_name: String, name of table to delete
+
+        @return TableMeta instance with metadata of created table
+
+        @raise BackendInteractionException
+        """
+        raise NotImplementedError()
+
+    def delete_table_async(self, context, table_name):
+        """
+        Delete table asynchronously
 
         @param context: current request context
         @param table_name: String, name of table to delete
