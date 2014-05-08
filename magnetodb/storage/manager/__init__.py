@@ -17,7 +17,7 @@
 class StorageManager(object):
     def create_table(self, context, table_name, table_schema):
         """
-        Creates table
+        Create table
 
         @param context: current request context
         @param table_name: String, name of the table to create
@@ -31,7 +31,7 @@ class StorageManager(object):
 
     def delete_table(self, context, table_name):
         """
-        Creates table
+        Delete table
 
         @param context: current request context
         @param table_name: String, name of table to delete
@@ -44,7 +44,7 @@ class StorageManager(object):
 
     def describe_table(self, context, table_name):
         """
-        Creates table
+        Describe table
 
         @param context: current request context
         @param table_name: String, name of table to describes
