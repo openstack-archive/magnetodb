@@ -25,8 +25,7 @@ class DeleteTableController(object):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        table_schema = storage.describe_table(req.context, table_name)
-        storage.delete_table(req.context, table_name)
+        table_schema = storage.delete_table(req.context, table_name)
 
         url = req.path_url
         bookmark = req.path_url
@@ -54,7 +53,7 @@ class DeleteTableController(object):
                 parser.Props.TABLE_NAME: table_name,
 
                 parser.Props.TABLE_STATUS: (
-                    parser.Values.TABLE_STATUS_ACTIVE),
+                    parser.Parser.format_table_status(table_schema.status)),
                 parser.Props.TABLE_SIZE_BYTES: 0,
 
                 parser.Props.LINKS: [

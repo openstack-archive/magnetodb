@@ -35,7 +35,8 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         table_name = self.random_name(255)
         self._create_test_table(self.smoke_attrs + self.index_attrs,
                                 table_name,
-                                self.smoke_schema)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.build_smoke_item('forum1', 'subject2',
                                      last_posted_by='John')
         key = {self.hashkey: item[self.hashkey],

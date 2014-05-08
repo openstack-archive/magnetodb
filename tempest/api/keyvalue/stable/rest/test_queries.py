@@ -30,8 +30,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_mandatory(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
 
@@ -53,8 +53,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_valid_name(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
 
@@ -78,8 +78,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_attributes_to_get_not_specified(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
 
@@ -104,8 +104,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self._create_test_table(self.smoke_attrs + self.index_attrs,
                                 self.tname,
                                 self.smoke_schema,
-                                self.smoke_lsi)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_lsi,
+                                wait_for_active=True)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
 
@@ -141,8 +141,10 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     @test.attr(type=['Q-10_1'])
     def test_query_min_table_name(self):
         tname = 'a01'
-        self._create_test_table(self.smoke_attrs, tname, self.smoke_schema)
-        self.wait_for_table_active(tname)
+        self._create_test_table(self.smoke_attrs,
+                                tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
 
@@ -165,8 +167,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_consistent_read_false(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
         key_conditions = {
@@ -190,8 +192,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_consistent_read_not_specified(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
         key_conditions = {
@@ -214,8 +216,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_consistent_read_true(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.put_smoke_item(self.tname, 'forum1', 'subject2',
                                    'message text', 'John', '10')
         key_conditions = {
@@ -238,8 +240,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_attributes_to_get_hash_and_range(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         attributes_to_get = ['forum', 'subject']
@@ -263,8 +265,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_attributes_to_get_more_than_in_attr_def(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         attributes_to_get = ['forum', 'subject', 'last_posted_by', 'message',
@@ -289,8 +291,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_attributes_to_get_select_specific(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         attributes_to_get = ['last_posted_by']
@@ -315,8 +317,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_attributes_to_get_totally_non_existent_fields(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         attributes_to_get = ['incorrect1', 'incorrect2', 'incorrect3']
@@ -340,8 +342,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_attributes_to_get_partially_incorrect(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         attributes_to_get = ['forum', 'subject', 'incorrect3']
@@ -365,8 +367,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_exclusive_start_key_not_specified(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         items = self.populate_smoke_table(self.tname, 1, 3)
 
         key_conditions = {
@@ -389,8 +391,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_limit_10_items_5(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         items = self.populate_smoke_table(self.tname, 1, 5)
 
         key_conditions = {
@@ -415,8 +417,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_scan_index_true(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         items = self.populate_smoke_table(self.tname, 1, 5)
 
         key_conditions = {
@@ -441,8 +443,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_scan_index_false(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         items = self.populate_smoke_table(self.tname, 1, 5)
 
         key_conditions = {
@@ -468,8 +470,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_limit_5_items_3(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         items = self.populate_smoke_table(self.tname, 1, 3)
 
         key_conditions = {
@@ -494,8 +496,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_limit_5_items_11(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         items = self.populate_smoke_table(self.tname, 1, 11)
 
         key_conditions = {
@@ -529,8 +531,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        self._create_test_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
+        self._create_test_table(attrs, self.tname, schema,
+                                wait_for_active=True)
         item = {
             "forum": {"N": '1'},
             "subject": {"N": '1'}
@@ -557,8 +559,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        self._create_test_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
+        self._create_test_table(attrs, self.tname, schema,
+                                wait_for_active=True)
         item = {
             "forum": {"S": '1'},
             "subject": {"S": '1'}
@@ -585,8 +587,10 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        self._create_test_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
+        self._create_test_table(attrs,
+                                self.tname,
+                                schema,
+                                wait_for_active=True)
         value = base64.b64encode('\xFF')
         item = {
             "forum": {"B": value},
@@ -614,8 +618,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        self._create_test_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
+        self._create_test_table(attrs, self.tname, schema,
+                                wait_for_active=True)
         item = {
             "forum": {"S": '1'},
             "subject": {"S": '1'}
@@ -642,8 +646,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        self._create_test_table(attrs, self.tname, schema)
-        self.wait_for_table_active(self.tname)
+        self._create_test_table(attrs, self.tname, schema,
+                                wait_for_active=True)
         item = {
             "forum": {"N": '1'},
             "subject": {attr_type: value}
@@ -874,8 +878,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self._create_test_table(self.smoke_attrs + self.index_attrs,
                                 self.tname,
                                 self.smoke_schema,
-                                self.smoke_lsi)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_lsi,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         index_name = 'last_posted_by_index'
@@ -900,8 +904,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self._create_test_table(self.smoke_attrs + self.index_attrs,
                                 self.tname,
                                 self.smoke_schema,
-                                self.smoke_lsi)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_lsi,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         key_conditions = {
@@ -923,8 +927,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_select_all(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         key_conditions = {
@@ -948,8 +952,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def test_query_select_count(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         key_conditions = {

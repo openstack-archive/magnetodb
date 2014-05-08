@@ -32,7 +32,7 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-exists-false-2-key')
     def test_delete_item_conditional_exists(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'messageId', 'attribute_type': 'S'},
              {'attribute_name': 'subject', 'attribute_type': 'S'},
@@ -40,8 +40,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
              {'attribute_name': 'category', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'},
-             {'attribute_name': 'messageId', 'key_type': 'RANGE'}])
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
+             {'attribute_name': 'messageId', 'key_type': 'RANGE'}],
+            wait_for_active=True)
 
         item = {
             "message": {"S": 'message_text'},
@@ -74,7 +74,7 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
     @attr(type='delIt-exists-value-2-key')
     def test_delete_item_conditional_value(self):
         self.table_name = rand_name().replace('-', '')
-        self.client.create_table(
+        self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'messageId', 'attribute_type': 'S'},
              {'attribute_name': 'subject', 'attribute_type': 'S'},
@@ -82,8 +82,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
              {'attribute_name': 'category', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'},
-             {'attribute_name': 'messageId', 'key_type': 'RANGE'}])
-        self.addResourceCleanUp(self.client.delete_table, self.table_name)
+             {'attribute_name': 'messageId', 'key_type': 'RANGE'}],
+            wait_for_active=True)
 
         item = {
             "message": {"S": 'message_text'},

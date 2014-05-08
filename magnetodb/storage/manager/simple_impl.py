@@ -55,8 +55,12 @@ class SimpleStorageManager(StorageManager):
 
         self._table_info_repo.delete(context, table_name)
 
+        return models.TableMeta(table_info.schema, table_info.status)
+
     def describe_table(self, context, table_name):
-        table_info = self._table_info_repo.get(context, table_name)
+        table_info = self._table_info_repo.get(context,
+                                               table_name,
+                                               ['status'])
         return models.TableMeta(table_info.schema, table_info.status)
 
     def list_tables(self, context, exclusive_start_table_name=None,

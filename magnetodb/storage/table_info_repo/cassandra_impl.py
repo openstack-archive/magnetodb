@@ -56,9 +56,11 @@ class CassandraTableInfoRepository(object):
         self.__table_info_cache = {}
         self.__table_cache_lock = Lock()
 
-    def get(self, context, table_name):
+    def get(self, context, table_name, refresh_field_list=None):
         table_info = self._get_table_info_from_cache(context, table_name)
         if table_info:
+            if refresh_field_list:
+                self.refresh(context, table_info, refresh_field_list)
             return table_info
 
         with self.__table_cache_lock:
