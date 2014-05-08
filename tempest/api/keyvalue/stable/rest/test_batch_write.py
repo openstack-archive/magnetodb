@@ -28,8 +28,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_mandatory(self):
         self._create_test_table(self.build_x_attrs('S'),
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.build_x_item('S', 'forum1', 'subject2',
                                  ('message', 'S', 'message text'))
         request_body = {'request_items': {self.tname: [{'put_request':
@@ -52,8 +52,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_all_params(self):
         self._create_test_table(self.build_x_attrs('S'),
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.build_x_item('S', 'forum1', 'subject2',
                                  ('message', 'S', 'message text'))
         request_body = {'request_items': {self.tname: [{'put_request':
@@ -76,8 +76,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_put_n(self):
         self._create_test_table(self.build_x_attrs('N'),
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.build_x_item('N', '1000', '2000', ('message', 'N', '1001'))
         request_body = {'request_items': {self.tname: [{'put_request':
                                                         {'item': item}}]}}
@@ -99,8 +99,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_put_n_ns(self):
         self._create_test_table(self.build_x_attrs('N'),
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.build_x_item('N', '1000', '2000',
                                  ('message', 'NS', ['1001', '1002']))
         request_body = {'request_items': {self.tname: [{'put_request':
@@ -123,8 +123,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_delete_s(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         key_conditions = {
@@ -157,8 +157,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_delete(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         key_conditions = {
@@ -191,8 +191,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_put_delete(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         self.put_smoke_item(self.tname, 'forum1', 'subject2',
                             'message text', 'John', '10')
         key_conditions = {
@@ -233,8 +233,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         for tname in tnames:
             self._create_test_table(self.smoke_attrs,
                                     tname,
-                                    self.smoke_schema)
-            self.wait_for_table_active(tname)
+                                    self.smoke_schema,
+                                    wait_for_active=True)
         item = self.build_smoke_item('forum1', 'subject3',
                                      'message text', 'John', '10')
         request_body = {'request_items': dict(
@@ -264,8 +264,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_put_s(self):
         self._create_test_table(self.build_x_attrs('S'),
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.build_x_item('S', 'forum1', 'subject2',
                                  ('message', 'S', 'message text'))
         request_body = {'request_items': {self.tname: [{'put_request':
@@ -288,8 +288,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
     def test_batch_write_correct_tname_and_put_request(self):
         self._create_test_table(self.build_x_attrs('S'),
                                 self.tname,
-                                self.smoke_schema)
-        self.wait_for_table_active(self.tname)
+                                self.smoke_schema,
+                                wait_for_active=True)
         item = self.build_x_item('S', 'forum1', 'subject2')
         request_body = {'request_items': {self.tname: [{'put_request':
                                                         {'item': item}}]}}

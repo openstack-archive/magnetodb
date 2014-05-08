@@ -37,9 +37,9 @@ class DeleteTableTest(test_base_testcase.APITestCase):
 
         table_meta = models.TableMeta(
             models.TableSchema(attr_map, key_attrs, index_map),
-            models.TableMeta.TABLE_STATUS_ACTIVE)
+            models.TableMeta.TABLE_STATUS_DELETING)
 
-        mock_describe_table.return_value = table_meta
+        mock_delete_table.return_value = table_meta
 
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
@@ -75,7 +75,7 @@ class DeleteTableTest(test_base_testcase.APITestCase):
             ],
             'table_name': 'Thread',
             'table_size_bytes': 0,
-            'table_status': 'ACTIVE',
+            'table_status': 'DELETING',
             'links': [
                 {'href': table_url, 'rel': 'self'},
                 {'href': table_url, 'rel': 'bookmark'}
