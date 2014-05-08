@@ -35,6 +35,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.wait_for_table_active(self.table_name)
         item = {
             "message": {"S": 'message_text'}
         }
@@ -53,6 +54,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
              {'attribute_name': 'author', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.wait_for_table_active(self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "author": {"S": "Bob"}
@@ -71,6 +73,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{"attribute_name": "message", "attribute_type": "N"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.wait_for_table_active(self.table_name)
         item = {
             "message": {"N": "1"},
             "author": {"N": "2"},
@@ -91,6 +94,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.wait_for_table_active(self.table_name)
         item = {
             "message": {"S": "message"},
             "id": {"NS": ["1", "2"]},
@@ -112,6 +116,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.wait_for_table_active(self.table_name)
         item = {
             "message": {"S": "message"},
             "author": {"SS": ["eeee", "qqqq", "nnnn"]},
@@ -133,6 +138,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        self.wait_for_table_active(self.table_name)
         item = {
             "message": {"S": 'message_text'},
             "authors": {"SS": ["Alice", "Bob"]},
