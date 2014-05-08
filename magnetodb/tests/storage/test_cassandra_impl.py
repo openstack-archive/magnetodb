@@ -17,6 +17,7 @@ import json
 import unittest
 import uuid
 import binascii
+from magnetodb.common import exception
 
 from cassandra import cluster
 from cassandra import query
@@ -568,10 +569,9 @@ class TestCassandraDeleteItem(TestCassandraBase):
             {'id': models.AttributeValue.number(1),
              'range': models.AttributeValue.str('1')})
 
-        result = self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, del_req, expected)
-
-        self.assertFalse(result)
+        self.assertRaises(exception.ConditionalCheckFailedException,
+                          self.CASANDRA_STORAGE_IMPL.delete_item,
+                          self.context, del_req, expected)
 
         all = self._select_all()
 
@@ -624,10 +624,9 @@ class TestCassandraDeleteItem(TestCassandraBase):
             {'id': models.AttributeValue.number(1),
              'range': models.AttributeValue.str('1')})
 
-        result = self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, del_req, expected)
-
-        self.assertFalse(result)
+        self.assertRaises(exception.ConditionalCheckFailedException,
+                          self.CASANDRA_STORAGE_IMPL.delete_item,
+                          self.context, del_req, expected)
 
         all = self._select_all()
 
@@ -2069,8 +2068,6 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEqual([put], result.items)
 
-    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
-                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_str(self):
         self._create_table(indexed=True)
         self._insert_data()
@@ -2104,8 +2101,6 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEqual([put], result.items)
 
-    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
-                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_number(self):
         self._create_table(indexed=True)
         self._insert_data()
@@ -2143,8 +2138,6 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEqual([put], result.items)
 
-    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
-                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_blob(self):
         self._create_table(indexed=True)
         self._insert_data()
@@ -2179,8 +2172,6 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEqual([put], result.items)
 
-    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
-                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_set_str(self):
         self._create_table(indexed=True)
         self._insert_data()
@@ -2216,8 +2207,6 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEqual([put], result.items)
 
-    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
-                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_set_number(self):
         self._create_table(indexed=True)
         self._insert_data()
@@ -2253,8 +2242,6 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEqual([put], result.items)
 
-    @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
-                   "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
     def test_put_item_expected_dynamic_set_blob(self):
         self._create_table(indexed=True)
         self._insert_data()

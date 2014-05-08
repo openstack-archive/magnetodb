@@ -624,8 +624,10 @@ class CassandraStorageDriver(StorageDriver):
                     "Specifying expected_condition_map and"
                     "if_not_exist is not allowed both"
                 )
-            return self._put_item_if_not_exists(table_info,
-                                                put_request.attribute_map)
+            if self._put_item_if_not_exists(table_info,
+                                            put_request.attribute_map):
+                return True
+            raise ConditionalCheckFailedException()
         elif table_info.schema.index_def_map:
             while True:
                 old_indexes = self._select_current_index_values(
@@ -636,8 +638,7 @@ class CassandraStorageDriver(StorageDriver):
                     if self._put_item_if_not_exists(table_info,
                                                     put_request.attribute_map):
                         return True
-                    else:
-                        continue
+                    continue
 
                 query_builder = self._append_update_query(
                     table_info, put_request.attribute_map,
@@ -683,8 +684,7 @@ class CassandraStorageDriver(StorageDriver):
                         # index consistency condition wasn't passed
                         break
                 else:
-                    # expected condition wasn't passed
-                    return False
+                    raise ConditionalCheckFailedException()
         elif expected_condition_map:
             query_builder = self._append_update_query(
                 table_info, put_request.attribute_map,
@@ -693,7 +693,9 @@ class CassandraStorageDriver(StorageDriver):
             result = self.__cluster_handler.execute_query(
                 "".join(query_builder), consistent=True
             )
-            return result[0]['[applied]']
+            if result[0]['[applied]']:
+                return True
+            raise ConditionalCheckFailedException()
         else:
             query_builder = self._append_insert_query(
                 table_info, put_request.attribute_map
@@ -859,6 +861,7 @@ class CassandraStorageDriver(StorageDriver):
                                                           consistent=True)
             if result and not result[0]['[applied]']:
                 raise ConditionalCheckFailedException()
+            return True
 
     @staticmethod
     def _compact_indexed_condition(cond_list):
@@ -1125,7 +1128,7 @@ class CassandraStorageDriver(StorageDriver):
 
                 if old_indexes is None:
                     if expected_condition_map:
-                        return False
+                        raise ConditionalCheckFailedException()
 
                     attribute_map = key_attribute_map.copy()
                     for attr_name, attr_action in (
@@ -1137,8 +1140,7 @@ class CassandraStorageDriver(StorageDriver):
                     if self._put_item_if_not_exists(table_info,
                                                     attribute_map):
                         return True
-                    else:
-                        continue
+                    continue
 
                 attribute_map = key_attribute_map.copy()
                 for attr_name, attr_action in (
@@ -1194,7 +1196,7 @@ class CassandraStorageDriver(StorageDriver):
                         break
                 else:
                     # expected condition wasn't passed
-                    return False
+                    raise ConditionalCheckFailedException()
         else:
             attribute_map = key_attribute_map.copy()
             for attr_name, attr_action in (
@@ -1215,7 +1217,9 @@ class CassandraStorageDriver(StorageDriver):
                 "".join(query_builder), consistent=True
             )
 
-            return (result is None) or result[0]['[applied]']
+            if result and not result[0]['[applied]']:
+                raise ConditionalCheckFailedException()
+            return True
 
     def select_item(self, context, table_name, indexed_condition_map=None,
                     select_type=None, index_name=None, limit=None,

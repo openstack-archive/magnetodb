@@ -15,7 +15,6 @@
 import jsonschema
 
 from magnetodb import storage
-from magnetodb.common import exception
 from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
@@ -91,14 +90,11 @@ class PutItemController(object):
 
         # put item
         req.context.tenant = project_id
-        result = storage.put_item(
+        storage.put_item(
             req.context,
             models.PutItemRequest(table_name, item_attributes),
             if_not_exist=False,
             expected_condition_map=expected_item_conditions)
-
-        if not result:
-            raise exception.InternalFailure()
 
         # format response
         response = {}
