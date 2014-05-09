@@ -54,8 +54,8 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
     @attr(type=['CreT-1'])
     def test_create_table(self):
         tname = rand_name().replace('-', '')
-        headers, body = self.client.create_table(self.smoke_attrs, tname,
-                                                 self.smoke_schema)
+        headers, body = self._create_test_table(self.smoke_attrs, tname,
+                                                self.smoke_schema)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, self.smoke_attrs,
                                     tname, self.smoke_schema)
@@ -63,15 +63,15 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
     @attr(type=['CreT-44'])
     def test_create_table_min_table_name(self):
         tname = 'qqq'
-        headers, body = self.client.create_table(self.smoke_attrs, tname,
-                                                 self.smoke_schema)
+        headers, body = self._create_test_table(self.smoke_attrs, tname,
+                                                self.smoke_schema)
         self.assertEqual(dict, type(body))
         self.assertEqual(tname, body['table_description']['table_name'])
 
     @attr(type=['CreT-2', 'Cret-93', 'Cret-94', 'Cret-95', 'Cret-97'])
     def test_create_table_all_params(self):
         tname = rand_name().replace('-', '')
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + self.index_attrs,
             tname,
             self.smoke_schema,
@@ -95,7 +95,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'f', 'key_type': 'HASH'},
             {'attribute_name': 's', 'key_type': 'RANGE'}
         ]
-        headers, body = self.client.create_table(attr_def, tname, schema)
+        headers, body = self._create_test_table(attr_def, tname, schema)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -111,7 +111,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'f' * 255, 'key_type': 'HASH'},
             {'attribute_name': 's' * 255, 'key_type': 'RANGE'}
         ]
-        headers, body = self.client.create_table(attr_def, tname, schema)
+        headers, body = self._create_test_table(attr_def, tname, schema)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -127,7 +127,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        headers, body = self.client.create_table(attr_def, tname, schema)
+        headers, body = self._create_test_table(attr_def, tname, schema)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -143,7 +143,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        headers, body = self.client.create_table(attr_def, tname, schema)
+        headers, body = self._create_test_table(attr_def, tname, schema)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -159,7 +159,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        headers, body = self.client.create_table(attr_def, tname, schema)
+        headers, body = self._create_test_table(attr_def, tname, schema)
         self.assertEqual(dict, type(body))
         self.assertEqual(schema, body['table_description']['key_schema'])
         self.assertEqual(attr_def,
@@ -176,7 +176,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'},
             {'attribute_name': 'forum', 'key_type': 'HASH'}
         ]
-        headers, body = self.client.create_table(attr_def, tname, schema)
+        headers, body = self._create_test_table(attr_def, tname, schema)
         self.assertEqual(dict, type(body))
         schema.reverse()
         self.assertEqual(body['table_description']['key_schema'], schema)
@@ -192,7 +192,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'},
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
-        headers, body = self.client.create_table(attr_def, tname, schema)
+        headers, body = self._create_test_table(attr_def, tname, schema)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, attr_def, tname,
                                     schema)
@@ -201,7 +201,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
     def test_create_table_non_key_attr_s(self):
         tname = rand_name().replace('-', '')
         additional_attr = [{'attribute_name': 'str', 'attribute_type': 'S'}]
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + additional_attr,
             tname,
             self.smoke_schema)
@@ -214,7 +214,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
     def test_create_table_non_key_attr_ss(self):
         tname = rand_name().replace('-', '')
         additional_attr = [{'attribute_name': 'set', 'attribute_type': 'SS'}]
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + additional_attr,
             tname,
             self.smoke_schema)
@@ -227,7 +227,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
     def test_create_table_one_index(self):
         tname = rand_name().replace('-', '')
         request_lsi = copy.deepcopy(self.smoke_lsi)
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + self.index_attrs,
             tname,
             self.smoke_schema,
@@ -259,7 +259,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
                     'projection': {'projection_type': 'ALL'}
                 }
             )
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + index_attrs,
             tname,
             self.smoke_schema,
@@ -278,7 +278,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         request_lsi = copy.deepcopy(self.smoke_lsi)
         request_index_name = 'qqq'
         request_lsi[0]['index_name'] = request_index_name
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + self.index_attrs,
             tname,
             self.smoke_schema,
@@ -294,7 +294,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         request_lsi = copy.deepcopy(self.smoke_lsi)
         request_index_name = 'q' * 255
         request_lsi[0]['index_name'] = request_index_name
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + self.index_attrs,
             tname,
             self.smoke_schema,
@@ -311,7 +311,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         request_lsi = copy.deepcopy(self.smoke_lsi)
         request_index_name = 'INDEX_NAME'
         request_lsi[0]['index_name'] = request_index_name
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + self.index_attrs,
             tname,
             self.smoke_schema,
@@ -328,12 +328,12 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         request_lsi = copy.deepcopy(self.smoke_lsi)
         request_index_name = 'INDEX_NAME'
         request_lsi[0]['index_name'] = request_index_name
-        headers1, body1 = self.client.create_table(
+        headers1, body1 = self._create_test_table(
             self.smoke_attrs + self.index_attrs,
             tname1,
             self.smoke_schema,
             request_lsi)
-        headers2, body2 = self.client.create_table(
+        headers2, body2 = self._create_test_table(
             self.smoke_attrs + self.index_attrs,
             tname2,
             self.smoke_schema,

@@ -50,8 +50,8 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
     @attr(type=['CreT-27'])
     def test_create_table_only_hash(self):
         tname = rand_name().replace('-', '')
-        headers, body = self.client.create_table(self.one_attr, tname,
-                                                 self.schema_hash_only)
+        headers, body = self._create_test_table(self.one_attr, tname,
+                                                self.schema_hash_only)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body,
                                     self.one_attr, tname,
@@ -60,16 +60,16 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
     @attr(type=['CreT-48'])
     def test_create_table_symbols(self):
         tname = 'Aa5-._'
-        headers, body = self.client.create_table(self.smoke_attrs, tname,
-                                                 self.smoke_schema)
+        headers, body = self._create_test_table(self.smoke_attrs, tname,
+                                                self.smoke_schema)
         self.assertEqual(body['table_description']['table_name'], tname)
 
     @attr(type=['CreT-45'])
     def test_create_table_max_table_name(self):
         tname = rand_name().replace('-', '')
         tname = tname + 'q' * (255 - len(tname))
-        headers, body = self.client.create_table(self.smoke_attrs, tname,
-                                                 self.smoke_schema)
+        headers, body = self._create_test_table(self.smoke_attrs, tname,
+                                                self.smoke_schema)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, self.smoke_attrs,
                                     tname, self.smoke_schema)
@@ -93,7 +93,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
                     'non_key_attributes': non_key_attributes}
             }
         ]
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + index_attrs,
             tname,
             self.smoke_schema,
@@ -123,7 +123,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
                     'non_key_attributes': non_key_attributes}
             }
         ]
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + index_attrs,
             tname,
             self.smoke_schema,
@@ -158,7 +158,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
                         'non_key_attributes': non_key_attributes[i]}
                 }
             )
-        headers, body = self.client.create_table(
+        headers, body = self._create_test_table(
             self.smoke_attrs + index_attrs,
             tname,
             self.smoke_schema,

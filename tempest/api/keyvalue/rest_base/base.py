@@ -15,7 +15,6 @@
 
 import tempest.clients
 import tempest.config
-from tempest import exceptions
 import tempest.test
 from tempest.common.utils import data_utils
 from tempest.openstack.common import log as logging
@@ -89,7 +88,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
                 del cls._resource_trash_bin[key]
         super(MagnetoDBTestCase, cls).tearDownClass()
         if fail_count:
-            raise exceptions.TearDownException(num=fail_count)
+            LOG.error('%s cleanUp operation failed' % fail_count)
 
     @classmethod
     def addResourceCleanUp(cls, function, *args, **kwargs):
@@ -179,6 +178,16 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
                 )
                 new_items.append(item)
         return new_items
+
+    def _create_test_table(self, attr_def, tname, *args, **kwargs):
+        cleanup = kwargs.pop('cleanup', True)
+        headers, body = self.client.create_table(attr_def,
+                                                 tname,
+                                                 *args,
+                                                 **kwargs)
+        if cleanup:
+            self.addResourceCleanUp(self.client.delete_table, tname)
+        return headers, body
 
 
 def friendly_function_name_simple(call_able):
