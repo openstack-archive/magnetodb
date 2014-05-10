@@ -14,6 +14,7 @@
 #    under the License.
 import random
 import string
+import binascii
 
 from tempest.test import attr
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
@@ -27,10 +28,15 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
     def setUpClass(cls):
         super(MagnetoDBPutItemTest, cls).setUpClass()
 
+    def tearDown(self):
+        super(MagnetoDBPutItemTest, self).tearDown()
+        self.client.delete_table(self.table_name)
+
     def random_name(self, length):
         return ''.join(random.choice(string.lowercase + string.digits)
                        for i in range(length))
 
+    @attr(type='PI-3')
     def test_put_item_update_one_attribute(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -62,6 +68,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(get_resp[1]['item']['author'],
                          {'S': 'Alice'})
 
+    @attr(type='PI-4')
     def test_put_item_update_few_attributes(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -97,6 +104,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(get_resp[1]['item']['id'],
                          {'N': '2'})
 
+    @attr(type='PI-5')
     def test_put_item_update_few_lines_without_exist_state(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -131,16 +139,18 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(get_resp[1]['item']['id'],
                          {'N': '2'})
 
+    @attr(type='PI-10')
     def test_put_item_with_few_attributes_of_type_b(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        blob = binascii.hexlify('fblob')
         item = {
             "message": {"B": "qazw"},
             "author": {"B": "qwer"},
-            "blob": {"B": "tyui"}
+            "blob": {"B": blob}
         }
         put_resp = self.client.put_item(self.table_name, item)
         self.assertEqual(put_resp[1], {})
@@ -149,8 +159,9 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                                         consistent_read=True)
         self.assertEqual(get_resp[1]["item"]["message"], {"B": "qazw"})
         self.assertEqual(get_resp[1]["item"]["author"], {"B": "qwer"})
-        self.assertEqual(get_resp[1]['item']["blob"], {"B": "tyui"})
+        self.assertEqual(get_resp[1]['item']["blob"], {"B": blob})
 
+    @attr(type='PI-11')
     def test_put_item_with_few_attributes_of_type_bs(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -172,6 +183,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(set(get_resp[1]['item']["blob"]["BS"]),
                          {"rrrr", "tttt"})
 
+    @attr(type='PI-15')
     def test_put_item_with_attributes_of_all_types(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -200,6 +212,112 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(set(get_resp[1]['item']["blobs"]["BS"]),
                          {"qqqq", "eeee", "wwww"})
 
+    @attr(type='PI-50')
+    def test_put_item_exist_state_by_default(self):
+        self.table_name = rand_name().replace('-', '')
+        self.client.create_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"},
+            "id": {"N": "1"}
+        }
+        new_item = {
+            "message": {"S": "message_text"},
+            "author": {"S": "Alice"},
+            "id": {"N": "2"}
+        }
+        expected = {
+            "author": {
+                "value": {"S": "Bob"}
+            }
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        put_resp = self.client.put_item(self.table_name,
+                                        new_item, expected)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": 'message_text'}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item']['author'],
+                         {'S': 'Alice'})
+        self.assertEqual(get_resp[1]['item']['id'],
+                         {'N': '2'})
+
+    @attr(type='PI-51')
+    def test_put_item_exists_true(self):
+        self.table_name = rand_name().replace('-', '')
+        self.client.create_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"},
+            "id": {"N": "1"}
+        }
+        new_item = {
+            "message": {"S": "message_text"},
+            "author": {"S": "Alice"},
+            "id": {"N": "2"}
+        }
+        expected = {
+            "author": {
+                "exists": "true",
+                "value": {"S": "Bob"}
+            }
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        put_resp = self.client.put_item(self.table_name,
+                                        new_item, expected)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": 'message_text'}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item']['author'],
+                         {'S': 'Alice'})
+        self.assertEqual(get_resp[1]['item']['id'],
+                         {'N': '2'})
+
+    @attr(type='PI-52')
+    def test_put_item_exists_false(self):
+        self.table_name = rand_name().replace('-', '')
+        self.client.create_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"},
+        }
+        new_item = {
+            "message": {"S": "message_text"},
+            "author": {"S": "Alice"},
+            "id": {"N": "2"}
+        }
+        expected = {
+            "id": {
+                "exists": "false"
+            }
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        put_resp = self.client.put_item(self.table_name,
+                                        new_item, expected)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": 'message_text'}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item']['author'],
+                         {'S': 'Alice'})
+        self.assertEqual(get_resp[1]['item']['id'],
+                         {'N': '2'})
+
+    @attr(type='PI-81')
     def test_put_item_with_returned_all_old(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -234,7 +352,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(set(put_resp[1]["attributes"]["others"]["SS"]),
                          {"qqqq", "wwww"})
 
-    @attr(type='negative')
+    @attr(type=['PI-101', 'negative'])
     def test_put_item_in_nonexistent_table(self):
         item = {
             "message": {"S": 'message_text'},
@@ -250,7 +368,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertIn("Table 'nonexistenttable' does not exist",
                       exception._error_string)
 
-    @attr(type='negative')
+    @attr(type=['PI-102', 'negative'])
     def test_put_item_in_table_with_wrong_name(self):
         item = {
             "message": {"S": 'message_text'},
@@ -269,7 +387,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                          " greater than or equal to 3")
         self.assertIn("ValidationException", exception.body["__type"])
 
-    @attr(type='negative')
+    @attr(type=['PI-103', 'negative'])
     def test_put_item_in_table_with_short_name(self):
         item = {
             "message": {"S": 'message_text'},
@@ -285,7 +403,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                          " Member must have length greater than or equal to 3")
         self.assertIn("ValidationException", exception.body["__type"])
 
-    @attr(type='negative')
+    @attr(type=['PI-104', 'negative'])
     def test_put_item_in_table_with_long_name(self):
         item = {
             "message": {"S": 'message_text'},
@@ -304,7 +422,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                          " Member must have length less than or equal to 255")
         self.assertIn("ValidationException", exception.body["__type"])
 
-    @attr(type='negative')
+    @attr(type=['PI-120', 'negative'])
     def test_put_item_conditional_check_failed(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -335,7 +453,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertIn("ConditionalCheckFailedException",
                       exception.body["__type"])
 
-    @attr(type='negative')
+    @attr(type=['PI-114', 'negative'])
     def test_put_item_wrong_expected_section(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -366,7 +484,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertIn("ConditionalCheckFailedException",
                       exception.body["__type"])
 
-    @attr(type='negative')
+    @attr(type=['PI-111', 'negative'])
     def test_put_item_wrong_data_type_in_expected(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -398,7 +516,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                          "supported datatypes")
         self.assertIn("ValidationException", exception.body["__type"])
 
-    @attr(type='negative')
+    @attr(type=['PI-113', 'negative'])
     def test_put_item_no_attribute_value(self):
         self.table_name = rand_name().replace('-', '')
         self._create_test_table(
@@ -406,8 +524,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'}])
         item = {
-            "message": {"S": 'message_text'},
-            "author": {},
+            "message": {}
         }
         with self.assertRaises(exceptions.BadRequest) as raises_cm:
             self.client.put_item(self.table_name, item)
@@ -418,3 +535,19 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                          " must contain exactly one of the "
                          "supported datatypes")
         self.assertIn("ValidationException", exception.body["__type"])
+
+    @attr(type=['PI-123', 'negative'])
+    def test_put_item_resource_not_found_exception(self):
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"}
+        }
+        with self.assertRaises(exceptions.NotFound) as raises_cm:
+            self.client.put_item("nonexistent_table", item)
+
+        exception = raises_cm.exception
+        self.assertIn("Not Found", exception._error_string)
+        self.assertIn("The resource could not be found.",
+                      exception._error_string)
+        self.assertIn("Table 'nonexistenttable' does not exists",
+                      exception._error_string)
