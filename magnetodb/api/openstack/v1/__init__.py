@@ -21,6 +21,7 @@ from magnetodb.openstack.common.log import logging
 from magnetodb.api.openstack.v1 import put_item
 from magnetodb.api.openstack.v1 import get_item
 from magnetodb.api.openstack.v1 import batch_write_item
+from magnetodb.api.openstack.v1 import update_item
 from magnetodb.api.openstack.v1 import delete_item
 
 
@@ -57,6 +58,11 @@ openstack_api = [
     Route("get_item", "/{project_id}/data/tables/{table_name}/get_item",
           conditions={'method': 'POST'},
           controller=create_resource(get_item.GetItemController()),
+          action="process_request"),
+
+    Route("update_item", "/{project_id}/data/tables/{table_name}/update_item",
+          conditions={'method': 'POST'},
+          controller=create_resource(update_item.UpdateItemController()),
           action="process_request"),
 
     Route("delete_item", "/{project_id}/data/tables/{table_name}/delete_item",

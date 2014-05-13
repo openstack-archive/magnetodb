@@ -1112,16 +1112,14 @@ class CassandraStorageDriver(StorageDriver):
             for index_name, index_def in (
                     table_info.schema.index_def_map.iteritems()):
                 attr_name = index_def.attribute_to_index
-                action = attribute_action_map.get(
-                    attr_name, None
-                )
+                action = attribute_action_map.get(attr_name)
+
                 if action:
                     index_actions[attr_name] = action
 
             while True:
                 old_indexes = self._select_current_index_values(
-                    table_info, key_attribute_map
-                )
+                    table_info, key_attribute_map)
 
                 if old_indexes is None:
                     if expected_condition_map:
@@ -1134,8 +1132,8 @@ class CassandraStorageDriver(StorageDriver):
                                 models.UpdateItemAction.UPDATE_ACTION_PUT,
                                 models.UpdateItemAction.UPDATE_ACTION_ADD):
                             attribute_map[attr_name] = attr_action.value
-                    if self._put_item_if_not_exists(table_info,
-                                                    attribute_map):
+
+                    if self._put_item_if_not_exists(table_info, attribute_map):
                         return True
                     else:
                         continue
@@ -1159,28 +1157,26 @@ class CassandraStorageDriver(StorageDriver):
                 for index_name, index_def in (
                         table_info.schema.index_def_map.iteritems()):
                     old_index_value = old_indexes.get(
-                        index_def.attribute_to_index, None
-                    )
+                        index_def.attribute_to_index)
+
                     query_builder += (
                         if_prefix, '"', USER_PREFIX,
                         index_def.attribute_to_index, '"=',
                         _encode_predefined_attr_value(old_index_value)
-                        if old_index_value else "null"
-                    )
+                        if old_index_value else "null")
                     if_prefix = " AND "
 
                 qb_len = len(query_builder)
 
-                self._append_update_indexes_queries(
-                    table_info, old_indexes, attribute_map,
-                    query_builder
-                )
+                self._append_update_indexes_queries(table_info, old_indexes,
+                                                    attribute_map,
+                                                    query_builder)
+
                 if len(query_builder) > qb_len:
                     query_builder.insert(0, self._get_batch_begin_clause())
                     query_builder.append(self._get_batch_apply_clause())
                 result = self.__cluster_handler.execute_query(
-                    "".join(query_builder), consistent=True
-                )
+                    "".join(query_builder), consistent=True)
 
                 if result[0]['[applied]']:
                     return True
@@ -1197,8 +1193,7 @@ class CassandraStorageDriver(StorageDriver):
                     return False
         else:
             attribute_map = key_attribute_map.copy()
-            for attr_name, attr_action in (
-                    attribute_action_map.iteritems()):
+            for attr_name, attr_action in (attribute_action_map.iteritems()):
                 if attr_action.action in (
                         models.UpdateItemAction.UPDATE_ACTION_PUT,
                         models.UpdateItemAction.UPDATE_ACTION_ADD):
@@ -1208,12 +1203,10 @@ class CassandraStorageDriver(StorageDriver):
 
             query_builder = self._append_update_query(
                 table_info, attribute_map,
-                expected_condition_map=expected_condition_map
-            )
+                expected_condition_map=expected_condition_map)
 
             result = self.__cluster_handler.execute_query(
-                "".join(query_builder), consistent=True
-            )
+                "".join(query_builder), consistent=True)
 
             return (result is None) or result[0]['[applied]']
 
