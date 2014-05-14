@@ -53,7 +53,15 @@ class CreateTableController():
                 }
             },
 
-            parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
+            parser.Props.TABLE_NAME: parser.Types.TABLE_NAME,
+
+            parser.Props.COUNTERS: {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "pattern": parser.ATTRIBUTE_NAME_PATTERN
+                }
+            },
         }
     }
 
@@ -79,6 +87,10 @@ class CreateTableController():
                 parser.Props.LOCAL_SECONDARY_INDEXES, [])
         )
 
+        #parse counters
+        counters = parser.Parser.parse_counters(
+            body.get(parser.Props.COUNTERS))
+
         #prepare table_schema structure
         table_schema = models.TableSchema(
             attribute_definitions, key_attrs, indexed_attr_names)
@@ -87,6 +99,11 @@ class CreateTableController():
         req.context.tenant = project_id
         table_meta = storage.create_table(
             req.context, table_name, table_schema)
+
+        # creating counters table
+        if counters:
+            # storage.create_counters(req.context, table_name, counters)
+            pass
 
         url = req.path_url + "/" + table_name
         bookmark = req.path_url + "/" + table_name
@@ -131,5 +148,9 @@ class CreateTableController():
                     table_meta.schema.index_def_map
                 )
             )
+
+        if counters:
+            table_def = result[parser.Props.TABLE_DESCRIPTION]
+            table_def[parser.Props.COUNTERS] = counters
 
         return result

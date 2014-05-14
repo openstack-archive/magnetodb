@@ -112,6 +112,8 @@ class Props():
     REQUEST_DELETE = "delete_request"
     REQUEST_PUT = "put_request"
 
+    COUNTERS = "counters"
+
 
 class Values():
     ATTRIBUTE_TYPE_STRING = TYPE_STRING
@@ -372,6 +374,10 @@ class Types():
                  Values.GT,
                  Values.BEGINS_WITH,
                  Values.BETWEEN]
+    }
+
+    COUNTER_VALUE = {
+        "type": "integer"
     }
 
 
@@ -881,6 +887,12 @@ class Parser():
                             table_name,
                             cls.parse_item_attributes(
                                 request_body[Props.KEY]))
+
+    @classmethod
+    def parse_counters(cls, counters_json):
+        # TODO(achudnovets): do we need abstarction for counters?
+        # If no, this method can be removed
+        return counters_json
 
     @classmethod
     def format_request_items(cls, request_items):

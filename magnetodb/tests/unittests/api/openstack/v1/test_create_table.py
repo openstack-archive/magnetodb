@@ -346,3 +346,114 @@ class CreateTableTest(test_base_testcase.APITestCase):
         response_payload = json.loads(json_response)
 
         self.assertEqual(expected_response, response_payload)
+
+    @mock.patch('magnetodb.storage.create_table')
+    def test_create_table_counters(self, mock_create_table):
+        mock_create_table.return_value = models.TableMeta(
+            models.TableSchema(
+                attribute_type_map={
+                    "ForumName": models.ATTRIBUTE_TYPE_STRING,
+                    "Subject": models.ATTRIBUTE_TYPE_STRING,
+                    "LastPostDateTime": models.ATTRIBUTE_TYPE_STRING
+                },
+                key_attributes=["ForumName", "Subject"],
+                index_def_map={
+                    "LastPostIndex": models.IndexDefinition("LastPostDateTime")
+                }
+            ),
+            models.TableMeta.TABLE_STATUS_ACTIVE
+        )
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "Thread",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "local_secondary_indexes": [
+                    {
+                        "index_name": "LastPostIndex",
+                        "key_schema": [
+                            {
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
+                            },
+                            {
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
+                            }
+                        ],
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
+                        }
+                    }
+                ],
+                "counters": ["PostsCount"]
+            }
+        """
+
+        expected_response = {'table_description': {
+            'attribute_definitions': [
+                {'attribute_name': 'Subject', 'attribute_type': 'S'},
+                {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
+                {'attribute_name': 'ForumName', 'attribute_type': 'S'}
+            ],
+            'creation_date_time': 0,
+            'item_count': 0,
+            'key_schema': [
+                {'attribute_name': 'ForumName', 'key_type': 'HASH'},
+                {'attribute_name': 'Subject', 'key_type': 'RANGE'}
+            ],
+            'local_secondary_indexes': [
+                {'index_name': 'LastPostIndex',
+                 'index_size_bytes': 0,
+                 'item_count': 0,
+                 'key_schema': [
+                     {'attribute_name': 'ForumName',
+                      'key_type': 'HASH'},
+                     {'attribute_name': 'LastPostDateTime',
+                      'key_type': 'RANGE'}
+                 ],
+                 'projection': {'projection_type': 'ALL'}}
+            ],
+            'counters': ['PostsCount'],
+            'table_name': 'Thread',
+            'table_size_bytes': 0,
+            'table_status': 'ACTIVE',
+            'links': [
+                {'href': self.table_url, 'rel': 'self'},
+                {'href': self.table_url, 'rel': 'bookmark'}
+            ]}}
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_create_table.called)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual(expected_response, response_payload)
