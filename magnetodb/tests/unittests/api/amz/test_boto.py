@@ -111,8 +111,8 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.VerifyAll()
 
-        self.assertEquals('test_table',
-                          table_description['Table']['TableName'])
+        self.assertEqual('test_table',
+                         table_description['Table']['TableName'])
         self.assertItemsEqual(
             [
                 {

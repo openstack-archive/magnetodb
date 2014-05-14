@@ -1169,7 +1169,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_number(self):
         self._create_table(indexed=True)
@@ -1202,7 +1202,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_blob(self):
         self._create_table(indexed=True)
@@ -1235,7 +1235,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_set_str(self):
         self._create_table(indexed=True)
@@ -1269,7 +1269,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_set_number(self):
         self._create_table(indexed=True)
@@ -1302,7 +1302,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_set_blob(self):
         self._create_table(indexed=True)
@@ -1336,7 +1336,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_dynamic_str(self):
         self._create_table(indexed=True)
@@ -1369,7 +1369,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_dynamic_number(self):
         self._create_table(indexed=True)
@@ -1402,7 +1402,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_dynamic_blob(self):
         self._create_table(indexed=True)
@@ -1435,7 +1435,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_dynamic_set_str(self):
         self._create_table(indexed=True)
@@ -1469,7 +1469,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_dynamic_set_number(self):
         self._create_table(indexed=True)
@@ -1503,7 +1503,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_put_dynamic_set_blob(self):
         self._create_table(indexed=True)
@@ -1537,7 +1537,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
     def test_update_item_delete(self):
         self._create_table(indexed=True)
@@ -1571,7 +1571,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, keys_condition)
 
-        self.assertEquals([expected], result.items)
+        self.assertEqual([expected], result.items)
 
 
 class TestCassandraPutItem(TestCassandraBase):
@@ -1596,7 +1596,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_number(self):
         self._create_table(indexed=True)
@@ -1619,7 +1619,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_blob(self):
         self._create_table(indexed=True)
@@ -1642,7 +1642,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_set_str(self):
         self._create_table(indexed=True)
@@ -1666,7 +1666,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_set_number(self):
         self._create_table(indexed=True)
@@ -1690,7 +1690,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_set_blob(self):
         self._create_table(indexed=True)
@@ -1714,7 +1714,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_dynamic_str(self):
         self._create_table(indexed=True)
@@ -1737,7 +1737,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_dynamic_number(self):
         self._create_table(indexed=True)
@@ -1760,7 +1760,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_dynamic_blob(self):
         self._create_table(indexed=True)
@@ -1783,7 +1783,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_dynamic_set_str(self):
         self._create_table(indexed=True)
@@ -1807,7 +1807,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_dynamic_set_number(self):
         self._create_table(indexed=True)
@@ -1831,7 +1831,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_dynamic_set_blob(self):
         self._create_table(indexed=True)
@@ -1855,7 +1855,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_expected_str(self):
         self._create_table(indexed=True)
@@ -1888,7 +1888,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_expected_number(self):
         self._create_table(indexed=True)
@@ -1921,7 +1921,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_expected_blob(self):
         self._create_table(indexed=True)
@@ -1958,7 +1958,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_expected_set_str(self):
         self._create_table(indexed=True)
@@ -1993,7 +1993,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_expected_set_number(self):
         self._create_table(indexed=True)
@@ -2028,7 +2028,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     def test_put_item_expected_set_blob(self):
         self._create_table(indexed=True)
@@ -2067,7 +2067,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
                    "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
@@ -2102,7 +2102,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
                    "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
@@ -2141,7 +2141,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
                    "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
@@ -2177,7 +2177,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
                    "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
@@ -2214,7 +2214,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
                    "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
@@ -2251,7 +2251,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
     @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
                    "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
@@ -2288,7 +2288,7 @@ class TestCassandraPutItem(TestCassandraBase):
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, key_condition)
 
-        self.assertEquals([put], result.items)
+        self.assertEqual([put], result.items)
 
 
 class TestCassandraScan(TestCassandraBase):
@@ -2525,4 +2525,4 @@ class TestCassandraBatch(TestCassandraBase):
             result = self.CASANDRA_STORAGE_IMPL.select_item(
                 self.context, self.table_name, key)
 
-            self.assertEquals([item], result.items)
+            self.assertEqual([item], result.items)
