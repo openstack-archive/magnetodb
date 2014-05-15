@@ -27,8 +27,8 @@ from magnetodb.api.openstack.v1 import describe_table
 from magnetodb.api.openstack.v1 import scan
 from magnetodb.api.openstack.v1 import query
 from magnetodb.api.openstack.v1 import delete_table
-from magnetodb.api.openstack.v1 import update_counters
-from magnetodb.api.openstack.v1 import get_counters
+from magnetodb.api.openstack.v1 import update_counter_item
+from magnetodb.api.openstack.v1 import get_counter_item
 
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
@@ -89,16 +89,16 @@ class MagnetoDBApplication(wsgi.Router):
                        action="delete_table")
 
         mapper.connect("/v1/{project_id}/data/tables/{table_name}/"
-                       "update_counters",
+                       "update_counter_item",
                        controller=create_resource(
-                           update_counters.UpdateCountersController()),
+                           update_counter_item.UpdateCounterItemController()),
                        conditions={'method': 'POST'},
                        action="process_request")
 
         mapper.connect("/v1/{project_id}/data/tables/{table_name}/"
-                       "get_counters",
+                       "get_counter_item",
                        controller=create_resource(
-                           get_counters.GetCountersController()),
+                           get_counter_item.GetCounterItemController()),
                        conditions={'method': 'POST'},
                        action="process_request")
 
