@@ -49,6 +49,8 @@ CONDITION_TO_OP = {
 USER_PREFIX = 'user_'
 USER_PREFIX_LENGTH = len(USER_PREFIX)
 
+COUNTER_TABLE_PREFIX = 'counter_'
+
 SYSTEM_KEYSPACE = 'magnetodb'
 SYSTEM_COLUMN_INDEX_NAME = 'index_name'
 SYSTEM_COLUMN_INDEX_VALUE_STRING = 'index_value_string'
@@ -179,6 +181,7 @@ class CassandraStorageDriver(StorageDriver):
         table_schema = table_info.schema
 
         cas_table_name = USER_PREFIX + table_name
+        cas_counter_table_name = COUNTER_TABLE_PREFIX + table_name
         cas_keyspace = USER_PREFIX + context.tenant
 
         key_count = len(table_schema.key_attributes)
@@ -246,14 +249,48 @@ class CassandraStorageDriver(StorageDriver):
         LOG.debug("Waiting for schema agreement... Done")
 
         table_info.internal_name = cas_table_name
+
+        # creating counter table
+        if table_schema.counter_attributes:
+            query_builder = [
+                'CREATE TABLE "', cas_keyspace, '"."', cas_counter_table_name,
+                '" ('
+            ]
+
+            query_builder += map('"{}" counter,'.format,
+                                 table_schema.counter_attributes)
+
+            query_builder += (
+                'PRIMARY KEY ("',
+                USER_PREFIX, hash_key_name, '"'
+            )
+
+            if range_key_name:
+                query_builder += (
+                    ',"', USER_PREFIX, range_key_name, '"'
+                )
+
+            query_builder.append("))")
+
+            self.__cluster_handler.execute_query("".join(query_builder))
+            LOG.debug("Create Table CQL request executed. "
+                      "Waiting for schema agreement...")
+            self.__cluster_handler.wait_for_table_status(
+                keyspace_name=cas_keyspace, table_name=cas_counter_table_name,
+                expected_exists=True)
+            LOG.debug("Waiting for schema agreement... Done")
+            table_info.internal_counter_table_name = cas_counter_table_name
+
         self.__table_info_repo.update(
-            context, table_info, ["internal_name"]
+            context, table_info,
+            ["internal_name", "internal_counter_table_name"]
         )
 
     def delete_table(self, context, table_name):
         table_info = self.__table_info_repo.get(context, table_name)
 
         cas_table_name = table_info.internal_name
+        cas_counter_table_name = table_info.internal_counter_table_name
         cas_keyspace_name = USER_PREFIX + context.tenant
 
         query = 'DROP TABLE "{}"."{}"'.format(cas_keyspace_name,
@@ -270,6 +307,23 @@ class CassandraStorageDriver(StorageDriver):
         )
 
         LOG.debug("Waiting for schema agreement... Done")
+
+        if cas_counter_table_name:
+            query = 'DROP TABLE "{}"."{}"'.format(cas_keyspace_name,
+                                                  cas_counter_table_name)
+
+            self.__cluster_handler.execute_query(query)
+
+            LOG.debug("Delete Table CQL request executed. "
+                      "Waiting for schema agreement...")
+
+            self.__cluster_handler.wait_for_table_status(
+                keyspace_name=cas_keyspace_name,
+                table_name=cas_counter_table_name,
+                expected_exists=False
+            )
+
+            LOG.debug("Waiting for schema agreement... Done")
 
     @staticmethod
     def _append_types_system_attr_value(table_schema, attribute_map,
@@ -1692,3 +1746,11 @@ class CassandraStorageDriver(StorageDriver):
             return attr_val in cond_arg
 
         return False
+
+    def get_counter_item(self, context, table_name, key_attribute_map,
+                         counter_attributes_to_get=None, consistent=False):
+        raise NotImplementedError()
+
+    def update_counter_item(self, context, table_name, key_attribute_map,
+                            counter_attribute_update_map):
+        raise NotImplementedError()

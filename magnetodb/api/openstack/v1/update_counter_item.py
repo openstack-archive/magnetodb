@@ -16,10 +16,10 @@ import jsonschema
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
-#from magnetodb import storage
+from magnetodb import storage
 
 
-class GetCountersController(object):
+class UpdateCounterItemController(object):
     schema = {
         "required": [parser.Props.KEY],
         "properties": {
@@ -29,11 +29,10 @@ class GetCountersController(object):
                     parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
                 }
             },
-            parser.Props.COUNTERS: {
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "pattern": parser.ATTRIBUTE_NAME_PATTERN
+            parser.Props.COUNTER_ATTRIBUTE_UPDATES: {
+                "type": "object",
+                "patternProperties": {
+                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.COUNTER_VALUE
                 }
             },
         }
@@ -45,19 +44,18 @@ class GetCountersController(object):
         req.context.tenant = project_id
 
         # parse key_attributes
-#        key_attributes = parser.Parser.parse_item_attributes(
-#            body[parser.Props.KEY])
+        key_attributes = parser.Parser.parse_item_attributes(
+            body[parser.Props.KEY]
+        )
 
-        #parse counters
-        counter_names = parser.Parser.parse_counters(
-            body.get(parser.Props.COUNTERS))
+        #parse counter_attribute_update_map
+        counter_attribute_update_map = body.get(
+            parser.Props.COUNTER_ATTRIBUTE_UPDATES
+        )
 
-        # get counters
-        counters = {}
-        if counter_names:
-            # for name in counter_names:
-            #    counters[name] = storage.get_counter_value(req.context,
-            #       table_name, key_attributes, name)
-            pass
+        # update counter_item
+        storage.update_counter_item(req.context, table_name, key_attributes,
+                                    counter_attribute_update_map)
 
-        return {parser.Props.COUNTERS: counters}
+        # TODO(achudnovets): what we need to return?
+        return {}

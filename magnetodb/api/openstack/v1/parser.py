@@ -112,7 +112,10 @@ class Props():
     REQUEST_DELETE = "delete_request"
     REQUEST_PUT = "put_request"
 
-    COUNTERS = "counters"
+    COUNTER_ITEM = "counter_item"
+    COUNTER_ATTRIBUTES_TO_GET = "counter_attributes_to_get"
+    COUNTER_ATTRIBUTE_UPDATES = "counter_attribute_updates"
+    COUNTER_ATTRIBUTES = "counter_attributes"
 
 
 class Values():
@@ -887,12 +890,6 @@ class Parser():
                             table_name,
                             cls.parse_item_attributes(
                                 request_body[Props.KEY]))
-
-    @classmethod
-    def parse_counters(cls, counters_json):
-        # TODO(achudnovets): do we need abstarction for counters?
-        # If no, this method can be removed
-        return counters_json
 
     @classmethod
     def format_request_items(cls, request_items):
