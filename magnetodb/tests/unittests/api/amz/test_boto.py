@@ -46,7 +46,7 @@ class BotoIntegrationTest(unittest.TestCase):
         magnetodb_api_fake.run_fake_magnetodb_api()
         cls.DYNAMODB_CON = cls.connect_boto_dynamodb()
 
-        #enabling boto logging
+        # enabling boto logging
         if CONF.debug:
             log = logging.getLogger('boto')
             log.setLevel(logging.DEBUG)

@@ -92,7 +92,7 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                 )
             )
 
-            #parse attribute updates
+            # parse attribute updates
             attribute_updates = parser.Parser.parse_attribute_updates(
                 self.action_params.get(parser.Props.ATTRIBUTE_UPDATES, {})
             )

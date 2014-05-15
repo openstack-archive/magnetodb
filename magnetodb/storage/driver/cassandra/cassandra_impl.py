@@ -1299,7 +1299,7 @@ class CassandraStorageDriver(StorageDriver):
                 )
             assert not indexed_condition_map_copy
 
-        #processing exclusive_start_key and append conditions
+        # processing exclusive_start_key and append conditions
         if exclusive_start_key:
             exclusive_start_key_copy = exclusive_start_key.copy()
             exclusive_hash_key_value = exclusive_start_key_copy.pop(
@@ -1442,11 +1442,11 @@ class CassandraStorageDriver(StorageDriver):
                 )
                 prefix = " AND "
 
-        #add limit
+        # add limit
         if limit:
             query_builder += (" LIMIT ", str(limit))
 
-        #add ordering
+        # add ordering
         if order_type:
             query_builder.append(' ORDER BY ')
             if table_info.schema.index_def_map:
@@ -1484,7 +1484,7 @@ class CassandraStorageDriver(StorageDriver):
         for row in rows:
             record = {}
 
-            #add predefined attributes
+            # add predefined attributes
             for cas_name, cas_val in row.iteritems():
                 if cas_name.startswith(USER_PREFIX) and cas_val:
                     name, val = _decode_predefined_attr(table_info, cas_name,
@@ -1492,7 +1492,7 @@ class CassandraStorageDriver(StorageDriver):
                     if not attributes_to_get or name in attributes_to_get:
                         record[name] = val
 
-            #add dynamic attributes (from SYSTEM_COLUMN_ATTR_DATA dict)
+            # add dynamic attributes (from SYSTEM_COLUMN_ATTR_DATA dict)
             types = row[SYSTEM_COLUMN_EXTRA_ATTR_TYPES]
             attrs = row[SYSTEM_COLUMN_EXTRA_ATTR_DATA] or {}
             for name, val in attrs.iteritems():
