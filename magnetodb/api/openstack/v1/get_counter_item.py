@@ -16,10 +16,10 @@ import jsonschema
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
-#from magnetodb import storage
+from magnetodb import storage
 
 
-class UpdateCountersController(object):
+class GetCounterItemController(object):
     schema = {
         "required": [parser.Props.KEY],
         "properties": {
@@ -29,10 +29,14 @@ class UpdateCountersController(object):
                     parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
                 }
             },
-            parser.Props.COUNTERS: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.COUNTER_VALUE
+            parser.Props.CONSISTENT_READ: {
+                "type": "boolean"
+            },
+            parser.Props.COUNTER_ATTRIBUTES_TO_GET: {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "pattern": parser.ATTRIBUTE_NAME_PATTERN
                 }
             },
         }
@@ -44,19 +48,25 @@ class UpdateCountersController(object):
         req.context.tenant = project_id
 
         # parse key_attributes
-#        key_attributes = parser.Parser.parse_item_attributes(
-#            body[parser.Props.KEY])
+        key_attributes = parser.Parser.parse_item_attributes(
+            body[parser.Props.KEY])
 
-        #parse counters
-        counters = parser.Parser.parse_counters(
-            body.get(parser.Props.COUNTERS))
+        # parse consistent_read
+        consistent_read = body.get(
+            parser.Props.CONSISTENT_READ, False
+        )
 
-        # update counters
-        if counters:
-            # for name, value in counters.iteritems():
-            #    storage.update_counter(req.context, table_name,
-            #       key_attributes, name, value)
-            pass
+        #parse counter_attributes_to_get
+        counter_attributes_to_get = body.get(
+            parser.Props.COUNTER_ATTRIBUTES_TO_GET
+        )
 
-        # TODO(achudnovets): what we need to return?
-        return {}
+        # get counter_item
+        counter_values = storage.get_counter_item(
+            req.context, table_name, key_attributes, counter_attributes_to_get,
+            consistent_read
+        )
+
+        return {
+            parser.Props.COUNTER_ITEM: counter_values
+        }

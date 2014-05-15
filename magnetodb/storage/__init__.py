@@ -316,3 +316,43 @@ def scan(context, table_name, condition_map, attributes_to_get=None,
         context, table_name, condition_map, attributes_to_get, limit,
         exclusive_start_key, consistent=False
     )
+
+
+def get_counter_item(context, table_name, key_attribute_map,
+                     counter_attributes_to_get=None, consistent=False):
+    """
+    @param context: current request context
+    @param table_name: String, name of table to delete item from
+    @param key_attribute_map: key attribute name to
+                AttributeValue mapping. It defines row it to update item
+    @param counter_attributes_to_get: counter attribute list to be returned.
+                If None - all counter values will be returned
+    @param consistent: define is operation consistent or not (by default it
+                is not consistent)
+
+    @return map of counter name to counter value (integer)
+
+    @raise BackendInteractionException
+    """
+    return __STORAGE_MANAGER_IMPL.get_counter_item(
+        context, table_name, key_attribute_map, counter_attributes_to_get,
+        consistent
+    )
+
+
+def update_counter_item(context, table_name, key_attribute_map,
+                        counter_attribute_update_map):
+    """
+    @param context: current request context
+    @param table_name: String, name of table to delete item from
+    @param key_attribute_map: key attribute name to
+                AttributeValue mapping. It defines row it to update item
+    @param counter_attribute_update_map: counter name to integer mapping.
+                It defines value to be added (or subtracted if value is
+                negative) per counter
+
+    @raise BackendInteractionException
+    """
+    return __STORAGE_MANAGER_IMPL.update_counter_item(
+        context, table_name, key_attribute_map, counter_attribute_update_map
+    )

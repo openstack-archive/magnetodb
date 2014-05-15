@@ -410,7 +410,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                         }
                     }
                 ],
-                "counters": ["PostsCount"]
+                "counter_attributes": ["PostsCount"]
             }
         """
 
@@ -438,7 +438,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                  ],
                  'projection': {'projection_type': 'ALL'}}
             ],
-            'counters': ['PostsCount'],
+            'counter_attributes': ['PostsCount'],
             'table_name': 'Thread',
             'table_size_bytes': 0,
             'table_status': 'ACTIVE',
