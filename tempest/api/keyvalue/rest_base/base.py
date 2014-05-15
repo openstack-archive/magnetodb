@@ -43,8 +43,8 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         ]
         cls.index_attrs = [
             {'attribute_name': 'last_posted_by', 'attribute_type': 'S'},
-            #{'attribute_name': 'message', 'attribute_type': 'S'},
-            #{'attribute_name': 'replies', 'attribute_type': 'N'}
+            # {'attribute_name': 'message', 'attribute_type': 'S'},
+            # {'attribute_name': 'replies', 'attribute_type': 'N'}
         ]
         cls.smoke_schema = [
             {'attribute_name': cls.hashkey, 'key_type': 'HASH'},

@@ -127,7 +127,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
                                         True)
         self.assertEqual(get_resp[1]['item']['last_posted_by'], {'S': 'John'})
 
-    #TODO(ValidationException or simple NotFound)
+    # TODO(ValidationException or simple NotFound)
     @attr(type=['GI-14', 'negative'])
     def test_get_item_empty_table_name(self):
         item = self.build_smoke_item('forum1', 'subject2',
@@ -409,7 +409,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         get_resp = self.client.get_item(table_name, key)
         self.assertEqual(get_resp[1], {})
 
-    #weak test for consistency
+    # weak test for consistency
     @attr(type='GI-40')
     def test_get_item_consistent_read_true(self):
         table_name = rand_name().replace('-', '')
@@ -431,7 +431,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
                                         True)
         self.assertEqual(get_resp[1]['item']['last_posted_by'], {'S': 'John'})
 
-    #weak test for consistency
+    # weak test for consistency
     @attr(type='GI-41')
     def test_get_item_consistent_read_false(self):
         table_name = rand_name().replace('-', '')
@@ -453,7 +453,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
                                         False)
         self.assertEqual(get_resp[1]['item']['last_posted_by'], {'S': 'John'})
 
-    #weak test for consistency
+    # weak test for consistency
     @attr(type='GI-42')
     def test_get_item_consistent_read_none(self):
         table_name = rand_name().replace('-', '')

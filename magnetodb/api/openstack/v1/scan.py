@@ -83,7 +83,7 @@ class ScanController(object):
 
         req.context.tenant = project_id
 
-        #TODO ikhudoshyn: table_name may be index name
+        # TODO ikhudoshyn: table_name may be index name
 
         attrs_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
 

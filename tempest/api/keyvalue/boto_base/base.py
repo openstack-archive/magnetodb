@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-#from boto import exception
+# from boto import exception
 
 import tempest.clients
 import tempest.config
@@ -49,8 +49,8 @@ class MagnetoDBTestCase(test.BotoTestCase):
         # TODO(yyekovenko): full list of attrs should be clarified
         cls.index_attrs = [
             {'AttributeName': 'last_posted_by', 'AttributeType': 'S'},
-            #{'AttributeName': 'message', 'AttributeType': 'S'},
-            #{'AttributeName': 'replies', 'AttributeType': 'N'}
+            # {'AttributeName': 'message', 'AttributeType': 'S'},
+            # {'AttributeName': 'replies', 'AttributeType': 'N'}
         ]
 
         cls.smoke_schema = [
