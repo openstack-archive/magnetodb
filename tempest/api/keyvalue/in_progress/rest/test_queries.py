@@ -468,7 +468,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
 
     @test.attr(type=['Q-11'])
     def test_query_table_name_query_upper_case(self):
-        #NOTE(aostapenko) Check if table name is case sensitive in dynamodb
+        # NOTE(aostapenko) Check if table name is case sensitive in dynamodb
         self._create_test_table(self.smoke_attrs, self.tname,
                                 self.smoke_schema)
         self.wait_for_table_active(self.tname)
@@ -731,7 +731,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
 
     @test.attr(type=['Q-83'])
     def test_query_limit_0_items_3(self):
-        #NOTE(aostapenko) Needs verification in dynamodb
+        # NOTE(aostapenko) Needs verification in dynamodb
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
                                 self.smoke_schema)
