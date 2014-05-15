@@ -63,23 +63,23 @@ class CreateTableController():
 
         table_name = body.get(parser.Props.TABLE_NAME)
 
-        #parse table attributes
+        # parse table attributes
         attribute_definitions = parser.Parser.parse_attribute_definitions(
             body.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
         )
 
-        #parse table key schema
+        # parse table key schema
         key_attrs = parser.Parser.parse_key_schema(
             body.get(parser.Props.KEY_SCHEMA, [])
         )
 
-        #parse table indexed field list
+        # parse table indexed field list
         indexed_attr_names = parser.Parser.parse_local_secondary_indexes(
             body.get(
                 parser.Props.LOCAL_SECONDARY_INDEXES, [])
         )
 
-        #prepare table_schema structure
+        # prepare table_schema structure
         table_schema = models.TableSchema(
             attribute_definitions, key_attrs, indexed_attr_names)
 
