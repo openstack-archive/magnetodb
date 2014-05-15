@@ -205,5 +205,5 @@ def friendly_function_call_str(call_able, *args, **kwargs):
         if len(args):
             string += ", "
     string += ", ".join("=".join(map(str, (key, value)))
-              for (key, value) in kwargs.items())
+                        for (key, value) in kwargs.items())
     return string + ")"
