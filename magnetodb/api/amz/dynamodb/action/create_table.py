@@ -60,23 +60,23 @@ class CreateTableDynamoDBAction(DynamoDBAction):
         try:
             table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
-            #parse table attributes
+            # parse table attributes
             attribute_definitions = parser.Parser.parse_attribute_definitions(
                 self.action_params.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
             )
 
-            #parse table key schema
+            # parse table key schema
             key_attrs = parser.Parser.parse_key_schema(
                 self.action_params.get(parser.Props.KEY_SCHEMA, [])
             )
 
-            #parse table indexed field list
+            # parse table indexed field list
             indexed_def_map = parser.Parser.parse_local_secondary_indexes(
                 self.action_params.get(
                     parser.Props.LOCAL_SECONDARY_INDEXES, [])
             )
 
-            #prepare table_schema structure
+            # prepare table_schema structure
             table_schema = models.TableSchema(
                 attribute_definitions, key_attrs, indexed_def_map
             )
