@@ -293,7 +293,7 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
 
     @test.attr(type=['CreT-65', 'negative'])
     def test_create_table_index_name_upper_case(self):
-        #TODO(aostapenko) clarify behavior on dynamodb
+        # TODO(aostapenko) clarify behavior on dynamodb
         request_lsi = copy.deepcopy(self.smoke_lsi)
         request_index_name = 'INDEX_NAME'
         request_lsi[0]['index_name'] = request_index_name

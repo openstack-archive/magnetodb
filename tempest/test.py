@@ -26,7 +26,7 @@ import testresources
 import testtools
 
 from tempest import clients
-#from tempest.common import isolated_creds
+# from tempest.common import isolated_creds
 from tempest import config
 from tempest import exceptions
 from tempest.openstack.common import log as logging
@@ -230,15 +230,15 @@ class BaseTestCase(testtools.TestCase,
         """
         Returns an Openstack client manager
         """
-        #cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__)
+        # cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__)
 
         force_tenant_isolation = getattr(cls, 'force_tenant_isolation', None)
         if (cls.config.compute.allow_tenant_isolation or
                 force_tenant_isolation):
             # TODO(yyekovenko) temp. to avoid usage of network client
-            #creds = cls.isolated_creds.get_primary_creds()
-            #username, tenant_name, password = creds
-            #os = clients.Manager(username=username,
+            # creds = cls.isolated_creds.get_primary_creds()
+            # username, tenant_name, password = creds
+            # os = clients.Manager(username=username,
             #                     password=password,
             #                     tenant_name=tenant_name,
             #                     interface=cls._interface)
@@ -250,8 +250,8 @@ class BaseTestCase(testtools.TestCase,
             os = clients.Manager(interface=cls._interface)
         return os
 
-    #@classmethod
-    #def clear_isolated_creds(cls):
+    # @classmethod
+    # def clear_isolated_creds(cls):
     #    """
     #    Clears isolated creds if set
     #    """

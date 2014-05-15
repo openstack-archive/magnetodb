@@ -71,7 +71,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         self.assertIn("Table 'nonexistenttable' does not exists",
                       exception._error_string)
 
-    #TODO(ValidationException or simple NotFound)
+    # TODO(ValidationException or simple NotFound)
     @attr(type=['GI-15', 'negative'])
     def test_get_item_two_symbol_table_name(self):
         item = self.build_smoke_item('forum1', 'subject2',
@@ -86,7 +86,7 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
                                  attributes_to_get,
                                  True)
 
-    #TODO(ValidationException or simple NotFound)
+    # TODO(ValidationException or simple NotFound)
     @attr(type=['GI-16', 'negative'])
     def test_get_item_more_than_255_symbol_table_name(self):
         item = self.build_smoke_item('forum1', 'subject2',

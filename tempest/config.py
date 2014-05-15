@@ -642,7 +642,7 @@ class TempestConfig:
     """Provides OpenStack configuration information."""
 
     # TODO(yyekovenko) Temporary change of path to file
-    #DEFAULT_CONFIG_DIR = os.path.join(
+    # DEFAULT_CONFIG_DIR = os.path.join(
     #    os.path.abspath(os.path.dirname(os.path.dirname(__file__))),
     #    "etc")
 

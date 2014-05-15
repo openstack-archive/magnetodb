@@ -20,7 +20,7 @@ from magnetodb.storage.models import IndexDefinition
 from magnetodb.common.exception import MagnetoError
 
 
-#init decimal context to meet DynamoDB number type behaviour expectation
+# init decimal context to meet DynamoDB number type behaviour expectation
 DECIMAL_CONTEXT = decimal.Context(
     prec=38, rounding=None,
     traps=[],

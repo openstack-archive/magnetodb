@@ -37,7 +37,7 @@ class DeleteTableDynamoDBAction(DynamoDBAction):
 
             storage.delete_table(self.context, table_name)
 
-            #TODO (isviridov): fill ITEM_COUNT, TABLE_SIZE_BYTES,
+            # TODO (isviridov): fill ITEM_COUNT, TABLE_SIZE_BYTES,
             # CREATION_DATE_TIME with real data
             return {
                 Props.TABLE_DESCRIPTION: {
