@@ -159,3 +159,36 @@ class StorageDriver(object):
         @raise BackendInteractionException
         """
         raise NotImplementedError()
+
+    def get_counter_item(self, context, table_name, key_attribute_map,
+                         counter_attributes_to_get=None, consistent=False):
+        """
+        @param context: current request context
+        @param table_name: String, name of table to delete item from
+        @param key_attribute_map: key attribute name to
+                    AttributeValue mapping. It defines row it to update item
+        @param counter_attributes_to_get: counter attribute list to be
+                    returned. If None - all counter values will be returned
+        @param consistent: define is operation consistent or not (by default it
+                    is not consistent)
+
+        @return map of counter name to counter value (integer)
+
+        @raise BackendInteractionException
+        """
+        raise NotImplementedError()
+
+    def update_counter_item(self, context, table_name, key_attribute_map,
+                            counter_attribute_update_map):
+        """
+        @param context: current request context
+        @param table_name: String, name of table to delete item from
+        @param key_attribute_map: key attribute name to
+                    AttributeValue mapping. It defines row it to update item
+        @param counter_attribute_update_map: counter name to integer mapping.
+                    It defines value to be added (or subtracted if value is
+                    negative) per counter
+
+        @raise BackendInteractionException
+        """
+        raise NotImplementedError()

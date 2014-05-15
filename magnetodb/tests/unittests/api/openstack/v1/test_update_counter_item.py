@@ -15,13 +15,13 @@
 
 import httplib
 import json
-#import mock
+import mock
 import unittest
 
 from magnetodb.tests.fake import magnetodb_api_fake
 
 
-class GetCountersTestCase(unittest.TestCase):
+class UpdateCountersTestCase(unittest.TestCase):
     """The test for get_item method of openstack v1 ReST API."""
 
     @classmethod
@@ -32,14 +32,13 @@ class GetCountersTestCase(unittest.TestCase):
     def tearDownClass(cls):
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
-#    @mock.patch('magnetodb.storage.get_counters')
-#    def test_get_counters(self, mock_get_counters):
-    def test_get_counters(self):
+    @mock.patch('magnetodb.storage.update_counter_item')
+    def test_update_counters(self, mock_update_counter_item):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/the_table/get_counters'
+        url = '/v1/fake_project_id/data/tables/the_table/update_counter_item'
 
         body = """
             {
@@ -51,7 +50,9 @@ class GetCountersTestCase(unittest.TestCase):
                         "S": "How do I update multiple items?"
                     }
                 },
-                "counters": ["PostsCount"]
+                "counter_update_attribute_map": {
+                    "PostsCount": 1
+                }
             }
         """
 
@@ -61,4 +62,4 @@ class GetCountersTestCase(unittest.TestCase):
         json_response = response.read()
 
         response_payload = json.loads(json_response)
-        self.assertEqual({'counters': {}}, response_payload)
+        self.assertEqual({}, response_payload)
