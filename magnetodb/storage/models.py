@@ -464,7 +464,8 @@ class ScanResult(SelectResult):
 
 class TableSchema(ModelBase):
 
-    def __init__(self, attribute_type_map, key_attributes, index_def_map=None):
+    def __init__(self, attribute_type_map, key_attributes, index_def_map=None,
+                 counter_attributes=None):
         """
         @param attribute_type_map: attribute name to AttributeType mapping
         @param key_attrs: list of key attribute names, contains partition key
@@ -472,15 +473,20 @@ class TableSchema(ModelBase):
                     attribute names (the second and other list items, not
                     required)
         @param index_def_map: index name to IndexDefinition mapping
+        @param counter_attributes: list of counter attributes
         """
 
         if index_def_map is None:
             index_def_map = {}
 
+        if counter_attributes is None:
+            counter_attributes = []
+
         super(TableSchema, self).__init__(
             attribute_type_map=attribute_type_map,
             key_attributes=key_attributes,
-            index_def_map=index_def_map)
+            index_def_map=index_def_map,
+            counter_attributes=counter_attributes)
 
 
 class TableMeta(ModelBase):

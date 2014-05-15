@@ -49,6 +49,8 @@ CONDITION_TO_OP = {
 USER_PREFIX = 'user_'
 USER_PREFIX_LENGTH = len(USER_PREFIX)
 
+COUNTER_TABLE_PREFIX = 'counter_'
+
 SYSTEM_KEYSPACE = 'magnetodb'
 SYSTEM_COLUMN_INDEX_NAME = 'index_name'
 SYSTEM_COLUMN_INDEX_VALUE_STRING = 'index_value_string'
@@ -179,6 +181,7 @@ class CassandraStorageDriver(StorageDriver):
         table_schema = table_info.schema
 
         cas_table_name = USER_PREFIX + table_name
+        cas_counter_table_name = COUNTER_TABLE_PREFIX + table_name
         cas_keyspace = USER_PREFIX + context.tenant
 
         key_count = len(table_schema.key_attributes)
@@ -246,14 +249,63 @@ class CassandraStorageDriver(StorageDriver):
         LOG.debug("Waiting for schema agreement... Done")
 
         table_info.internal_name = cas_table_name
+        table_info.internal_counter_table_name = None
+
+        # creating counter table
+        if table_schema.counter_attributes:
+            query_builder = [
+                'CREATE TABLE "', cas_keyspace, '"."', cas_counter_table_name,
+                '" ('
+            ]
+
+            query_builder += map('"{}" counter,'.format,
+                                 table_schema.counter_attributes)
+
+            hash_key_type = (
+                table_schema.attribute_type_map[hash_key_name])
+
+            query_builder += (
+                '"', USER_PREFIX, hash_key_name, '" ',
+                STORAGE_TO_CASSANDRA_TYPES[hash_key_type], ',')
+
+            if range_key_name:
+                range_key_type = (
+                    table_schema.attribute_type_map[range_key_name])
+                query_builder += (
+                    '"', USER_PREFIX, range_key_name, '" ',
+                    STORAGE_TO_CASSANDRA_TYPES[range_key_type], ',')
+
+            query_builder += (
+                'PRIMARY KEY ("',
+                USER_PREFIX, hash_key_name, '"'
+            )
+
+            if range_key_name:
+                query_builder += (
+                    ',"', USER_PREFIX, range_key_name, '"'
+                )
+
+            query_builder.append("))")
+
+            self.__cluster_handler.execute_query("".join(query_builder))
+            LOG.debug("Create Table CQL request executed. "
+                      "Waiting for schema agreement...")
+            self.__cluster_handler.wait_for_table_status(
+                keyspace_name=cas_keyspace, table_name=cas_counter_table_name,
+                expected_exists=True)
+            LOG.debug("Waiting for schema agreement... Done")
+            table_info.internal_counter_table_name = cas_counter_table_name
+
         self.__table_info_repo.update(
-            context, table_info, ["internal_name"]
+            context, table_info,
+            ["internal_name", "internal_counter_table_name"]
         )
 
     def delete_table(self, context, table_name):
         table_info = self.__table_info_repo.get(context, table_name)
 
         cas_table_name = table_info.internal_name
+        cas_counter_table_name = table_info.internal_counter_table_name
         cas_keyspace_name = USER_PREFIX + context.tenant
 
         query = 'DROP TABLE "{}"."{}"'.format(cas_keyspace_name,
@@ -270,6 +322,23 @@ class CassandraStorageDriver(StorageDriver):
         )
 
         LOG.debug("Waiting for schema agreement... Done")
+
+        if cas_counter_table_name:
+            query = 'DROP TABLE "{}"."{}"'.format(cas_keyspace_name,
+                                                  cas_counter_table_name)
+
+            self.__cluster_handler.execute_query(query)
+
+            LOG.debug("Delete Table CQL request executed. "
+                      "Waiting for schema agreement...")
+
+            self.__cluster_handler.wait_for_table_status(
+                keyspace_name=cas_keyspace_name,
+                table_name=cas_counter_table_name,
+                expected_exists=False
+            )
+
+            LOG.debug("Waiting for schema agreement... Done")
 
     @staticmethod
     def _append_types_system_attr_value(table_schema, attribute_map,
@@ -1388,7 +1457,7 @@ class CassandraStorageDriver(StorageDriver):
                         LOCAL_INDEX_FIELD_LIST[i]
                     ].append(
                         models.IndexedCondition.eq(
-                            default_index_values[i-1]
+                            default_index_values[i - 1]
                         )
                     )
                 for index_attr_cond in index_attr_cond_list:
@@ -1397,16 +1466,16 @@ class CassandraStorageDriver(StorageDriver):
                     ].append(index_attr_cond)
 
                 if range_condition_list:
-                    for i in xrange(n+1, len(LOCAL_INDEX_FIELD_LIST)):
+                    for i in xrange(n + 1, len(LOCAL_INDEX_FIELD_LIST)):
                         local_indexes_conditions[
                             LOCAL_INDEX_FIELD_LIST[i]
                         ].append(
                             models.IndexedCondition.lt(
-                                default_index_values[i-1]
+                                default_index_values[i - 1]
                             )
                             if order_type == models.ORDER_TYPE_DESC else
                             models.IndexedCondition.gt(
-                                default_index_values[i-1]
+                                default_index_values[i - 1]
                             )
                         )
             elif range_condition_list:
@@ -1415,7 +1484,7 @@ class CassandraStorageDriver(StorageDriver):
                             LOCAL_INDEX_FIELD_LIST[i]
                         ].append(
                             models.IndexedCondition.eq(
-                                default_index_values[i-1]
+                                default_index_values[i - 1]
                             )
                         )
 
@@ -1692,3 +1761,40 @@ class CassandraStorageDriver(StorageDriver):
             return attr_val in cond_arg
 
         return False
+
+    def get_counter_item(self, context, table_name, key_attribute_map,
+                         counter_attributes_to_get=None, consistent=False):
+        table_info = self.__table_info_repo.get(context, table_name)
+        cas_counter_table_name = table_info.internal_counter_table_name
+        where = ''.join(self._append_primary_key(table_info.schema,
+                                                 key_attribute_map, None))
+
+        what = '*'
+        if counter_attributes_to_get:
+            what = ', '.join(counter_attributes_to_get)
+
+        query = 'SELECT {} FROM "{}{}"."{}"{}'.format(
+            what, USER_PREFIX, table_info.internal_keyspace,
+            cas_counter_table_name, where)
+
+        rows = self.__cluster_handler.execute_query(query, consistent)
+        if rows:
+            return rows[0]
+        return {}
+
+    def update_counter_item(self, context, table_name, key_attribute_map,
+                            counter_attribute_update_map):
+        table_info = self.__table_info_repo.get(context, table_name)
+        cas_counter_table_name = table_info.internal_counter_table_name
+        where = ''.join(self._append_primary_key(table_info.schema,
+                                                 key_attribute_map, None))
+
+        query = ('UPDATE "{}{}"."{}" SET {{}} {}').format(
+            USER_PREFIX, table_info.internal_keyspace, cas_counter_table_name,
+            where)
+
+        if counter_attribute_update_map:
+            what = ', '.join([
+                '{0} = {0} + ({1})'.format(n, v)
+                for n, v in counter_attribute_update_map.iteritems()])
+            self.__cluster_handler.execute_query(query.format(what))
