@@ -55,7 +55,7 @@ class CreateTableController():
 
             parser.Props.TABLE_NAME: parser.Types.TABLE_NAME,
 
-            parser.Props.COUNTERS: {
+            parser.Props.COUNTER_ATTRIBUTES: {
                 "type": "array",
                 "items": {
                     "type": "string",
@@ -87,23 +87,18 @@ class CreateTableController():
                 parser.Props.LOCAL_SECONDARY_INDEXES, [])
         )
 
-        #parse counters
-        counters = parser.Parser.parse_counters(
-            body.get(parser.Props.COUNTERS))
+        counter_attributes = body.get(parser.Props.COUNTER_ATTRIBUTES)
 
         #prepare table_schema structure
         table_schema = models.TableSchema(
-            attribute_definitions, key_attrs, indexed_attr_names)
+            attribute_definitions, key_attrs, indexed_attr_names,
+            counter_attributes
+        )
 
         # creating table
         req.context.tenant = project_id
         table_meta = storage.create_table(
             req.context, table_name, table_schema)
-
-        # creating counters table
-        if counters:
-            # storage.create_counters(req.context, table_name, counters)
-            pass
 
         url = req.path_url + "/" + table_name
         bookmark = req.path_url + "/" + table_name
@@ -149,8 +144,8 @@ class CreateTableController():
                 )
             )
 
-        if counters:
+        if counter_attributes:
             table_def = result[parser.Props.TABLE_DESCRIPTION]
-            table_def[parser.Props.COUNTERS] = counters
+            table_def[parser.Props.COUNTER_ATTRIBUTES] = counter_attributes
 
         return result

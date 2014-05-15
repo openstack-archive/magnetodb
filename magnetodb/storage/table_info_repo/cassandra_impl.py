@@ -22,7 +22,8 @@ from magnetodb.storage.table_info_repo import TableInfo
 
 class CassandraTableInfoRepository(object):
     SYSTEM_TABLE_TABLE_INFO = 'magnetodb.table_info'
-    __field_list = ("schema", "internal_name", "status")
+    __field_list = ("schema", "internal_name", "internal_counter_table_name",
+                    "status")
 
     def _save_table_info_to_cache(self, context, table_info):
         tenant_tables_cache = self.__table_info_cache.get(context.tenant)
@@ -133,7 +134,9 @@ class CassandraTableInfoRepository(object):
         query_builder.append(
             ",".join(
                 [
-                    '"{}"=\'{}\''.format(field, getattr(table_info, field))
+                    '"{}"=\'{}\''.format(
+                        field, getattr(table_info, field, None)
+                    )
                     for field in field_list
                 ]
             )
