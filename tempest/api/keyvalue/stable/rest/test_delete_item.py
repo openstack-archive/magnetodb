@@ -43,7 +43,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'subject', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
 
         item = {
             "message": {"S": 'message_text'},
@@ -75,7 +76,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
              {'attribute_name': 'category', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'},
-             {'attribute_name': 'messageId', 'key_type': 'RANGE'}])
+             {'attribute_name': 'messageId', 'key_type': 'RANGE'}],
+            wait_for_active=True)
 
         item = {
             "message": {"S": 'message_text'},
@@ -114,7 +116,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
 
         item = {
             "message": {"S": 'message_text'}
@@ -140,7 +143,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'}
         }
@@ -166,7 +170,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'}
         }
@@ -192,7 +197,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'B'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
 
         value = base64.b64encode('\xFF')
 
@@ -224,7 +230,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
              {'attribute_name': 'subject', 'attribute_type': 'S'}],
             self.table_name,
             [{'attribute_name': 'message', 'key_type': 'HASH'},
-             {'attribute_name': 'dateTime', 'key_type': 'RANGE'}])
+             {'attribute_name': 'dateTime', 'key_type': 'RANGE'}],
+            wait_for_active=True)
 
         item = {
             "message": {"S": 'message_text'},
@@ -258,7 +265,8 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'subject', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
 
         item = {
             "message": {"S": 'message_text'},

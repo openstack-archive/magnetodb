@@ -181,12 +181,16 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
 
     def _create_test_table(self, attr_def, tname, *args, **kwargs):
         cleanup = kwargs.pop('cleanup', True)
+        wait_for_active = kwargs.pop('wait_for_active', False)
         headers, body = self.client.create_table(attr_def,
                                                  tname,
                                                  *args,
                                                  **kwargs)
         if cleanup:
             self.addResourceCleanUp(self.client.delete_table, tname)
+        if wait_for_active:
+            self.wait_for_table_active(tname)
+
         return headers, body
 
 

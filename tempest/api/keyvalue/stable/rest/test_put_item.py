@@ -37,7 +37,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'}
         }
@@ -56,7 +57,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             [{'attribute_name': 'message', 'attribute_type': 'S'},
              {'attribute_name': 'author', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'},
             "author": {"S": "Bob"}
@@ -75,7 +77,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{"attribute_name": "message", "attribute_type": "N"}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"N": "1"},
             "author": {"N": "2"},
@@ -96,7 +99,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": "message"},
             "id": {"NS": ["1", "2"]},
@@ -118,7 +122,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{"attribute_name": "message", "attribute_type": "S"}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": "message"},
             "author": {"SS": ["eeee", "qqqq", "nnnn"]},
@@ -140,7 +145,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'},
             "authors": {"SS": ["Alice", "Bob"]},
@@ -165,7 +171,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'},
             "authors": {"SS": ["Alice", "Bob"]},
@@ -186,7 +193,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'},
             "authors": {"SS": ["Alice", "Bob"]},
@@ -212,7 +220,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'},
             "authors": {"SS": ["Alice", "Bob"]},
@@ -237,7 +246,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": 'message_text'},
             "author": {"SS": ["Alice", "Bob"]},
@@ -265,7 +275,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self._create_test_table(
             [{'attribute_name': 'message', 'attribute_type': 'S'}],
             self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}])
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
         item = {
             "message": {"S": "message_text_1"},
             "message": {"S": "message_text_2"}
