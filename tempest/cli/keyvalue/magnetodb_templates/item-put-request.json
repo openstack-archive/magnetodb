@@ -1,0 +1,22 @@
+{
+    "item": 
+        {
+            "hash_attr":
+                {
+                    "S": "hash_value1"
+                },
+            "range_attr":
+                {
+                    "S": "range_value1"
+                },
+            "index1_range_attr":
+                {
+                    "S": "range_value2"
+                },
+            "index2_range_attr":
+                {
+                    "S": "range_value3"
+                }
+        },
+    "return_values": "ALL_OLD"
+}

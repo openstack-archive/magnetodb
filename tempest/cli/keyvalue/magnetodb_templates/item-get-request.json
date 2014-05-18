@@ -1,0 +1,13 @@
+{
+    "key": 
+        {
+            "hash_attr":
+                {
+                    "S": "hash_value1"
+                },
+            "range_attr":
+                {
+                    "S": "range_value1"
+                }
+        }
+}
