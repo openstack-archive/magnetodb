@@ -1,0 +1,65 @@
+{
+    "table_name": "cli_test_table",
+    "attribute_definitions": [
+        {
+            "attribute_name": "hash_attr",
+            "attribute_type": "S"
+        },
+        {
+            "attribute_name": "range_attr",
+            "attribute_type": "S"
+        },
+        {
+            "attribute_name": "index1_range_attr",
+            "attribute_type": "S"
+        },
+        {
+            "attribute_name": "index2_range_attr",
+            "attribute_type": "S"
+        }
+    ],
+    "key_schema": [
+        {
+            "attribute_name": "hash_attr",
+            "key_type": "HASH"
+        },
+        {
+            "attribute_name": "range_attr",
+            "key_type": "RANGE"
+        }
+    ],
+    "local_secondary_indexes": [
+        {
+            "index_name": "index1",
+            "projection": {
+                "projection_type": "ALL"
+            },
+            "key_schema": [
+                {
+                    "attribute_name": "hash_attr",
+                    "key_type": "HASH"
+                },
+                {
+                    "attribute_name": "index1_range_attr",
+                    "key_type": "RANGE"
+                }
+            ]
+        },
+        {
+            "index_name": "index2",
+            "projection": {
+                "projection_type": "ALL"
+            },
+            "key_schema": [
+                {
+                    "attribute_name": "hash_attr",
+                    "key_type": "HASH"
+                },
+                {
+                    "attribute_name": "index2_range_attr",
+                    "key_type": "RANGE"
+                }
+            ]
+        }
+    ]
+}

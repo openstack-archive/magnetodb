@@ -1,0 +1,14 @@
+{
+    "scan_filter":
+        {
+            "index1_range_attr":
+                {
+                    "attribute_value_list": [
+                        {
+                            "S": "range_value2"
+                        }
+                    ],
+                    "comparison_operator": "EQ"
+                }
+        }
+}
