@@ -1,0 +1,23 @@
+{
+    "key_conditions":
+        {
+            "hash_attr":
+                {
+                    "attribute_value_list": [
+                        {
+                            "S": "hash_value1"
+                        }
+                    ],
+                    "comparison_operator": "EQ"
+                },
+            "range_attr":
+                {
+                    "attribute_value_list": [
+                        {
+                            "S": "range"
+                        }
+                    ],
+                    "comparison_operator": "BEGINS_WITH"
+                }
+        }
+}
