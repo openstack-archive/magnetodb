@@ -236,7 +236,7 @@ class RestClient(object):
                 token = resp['x-subject-token']
             except Exception:
                 self.LOG.exception("Failed to obtain token using V3"
-                                   " authentication (auth URL is '%s')" %
+                                   " authentication (auth URL is '%s')",
                                    req_url)
                 raise
 
@@ -279,7 +279,7 @@ class RestClient(object):
                                                    password=password)
         else:
             self.LOG.error("Failed to obtain token using V3 authentication"
-                           " (auth URL is '%s'), the response status is %s" %
+                           " (auth URL is '%s'), the response status is %s",
                            (req_url, resp.status))
             raise exceptions.AuthenticationFailure(user=user,
                                                    password=password)
@@ -350,10 +350,10 @@ class RestClient(object):
         headers = resp.copy()
         del headers['status']
         if headers.get('x-compute-request-id'):
-            self.LOG.info("Nova request id: %s" %
+            self.LOG.info("Nova request id: %s",
                           headers.pop('x-compute-request-id'))
         elif headers.get('x-openstack-request-id'):
-            self.LOG.info("Glance request id %s" %
+            self.LOG.info("Glance request id %s",
                           headers.pop('x-openstack-request-id'))
         if len(headers):
             self.LOG.debug('Response Headers: ' + str(headers))

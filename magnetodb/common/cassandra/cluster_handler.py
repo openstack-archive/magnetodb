@@ -74,12 +74,16 @@ class ClusterHandler(object):
                 self.__cluster.control_connection.wait_for_schema_agreement()
                 break
 
-            LOG.debug("Table status isn't correct"
-                      "(expected_exists: %s, table_meta: %s)."
-                      " Wait and check again" %
-                      (expected_exists, table_meta))
+            LOG.debug("Table status isn't correct "
+                      "(expected_exists: %(expected_exists)s, "
+                      "table_meta: %(table_meta)s). "
+                      "Wait and check again.",
+                      {'expected_exists': expected_exists,
+                       'table_meta': table_meta})
             time.sleep(1)
 
-        LOG.debug("Table status is correct"
-                  "(expected_exists: %s, table_meta: %s)" %
-                  (expected_exists, table_meta))
+        LOG.debug("Table status is correct "
+                  "(expected_exists: %(expected_exists)s, "
+                  "table_meta: %(table_meta)s).",
+                  {'expected_exists': expected_exists,
+                   'table_meta': table_meta})
