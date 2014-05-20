@@ -77,7 +77,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         for key in trash_keys:
             (function, pos_args, kw_args) = cls._resource_trash_bin[key]
             try:
-                LOG.debug("Cleaning up: %s" %
+                LOG.debug("Cleaning up: %s",
                           friendly_function_call_str(function, *pos_args,
                                                      **kw_args))
                 function(*pos_args, **kw_args)
@@ -88,7 +88,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
                 del cls._resource_trash_bin[key]
         super(MagnetoDBTestCase, cls).tearDownClass()
         if fail_count:
-            LOG.error('%s cleanUp operation failed' % fail_count)
+            LOG.error('%s cleanUp operation failed', fail_count)
 
     @classmethod
     def addResourceCleanUp(cls, function, *args, **kwargs):

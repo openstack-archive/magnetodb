@@ -115,10 +115,10 @@ class EC2Token(wsgi.Middleware):
             last_failure = None
             for auth_uri in self._conf_get('allowed_auth_uris'):
                 try:
-                    logger.debug("Attempt authorize on %s" % auth_uri)
+                    logger.debug("Attempt authorize on %s", auth_uri)
                     return self._authorize(req, auth_uri)
                 except exception.AWSErrorResponseException as e:
-                    logger.debug("Authorize failed: %s" % e.__class__)
+                    logger.debug("Authorize failed: %s", e.__class__)
                     last_failure = e
             raise last_failure or exception.AccessDeniedError()
 
@@ -182,7 +182,7 @@ class EC2Token(wsgi.Middleware):
         headers = {'Content-Type': 'application/json'}
 
         keystone_ec2_uri = self._conf_get_keystone_ec2_uri(auth_uri)
-        logger.info(_('Authenticating with %s') % keystone_ec2_uri)
+        logger.info(_('Authenticating with %s'), keystone_ec2_uri)
         response = requests.post(keystone_ec2_uri, data=creds_json,
                                  headers=headers)
         result = response.json()

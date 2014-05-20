@@ -269,7 +269,7 @@ class BotoTestCase(tempest.test.BaseTestCase):
         for key in trash_keys:
             (function, pos_args, kw_args) = cls._resource_trash_bin[key]
             try:
-                LOG.debug("Cleaning up: %s" %
+                LOG.debug("Cleaning up: %s",
                           friendly_function_call_str(function, *pos_args,
                                                      **kw_args))
                 function(*pos_args, **kw_args)

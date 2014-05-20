@@ -696,7 +696,7 @@ class TempestConfig:
         cfg.CONF([], project='tempest', default_config_files=config_files)
         logging.setup('tempest')
         LOG = logging.getLogger('tempest')
-        LOG.info("Using tempest config file %s" % path)
+        LOG.info("Using tempest config file %s", path)
 
         register_opt_group(cfg.CONF, compute_group, ComputeGroup)
         register_opt_group(cfg.CONF, compute_features_group,
