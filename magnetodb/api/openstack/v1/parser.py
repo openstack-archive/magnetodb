@@ -257,35 +257,42 @@ class Types():
         }
     }
 
+    _SINGLE_ITEM_VALUES_LIST = [
+        {
+            "type": "object",
+            "required": [Props.ITEM_TYPE_STRING],
+            "properties": {
+                Props.ITEM_TYPE_STRING: {
+                    "type": "string"
+                }
+            }
+        },
+        {
+            "type": "object",
+            "required": [Props.ITEM_TYPE_NUMBER],
+            "properties": {
+                Props.ITEM_TYPE_NUMBER: {
+                    "type": "string"
+                }
+            }
+        },
+        {
+            "type": "object",
+            "required": [Props.ITEM_TYPE_BLOB],
+            "properties": {
+                Props.ITEM_TYPE_BLOB: {
+                    "type": "string"
+                }
+            }
+        },
+    ]
+
+    SINGLE_ITEM_VALUE = {
+        "oneOf": _SINGLE_ITEM_VALUES_LIST
+    }
+
     ITEM_VALUE = {
         "oneOf": [
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_STRING],
-                "properties": {
-                    Props.ITEM_TYPE_STRING: {
-                        "type": "string"
-                    }
-                }
-            },
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_NUMBER],
-                "properties": {
-                    Props.ITEM_TYPE_NUMBER: {
-                        "type": "string"
-                    }
-                }
-            },
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_BLOB],
-                "properties": {
-                    Props.ITEM_TYPE_BLOB: {
-                        "type": "string"
-                    }
-                }
-            },
             {
                 "type": "object",
                 "required": [Props.ITEM_TYPE_STRING_SET],
@@ -322,7 +329,7 @@ class Types():
                     }
                 }
             }
-        ]
+        ].extend(_SINGLE_ITEM_VALUES_LIST)
     }
 
     RETURN_CONSUMED_CAPACITY = {
