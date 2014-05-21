@@ -43,7 +43,9 @@ class QueryController(object):
             parser.Props.EXCLUSIVE_START_KEY: {
                 "type": "object",
                 "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
+                    parser.ATTRIBUTE_NAME_PATTERN: (
+                        parser.Types.NON_SET_ITEM_VALUE
+                    )
                 }
             },
 
@@ -54,13 +56,15 @@ class QueryController(object):
 
             parser.Props.KEY_CONDITIONS: {
                 "type": "object",
+                "minProperties": 1,
+                "maxProperties": 2,
                 "patternProperties": {
                     parser.ATTRIBUTE_NAME_PATTERN: {
                         "type": "object",
                         "properties": {
                             parser.Props.ATTRIBUTE_VALUE_LIST: {
                                 "type": "array",
-                                "items": parser.Types.ITEM_VALUE
+                                "items": parser.Types.NON_SET_ITEM_VALUE
                             },
                             parser.Props.COMPARISON_OPERATOR: (
                                 parser.Types.QUERY_OPERATOR
