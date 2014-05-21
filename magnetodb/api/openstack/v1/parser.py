@@ -257,7 +257,7 @@ class Types():
         }
     }
 
-    ITEM_VALUE = {
+    NON_SET_ITEM_VALUE = {
         "oneOf": [
             {
                 "type": "object",
@@ -286,6 +286,11 @@ class Types():
                     }
                 }
             },
+        ]
+    }
+
+    ITEM_VALUE = {
+        "oneOf": NON_SET_ITEM_VALUE["oneOf"] + [
             {
                 "type": "object",
                 "required": [Props.ITEM_TYPE_STRING_SET],
