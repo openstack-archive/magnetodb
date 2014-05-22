@@ -14,6 +14,7 @@
 #    under the License.
 import decimal
 import json
+from _sortedlist import sortedset
 
 
 class ModelBase(object):
@@ -167,15 +168,15 @@ class AttributeValue(ModelBase):
 
     @classmethod
     def __create_str_set(cls, str_set_value):
-        return frozenset(map(cls.__create_str, str_set_value))
+        return sortedset(map(cls.__create_str, str_set_value))
 
     @classmethod
     def __create_number_set(cls, number_set_value):
-        return frozenset(map(cls.__create_number, number_set_value))
+        return sortedset(map(cls.__create_number, number_set_value))
 
     @classmethod
     def __create_blob_set(cls, blob_set_value):
-        return frozenset(map(cls.__create_blob, blob_set_value))
+        return sortedset(map(cls.__create_blob, blob_set_value))
 
     @classmethod
     def str(cls, str_value):
@@ -336,7 +337,7 @@ class SelectType(ModelBase):
 
     @classmethod
     def specified_attributes(cls, attributes):
-        return cls(cls.SELECT_TYPE_ALL_PROJECTED, frozenset(attributes))
+        return cls(cls.SELECT_TYPE_ALL_PROJECTED, sortedset(attributes))
 
     @property
     def is_count(self):
@@ -423,7 +424,7 @@ class IndexDefinition(ModelBase):
         """
         projected_attributes = (
             None if projected_attributes is None else
-            frozenset(projected_attributes)
+            sortedset(projected_attributes)
         )
 
         super(IndexDefinition, self).__init__(

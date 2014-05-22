@@ -92,7 +92,7 @@ class ScanTest(test_base_testcase.APITestCase):
                 {
                     'ForumName': {'S': 'Gerrit workflow'},
                     'LastPostDateTime': {'S': '3/19/14'},
-                    'Posts': {'SS': ['Hi', 'Hello']}
+                    'Posts': {'SS': ['Hello', 'Hi']}
                 },
                 {
                     'ForumName': {'S': 'Testing OS API'},

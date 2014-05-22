@@ -111,7 +111,7 @@ class QueryTest(test_base_testcase.APITestCase):
                 {
                     'ForumName': {'S': 'Testing OS API'},
                     'LastPostDateTime': {'S': '3/19/14'},
-                    'Posts': {'SS': ['Hi', 'Hello']}
+                    'Posts': {'SS': ['Hello', 'Hi']}
                 },
             ],
             "last_evaluated_key": {

@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import base64
 
 from decimal import Decimal
 import json
@@ -116,7 +117,6 @@ def _encode_dynamic_attr_value(attr_value):
             ),
             val
         )
-        val.sort()
     else:
         val = _encode_single_value_as_dynamic_attr(
             val, attr_value.type.element_type)
@@ -129,7 +129,7 @@ def _encode_single_value_as_dynamic_attr(value, element_type):
     elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
         return str(value)
     elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-        return value
+        return base64.b64encode(value)
     else:
         assert False, "Value wasn't formatted for cql query"
 
@@ -142,21 +142,33 @@ def _decode_predefined_attr(table_info, cas_name, cas_val, prefix=USER_PREFIX):
     return name, models.AttributeValue(storage_type, cas_val)
 
 
-def _decode_dynamic_value(value, storage_type):
+def _decode_dynamic_attr_value(value, storage_type):
     value = json.loads(value)
 
-    return models.AttributeValue(storage_type, value)
+    if storage_type.collection_type:
+        decoded_value = [
+            _decode_single_value_as_dynamic_attr(
+                storage_type.element_type, el_value
+            ) for el_value in value
+        ]
+    else:
+        decoded_value = _decode_single_value_as_dynamic_attr(
+            storage_type.element_type, value
+        )
+
+    return models.AttributeValue(storage_type, decoded_value)
 
 
-def _decode_single_value(value, element_type):
+def _decode_single_value_as_dynamic_attr(element_type, value):
     if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
         return value
     elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
         return Decimal(value)
     elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-        return value
+        return base64.b64decode(value)
     else:
         assert False, "Value wasn't formatted for cql query"
+
 
 ENCODED_DEFAULT_STRING_VALUE = _encode_predefined_attr_value(
     DEFAULT_STRING_VALUE
@@ -1499,7 +1511,9 @@ class CassandraStorageDriver(StorageDriver):
                 if not attributes_to_get or name in attributes_to_get:
                     typ = types[name]
                     storage_type = CASSANDRA_TO_STORAGE_TYPES[typ]
-                    record[name] = _decode_dynamic_value(val, storage_type)
+                    record[name] = _decode_dynamic_attr_value(
+                        val, storage_type
+                    )
 
             result.append(record)
 
