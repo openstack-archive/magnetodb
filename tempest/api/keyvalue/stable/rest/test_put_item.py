@@ -184,7 +184,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         exception = raises_cm.exception
         self.assertIn("Bad request", exception._error_string)
         self.assertIn("ValidationError", exception._error_string)
-        self.assertIn("u\'\' is not one of [\'NONE\', \'ALL_OLD\']",
+        self.assertIn("u\'\' is not one of [\'NONE\', \'ALL_NEW\']",
                       exception._error_string)
 
     @attr(type=['PI-86', 'negative'])
@@ -211,7 +211,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertIn("Bad request", exception._error_string)
         self.assertIn("ValidationError", exception._error_string)
         self.assertIn("u\'wrong_string\' is not one of [\'NONE\',"
-                      " \'ALL_OLD\']",
+                      " \'ALL_NEW\']",
                       exception._error_string)
 
     @attr(type='PI-87')

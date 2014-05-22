@@ -123,7 +123,7 @@ class PutitemTestCase(unittest.TestCase):
                         "exists": false
                     }
                 },
-                "return_values": "ALL_OLD"
+                "return_values": "ALL_NEW"
             }
         """
         conn.request("POST", url, headers=headers, body=body)

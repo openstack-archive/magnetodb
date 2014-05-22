@@ -344,13 +344,13 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                                         item,
                                         None,
                                         0,
-                                        "ALL_OLD")
+                                        "ALL_NEW")
         self.assertEqual(put_resp[1], {})
         put_resp = self.client.put_item(self.table_name,
                                         new_item,
                                         None,
                                         0,
-                                        "ALL_OLD")
+                                        "ALL_NEW")
         self.assertEqual(put_resp[1]["attributes"]["message"]["S"],
                          "message_text")
         self.assertEqual(set(put_resp[1]["attributes"]["authors"]["SS"]),

@@ -62,7 +62,7 @@ class PutItemController(object):
             parser.Props.RETURN_VALUES: {
                 "type": "string",
                 "enum": [parser.Values.RETURN_VALUES_NONE,
-                         parser.Values.RETURN_VALUES_ALL_OLD]
+                         parser.Values.RETURN_VALUES_ALL_NEW]
             }
         }
     }
@@ -99,7 +99,7 @@ class PutItemController(object):
         # format response
         response = {}
 
-        if return_values != parser.Values.RETURN_VALUES_NONE:
+        if return_values == parser.Values.RETURN_VALUES_ALL_NEW:
             response[parser.Props.ATTRIBUTES] = (
                 parser.Parser.format_item_attributes(item_attributes)
             )
