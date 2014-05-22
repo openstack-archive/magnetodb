@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import base64
 import json
 
 import unittest
@@ -117,7 +118,13 @@ class TestCassandraBase(unittest.TestCase):
     test_data_dynamic_fields = {
         'fnum': ('decimal', binascii.hexlify(json.dumps('1')), 1),
         'fstr': ('text', binascii.hexlify(json.dumps('fstr')), 'fstr'),
-        'fblb': ('blob', binascii.hexlify(json.dumps('fblob')), 'fblob'),
+        'fblb': (
+            'blob',
+            binascii.hexlify(
+                json.dumps(base64.b64encode('fblob'))
+            ),
+            'fblob'
+        ),
         'fsnum': (
             'set<decimal>', binascii.hexlify(json.dumps(['1', '2', '3'])),
             {1, 2, 3}
@@ -127,7 +134,11 @@ class TestCassandraBase(unittest.TestCase):
                 json.dumps(['fa', 'fb', 'fc'])), {'fa', 'fb', 'fc'}
         ),
         'fsblob': (
-            'set<blob>', binascii.hexlify(json.dumps(['fblob1', 'fblob2'])),
+            'set<blob>',
+            binascii.hexlify(
+                json.dumps([base64.b64encode('fblob1'),
+                            base64.b64encode('fblob2')])
+            ),
             {'fblob1', 'fblob2'}
         )
     }
