@@ -587,7 +587,7 @@ class Parser():
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
             return DECIMAL_CONTEXT.create_decimal(encoded_single_value)
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            return base64.decodestring(encoded_single_value)
+            return base64.b64decode(encoded_single_value)
         else:
             assert False, "Value type wasn't recognized"
 
@@ -601,7 +601,7 @@ class Parser():
             return str(decoded_single_value)
         elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
             assert isinstance(decoded_single_value, str)
-            return base64.encodestring(decoded_single_value)
+            return base64.b64encode(decoded_single_value)
         else:
             assert False, "Value type wasn't recognized"
 

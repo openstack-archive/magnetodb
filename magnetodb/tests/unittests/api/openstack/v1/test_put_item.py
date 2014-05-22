@@ -145,6 +145,6 @@ class PutitemTestCase(unittest.TestCase):
             'LastPostedBy': {'S': 'fred@example.com'},
             'Message': {'S': 'I want to update multiple items.'},
             'Subject': {'S': 'How do I update multiple items?'},
-            'Tags': {'SS': ['HelpMe', 'Update', 'Multiple items']}}}
+            'Tags': {'SS': ['HelpMe', 'Multiple items', 'Update']}}}
 
         self.assertEqual(expected, response_payload)
