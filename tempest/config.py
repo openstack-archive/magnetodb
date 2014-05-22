@@ -556,6 +556,26 @@ StressGroup = [
 ]
 
 
+cli_group = cfg.OptGroup(name='cli', title="cli Configuration Options")
+
+CLIGroup = [
+    cfg.BoolOpt('enabled',
+                default=True,
+                help="enable cli tests"),
+    cfg.StrOpt('cli_dir',
+               default='/usr/local/bin',
+               help="directory where python client binaries are located"),
+    cfg.BoolOpt('has_manage',
+                default=True,
+                help=("Whether the tempest run location has access to the "
+                      "*-manage commands. In a pure blackbox environment "
+                      "it will not.")),
+    cfg.IntOpt('timeout',
+               default=15,
+               help="Number of seconds to wait on a CLI timeout"),
+]
+
+
 scenario_group = cfg.OptGroup(name='scenario', title='Scenario Test Options')
 
 ScenarioGroup = [
@@ -697,6 +717,7 @@ class TempestConfig:
         register_opt_group(cfg.CONF, compute_admin_group, ComputeAdminGroup)
         register_opt_group(cfg.CONF, stress_group, StressGroup)
         register_opt_group(cfg.CONF, scenario_group, ScenarioGroup)
+        register_opt_group(cfg.CONF, cli_group, CLIGroup)
         register_opt_group(cfg.CONF, service_available_group,
                            ServiceAvailableGroup)
         register_opt_group(cfg.CONF, debug_group, DebugGroup)
@@ -715,6 +736,7 @@ class TempestConfig:
         self.orchestration = cfg.CONF.orchestration
         self.dashboard = cfg.CONF.dashboard
         self.boto = cfg.CONF.boto
+        self.cli = cfg.CONF.cli
         self.compute_admin = cfg.CONF['compute-admin']
         self.stress = cfg.CONF.stress
         self.scenario = cfg.CONF.scenario
