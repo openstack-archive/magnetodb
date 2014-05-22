@@ -55,7 +55,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
 
         # wait for async create table call to finish
         for i in range(10):
-            if mock_storage_driver.create_table.called:
+            if mock_table_info_repo.update.called:
                 table_info_update_args_list = (
                     mock_table_info_repo.update.call_args_list
                 )
@@ -107,11 +107,11 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
                          table_info_update_args_list[0][0][1].status)
 
         for i in range(10):
-            if mock_storage_driver.delete_table.called:
-                # delete method of mock_table_info_repo has been called
-                self.assertTrue(mock_table_info_repo.delete.called)
+            if mock_table_info_repo.delete.called:
+                # delete_table method of mock_storage_driver has been called
+                self.assertTrue(mock_storage_driver.delete_table.called)
             else:
                 time.sleep(1)
 
-        # delete_table method has been called
-        self.assertTrue(mock_storage_driver.delete_table.called)
+        # delete method of mock_table_info_repo has been called
+        self.assertTrue(mock_table_info_repo.delete.called)
