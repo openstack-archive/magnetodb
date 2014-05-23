@@ -86,6 +86,7 @@ class PutitemTestCase(unittest.TestCase):
 
         self.assertEqual({}, response_payload)
 
+    @unittest.skip("bug: #1299037")
     @mock.patch('magnetodb.storage.put_item')
     def test_put_item_expected(self, mock_put_item):
         headers = {'Content-Type': 'application/json',
