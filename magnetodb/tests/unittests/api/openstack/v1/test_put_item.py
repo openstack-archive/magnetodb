@@ -127,24 +127,8 @@ class PutitemTestCase(unittest.TestCase):
             }
         """
         conn.request("POST", url, headers=headers, body=body)
+        resp = conn.getresponse()
 
-        response = conn.getresponse()
+        self.assertEqual(getattr(resp, 'reason'), "Internal Server Error")
 
-        self.assertTrue(mock_put_item.called)
-        expected_condition_map = mock_put_item.call_args[1][
-            'expected_condition_map']
-        self.assertTrue(isinstance(expected_condition_map['ForumName'], list))
-        self.assertTrue(isinstance(expected_condition_map['Subject'], list))
-
-        json_response = response.read()
-        response_payload = json.loads(json_response)
-
-        expected = {'attributes': {
-            'ForumName': {'S': u'Amazon DynamoDB'},
-            'LastPostDateTime': {'S': '201303190422'},
-            'LastPostedBy': {'S': 'fred@example.com'},
-            'Message': {'S': 'I want to update multiple items.'},
-            'Subject': {'S': 'How do I update multiple items?'},
-            'Tags': {'SS': ['HelpMe', 'Multiple items', 'Update']}}}
-
-        self.assertEqual(expected, response_payload)
+        self.assertFalse(mock_put_item.called)
