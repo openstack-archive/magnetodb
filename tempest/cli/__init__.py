@@ -112,7 +112,7 @@ class ClientTestBase(tempest.test.BaseTestCase):
         """Executes specified command for the given action."""
         cmd = ' '.join([os.path.join(CONF.cli.cli_dir, cmd),
                         flags, action, params])
-        LOG.info("running: '%s'" % cmd)
+        LOG.info("running: '%s'", cmd)
         cmd_str = cmd
         cmd = shlex.split(cmd)
         result = ''
@@ -129,9 +129,9 @@ class ClientTestBase(tempest.test.BaseTestCase):
                                     result,
                                     stderr=result_err)
         finally:
-            LOG.debug('output of %s:\n%s' % (cmd_str, result))
+            LOG.debug('output of %s:\n%s', (cmd_str, result))
             if not merge_stderr and result_err:
-                LOG.debug('error output of %s:\n%s' % (cmd_str, result_err))
+                LOG.debug('error output of %s:\n%s', (cmd_str, result_err))
         return result
 
     def assertTableStruct(self, items, field_names):

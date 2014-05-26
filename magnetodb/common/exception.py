@@ -37,7 +37,7 @@ class MagnetoError(openstack_exception.OpenstackException):
             self.message = message
         if self.internal_message is not None:
             try:
-                LOG.error(safe_fmt_string(self.internal_message) % kwargs)
+                LOG.error(safe_fmt_string(self.internal_message), kwargs)
             except Exception:
                 LOG.error(self.internal_message)
         self.message = safe_fmt_string(self.message)
