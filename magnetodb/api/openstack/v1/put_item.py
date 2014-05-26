@@ -88,6 +88,10 @@ class PutItemController(object):
             parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
         )
 
+        if return_values == parser.Values.RETURN_VALUES_ALL_OLD:
+            m = _("return_values %s is not supported for now")
+            raise NotImplementedError(m % parser.Values.RETURN_VALUES_ALL_OLD)
+
         # put item
         req.context.tenant = project_id
         storage.put_item(
@@ -99,8 +103,4 @@ class PutItemController(object):
         # format response
         response = {}
 
-        if return_values != parser.Values.RETURN_VALUES_NONE:
-            response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(item_attributes)
-            )
         return response
