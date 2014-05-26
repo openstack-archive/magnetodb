@@ -16,6 +16,7 @@
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
 from tempest import exceptions
+from tempest import test
 
 
 class MagnetoDBDescribeTableNegativeTestCase(MagnetoDBTestCase):
@@ -25,14 +26,8 @@ class MagnetoDBDescribeTableNegativeTestCase(MagnetoDBTestCase):
               self).__init__(*args, **kwargs)
         self.tname = rand_name().replace('-', '')
 
-    def test_describe_table_empty_name(self):
-        self.assertRaises(exceptions.BadRequest, self.client.describe_table,
-                          table_name="")
-
-    def test_describe_table_short_name(self):
-        self.assertRaises(exceptions.BadRequest, self.client.describe_table,
-                          table_name="aa")
-
-    def test_describe_table_too_long_name(self):
-        self.assertRaises(exceptions.BadRequest, self.client.describe_table,
-                          table_name="a" * 256)
+    @test.attr(type='negative')
+    def test_describe_table_nonexistent(self):
+        tname = rand_name().replace('-', '')
+        with self.assertRaises(exceptions.NotFound):
+            self.client.describe_table(tname)

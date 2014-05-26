@@ -346,3 +346,10 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         self.assertEqual(1, len(indexes2))
         self.assertEqual(request_index_name, indexes1[0]['index_name'])
         self.assertEqual(request_index_name, indexes2[0]['index_name'])
+
+    @attr(type=['CreT-48'])
+    def test_create_table_symbols(self):
+        tname = 'Aa5-._'
+        headers, body = self._create_test_table(self.smoke_attrs, tname,
+                                                self.smoke_schema)
+        self.assertEqual(body['table_description']['table_name'], tname)

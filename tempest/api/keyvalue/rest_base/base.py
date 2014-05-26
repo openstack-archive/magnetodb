@@ -179,17 +179,17 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
                 new_items.append(item)
         return new_items
 
-    def _create_test_table(self, attr_def, tname, *args, **kwargs):
+    def _create_test_table(self, attr_def, table_name, *args, **kwargs):
         cleanup = kwargs.pop('cleanup', True)
         wait_for_active = kwargs.pop('wait_for_active', False)
         headers, body = self.client.create_table(attr_def,
-                                                 tname,
+                                                 table_name,
                                                  *args,
                                                  **kwargs)
         if cleanup:
-            self.addResourceCleanUp(self.client.delete_table, tname)
+            self.addResourceCleanUp(self.client.delete_table, table_name)
         if wait_for_active:
-            self.wait_for_table_active(tname)
+            self.wait_for_table_active(table_name)
 
         return headers, body
 

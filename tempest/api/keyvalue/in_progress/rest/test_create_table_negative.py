@@ -160,12 +160,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                     self.tname,
                                     self.smoke_schema + schema)
 
-    @test.attr(type=['CreT-33', 'negative'])
-    def test_create_table_invalid_schema_key_type(self):
-        schema = [{'attribute_name': 'forum', 'key_type': 'INVALID'}]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.one_attr, self.tname, schema)
-
     @test.attr(type=['CreT-46', 'negative'])
     def test_create_table_too_short_name(self):
         tname = 'qq'
@@ -184,15 +178,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                     self.smoke_schema,
                                     self.smoke_lsi)
 
-    @test.attr(type=['CreT-49', 'negative'])
-    def test_create_table_empty_table_name(self):
-        tname = ''
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + self.index_attrs,
-                                    tname,
-                                    self.schema_hash_only,
-                                    self.smoke_lsi)
-
     @test.attr(type=['CreT-18', 'negative'])
     def test_create_table_too_long_attr_names(self):
         attr_def = [
@@ -205,36 +190,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         ]
         with self.assertRaises(exceptions.BadRequest):
             self._create_test_table(attr_def, self.tname, schema)
-
-    @test.attr(type=['CreT-53_1', 'negative'])
-    def test_create_table_index_without_name_param(self):
-        lsi = copy.deepcopy(self.smoke_lsi)
-        del lsi[0]['index_name']
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + self.index_attrs,
-                                    self.tname,
-                                    self.smoke_schema,
-                                    lsi)
-
-    @test.attr(type=['CreT-53_2', 'negative'])
-    def test_create_table_index_without_schema_param(self):
-        lsi = copy.deepcopy(self.smoke_lsi)
-        del lsi[0]['key_schema']
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + self.index_attrs,
-                                    self.tname,
-                                    self.smoke_schema,
-                                    lsi)
-
-    @test.attr(type=['CreT-53_3', 'negative'])
-    def test_create_table_index_without_projection_param(self):
-        lsi = copy.deepcopy(self.smoke_lsi)
-        del lsi[0]['projection']
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + self.index_attrs,
-                                    self.tname,
-                                    self.smoke_schema,
-                                    lsi)
 
     @test.attr(type=['CreT-56', 'negative'])
     def test_create_table_six_indexes(self):

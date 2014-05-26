@@ -53,3 +53,30 @@ class MagnetoDBDescribeTableTestCase(MagnetoDBTestCase):
         self.assertEqual(dict, type(body))
         self._verify_table_response(body, self.smoke_attrs, tname,
                                     self.smoke_schema)
+
+    def test_describe_table_only_hash_key(self):
+        tname = rand_name().replace('-', '')
+        self._create_test_table(self.smoke_attrs, tname,
+                                self.schema_hash_only,
+                                wait_for_active=True)
+        headers, body = self.client.describe_table(tname)
+        self.assertEqual(dict, type(body))
+        self._verify_table_response(body,
+                                    self.smoke_attrs,
+                                    tname,
+                                    self.schema_hash_only)
+
+    def test_describe_table_with_indexes(self):
+        tname = rand_name().replace('-', '')
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                tname,
+                                self.smoke_schema,
+                                self.smoke_lsi,
+                                wait_for_active=True)
+        headers, body = self.client.describe_table(tname)
+        self.assertEqual(dict, type(body))
+        self._verify_table_response(body,
+                                    self.smoke_attrs + self.index_attrs,
+                                    tname,
+                                    self.smoke_schema,
+                                    self.smoke_lsi)

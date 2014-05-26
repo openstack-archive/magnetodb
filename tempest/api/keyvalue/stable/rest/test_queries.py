@@ -1135,3 +1135,248 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self.client.put_item(self.tname, item)
         with self.assertRaises(exceptions.BadRequest):
             self.client.query(table_name=self.tname, consistent_read=True)
+
+    @test.attr(type=['Q-16', 'negative'])
+    def test_query_attributes_to_get_empty_values(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = ['']
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              attributes_to_get=attributes_to_get,
+                              consistent_read=True)
+
+    @test.attr(type=['Q-16', 'negative'])
+    def test_query_attributes_to_get_incorrect_attr_name(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = ['%$&']
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              attributes_to_get=attributes_to_get,
+                              consistent_read=True)
+
+    @test.attr(type=['Q-22', 'negative'])
+    def test_query_attributes_to_get_select_empty(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = ['last_posted_by']
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              attributes_to_get=attributes_to_get,
+                              consistent_read=True,
+                              select='')
+
+    @test.attr(type=['Q-23', 'negative'])
+    def test_query_attributes_to_get_select_incorrect(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = ['last_posted_by']
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              attributes_to_get=attributes_to_get,
+                              consistent_read=True,
+                              select='INVALID')
+
+    @test.attr(type=['Q-45', 'negative'])
+    def test_query_consistent_read_invalid_value(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              consistent_read='INVALID')
+
+    @test.attr(type=['Q-62', 'negative'])
+    def test_query_exclusive_set(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        exclusive = {'forum': {'SS': ['one', 'two']}}
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              exclusive_start_key=exclusive,
+                              consistent_read=True)
+
+    @test.attr(type=['Q-74', 'negative'])
+    def test_query_index_empty_index_name(self):
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                self.smoke_lsi,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        index_name = ''
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'last_posted_by': {
+                'attribute_value_list': [{'S': 'John'}],
+                'comparison_operator': 'EQ'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              index_name=index_name,
+                              consistent_read=True)
+
+    @test.attr(type=['Q-131', 'negative'])
+    def test_query_key_cond_comparison_other_string(self):
+        self._query_key_cond_comparison_negative('N', '1', [{'N': '1'}], 'QQ')
+
+    @test.attr(type=['Q-129', 'negative'])
+    def test_query_key_cond_empty_comparison(self):
+        self._query_key_cond_comparison_negative('N', '1', [{'N': '1'}], '')
+
+    @test.attr(type=['Q-108', 'negative'])
+    def test_query_key_cond_invalid_comparison(self):
+        self._query_key_cond_comparison_negative('N', '1', [{'N': '1'}], '%%')
+
+    @test.attr(type=['Q-6', 'negative'])
+    def test_query_non_existent_table(self):
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.NotFound):
+            self.client.query(table_name='non_existent_table',
+                              key_conditions=key_conditions,
+                              consistent_read=True)
+
+    @test.attr(type=['Q-98', 'negative'])
+    def test_query_select_empty(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              consistent_read=True,
+                              select='')
+
+    @test.attr(type=['Q-99', 'negative'])
+    def test_query_select_invalid(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest):
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              consistent_read=True,
+                              select='INVALID')

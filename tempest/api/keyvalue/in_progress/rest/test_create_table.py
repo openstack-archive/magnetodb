@@ -57,13 +57,6 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
                                     self.one_attr, tname,
                                     self.schema_hash_only)
 
-    @attr(type=['CreT-48'])
-    def test_create_table_symbols(self):
-        tname = 'Aa5-._'
-        headers, body = self._create_test_table(self.smoke_attrs, tname,
-                                                self.smoke_schema)
-        self.assertEqual(body['table_description']['table_name'], tname)
-
     @attr(type=['CreT-45'])
     def test_create_table_max_table_name(self):
         tname = rand_name().replace('-', '')
