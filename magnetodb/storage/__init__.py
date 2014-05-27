@@ -1,4 +1,5 @@
 # Copyright 2013 Mirantis Inc.
+# Copyright 2014 Symantec Corporation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -232,6 +233,18 @@ def execute_write_batch(context, write_request_list):
     """
     return __STORAGE_MANAGER_IMPL.execute_write_batch(context,
                                                       write_request_list)
+
+
+def execute_get_batch(context, get_request_list):
+    """
+    @param context: current request context
+    @param get_request_list: contains get requests instances to execute
+                             batch operation
+
+    @return: Unprocessed request list
+    """
+    return __STORAGE_MANAGER_IMPL.execute_get_batch(context,
+                                                    get_request_list)
 
 
 def update_item(context, table_name, key_attribute_map,
