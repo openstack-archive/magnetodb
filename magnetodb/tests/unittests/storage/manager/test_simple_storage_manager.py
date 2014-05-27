@@ -74,3 +74,45 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                          mock_delete_item.call_args_list)
 
         self.assertEqual(unprocessed_items, [])
+
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                'select_item_async')
+    def test_execute_get_batch(self, mock_select_item):
+        future = Future()
+        future.set_result(True)
+        mock_select_item.return_value = future
+
+        context = mock.Mock(tenant='fake_tenant')
+
+        table_name = 'fake_table'
+
+        select_type = models.SelectType.all()
+        request_list = [
+            models.GetItemRequest(table_name, {
+                'id': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_NUMBER, 1),
+                'str': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_STRING, 'str1'), },
+                select_type,
+                True),
+            models.GetItemRequest(table_name, {
+                'id': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_NUMBER, 1),
+                'str': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_STRING, 'str2'), },
+                select_type,
+                True)
+        ]
+
+        expected_select = [mock.call(context, req.table_name,
+                                     req.indexed_condition_map,
+                                     req.select_type, req.consistent)
+                           for req in request_list]
+
+        storage_manager = SimpleStorageManager(None, None)
+
+        result, unprocessed_items = storage_manager.execute_get_batch(
+            context, request_list
+        )
+        mock_select_item.has_calls(expected_select)
+        self.assertEqual(unprocessed_items, [])
