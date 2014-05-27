@@ -234,6 +234,18 @@ def execute_write_batch(context, write_request_list):
                                                       write_request_list)
 
 
+def execute_get_batch(context, get_request_list):
+    """
+    @param context: current request context
+    @param get_request_list: contains get requests instances to execute
+                             batch operation
+
+    @return: Unprocessed request list
+    """
+    return __STORAGE_MANAGER_IMPL.execute_get_batch(context,
+                                                    get_request_list)
+
+
 def update_item(context, table_name, key_attribute_map,
                 attribute_action_map, expected_condition_map=None):
     """
