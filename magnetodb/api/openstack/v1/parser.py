@@ -1,4 +1,5 @@
 # Copyright 2014 Mirantis Inc.
+# Copyright 2014 Symantec Corporation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -83,6 +84,7 @@ class Props():
     ATTRIBUTES_TO_GET = "attributes_to_get"
     CONSISTENT_READ = "consistent_read"
     KEY = "key"
+    KEYS = "keys"
 
     EXCLUSIVE_START_KEY = "exclusive_start_key"
     SCAN_FILTER = "scan_filter"
@@ -890,6 +892,28 @@ class Parser():
                                 request_body[Props.KEY]))
 
     @classmethod
+    def parse_batch_get_request_items(cls, request_items_json):
+        for table_name, request_body in request_items_json.iteritems():
+            attributes_to_get = request_body.get(Props.ATTRIBUTES_TO_GET)
+            consistent = request_body.get(Props.CONSISTENT_READ, False)
+            select_type = (
+                models.SelectType.all()
+                if attributes_to_get is None else
+                models.SelectType.specified_attributes(attributes_to_get)
+            )
+            for key in request_body[Props.KEYS]:
+                key_attr = cls.parse_item_attributes(key)
+                indexed_condition_map = {
+                    name: [models.IndexedCondition.eq(value)]
+                    for name, value in key_attr.iteritems()
+                }
+                yield models.GetItemRequest(
+                    table_name,
+                    indexed_condition_map,
+                    select_type=select_type,
+                    consistent=consistent)
+
+    @classmethod
     def format_request_items(cls, request_items):
         res = {}
         for request in request_items:
@@ -922,6 +946,27 @@ class Parser():
 
             table_requests.append(request_json)
 
+        return res
+
+    @classmethod
+    def format_batch_get_unprocessed(cls, unprocessed, request_items):
+        res = {}
+        for request in unprocessed:
+            tname = request.table_name
+            table_res = res.get(request.table_name, None)
+            if table_res is None:
+                table_res = {Props.KEYS: []}
+                res[tname] = table_res
+            attr_map = {}
+            for key, value in request.indexed_condition_map.iteritems():
+                attr_map[key] = value[0].arg
+            table_res[Props.KEYS].append(cls.format_item_attributes(attr_map))
+            attr_to_get = request_items[tname].get(Props.ATTRIBUTES_TO_GET)
+            consistent = request_items[tname].get(Props.CONSISTENT_READ)
+            if attr_to_get:
+                table_res[Props.ATTRIBUTES_TO_GET] = attr_to_get
+            if consistent:
+                table_res[Props.CONSISTENT_READ] = consistent
         return res
 
     @classmethod
