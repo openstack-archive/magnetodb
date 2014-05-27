@@ -1,4 +1,5 @@
 # Copyright 2013 Mirantis Inc.
+# Copyright 2014 Symantec Corporation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,6 +21,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import put_item
 from magnetodb.api.openstack.v1 import get_item
+from magnetodb.api.openstack.v1 import batch_get_item
 from magnetodb.api.openstack.v1 import batch_write_item
 from magnetodb.api.openstack.v1 import delete_item
 
@@ -62,5 +64,11 @@ openstack_api = [
     Route("delete_item", "/{project_id}/data/tables/{table_name}/delete_item",
           conditions={'method': 'POST'},
           controller=create_resource(delete_item.DeleteItemController()),
+          action="process_request"),
+
+    Route("batch_get_item", "/{project_id}/data/batch_get_item",
+          conditions={'method': 'POST'},
+          controller=create_resource(
+              batch_get_item.BatchGetItemController()),
           action="process_request"),
 ]
