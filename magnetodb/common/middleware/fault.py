@@ -28,7 +28,7 @@ from magnetodb.common import wsgi
 
 from magnetodb.openstack.common import log as logging
 
-logger = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 class Fault(object):
@@ -117,7 +117,7 @@ class FaultWrapper(wsgi.Middleware):
         try:
             return req.get_response(self.application)
         except Exception as ex:
-            logger.exception(ex)
+            LOG.exception(ex)
             return req.get_response(Fault(self._error(ex)))
 
     @classmethod

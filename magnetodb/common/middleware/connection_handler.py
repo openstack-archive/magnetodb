@@ -17,7 +17,7 @@ from magnetodb.common import wsgi
 
 from magnetodb.openstack.common import log as logging
 
-logger = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 HTTP_CONNECTION = "Connection"
 
