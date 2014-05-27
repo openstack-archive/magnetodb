@@ -1,4 +1,5 @@
 # Copyright 2013 Mirantis Inc.
+# Copyright 2014 Symantec
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -147,6 +148,42 @@ class SimpleStorageManager(StorageManager):
 
         return unprocessed_items
 
+    def execute_get_batch(self, context, read_request_list):
+        assert read_request_list
+
+        items = []
+        unprocessed_items = []
+
+        request_count = len(read_request_list)
+        done_count = [0]
+
+        done_event = Event()
+
+        for req in read_request_list:
+            future_result = self.select_item_async(context,
+                                                   req.table_name,
+                                                   req.indexed_condition_map,
+                                                   req.select_type,
+                                                   consistent=req.consistent)
+
+            def make_callback(req):
+                def callback(res):
+                    try:
+                        items.append((req.table_name, res.result()))
+                    except Exception:
+                        unprocessed_items.append(req)
+                        LOG.exception("Can't process GetItemRequest")
+                    done_count[0] += 1
+                    if done_count[0] >= request_count:
+                        done_event.set()
+                return callback
+
+            future_result.add_done_callback(make_callback(req))
+
+        done_event.wait()
+
+        return items, unprocessed_items
+
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
         with self.__task_semaphore:
@@ -164,6 +201,17 @@ class SimpleStorageManager(StorageManager):
                 context, table_name, indexed_condition_map, select_type,
                 index_name, limit, exclusive_start_key, consistent, order_type
             )
+
+    def select_item_async(self, context, table_name,
+                          indexed_condition_map=None,
+                          select_type=None, index_name=None, limit=None,
+                          exclusive_start_key=None, consistent=True,
+                          order_type=None):
+        return self._execute_async(
+            self._storage_driver.select_item,
+            context, table_name, indexed_condition_map, select_type,
+            index_name, limit, exclusive_start_key, consistent, order_type
+        )
 
     def scan(self, context, table_name, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None,

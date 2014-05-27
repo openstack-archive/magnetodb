@@ -1,4 +1,5 @@
 # Copyright 2014 Mirantis Inc.
+# Copyright 2014 Symantec
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -146,6 +147,16 @@ class StorageManager(object):
         @param context: current request context
         @param write_request_list: contains PutItemRequest or DeleteItemRequest
                     instances to execute batch operation
+
+        @return: Unprocessed request list
+        """
+        raise NotImplementedError()
+
+    def execute_get_batch(self, context, get_request_list):
+        """
+        @param context: current request context
+        @param get_request_list: contains GetItemRequest instances to execute
+                    batch operation
 
         @return: Unprocessed request list
         """
