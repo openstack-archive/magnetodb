@@ -152,6 +152,16 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
+    def execute_get_batch(self, context, get_request_list):
+        """
+        @param context: current request context
+        @param get_request_list: contains GetItemRequest instances to execute
+                    batch operation
+
+        @return: tuple of items list and unprocessed request list
+        """
+        raise NotImplementedError()
+
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
         """
