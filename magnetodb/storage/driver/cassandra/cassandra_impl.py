@@ -1,5 +1,4 @@
 # Copyright 2014 Symantec Corporation
-# Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -1124,7 +1123,9 @@ class CassandraStorageDriver(StorageDriver):
 
         table_info = self.__table_info_repo.get(context, table_name)
 
+        # we have indexes
         if table_info.schema.index_def_map:
+            # check what we are going to do with indexes
             index_actions = {}
             for index_name, index_def in (
                     table_info.schema.index_def_map.iteritems()):
@@ -1406,7 +1407,7 @@ class CassandraStorageDriver(StorageDriver):
                         LOCAL_INDEX_FIELD_LIST[i]
                     ].append(
                         models.IndexedCondition.eq(
-                            default_index_values[i-1]
+                            default_index_values[i - 1]
                         )
                     )
                 for index_attr_cond in index_attr_cond_list:
@@ -1415,16 +1416,16 @@ class CassandraStorageDriver(StorageDriver):
                     ].append(index_attr_cond)
 
                 if range_condition_list:
-                    for i in xrange(n+1, len(LOCAL_INDEX_FIELD_LIST)):
+                    for i in xrange(n + 1, len(LOCAL_INDEX_FIELD_LIST)):
                         local_indexes_conditions[
                             LOCAL_INDEX_FIELD_LIST[i]
                         ].append(
                             models.IndexedCondition.lt(
-                                default_index_values[i-1]
+                                default_index_values[i - 1]
                             )
                             if order_type == models.ORDER_TYPE_DESC else
                             models.IndexedCondition.gt(
-                                default_index_values[i-1]
+                                default_index_values[i - 1]
                             )
                         )
             elif range_condition_list:
@@ -1433,7 +1434,7 @@ class CassandraStorageDriver(StorageDriver):
                             LOCAL_INDEX_FIELD_LIST[i]
                         ].append(
                             models.IndexedCondition.eq(
-                                default_index_values[i-1]
+                                default_index_values[i - 1]
                             )
                         )
 
