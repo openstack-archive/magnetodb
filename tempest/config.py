@@ -44,7 +44,6 @@ IdentityGroup = [
                 default=False,
                 help="Set to True if using self-signed SSL certificates."),
     cfg.StrOpt('uri',
-               default=None,
                help="Full URI of the OpenStack Identity API (Keystone), v2"),
     cfg.StrOpt('uri_v3',
                help='Full URI of the OpenStack Identity API (Keystone), v3'),
@@ -68,15 +67,12 @@ IdentityGroup = [
                help="API key to use when authenticating.",
                secret=True),
     cfg.StrOpt('alt_username',
-               default=None,
                help="Username of alternate user to use for Nova API "
                     "requests."),
     cfg.StrOpt('alt_tenant_name',
-               default=None,
                help="Alternate user's Tenant name to use for Nova API "
                     "requests."),
     cfg.StrOpt('alt_password',
-               default=None,
                help="API key to use when authenticating as alternate user.",
                secret=True),
     cfg.StrOpt('admin_username',
@@ -182,7 +178,6 @@ ComputeGroup = [
                default='computev3',
                help="Catalog type of the Compute v3 service."),
     cfg.StrOpt('path_to_private_key',
-               default=None,
                help="Path to a private key file for SSH access to remote "
                     "hosts"),
     cfg.StrOpt('volume_device_name',
@@ -442,11 +437,9 @@ OrchestrationGroup = [
                help="Instance type for tests. Needs to be big enough for a "
                     "full OS plus the test workload"),
     cfg.StrOpt('image_ref',
-               default=None,
                help="Name of heat-cfntools enabled image to use when "
                     "launching test instances."),
     cfg.StrOpt('keypair_name',
-               default=None,
                help="Name of existing keypair to launch servers with."),
     cfg.IntOpt('max_template_size',
                default=524288,
@@ -486,11 +479,9 @@ BotoGroup = [
                     "region is found in the service catalog, the first found "
                     "one is used."),
     cfg.StrOpt('aws_secret',
-               default=None,
                help="AWS Secret Key",
                secret=True),
     cfg.StrOpt('aws_access',
-               default=None,
                help="AWS Access Key"),
     cfg.StrOpt('s3_materials_path',
                default="/opt/stack/devstack/files/images/"
@@ -526,26 +517,20 @@ stress_group = cfg.OptGroup(name='stress', title='Stress Test Options')
 
 StressGroup = [
     cfg.StrOpt('nova_logdir',
-               default=None,
                help='Directory containing log files on the compute nodes'),
     cfg.IntOpt('max_instances',
                default=16,
                help='Maximum number of instances to create during test.'),
     cfg.StrOpt('controller',
-               default=None,
                help='Controller host.'),
     # new stress options
     cfg.StrOpt('target_controller',
-               default=None,
                help='Controller host.'),
     cfg.StrOpt('target_ssh_user',
-               default=None,
                help='ssh user.'),
     cfg.StrOpt('target_private_key_path',
-               default=None,
                help='Path to private key.'),
     cfg.StrOpt('target_logfiles',
-               default=None,
                help='regexp for list of log files.'),
     cfg.IntOpt('log_check_interval',
                default=60,
