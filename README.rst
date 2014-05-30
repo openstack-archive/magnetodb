@@ -1,7 +1,7 @@
 MagnetoDB
 =========
 
-**MagnetoDB** - NoSQL database service for OpenStack
+**MagnetoDB** - key-value database service for OpenStack
 
 
 Links

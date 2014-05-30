@@ -1,7 +1,6 @@
 #!/bin/bash
 #
 # This script was written by Alexei Vinogradov
-# Mirantis Inc. 2014.
 # Version 0.4 for Ubuntu 12.04
 # Example: su stack; cd /home/stack; ./magnetodb_install.sh
 
