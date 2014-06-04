@@ -83,3 +83,46 @@ class UpdateItemTestCase(test_base_testcase.APITestCase):
             }
         }
         self.assertEqual(expected, response_payload)
+
+    @mock.patch('magnetodb.storage.update_item')
+    def test_update_item_del(self, mock_update_item):
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/fake_project_id/data/tables/the_table/update_item'
+
+        body = """
+            {
+                "key": {
+                    "ForumName": {
+                        "S": "MagnetoDB"
+                    },
+                    "Subject": {
+                        "S": "How do I delete an item?"
+                    }
+                },
+                "attribute_updates": {
+                    "LastPostedBy": {
+                        "action": "DELETE"
+                    }
+                }
+            }
+        """
+
+        conn.request("POST", url, headers=headers, body=body)
+        response = conn.getresponse()
+
+        self.assertTrue(mock_update_item.called)
+
+        kwargs = mock_update_item.call_args[1]
+        attr = kwargs['attribute_action_map']['LastPostedBy']
+
+        self.assertEqual('del', attr['action'])
+        self.assertIsNone(attr['value'])
+
+        self.assertEqual(200, response.status)
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual({}, response_payload)
