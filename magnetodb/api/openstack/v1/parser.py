@@ -1,4 +1,3 @@
-# Copyright 2014 Mirantis Inc.
 # Copyright 2014 Symantec Corporation
 # All Rights Reserved.
 #
@@ -858,15 +857,17 @@ class Parser():
             elif action_type == Values.ACTION_TYPE_PUT:
                 action = models.UpdateItemAction.UPDATE_ACTION_PUT
 
-            dynamodb_value = attr_update_json[Props.VALUE]
+            dynamodb_value = attr_update_json.get(Props.VALUE)
 
-            assert len(dynamodb_value) == 1
-            (dynamodb_attr_type, dynamodb_attr_value) = (
-                dynamodb_value.items()[0]
-            )
+            value = None
+            if dynamodb_value:
+                assert len(dynamodb_value) == 1
+                (dynamodb_attr_type, dynamodb_attr_value) = (
+                    dynamodb_value.items()[0]
+                )
 
-            value = cls.decode_attr_value(
-                dynamodb_attr_type, dynamodb_attr_value)
+                value = cls.decode_attr_value(
+                    dynamodb_attr_type, dynamodb_attr_value)
 
             update_action = models.UpdateItemAction(action, value)
 
