@@ -184,9 +184,11 @@ ENCODED_DEFAULT_BLOB_VALUE = _encode_predefined_attr_value(
 
 
 class CassandraStorageDriver(StorageDriver):
-    def __init__(self, cluster_handler, table_info_repo):
+    def __init__(self, cluster_handler, table_info_repo,
+                 default_keyspace_opts):
         self.__cluster_handler = cluster_handler
         self.__table_info_repo = table_info_repo
+        self.__default_keyspace_opts = default_keyspace_opts
 
     def create_table(self, context, table_name):
         table_info = self.__table_info_repo.get(context, table_name)
@@ -195,6 +197,7 @@ class CassandraStorageDriver(StorageDriver):
         cas_table_name = USER_PREFIX + table_name
         cas_keyspace = USER_PREFIX + context.tenant
 
+        self._create_keyspace_if_not_exists(cas_keyspace)
         key_count = len(table_schema.key_attributes)
 
         if key_count < 1 or key_count > 2:
@@ -284,6 +287,17 @@ class CassandraStorageDriver(StorageDriver):
         )
 
         LOG.debug("Waiting for schema agreement... Done")
+
+    def _create_keyspace_if_not_exists(self, cas_keyspace):
+        replication_info = self.__default_keyspace_opts["replication"]
+        replication = ("{'class': '%(class)s',"
+                       "'replication_factor': %(replication_factor)s}" %
+                       replication_info)
+        query_builder = [
+            "CREATE KEYSPACE IF NOT EXISTS ",
+            cas_keyspace, " WITH replication = ", replication
+        ]
+        self.__cluster_handler.execute_query("".join(query_builder))
 
     @staticmethod
     def _append_types_system_attr_value(table_schema, attribute_map,
