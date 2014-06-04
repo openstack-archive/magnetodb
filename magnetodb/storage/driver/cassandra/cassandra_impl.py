@@ -26,6 +26,18 @@ from magnetodb.common.exception import ConditionalCheckFailedException
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
 from magnetodb.storage.driver import StorageDriver
+from oslo.config import cfg
+
+keyspace_opts_group = cfg.OptGroup(name='default_keyspace_opts',
+                                   title='Default options for keyspace.')
+default_keyspace_opts = [
+    cfg.StrOpt('replication_factor', default=3),
+    cfg.StrOpt('replication_class', default='SimpleStrategy'),
+]
+
+CONF = cfg.CONF
+CONF.register_group(keyspace_opts_group)
+CONF.register_opts(default_keyspace_opts, group='default_keyspace_opts')
 
 LOG = logging.getLogger(__name__)
 
@@ -195,6 +207,7 @@ class CassandraStorageDriver(StorageDriver):
         cas_table_name = USER_PREFIX + table_name
         cas_keyspace = USER_PREFIX + context.tenant
 
+        self._create_keyspace_if_not_exists(cas_keyspace)
         key_count = len(table_schema.key_attributes)
 
         if key_count < 1 or key_count > 2:
@@ -284,6 +297,16 @@ class CassandraStorageDriver(StorageDriver):
         )
 
         LOG.debug("Waiting for schema agreement... Done")
+
+    def _create_keyspace_if_not_exists(self, cas_keyspace):
+        replication = ("{'class': '%s', 'replication_factor': %s}" %
+                       (CONF.default_keyspace_opts.replication_class,
+                        CONF.default_keyspace_opts.replication_factor))
+        query_builder = [
+            "CREATE KEYSPACE IF NOT EXISTS ",
+            cas_keyspace, " WITH replication = ", replication
+        ]
+        self.__cluster_handler.execute_query("".join(query_builder))
 
     @staticmethod
     def _append_types_system_attr_value(table_schema, attribute_map,
