@@ -18,7 +18,9 @@ from oslo.config import cfg
 from magnetodb.common import PROJECT_NAME
 
 common_opts = [
-    cfg.StrOpt('storage_manager_config', default="{}")
+    cfg.StrOpt('storage_manager_config', default="{}"),
+    cfg.IntOpt('replication_factor', default=3),
+    cfg.StrOpt('replication_class', default='SimpleStrategy')
 ]
 
 CONF = cfg.CONF
