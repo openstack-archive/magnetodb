@@ -1,6 +1,6 @@
-# -*- encoding: utf-8 -*-
-#
-# Copyright © 2013 Unitedstack Inc.
+# Copyright 2014 Mirantis Inc.
+# Copyright 2014 Symantec Corporation
+# Copyright 2013 Unitedstack Inc.
 #
 # Author: Jianing YANG (jianingy@unitedstack.com)
 #
