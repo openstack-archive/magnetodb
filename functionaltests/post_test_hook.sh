@@ -61,4 +61,16 @@ if [ -f tempest/tempest.log ] ; then
     sudo cp tempest/tempest.log $LOGS_DIR/magnetodb_tempest.log
 fi
 
+#Saving cassandra logs
+echo "Saving Cassandra logs"
+CASSANDRA_NODES=`ls  /home/devstack/.ccm/test/|grep node`
+
+if [ -n "$CASSANDRA_NODES" ]; then
+    for i in $CASSANDRA_NODES; do
+        echo $i
+        sudo cp /home/devstack/.ccm/test/$i/logs/system.log $LOGS_DIR/$i_cassandra.log
+    done
+fi
+
+
 exit $RETVAL
