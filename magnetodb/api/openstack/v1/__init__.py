@@ -1,3 +1,4 @@
+# Copyright 2014 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
