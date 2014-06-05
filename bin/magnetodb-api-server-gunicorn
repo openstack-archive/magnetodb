@@ -45,7 +45,7 @@ if __name__ == '__main__':
         "gunicorn "
         "--bind {}:{} "
         "--workers {} "
-        "--worker-class gevent "
+        "--worker-class eventlet "
         "--paste {}".format(
             CONF.bind_host, CONF.bind_port, CONF.magnetodb_api_workers,
             api_paste_config_file
