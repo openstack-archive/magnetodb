@@ -28,6 +28,7 @@ def setup_global_env(program=None, args=None):
 
     from magnetodb import storage
     from magnetodb.common import config
+    from magnetodb.common import notifier
     from magnetodb.openstack.common import log
     from magnetodb.openstack.common import gettextutils
 
@@ -38,6 +39,7 @@ def setup_global_env(program=None, args=None):
         args=args
     )
     log.setup(PROJECT_NAME)
+    notifier.setup()
     storage.setup()
 
     __setup_complete = True

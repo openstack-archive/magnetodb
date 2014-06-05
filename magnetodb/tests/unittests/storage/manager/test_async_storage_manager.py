@@ -74,6 +74,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
                 # TableInfo status should be active by now
                 self.assertEqual(models.TableMeta.TABLE_STATUS_ACTIVE,
                                  table_info_update_args_list[0][0][1].status)
+                break
             else:
                 time.sleep(1)
 
@@ -112,6 +113,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
             if mock_table_info_repo.delete.called:
                 # delete_table method of mock_storage_driver has been called
                 self.assertTrue(mock_storage_driver.delete_table.called)
+                break
             else:
                 time.sleep(1)
 
