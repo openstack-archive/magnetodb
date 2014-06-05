@@ -1,4 +1,4 @@
-# Copyright 2014 Mirantis Inc.
+# Copyright 2014 Symantec Corporation
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # Copyright 2011 Justin Santa Barbara
@@ -31,21 +31,32 @@ This module provides a few things:
     is available.
 '''
 
-
 import datetime
 import functools
 import inspect
 import itertools
-import json
-try:
-    import xmlrpclib
-except ImportError:
-    # NOTE(jd): xmlrpclib is not shipped with Python 3
-    xmlrpclib = None
+import sys
+
+import codecs
+from magnetodb.common.notifier.decimal_encoder import DecimalEncoder
+
+
+if sys.version_info < (2, 7):
+    # On Python <= 2.6, json module is not C boosted, so try to use
+    # simplejson module if available
+    try:
+        import simplejson as json
+    except ImportError:
+        import json
+else:
+    import json
 
 import six
+import six.moves.xmlrpc_client as xmlrpclib
 
+from magnetodb.openstack.common import gettextutils
 from magnetodb.openstack.common import importutils
+from magnetodb.openstack.common import strutils
 from magnetodb.openstack.common import timeutils
 
 netaddr = importutils.try_import("netaddr")
@@ -122,18 +133,20 @@ def to_primitive(value, convert_instances=False, convert_datetime=True,
                                       level=level,
                                       max_depth=max_depth)
         if isinstance(value, dict):
-            return dict((k, recursive(v)) for k, v in value.iteritems())
+            return dict((k, recursive(v)) for k, v in six.iteritems(value))
         elif isinstance(value, (list, tuple)):
             return [recursive(lv) for lv in value]
 
         # It's not clear why xmlrpclib created their own DateTime type, but
         # for our purposes, make it a datetime type which is explicitly
         # handled
-        if xmlrpclib and isinstance(value, xmlrpclib.DateTime):
+        if isinstance(value, xmlrpclib.DateTime):
             value = datetime.datetime(*tuple(value.timetuple())[:6])
 
         if convert_datetime and isinstance(value, datetime.datetime):
             return timeutils.strtime(value)
+        elif isinstance(value, gettextutils.Message):
+            return value.data
         elif hasattr(value, 'iteritems'):
             return recursive(dict(value.iteritems()), level=level + 1)
         elif hasattr(value, '__iter__'):
@@ -154,16 +167,24 @@ def to_primitive(value, convert_instances=False, convert_datetime=True,
         return six.text_type(value)
 
 
-def dumps(value, default=to_primitive, **kwargs):
-    return json.dumps(value, default=default, **kwargs)
+def dumps(value, default=to_primitive, cls=DecimalEncoder, **kwargs):
+    """ Dump as JSON. Added DecimalEncoder to handle Decimal data type in
+    JSONEncoder.
+    :param value: input value
+    :param default:
+    :param cls: newly added param to inject more data type handling
+    :param kwargs:
+    :return:
+    """
+    return json.dumps(value, default=default, cls=cls, **kwargs)
 
 
-def loads(s):
-    return json.loads(s)
+def loads(s, encoding='utf-8'):
+    return json.loads(strutils.safe_decode(s, encoding))
 
 
-def load(s):
-    return json.load(s)
+def load(fp, encoding='utf-8'):
+    return json.load(codecs.getreader(encoding)(fp))
 
 
 try:
