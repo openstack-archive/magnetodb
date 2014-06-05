@@ -1,0 +1,204 @@
+# Copyright 2014 Symantec Corporation.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import datetime
+import mock
+import time
+
+from concurrent.futures import Future
+
+from magnetodb.openstack.common.notifier import api as notifier_api
+from magnetodb.openstack.common.notifier import test_notifier
+
+from magnetodb.common.notifier.event import Notification
+from magnetodb.tests.unittests.common.notifier.test_notification \
+    import TestNotify
+from magnetodb.tests.unittests.common.notifier.test_notification \
+    import DATETIMEFORMAT
+
+from magnetodb.storage import models
+from magnetodb.storage.manager.simple_impl import SimpleStorageManager
+from magnetodb.storage.manager.async_simple_impl \
+    import AsyncSimpleStorageManager
+
+
+class TestNotifyStorageManager(TestNotify):
+    """Unit tests for event notifier in Storage Manager."""
+
+    @mock.patch('magnetodb.storage.table_info_repo')
+    def test_notify_create_table_async(self, mock_table_info_repo):
+        TestNotify.cleanup_test_notifier()
+
+        context = mock.Mock(tenant='fake_tenant')
+        table_name = 'fake_table'
+        table_schema = 'fake_table_schema'
+
+        mock_storage_driver = mock.Mock()
+        mock_storage_driver.create_table.return_value = True
+
+        storage_manager = AsyncSimpleStorageManager(mock_storage_driver,
+                                                    mock_table_info_repo)
+        storage_manager.create_table(context, table_name, table_schema)
+
+        # wait for async create table call to finish
+        for i in range(10):
+            if mock_table_info_repo.update.called:
+                break
+            else:
+                time.sleep(1)
+
+        # create_table method has been called
+        self.assertTrue(mock_storage_driver.create_table.called)
+
+        # check notification queue
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
+
+        start_event = test_notifier.NOTIFICATIONS[0]
+        end_event = test_notifier.NOTIFICATIONS[1]
+
+        self.assertEqual(start_event['priority'],
+                         notifier_api.CONF.default_notification_level)
+        self.assertEqual(start_event['event_type'],
+                         Notification.TABLE_CREATE_START)
+        self.assertEqual(start_event['payload'], table_schema)
+
+        self.assertEqual(end_event['priority'],
+                         notifier_api.CONF.default_notification_level)
+        self.assertEqual(end_event['event_type'],
+                         Notification.TABLE_CREATE_END)
+        self.assertEqual(end_event['payload'], table_schema)
+
+        time_start = datetime.datetime.strptime(
+            start_event['timestamp'], DATETIMEFORMAT)
+        time_end = datetime.datetime.strptime(
+            end_event['timestamp'], DATETIMEFORMAT)
+        self.assertTrue(time_start < time_end,
+                        "start event is later than end event")
+
+    @mock.patch('magnetodb.storage.table_info_repo')
+    def test_notify_delete_table_async(self, mock_table_info_repo):
+        TestNotify.cleanup_test_notifier()
+
+        context = mock.Mock(tenant='fake_tenant')
+        table_name = 'fake_table'
+
+        mock_storage_driver = mock.Mock()
+        mock_storage_driver.delete_table.return_value = True
+
+        storage_manager = AsyncSimpleStorageManager(mock_storage_driver,
+                                                    mock_table_info_repo)
+        storage_manager.delete_table(context, table_name)
+
+        # wait for async delete table call to finish
+        for i in range(10):
+            if mock_table_info_repo.delete.called:
+                # delete_table method of mock_storage_driver has been called
+                break
+            else:
+                time.sleep(1)
+
+        # delete method of mock_table_info_repo has been called
+        self.assertTrue(mock_table_info_repo.delete.called)
+
+        # check notification queue
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
+
+        start_event = test_notifier.NOTIFICATIONS[0]
+        end_event = test_notifier.NOTIFICATIONS[1]
+
+        self.assertEqual(start_event['priority'],
+                         notifier_api.CONF.default_notification_level)
+        self.assertEqual(start_event['event_type'],
+                         Notification.TABLE_DELETE_START)
+        self.assertEqual(start_event['payload'], table_name)
+
+        self.assertEqual(end_event['priority'],
+                         notifier_api.CONF.default_notification_level)
+        self.assertEqual(end_event['event_type'],
+                         Notification.TABLE_DELETE_END)
+        self.assertEqual(end_event['payload'], table_name)
+
+        time_start = datetime.datetime.strptime(
+            start_event['timestamp'], DATETIMEFORMAT)
+        time_end = datetime.datetime.strptime(
+            end_event['timestamp'], DATETIMEFORMAT)
+        self.assertTrue(time_start < time_end,
+                        "start event is later than end event")
+
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                'delete_item_async')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                'put_item_async')
+    def test_notify_batch_write(self, mock_put_item, mock_delete_item):
+        TestNotify.cleanup_test_notifier()
+
+        future = Future()
+        future.set_result(True)
+        mock_put_item.return_value = future
+        mock_delete_item.return_value = future
+
+        context = mock.Mock(tenant='fake_tenant')
+
+        table_name = 'fake_table'
+
+        request_list = [
+            models.PutItemRequest(table_name, {
+                'id': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_NUMBER, 1),
+                'range': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_STRING, '1'),
+                'str': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_STRING, 'str1'), }),
+            models.PutItemRequest(table_name, {
+                'id': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_NUMBER, 2),
+                'range': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_STRING, '1'),
+                'str': models.AttributeValue(
+                    models.ATTRIBUTE_TYPE_STRING, 'str1'), }),
+            models.DeleteItemRequest(table_name, {
+                'id': models.AttributeValue.number(3),
+                'range': models.AttributeValue.str('3')})
+        ]
+
+        storage_manager = SimpleStorageManager(None, None)
+        storage_manager.execute_write_batch(context, request_list)
+
+        # check notification queue
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
+
+        start_event = test_notifier.NOTIFICATIONS[0]
+        end_event = test_notifier.NOTIFICATIONS[1]
+
+        self.assertEqual(start_event['priority'],
+                         notifier_api.CONF.default_notification_level)
+        self.assertEqual(start_event['event_type'],
+                         Notification.DATA_BATCHWRITE_START)
+        self.assertEqual(len(start_event['payload']), len(request_list))
+
+        self.assertEqual(end_event['priority'],
+                         notifier_api.CONF.default_notification_level)
+        self.assertEqual(end_event['event_type'],
+                         Notification.DATA_BATCHWRITE_END)
+        self.assertEqual(len(end_event['payload']['write_request_list']),
+                         len(request_list))
+        self.assertEqual(len(end_event['payload']['unprocessed_items']), 0)
+
+        time_start = datetime.datetime.strptime(
+            start_event['timestamp'], DATETIMEFORMAT)
+        time_end = datetime.datetime.strptime(
+            end_event['timestamp'], DATETIMEFORMAT)
+        self.assertTrue(time_start < time_end,
+                        "start event is later than end event")
