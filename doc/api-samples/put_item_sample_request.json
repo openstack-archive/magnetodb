@@ -1,0 +1,31 @@
+{
+    "item": {
+        "LastPostDateTime": {
+            "S": "201303190422"
+        },
+        "Tags": {
+            "SS": ["Update", "Multiple items", "HelpMe"]
+        },
+        "ForumName": {
+            "S": "MagnetoDB"
+        },
+        "Message": {
+            "S": "I want to update multiple items."
+        },
+        "Subject": {
+            "S": "How do I update multiple items?"
+        },
+        "LastPostedBy": {
+            "S": "fred@example.com"
+        }
+    },
+    "expected": {
+        "ForumName": {
+            "exists": false
+        },
+        "Subject": {
+            "exists": false
+        }
+    },
+    "return_values": "ALL_OLD"
+}

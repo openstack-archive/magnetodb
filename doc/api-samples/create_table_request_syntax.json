@@ -1,0 +1,32 @@
+{
+    "attribute_definitions": [
+        {
+            "attribute_name": "string",
+            "attribute_type": "string"
+        }
+    ],
+    "key_schema": [
+        {
+            "attribute_name": "string",
+            "key_type": "string"
+        }
+    ],
+    "local_secondary_indexes": [
+        {
+            "index_name": "string",
+            "key_schema": [
+                {
+                    "attribute_name": "string",
+                    "key_type": "string"
+                }
+            ],
+            "projection": {
+                "non_key_attributes": [
+                    "string"
+                ],
+                "projection_type": "string"
+            }
+        }
+    ],
+    "table_name": "string"
+}

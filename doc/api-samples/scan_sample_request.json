@@ -1,0 +1,24 @@
+{
+    "attributes_to_get": [
+        "ForumName", "LastPostDateTime", "Posts"
+    ],
+    "exclusive_start_key": {
+        "ForumName": {
+            "S": "Another forum"
+        }
+    },
+    "limit": 2,
+    "scan_filter": {
+        "LastPostDateTime": {
+            "attribute_value_list": [
+                {
+                    "S": "3/10/14"
+                }
+            ],
+            "comparison_operator": "GT"
+        }
+    },
+    "segment": 0,
+    "select": "SPECIFIC_ATTRIBUTES",
+    "total_segments": 1
+}
