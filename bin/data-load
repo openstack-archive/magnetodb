@@ -33,7 +33,7 @@ For help:
     bin/data-load -h (or --help)
 
 """
-import Queue
+from six.moves import queue as Queue
 from threading import Event
 
 from gevent import monkey

@@ -19,7 +19,7 @@ import shlex
 import string
 
 from threading import Event
-import Queue
+from six.moves import queue as Queue
 
 from gevent import monkey
 monkey.patch_all()
