@@ -136,7 +136,7 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                     indexed_condition_map_for_select)
 
             # update item
-            result = storage.update_item(
+            result, old_item = storage.update_item(
                 self.context,
                 table_name,
                 key_attribute_map=key_attributes,
