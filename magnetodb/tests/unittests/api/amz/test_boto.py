@@ -557,7 +557,7 @@ class BotoIntegrationTest(unittest.TestCase):
             IgnoreArg(), IgnoreArg(),
             key_attribute_map=IgnoreArg(),
             attribute_action_map=IgnoreArg(),
-            expected_condition_map=IgnoreArg()).AndReturn(True)
+            expected_condition_map=IgnoreArg()).AndReturn((True, None))
 
         self.storage_mocker.ReplayAll()
 
