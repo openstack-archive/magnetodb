@@ -99,21 +99,8 @@ class UpdateItemController(object):
         return_values = body.get(parser.Props.RETURN_VALUES,
                                  parser.Values.RETURN_VALUES_NONE)
 
-        select_result = None
-
-        indexed_condition_map_for_select = {
-            name: models.IndexedCondition.eq(value)
-            for name, value in key_attributes.iteritems()
-        }
-
-        if return_values in (parser.Values.RETURN_VALUES_UPDATED_OLD,
-                             parser.Values.RETURN_VALUES_ALL_OLD):
-            select_result = storage.select_item(
-                req.context, table_name,
-                indexed_condition_map_for_select)
-
         # update item
-        result = storage.update_item(
+        result, old_item = storage.update_item(
             req.context,
             table_name,
             key_attribute_map=key_attributes,
@@ -123,20 +110,26 @@ class UpdateItemController(object):
         if not result:
             raise exception.BackendInteractionException()
 
+        if return_values in (parser.Values.RETURN_VALUES_UPDATED_OLD,
+                             parser.Values.RETURN_VALUES_ALL_OLD):
+            result_item = old_item
+
         if return_values in (parser.Values.RETURN_VALUES_UPDATED_NEW,
                              parser.Values.RETURN_VALUES_ALL_NEW):
-
-            select_result = storage.select_item(
+            indexed_condition_map_for_select = {
+                name: models.IndexedCondition.eq(value)
+                for name, value in key_attributes.iteritems()
+            }
+            result_item = storage.select_item(
                 req.context, table_name,
-                indexed_condition_map_for_select)
+                indexed_condition_map_for_select).items[0]
 
         # format response
         response = {}
 
         if return_values != parser.Values.RETURN_VALUES_NONE:
             response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(
-                    select_result.items[0])
+                parser.Parser.format_item_attributes(result_item)
             )
 
         return response
