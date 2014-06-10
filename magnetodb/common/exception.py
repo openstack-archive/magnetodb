@@ -58,7 +58,10 @@ class TableAlreadyExistsException(BackendInteractionException):
 
 
 class ConditionalCheckFailedException(BackendInteractionException):
-    pass
+    def __init__(self, message='The conditional request failed', **kwargs):
+        super(ConditionalCheckFailedException, self).__init__(
+            message, **kwargs
+        )
 
 
 # Common Errors

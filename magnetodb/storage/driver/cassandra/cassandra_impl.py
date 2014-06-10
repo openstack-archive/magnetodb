@@ -230,7 +230,7 @@ class CassandraStorageDriver(StorageDriver):
         query_builder += (
             SYSTEM_COLUMN_EXTRA_ATTR_DATA, " map<text, blob>,",
             SYSTEM_COLUMN_EXTRA_ATTR_TYPES, " map<text, text>,",
-            SYSTEM_COLUMN_ATTR_EXIST, " set<text>,"
+            SYSTEM_COLUMN_ATTR_EXIST, " map<text, int>,"
             'PRIMARY KEY ("',
             USER_PREFIX, hash_key_name, '"'
         )
@@ -313,7 +313,7 @@ class CassandraStorageDriver(StorageDriver):
         prefix = ""
         query_builder.append("{")
         for attr, _ in attribute_map.iteritems():
-            query_builder += (prefix, "'", attr, "'")
+            query_builder += (prefix, "'", attr, "':1")
             prefix = ","
         query_builder.append("}")
         return query_builder
@@ -504,18 +504,8 @@ class CassandraStorageDriver(StorageDriver):
                         set_prefix,
                         SYSTEM_COLUMN_EXTRA_ATTR_DATA, "['", name, "']=null,",
                         SYSTEM_COLUMN_EXTRA_ATTR_TYPES, "['", name, "']=null,",
+                        SYSTEM_COLUMN_ATTR_EXIST, "['", name, "']=null"
                     )
-                query_builder += (
-                    SYSTEM_COLUMN_ATTR_EXIST, "=",
-                    SYSTEM_COLUMN_ATTR_EXIST, "-{"
-                )
-                field_prefix = ""
-                for name in dynamic_attrs_to_delete:
-                    query_builder += (
-                        field_prefix, "'", name, "'",
-                    )
-                    field_prefix = ","
-                query_builder.append("}")
         self._append_primary_key(table_info.schema, attribute_map,
                                  query_builder)
 
@@ -992,19 +982,10 @@ class CassandraStorageDriver(StorageDriver):
         if query_builder is None:
             query_builder = []
         if condition.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
-            if condition.arg:
-                query_builder += (
-                    SYSTEM_COLUMN_ATTR_EXIST, "={'", attr, "'}"
-                )
-            else:
-                if is_predefined:
-                    query_builder += (
-                        '"', USER_PREFIX, attr, '"=null'
-                    )
-                else:
-                    query_builder += (
-                        SYSTEM_COLUMN_EXTRA_ATTR_DATA, "['", attr, "']=null"
-                    )
+            query_builder += (
+                SYSTEM_COLUMN_ATTR_EXIST, "['", attr, "']="
+            )
+            query_builder.append("1" if condition.arg else "null")
         elif condition.type == models.ExpectedCondition.CONDITION_TYPE_EQUAL:
             if is_predefined:
                 query_builder += (
