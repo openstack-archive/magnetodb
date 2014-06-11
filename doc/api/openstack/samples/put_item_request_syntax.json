@@ -1,0 +1,39 @@
+{
+    "expected": {
+        "string": {
+            "exists": "boolean",
+            "value": {
+                "B": "blob",
+                "BS": [
+                    "blob"
+                ],
+                "N": "string",
+                "NS": [
+                    "string"
+                ],
+                "S": "string",
+                "SS": [
+                    "string"
+                ]
+            }
+        }
+    },
+    "item": {
+        "string": {
+            "B": "blob",
+            "BS": [
+                "blob"
+            ],
+            "N": "string",
+            "NS": [
+                "string"
+            ],
+            "S": "string",
+            "SS": [
+                "string"
+            ]
+        }
+    },
+    "time_to_live": "number",
+    "return_values": "string"
+}

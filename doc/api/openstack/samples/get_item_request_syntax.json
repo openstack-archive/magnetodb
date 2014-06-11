@@ -1,0 +1,22 @@
+{
+    "attributes_to_get": [
+        "string"
+    ],
+    "consistent_read": "boolean",
+    "key": {
+        "string": {
+            "B": "blob",
+            "BS": [
+                "blob"
+            ],
+            "N": "string",
+            "NS": [
+                "string"
+            ],
+            "S": "string",
+            "SS": [
+                "string"
+            ]
+        }
+    }
+}

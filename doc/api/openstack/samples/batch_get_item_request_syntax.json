@@ -1,0 +1,29 @@
+{
+    "request_items": {
+        "string": {
+            "attributes_to_get": [
+                "string"
+            ],
+            "consistent_read": "boolean",
+            "keys": [
+
+                {
+                    "string": {
+                        "B": "blob",
+                        "BS": [
+                            "blob"
+                        ],
+                        "N": "string",
+                        "NS": [
+                            "string"
+                        ],
+                        "S": "string",
+                        "SS": [
+                            "string"
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

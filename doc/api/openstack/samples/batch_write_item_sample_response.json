@@ -1,0 +1,18 @@
+{
+    "unprocessed_items": {
+        "Forum": [
+            {
+                "put_request": {
+                    "item": {
+                        "Name": {
+                            "S": "Nova"
+                        },
+                        "Category": {
+                            "S": "OpenStack Core"
+                        }
+                    }
+                }
+            }
+        ]
+    }
+}

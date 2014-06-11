@@ -1,0 +1,45 @@
+{
+    "request_items": {
+        "string": [
+            {
+                "delete_request": {
+                    "key": {
+                        "string": {
+                            "B": "blob",
+                            "BS": [
+                                "blob"
+                            ],
+                            "N": "string",
+                            "NS": [
+                                "string"
+                            ],
+                            "S": "string",
+                            "SS": [
+                                "string"
+                            ]
+                        }
+                    }
+                },
+                "put_request": {
+                    "item": {
+                        "string": {
+                            "B": "blob",
+                            "BS": [
+                                "blob"
+                            ],
+                            "N": "string",
+                            "NS": [
+                                "string"
+                            ],
+                            "S": "string",
+                            "SS": [
+                                "string"
+                            ]
+                        }
+                    },
+                    "time_to_live": "number"
+                }
+            }
+        ]
+    }
+}

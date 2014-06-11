@@ -25,6 +25,8 @@ LOG = logging.getLogger(__name__)
 
 
 class DescribeTableController(object):
+    """Returns information about the table."""
+
     def describe_table(self, req, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id

@@ -1,0 +1,36 @@
+{
+    "attributes_to_get": [
+        "ForumName", "LastPostDateTime", "Posts"
+    ],
+    "exclusive_start_key": {
+        "ForumName": {
+            "S": "Testing OS API"
+        },
+        "LastPostDayTime": {
+            "S": "3/1/14"
+        }
+    },
+    "index_name": "LastPostIndex",
+    "limit": 2,
+    "consistent_read": true,
+    "scan_index_forward": true,
+    "key_conditions": {
+        "ForumName": {
+            "attribute_value_list": [
+                {
+                    "S": "Testing OS API"
+                }
+            ],
+            "comparison_operator": "EQ"
+        },
+        "LastPostDateTime": {
+            "attribute_value_list": [
+                {
+                    "S": "3/10/14"
+                }
+            ],
+            "comparison_operator": "GT"
+        }
+    },
+    "select": "SPECIFIC_ATTRIBUTES"
+}

@@ -1,0 +1,22 @@
+{
+    "attributes": {
+        "ForumName": {
+            "S": "MagnetoDB"
+        },
+        "LastPostDateTime": {
+            "S": "201303190422"
+        },
+        "LastPostedBy": {
+            "S": "fred@example.com"
+        },
+        "Message": {
+            "S": "I want to update multiple items."
+        },
+        "Subject": {
+            "S": "How do I update multiple items?"
+        },
+        "Tags": {
+            "SS": ["HelpMe", "Multiple items", "Update"]
+        }
+    }
+}

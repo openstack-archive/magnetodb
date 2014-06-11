@@ -1,3 +1,4 @@
+# Copyright 2014 Symantec Corporation
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -17,13 +18,21 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath('../..'))
-# -- General configuration ----------------------------------------------------
+sys.path.insert(0, os.path.abspath('../../'))
+sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath('./'))
+
+
+def get_file_contents(filename):
+    path = os.path.join(os.path.abspath('.'), filename)
+    with open(path, 'r') as fh:
+        return ''.join(fh).strip()
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinxcontrib.httpdomain',
     'sphinx.ext.intersphinx',
     'oslosphinx',
 ]
@@ -44,6 +53,18 @@ master_doc = 'index'
 project = u'magnetodb'
 copyright = u'2014, MagnetoDB Contributors'
 
+
+# The version info for the project you're documenting, acts as replacement for
+# |version| and |release|, also used in various other places throughout the
+# built documents.
+#
+# The short X.Y version.
+# version = '2.0'
+version = get_file_contents('version.txt')
+# The full version, including alpha/beta/rc tags.
+# release = '2.0.5'
+release = version + ' ' + get_file_contents('release.txt')
+
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = True
 
@@ -63,7 +84,7 @@ pygments_style = 'sphinx'
 # html_static_path = ['_static']
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = '%sdoc' % project
+htmlhelp_basename = '%sdoc %project'
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}

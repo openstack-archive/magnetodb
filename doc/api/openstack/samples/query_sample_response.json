@@ -1,0 +1,35 @@
+{
+    "count": 2,
+    "items": [
+        {
+            "ForumName": {
+                "S": "Testing OS API"
+            },
+            "LastPostDateTime": {
+                "S": "3/18/14"
+            },
+            "Posts": {
+                "SS": ["Opening post"]
+            }
+        },
+        {
+            "ForumName": {
+                "S": "Testing OS API"
+            },
+            "LastPostDateTime": {
+                "S": "3/19/14"
+            },
+            "Posts": {
+                "SS": ["Hello", "Hi"]
+            }
+        }
+    ],
+    "last_evaluated_key": {
+        "ForumName": {
+            "S": "Testing OS API"
+        },
+        "LastPostDateTime": {
+            "S": "3/19/14"
+        }
+    }
+}

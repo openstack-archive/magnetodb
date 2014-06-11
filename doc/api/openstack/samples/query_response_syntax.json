@@ -1,0 +1,38 @@
+{
+    "count": "number",
+    "items": [
+
+        {
+            "string": {
+                "B": "blob",
+                "BS": [
+                    "blob"
+                ],
+                "N": "string",
+                "NS": [
+                    "string"
+                ],
+                "S": "string",
+                "SS": [
+                    "string"
+                ]
+            }
+        }
+    ],
+    "last_evaluated_key": {
+        "string": {
+            "B": "blob",
+            "BS": [
+                "blob"
+            ],
+            "N": "string",
+            "NS": [
+                "string"
+            ],
+            "S": "string",
+            "SS": [
+                "string"
+            ]
+        }
+    }
+}

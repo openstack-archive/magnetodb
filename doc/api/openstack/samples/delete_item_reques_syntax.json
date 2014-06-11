@@ -1,0 +1,38 @@
+{
+    "expected": {
+        "string": {
+            "exists": "boolean",
+            "value": {
+                "B": "blob",
+                "BS": [
+                    "blob"
+                ],
+                "N": "string",
+                "NS": [
+                    "string"
+                ],
+                "S": "string",
+                "SS": [
+                    "string"
+                ]
+            }
+        }
+    },
+    "key": {
+        "string": {
+            "B": "blob",
+            "BS": [
+                "blob"
+            ],
+            "N": "string",
+            "NS": [
+                "string"
+            ],
+            "S": "string",
+            "SS": [
+                "string"
+            ]
+        }
+    },
+    "return_values": "string"
+}

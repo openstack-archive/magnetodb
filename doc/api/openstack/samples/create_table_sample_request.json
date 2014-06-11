@@ -1,0 +1,45 @@
+{
+    "attribute_definitions": [
+        {
+            "attribute_name": "ForumName",
+            "attribute_type": "S"
+        },
+        {
+            "attribute_name": "Subject",
+            "attribute_type": "S"
+        },
+        {
+            "attribute_name": "LastPostDateTime",
+            "attribute_type": "S"
+        }
+    ],
+    "table_name": "Thread",
+    "key_schema": [
+        {
+            "attribute_name": "ForumName",
+            "key_type": "HASH"
+        },
+        {
+            "attribute_name": "Subject",
+            "key_type": "RANGE"
+        }
+    ],
+    "local_secondary_indexes": [
+        {
+            "index_name": "LastPostIndex",
+            "key_schema": [
+                {
+                    "attribute_name": "ForumName",
+                    "key_type": "HASH"
+                },
+                {
+                    "attribute_name": "LastPostDateTime",
+                    "key_type": "RANGE"
+                }
+            ],
+            "projection": {
+                "projection_type": "KEYS_ONLY"
+            }
+        }
+    ]
+}
