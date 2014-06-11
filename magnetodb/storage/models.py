@@ -60,6 +60,8 @@ class ModelBase(object):
                 data = obj._data.copy()
                 data["__model__"] = obj.__class__.__name__
                 return data
+            if isinstance(obj, sortedset):
+                return list(obj)
             raise TypeError(repr(obj) + " is not JSON serializable")
 
         return json.dumps(self, default=encode_model, sort_keys=True)
@@ -407,7 +409,7 @@ class GetItemRequest(ModelBase):
             indexed_condition_map=indexed_condition_map,
             select_type=select_type,
             consistent=consistent
-            )
+        )
 
 
 class UpdateItemAction(ModelBase):
