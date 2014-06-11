@@ -23,6 +23,10 @@ from magnetodb.api.openstack.v1 import utils
 
 
 class BatchGetItemController(object):
+    """ The BatchGetitem operation returns the attributes
+    of one or more items from one or more tables.
+    """
+
     REQUEST_GET_SCHEMA = {
         "type": "object",
         "required": [parser.Props.KEYS],

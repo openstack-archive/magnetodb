@@ -24,6 +24,8 @@ LOG = logging.getLogger(__name__)
 
 
 class DeleteTableController(object):
+    """The DeleteTable operation deletes a table and all of its items."""
+
     def delete_table(self, req, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id

@@ -44,7 +44,7 @@ class GetItemTestCase(unittest.TestCase):
             {
                 "key": {
                     "ForumName": {
-                        "S": "Amazon DynamoDB"
+                        "S": "MagnetoDB"
                     },
                     "Subject": {
                         "S": "How do I update multiple items?"

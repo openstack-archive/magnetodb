@@ -1,0 +1,46 @@
+{
+    "attributes_to_get": [
+        "string"
+    ],
+    "exclusive_start_key": {
+        "string": {
+            "B": "blob",
+            "BS": [
+                "blob"
+            ],
+            "N": "string",
+            "NS": [
+                "string"
+            ],
+            "S": "string",
+            "SS": [
+                "string"
+            ]
+        }
+    },
+    "limit": "number",
+    "scan_filter": {
+        "string": {
+            "attribute_value_list": [
+                {
+                    "B": "blob",
+                    "BS": [
+                        "blob"
+                    ],
+                    "N": "string",
+                    "NS": [
+                        "string"
+                    ],
+                    "S": "string",
+                    "SS": [
+                        "string"
+                    ]
+                }
+            ],
+            "comparison_operator": "string"
+        }
+    },
+    "segment": "number",
+    "select": "string",
+    "total_segments": "number"
+}

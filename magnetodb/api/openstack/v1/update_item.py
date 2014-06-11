@@ -23,6 +23,10 @@ from magnetodb.common import exception
 
 
 class UpdateItemController(object):
+    """
+    Edits(or inserts if item does not already exist) an item's attributes.
+    """
+
     schema = {
         "required": [parser.Props.KEY],
         "properties": {

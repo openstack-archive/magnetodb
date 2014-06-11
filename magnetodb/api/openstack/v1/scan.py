@@ -27,6 +27,10 @@ LOG = logging.getLogger(__name__)
 
 
 class ScanController(object):
+    """ The Scan operation returns one or more items
+    and item attributes by accessing every item in the table.
+    """
+
     schema = {
         "properties": {
             parser.Props.ATTRIBUTES_TO_GET: {

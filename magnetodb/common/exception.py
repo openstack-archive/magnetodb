@@ -66,46 +66,86 @@ class ConditionalCheckFailedException(BackendInteractionException):
 
 # Common Errors
 class InternalFailure(MagnetoError):
+    """Unknown error, exception or failure.
+    HTTP Status Code: 500
+    """
     pass
 
 
 class RequestQuotaExceeded(MagnetoError):
+    """Server is overloaded or caller has exceeded request quota.
+    HTTP Status Code: 429
+    """
     pass
 
 
 class OverLimit(MagnetoError):
+    """Caller is exceeded data storage quota.
+    HTTP Status Code: 413
+    """
     pass
 
 
 class InvalidClientToken(MagnetoError):
+    """The Keystone token does not exist or expired.
+    HTTP Status Code: 401
+    """
     pass
 
 
 class Forbidden(MagnetoError):
+    """Caller is not authorized for operation.
+    HTTP Status Code: 403
+    """
     pass
 
 
 class InvalidParameterCombination(MagnetoError):
+    """Parameters that must not be used together were used together.
+    HTTP Status Code: 400
+    """
     pass
 
 
 class InvalidParameterValue(MagnetoError):
+    """An invalid or out-of-range value was supplied for the input parameter.
+    HTTP Status Code: 400
+    """
     pass
 
 
 class InvalidQueryParameter(MagnetoError):
+    """SThe query string is malformed or does not adhere to standards.
+    HTTP Status Code: 400
+    """
     pass
 
 
 class MalformedQueryString(MagnetoError):
+    """The query string contains a syntax error.
+    HTTP Status Code: 404
+    """
     pass
 
 
 class MissingParameter(MagnetoError):
+    """A required parameter for the specified action is not supplied.
+    HTTP Status Code: 400
+    """
     pass
 
 
 class ServiceUnavailable(MagnetoError):
+    """Temporary failure of the server.
+    HTTP Status Code: 503
+    """
+    pass
+
+
+class ValidationError(MagnetoError):
+    """Value validation failed.
+    HTTP Status Code: 400
+    """
     pass
 
 

@@ -24,6 +24,10 @@ from magnetodb.api.openstack.v1 import utils
 
 
 class BatchWriteItemController(object):
+    """ The BatchWriteItem operation puts or deletes
+    multiple items in one or more tables.
+    """
+
     REQUEST_DELETE_SCEMA = {
         "type": "object",
         "required": [parser.Props.REQUEST_DELETE],

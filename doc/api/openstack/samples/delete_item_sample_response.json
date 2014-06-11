@@ -1,0 +1,19 @@
+{
+    "attributes": {
+        "LastPostDateTime": {
+            "S": "201303190422"
+        },
+        "ForumName": {
+            "S": "MagnetoDB"
+        },
+        "Message": {
+            "S": "I want to delete item."
+        },
+        "Subject": {
+            "S": "How do I delete an item?"
+        },
+        "LastPostedBy": {
+            "S": "fred@example.com"
+        }
+    }
+}

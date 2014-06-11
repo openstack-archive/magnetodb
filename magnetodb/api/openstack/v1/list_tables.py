@@ -25,6 +25,10 @@ LOG = logging.getLogger(__name__)
 
 
 class ListTablesController():
+    """Returns an array of table describing info associated
+    with the current user in given tenant.
+    """
+
     def list_tables(self, req, project_id):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id

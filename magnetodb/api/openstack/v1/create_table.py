@@ -29,6 +29,11 @@ LOG = logging.getLogger(__name__)
 
 
 class CreateTableController():
+    """
+    The CreateTable operation adds a new table.
+    Table names must be unique within each tenant.
+    """
+
     schema = {
         "required": [parser.Props.ATTRIBUTE_DEFINITIONS,
                      parser.Props.KEY_SCHEMA,

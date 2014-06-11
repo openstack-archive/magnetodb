@@ -98,11 +98,11 @@ class ScanTest(test_base_testcase.APITestCase):
                     'ForumName': {'S': 'Testing OS API'},
                     'LastPostDateTime': {'S': '3/18/14'},
                     'Posts': {'SS': ['Opening post']}
-                },
+                }
             ],
             "last_evaluated_key": {
                 'ForumName': {'S': 'Testing OS API'},
-                'Subject': {'S': 'Some subject'},
+                'Subject': {'S': 'Some subject'}
             },
             "scanned_count": 10
         }

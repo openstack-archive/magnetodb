@@ -50,7 +50,7 @@ class PutitemTestCase(unittest.TestCase):
                         "SS": ["Update","Multiple items","HelpMe"]
                     },
                     "ForumName": {
-                        "S": "Amazon DynamoDB"
+                        "S": "MagnetoDB"
                     },
                     "Message": {
                         "S": "I want to update multiple items."
@@ -105,7 +105,7 @@ class PutitemTestCase(unittest.TestCase):
                         "SS": ["Update","Multiple items","HelpMe"]
                     },
                     "ForumName": {
-                        "S": "Amazon DynamoDB"
+                        "S": "MagnetoDB"
                     },
                     "Message": {
                         "S": "I want to update multiple items."
@@ -142,7 +142,7 @@ class PutitemTestCase(unittest.TestCase):
         response_payload = json.loads(json_response)
 
         expected = {'attributes': {
-            'ForumName': {'S': u'Amazon DynamoDB'},
+            'ForumName': {'S': u'MagnetoDB'},
             'LastPostDateTime': {'S': '201303190422'},
             'LastPostedBy': {'S': 'fred@example.com'},
             'Message': {'S': 'I want to update multiple items.'},

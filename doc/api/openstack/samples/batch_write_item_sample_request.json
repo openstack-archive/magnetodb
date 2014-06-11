@@ -1,0 +1,54 @@
+{
+    "request_items": {
+        "Forum": [
+            {
+                "put_request": {
+                    "item": {
+                        "Name": {
+                            "S": "MagnetoDB"
+                        },
+                        "Category": {
+                            "S": "OpenStack KVaaS"
+                        }
+                    }
+                }
+            },
+            {
+                "put_request": {
+                    "item": {
+                        "Name": {
+                            "S": "Nova"
+                        },
+                        "Category": {
+                            "S": "OpenStack Core"
+                        }
+                    }
+                }
+            },
+            {
+                "put_request": {
+                    "item": {
+                        "Name": {
+                            "S": "KeyStone"
+                        },
+                        "Category": {
+                            "S": "OpenStack Core"
+                        }
+                    }
+                }
+            },
+            {
+                "delete_request": {
+                    "key": {
+                        "Name": {
+                            "S": "Cinder"
+                        },
+                        "Category": {
+                            "S": "OpenStack Core"
+                        }
+                    }
+                }
+            }
+        ]
+    }
+}

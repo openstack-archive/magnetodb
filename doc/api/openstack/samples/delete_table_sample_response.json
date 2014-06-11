@@ -1,0 +1,63 @@
+{
+    "table_description": {
+        "attribute_definitions": [
+            {
+                "attribute_name": "Subject",
+                "attribute_type": "S"
+            },
+            {
+                "attribute_name": "LastPostDateTime",
+                "attribute_type": "S"
+            },
+            {
+                "attribute_name": "ForumName",
+                "attribute_type": "S"
+            }
+        ],
+        "creation_date_time": 0,
+        "item_count": 0,
+        "key_schema": [
+            {
+                "attribute_name": "ForumName",
+                "key_type": "HASH"
+            },
+            {
+                "attribute_name": "Subject",
+                "key_type": "RANGE"
+            }
+        ],
+        "local_secondary_indexes": [
+            {
+                "index_name": "LastPostIndex",
+                "index_size_bytes": 0,
+                "item_count": 0,
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "projection": {
+                    "projection_type": "ALL"
+                }
+            }
+        ],
+        "table_name": "Thread",
+        "table_size_bytes": 0,
+        "table_status": "DELETING",
+        "links": [
+            {
+                "href": "http://localhost:8480/v1/fake_project_id/data/tables/Thread",
+                "rel": "self"
+            },
+            {
+                "href": "http://localhost:8480/v1/fake_project_id/data/tables/Thread",
+                "rel": "bookmark"
+            }
+        ]
+    }
+}

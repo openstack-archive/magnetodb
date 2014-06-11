@@ -1,0 +1,12 @@
+{
+    "key": {
+        "ForumName": {
+            "S": "MagnetoDB"
+        },
+        "Subject": {
+            "S": "How do I update multiple items?"
+        }
+    },
+    "attributes_to_get": ["LastPostDateTime", "Message", "Tags"],
+    "consistent_read": true
+}
