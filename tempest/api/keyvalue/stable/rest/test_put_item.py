@@ -397,6 +397,41 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(get_resp[1]['item']['id'],
                          {'N': '2'})
 
+    @attr(type='PI-52')
+    def test_put_item_exists_false(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"},
+        }
+        new_item = {
+            "message": {"S": "message_text"},
+            "author": {"S": "Alice"},
+            "id": {"N": "2"}
+        }
+        expected = {
+            "id": {
+                "exists": False
+            }
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        put_resp = self.client.put_item(self.table_name,
+                                        new_item, expected)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": 'message_text'}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item']['author'],
+                         {'S': 'Alice'})
+        self.assertEqual(get_resp[1]['item']['id'],
+                         {'N': '2'})
+
     @attr(type='PI-80')
     def test_put_item_with_returned_none(self):
         self.table_name = rand_name().replace('-', '')
@@ -543,6 +578,38 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(get_resp[1]["item"]["author"], {"S": "Kris"})
         self.assertEqual(get_resp[1]['item']["other"], {"S": "zzzz"})
 
+    @attr(type=['PI-111', 'negative'])
+    def test_put_item_wrong_data_type_in_expected(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"},
+        }
+        new_item = {
+            "message": {"S": "message_text"},
+            "author": {"S": "Alice"},
+        }
+        expected = {
+            "author": {
+                "value": {"KK": "Bob"}
+            }
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.put_item(self.table_name, new_item, expected)
+
+        exception_str = str(raises_cm.exception)
+        self.assertIn("u'message': u\"{u'value': {u'KK': u'Bob'}}"
+                      " is not valid under any of the given schemas\"",
+                      exception_str)
+        self.assertIn("u'type': u'ValidationError'", exception_str)
+
     @attr(type='PI-112')
     def test_put_item_duplicate_key_name(self):
         self.table_name = rand_name().replace('-', '')
@@ -563,3 +630,104 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                                         consistent_read=True)
         self.assertEqual(get_resp[1]["item"]["message"],
                          {"S": "message_text_2"})
+
+    @attr(type=['PI-113', 'negative'])
+    def test_put_item_no_attribute_value(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {}
+        }
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.put_item(self.table_name, item)
+
+        exception_str = str(raises_cm.exception)
+        self.assertIn("u'message': u'{} is not valid"
+                      " under any of the given schemas'",
+                      exception_str)
+        self.assertIn("u'type': u'ValidationError'", exception_str)
+
+    @attr(type=['PI-114', 'negative'])
+    def test_put_item_wrong_expected_section(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"},
+        }
+        new_item = {
+            "message": {"S": "message_text"},
+            "author": {"S": "Alice"},
+        }
+        expected = {
+            "wrong_key": {
+                "value": {"S": "Bob"}
+            }
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.put_item(self.table_name, new_item, expected)
+
+        exception_str = str(raises_cm.exception)
+        self.assertIn("u'message': u'The conditional request failed'",
+                      exception_str)
+        self.assertIn("u'type': u'ConditionalCheckFailedException'",
+                      exception_str)
+
+    @attr(type=['PI-120', 'negative'])
+    def test_put_item_conditional_check_failed(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"},
+        }
+        new_item = {
+            "message": {"S": "message_text"},
+            "author": {"S": "Alice"},
+        }
+        expected = {
+            "author": {
+                "value": {"S": "Dod"}
+            }
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.put_item(self.table_name, new_item, expected)
+
+        exception_str = str(raises_cm.exception)
+        self.assertIn("u'message': u'The conditional request failed'",
+                      exception_str)
+        self.assertIn("u'type': u'ConditionalCheckFailedException'",
+                      exception_str)
+
+    @attr(type=['PI-123', 'negative'])
+    def test_put_item_resource_not_found_exception(self):
+        item = {
+            "message": {"S": 'message_text'},
+            "author": {"S": "Bob"}
+        }
+        with self.assertRaises(exceptions.NotFound) as raises_cm:
+            self.client.put_item("nonexistent_table", item)
+
+        exception_str = str(raises_cm.exception)
+        self.assertIn('"title": "Not Found"', exception_str)
+        self.assertIn('"explanation": "The resource could not be found."',
+                      exception_str)
+        self.assertIn('"message": "Table \'nonexistent_table\''
+                      ' does not exist"',
+                      exception_str)

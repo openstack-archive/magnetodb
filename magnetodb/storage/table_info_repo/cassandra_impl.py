@@ -35,8 +35,11 @@ class CassandraTableInfoRepository(object):
         # TODO(dukhlov):
         # It is temporary solution to set internal_keyspace
         # In future keyspace should be saved in metadata too
-        from magnetodb.storage.driver.cassandra import USER_PREFIX
-        table_info.internal_keyspace = USER_PREFIX + context.tenant
+        from magnetodb.storage.driver.cassandra import cassandra_impl
+
+        table_info.internal_keyspace = (
+            cassandra_impl.USER_PREFIX + context.tenant
+        )
 
         tenant_tables_cache[table_info.name] = table_info
 
