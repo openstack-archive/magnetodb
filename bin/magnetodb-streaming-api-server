@@ -19,10 +19,11 @@ import os
 import sys
 from paste import deploy
 
-from gevent import monkey
-monkey.patch_all()
+import eventlet
+eventlet.patcher.monkey_patch(all=True)
 
-from gevent import wsgi
+from eventlet import wsgi
+wsgi.MAX_HEADER_LINE = 65536
 
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
@@ -55,13 +56,9 @@ if __name__ == '__main__':
     try:
         api_paste_config_file = CONF.find_file(CONF.api_paste_config)
         app = deploy.loadapp("config:{}".format(api_paste_config_file))
-        server = wsgi.WSGIServer(
-            listener=(CONF.bind_host, CONF.bind_port),
-            application=app,
-            log=None
-        )
 
-        server.serve_forever()
+        listener = eventlet.listen((CONF.bind_host, CONF.bind_port))
+        wsgi.server(listener, app)
 
     except Exception as error:
         import traceback
