@@ -1,0 +1,21 @@
+{
+    "key": {
+        "ForumName": {
+            "S": "MagnetoDB"
+        },
+        "Subject": {
+            "S": "How do I delete an item?"
+        }
+    },
+    "expected": {
+        "Subject": {
+            "value": {
+                "S": "How do I delete an item?"
+            }
+        },
+        "Replies": {
+            "exists": false
+        }
+    },
+    "returnValues": "ALL_OLD"
+}

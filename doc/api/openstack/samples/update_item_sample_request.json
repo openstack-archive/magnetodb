@@ -1,0 +1,29 @@
+{
+    "key": {
+        "ForumName": {
+            "S": "MagnetoDB"
+        },
+        "Subject": {
+            "S": "How do I delete an item?"
+        }
+    },
+    "attribute_updates": {
+        "LastPostedBy": {
+            "value": {
+                "S": "me@test.com"
+            },
+            "action": "PUT"
+        }
+    },
+    "expected": {
+        "LastPostedBy": {
+            "comparison_operator": "EQ",
+            "attribute_value_list": [
+                {
+                    "S": "fred@example.com"
+                }
+            ]
+        }
+    },
+    "return_values": "ALL_NEW"
+}

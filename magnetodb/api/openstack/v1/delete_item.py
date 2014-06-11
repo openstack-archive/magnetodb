@@ -22,6 +22,8 @@ from magnetodb.api.openstack.v1 import utils
 
 
 class DeleteItemController(object):
+    """ Deletes a single item in a table by primary key. """
+
     schema = {
         "required": [parser.Props.KEY],
         "properties": {

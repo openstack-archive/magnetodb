@@ -24,6 +24,8 @@ from magnetodb.api.openstack.v1 import utils
 
 
 class PutItemController(object):
+    """ Creates a new item, or replaces an old item. """
+
     schema = {
         "required": [parser.Props.ITEM],
         "properties": {

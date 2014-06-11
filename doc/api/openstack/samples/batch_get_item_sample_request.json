@@ -1,0 +1,44 @@
+{
+    "request_items": {
+        "Forum": {
+            "keys": [
+                {
+                    "Name": {
+                        "S": "MagnetoDB"
+                    },
+                    "Category": {
+                        "S": "OpenStack KVaaS"
+                    }
+                },
+                {
+                    "Name": {
+                        "S": "Nova"
+                    },
+                    "Category": {
+                        "S": "OpenStack Core"
+                    }
+                }
+            ]
+        },
+        "Thread": {
+            "keys": [
+                {
+                    "Name": {
+                        "S": "MagnetoDB"
+                    },
+                    "Category": {
+                        "S": "OpenStack KVaaS"
+                    }
+                },
+                {
+                    "Name": {
+                        "S": "Nova"
+                    },
+                    "Category": {
+                        "S": "OpenStack Core"
+                    }
+                }
+            ]
+        }
+    }
+}

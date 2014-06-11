@@ -1,0 +1,47 @@
+{
+    "attributes_to_get": [
+        "string"
+    ],
+    "consistent_read": "boolean",
+    "exclusive_start_key": {
+        "string": {
+            "B": "blob",
+            "BS": [
+                "blob"
+            ],
+            "N": "string",
+            "NS": [
+                "string"
+            ],
+            "S": "string",
+            "SS": [
+                "string"
+            ]
+        }
+    },
+    "index_name": "string",
+    "key_conditions": {
+        "string": {
+            "attribute_value_list": [
+                {
+                    "B": "blob",
+                    "BS": [
+                        "blob"
+                    ],
+                    "N": "string",
+                    "NS": [
+                        "string"
+                    ],
+                    "S": "string",
+                    "SS": [
+                        "string"
+                    ]
+                }
+            ],
+            "comparison_operator": "string"
+        }
+    },
+    "limit": "number",
+    "scan_index_forward": "boolean",
+    "select": "string"
+}

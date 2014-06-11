@@ -1,0 +1,45 @@
+{
+    "table_description": {
+        "attribute_definitions": [
+            {
+                "attribute_name": "string",
+                "attribute_type": "string"
+            }
+        ],
+        "creation_datetime": "number",
+        "item_count": "number",
+        "key_schema": [
+            {
+                "attribute_name": "string",
+                "key_type": "string"
+            }
+        ],
+        "local_secondary_indexes": [
+            {
+                "index_name": "string",
+                "index_size_bytes": "number",
+                "item_count": "number",
+                "key_schema": [
+                    {
+                        "attribute_name": "string",
+                        "key_type": "string"
+                    }
+                ],
+                "projection": {
+                    "non_key_attributes": [
+                        "string"
+                    ],
+                    "projection_type": "string"
+                }
+            }
+        ],
+        "links": [
+            {
+                "href": "url",
+                "rel": "self"
+            }
+        ],
+        "table_size_bytes": "number",
+        "table_status": "string"
+    }
+}

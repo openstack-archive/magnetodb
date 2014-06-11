@@ -23,6 +23,8 @@ from magnetodb.storage import models
 
 
 class GetItemController(object):
+    """The Getitem operation returns an item with the given primary key. """
+
     schema = {
         "required": [parser.Props.KEY],
         "properties": {

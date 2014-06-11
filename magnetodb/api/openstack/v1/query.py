@@ -27,6 +27,8 @@ LOG = logging.getLogger(__name__)
 
 
 class QueryController(object):
+    """ Query for an items by primary or index key. """
+
     schema = {
         "required": [parser.Props.KEY_CONDITIONS],
         "properties": {
