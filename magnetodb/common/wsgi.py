@@ -65,43 +65,6 @@ class Middleware(object):
         return self.process_response(response)
 
 
-class Debug(Middleware):
-    """
-    Helper class that can be inserted into any WSGI application chain
-    to get information about the request and response.
-    """
-
-    @webob.dec.wsgify
-    def __call__(self, req):
-        print(("*" * 40) + " REQUEST ENVIRON")
-        for key, value in req.environ.items():
-            print(key, "=", value)
-        print()
-        resp = req.get_response(self.application)
-
-        print(("*" * 40) + " RESPONSE HEADERS")
-        for (key, value) in resp.headers.iteritems():
-            print(key, "=", value)
-        print()
-
-        resp.app_iter = self.print_generator(resp.app_iter)
-
-        return resp
-
-    @staticmethod
-    def print_generator(app_iter):
-        """
-        Iterator that prints the contents of a wrapper string iterator
-        when iterated.
-        """
-        print(("*" * 40) + " BODY")
-        for part in app_iter:
-            sys.stdout.write(part)
-            sys.stdout.flush()
-            yield part
-        print()
-
-
 class Router(object):
     """
     WSGI middleware that maps incoming requests to WSGI apps.

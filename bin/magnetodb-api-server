@@ -15,12 +15,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
+eventlet.patcher.monkey_patch(all=True)
+
 import os
 import sys
 from paste import deploy
-
-import eventlet
-eventlet.patcher.monkey_patch(all=True)
 
 from eventlet import wsgi
 
