@@ -394,7 +394,8 @@ class RestClient(object):
 
         # Likely it will cause an error
         if not resp_body and resp.status >= 400:
-            self.LOG.warning("status >= 400 response with empty body")
+            self.LOG.warning("status >= 400 response with empty body. Reason:"
+                             + resp.reason)
 
     def _request(self, method, url,
                  headers=None, body=None):

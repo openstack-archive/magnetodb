@@ -15,14 +15,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
+eventlet.patcher.monkey_patch(all=True)
+
 import os
 import sys
 from paste import deploy
 
-import eventlet
-eventlet.patcher.monkey_patch(all=True)
-
 from eventlet import wsgi
+wsgi.MAX_HEADER_LINE = 131072
+wsgi.MAX_TOTAL_HEADER_SIZE = 1048576
 
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
