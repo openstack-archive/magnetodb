@@ -120,3 +120,50 @@ class CassandraDriverTestCase(unittest.TestCase):
         ]
 
         self.assertEqual(expected_calls, mock_execute_query.mock_calls)
+
+    @mock.patch('magnetodb.storage.driver.cassandra.'
+                'cassandra_impl.CassandraStorageDriver.select_item')
+    def test_update_item_add_number(self, mock_select_item):
+        mock_execute_query = mock.Mock(return_value=None)
+        mock_table_schema = mock.Mock(
+            key_attributes=['hash_key', 'range_key'],
+            attribute_type_map={'hash_key': None,
+                                'range_key': None,
+                                'ViewsCount': None},
+            index_def_map=None
+        )
+        driver = self.get_connection(mock_execute_query, mock_table_schema)
+
+        def make_select_result(i):
+            value = models.AttributeValue.number(i)
+            return mock.Mock(items=[{'ViewsCount': value}])
+
+        values = [make_select_result(i) for i in range(10)]
+        mock_select_item.side_effect = values
+
+        context = mock.Mock(tenant='fake_tenant')
+        table_name = 'fake_table'
+
+        key_attrs = {
+            'hash_key': models.AttributeValue.number(1),
+            'range_key': models.AttributeValue.str('two')
+        }
+        attr_actions = {
+            'ViewsCount': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_ADD,
+                models.AttributeValue.number(1)
+            )
+        }
+
+        for i in range(10):
+            driver.update_item(context, table_name, key_attrs, attr_actions)
+
+        expected_calls = [
+            mock.call('UPDATE "user_fake_tenant"."user_fake_table" SET '
+                      '"user_ViewsCount"=%d WHERE "user_hash_key"=1 AND '
+                      '"user_range_key"=\'two\' '
+                      'IF "user_ViewsCount"=%d' % (i, i - 1),
+                      consistent=True) for i in range(1, 11)
+        ]
+
+        self.assertEqual(expected_calls, mock_execute_query.mock_calls)
