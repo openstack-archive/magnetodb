@@ -6,15 +6,19 @@ Api Reference
 RESTful Web API (v1)
 --------------------
 
+MagnetoDB API is a RESTful API what uses JSON media type for interaction between client and server
+
 Authentication
 ==============
 
 **Headers**
 
-| User-Agent
-| Content-Type: application/json
-| Accept: application/json
-| X-Auth-Token keystone auth token
+Each request is expected to have following headers:
+
+- User-Agent
+- Content-Type: application/json
+- Accept: application/json
+- X-Auth-Token keystone auth token
 
 
 Common Errors
@@ -51,15 +55,11 @@ This section lists the common errors that all actions return. Any action-specifi
 
 Operation details
 =================
-Requests and responses should be very similar to the Amazon DynamoDB. But there should be some differences:
 
 - table_name parameter will be provided via URL
-
-- GlobalSecondaryIndexes will be added in future
-
 - API will use different HTTP methods for different operations (POST for create, PUT for update, etc)
 
-**Note**: operations with items in the table(Getitem, Putitem, Scan, etc) will use POST method.
+**Note**: operations with items in the table(GetItem, PutItem, Scan, etc) will use POST method.
 
 
 MagnetoDB actions
