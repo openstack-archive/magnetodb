@@ -1159,10 +1159,18 @@ class CassandraStorageDriver(StorageDriver):
                 attribute_map = key_attribute_map.copy()
                 for attr_name, attr_action in (
                         attribute_action_map.iteritems()):
-                    if attr_action.action in (
-                            models.UpdateItemAction.UPDATE_ACTION_PUT,
-                            models.UpdateItemAction.UPDATE_ACTION_ADD):
+                    if attr_action.action == models.UpdateItemAction.UPDATE_ACTION_PUT:
                         attribute_map[attr_name] = attr_action.value
+                    elif attr_action.action == models.UpdateItemAction.UPDATE_ACTION_ADD:
+                        attribute_map[attr_name], conditions = (
+                            self._get_add_attr_value(
+                                attr_name, attr_action.value, old_item,
+                                expected_condition_map
+                            )
+                        )
+                        if conditions:
+                            expected_condition_map.setdefault(attr_name,
+                                                              conditions)
                     else:
                         attribute_map[attr_name], conditions = (
                             self._get_delete_attr_value(
@@ -1223,10 +1231,18 @@ class CassandraStorageDriver(StorageDriver):
             attribute_map = key_attribute_map.copy()
             for attr_name, attr_action in (
                     attribute_action_map.iteritems()):
-                if attr_action.action in (
-                        models.UpdateItemAction.UPDATE_ACTION_PUT,
-                        models.UpdateItemAction.UPDATE_ACTION_ADD):
+                if attr_action.action == models.UpdateItemAction.UPDATE_ACTION_PUT:
                     attribute_map[attr_name] = attr_action.value
+                elif attr_action.action == models.UpdateItemAction.UPDATE_ACTION_ADD:
+                    attribute_map[attr_name], conditions = (
+                        self._get_add_attr_value(
+                            attr_name, attr_action.value, old_item,
+                            expected_condition_map
+                        )
+                    )
+                    if conditions:
+                        expected_condition_map.setdefault(attr_name,
+                                                          conditions)
                 else:
                     attribute_map[attr_name], conditions = (
                         self._get_delete_attr_value(
@@ -1292,6 +1308,48 @@ class CassandraStorageDriver(StorageDriver):
             models.AttributeValue(
                 old_item[attr_name].type,
                 old_item[attr_name].value - attr_value.value),
+            conditions
+        )
+
+    def _get_add_attr_value(self, attr_name, attr_value, old_item,
+                            expected_condition_map):
+        if not old_item:
+            return (attr_value, {})
+
+        if not any((attr_value.is_str_set,
+                    attr_value.is_number_set,
+                    attr_value.is_number_set,
+                    attr_value.is_number)):
+            raise ConditionalCheckFailedException()
+
+        if attr_name not in old_item:
+            return (attr_value, {})
+
+        # TODO(achudnovets): use correct exception
+        if old_item[attr_name].type != attr_value.type:
+            raise ConditionalCheckFailedException()
+
+        conditions = [models.ExpectedCondition.eq(old_item[attr_name])]
+
+        if (attr_name in expected_condition_map and
+                expected_condition_map[attr_name] != conditions):
+            raise ConditionalCheckFailedException()
+
+        if attr_name not in old_item:
+            return (attr_value, {})
+
+        if attr_value.is_number:
+            return (
+                models.AttributeValue(
+                    old_item[attr_name].type,
+                    old_item[attr_name].value + attr_value.value),
+                conditions
+            )
+
+        return (
+            models.AttributeValue(
+                old_item[attr_name].type,
+                old_item[attr_name].value.union(attr_value.value)),
             conditions
         )
 
