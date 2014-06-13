@@ -1118,8 +1118,8 @@ class CassandraStorageDriver(StorageDriver):
 
         table_info = self.__table_info_repo.get(context, table_name)
 
-        old_item = self._get_item_to_update(context, table_name,
-                                            key_attribute_map)
+#        old_item = self._get_item_to_update(context, table_name,
+#                                            key_attribute_map)
 
         # we have indexes
         if table_info.schema.index_def_map:
@@ -1135,6 +1135,12 @@ class CassandraStorageDriver(StorageDriver):
                     index_actions[attr_name] = action
 
             while True:
+                old_item = self._get_item_to_update(context, table_name,
+                                                    key_attribute_map)
+                if not self._conditions_satisfied(old_item,
+                                                  expected_condition_map):
+                    raise ConditionalCheckFailedException()
+
                 old_indexes = self._select_current_index_values(
                     table_info, key_attribute_map
                 )
@@ -1158,27 +1164,29 @@ class CassandraStorageDriver(StorageDriver):
                 attribute_map = key_attribute_map.copy()
                 for attr_name, attr_action in (
                         attribute_action_map.iteritems()):
-                    if attr_action.action in (
-                            models.UpdateItemAction.UPDATE_ACTION_PUT,
-                            models.UpdateItemAction.UPDATE_ACTION_ADD):
+                    if (attr_action.action ==
+                            models.UpdateItemAction.UPDATE_ACTION_PUT):
                         attribute_map[attr_name] = attr_action.value
-                    else:
-                        attribute_map[attr_name], conditions = (
-                            self._get_delete_attr_value(
-                                attr_name, attr_action.value, old_item,
-                                expected_condition_map
-                            )
+                    elif (attr_action.action ==
+                            models.UpdateItemAction.UPDATE_ACTION_ADD):
+                        attribute_map[attr_name] = self._get_add_attr_value(
+                            attr_name, attr_action.value, old_item
                         )
-                        if conditions:
-                            expected_condition_map.setdefault(attr_name,
-                                                              conditions)
+                    else:
+                        attribute_map[attr_name] = self._get_del_attr_value(
+                            attr_name, attr_action.value, old_item
+                        )
+
+                update_conditions = self._get_update_conditions(
+                    key_attribute_map, old_item
+                )
 
                 query_builder = self._append_update_query(
                     table_info, attribute_map,
-                    expected_condition_map=expected_condition_map
+                    expected_condition_map=update_conditions
                 )
 
-                if_prefix = " AND " if expected_condition_map else " IF "
+                if_prefix = " AND " if update_conditions else " IF "
                 for index_name, index_def in (
                         table_info.schema.index_def_map.iteritems()):
                     old_index_value = old_indexes.get(
@@ -1219,36 +1227,45 @@ class CassandraStorageDriver(StorageDriver):
                     # expected condition wasn't passed
                     raise ConditionalCheckFailedException()
         else:
-            attribute_map = key_attribute_map.copy()
-            for attr_name, attr_action in (
-                    attribute_action_map.iteritems()):
-                if attr_action.action in (
-                        models.UpdateItemAction.UPDATE_ACTION_PUT,
-                        models.UpdateItemAction.UPDATE_ACTION_ADD):
-                    attribute_map[attr_name] = attr_action.value
-                else:
-                    attribute_map[attr_name], conditions = (
-                        self._get_delete_attr_value(
-                            attr_name, attr_action.value, old_item,
-                            expected_condition_map
+            while True:
+                old_item = self._get_item_to_update(context, table_name,
+                                                    key_attribute_map)
+                if not self._conditions_satisfied(old_item,
+                                                  expected_condition_map):
+                    raise ConditionalCheckFailedException()
+
+                attribute_map = key_attribute_map.copy()
+                for attr_name, attr_action in (
+                        attribute_action_map.iteritems()):
+                    if (attr_action.action ==
+                            models.UpdateItemAction.UPDATE_ACTION_PUT):
+                        attribute_map[attr_name] = attr_action.value
+                    elif (attr_action.action ==
+                            models.UpdateItemAction.UPDATE_ACTION_ADD):
+                        attribute_map[attr_name] = self._get_add_attr_value(
+                            attr_name, attr_action.value, old_item
                         )
-                    )
-                    if conditions:
-                        expected_condition_map.setdefault(attr_name,
-                                                          conditions)
+                    else:
+                        attribute_map[attr_name] = self._get_del_attr_value(
+                            attr_name, attr_action.value, old_item
+                        )
 
-            query_builder = self._append_update_query(
-                table_info, attribute_map,
-                expected_condition_map=expected_condition_map
-            )
+                update_conditions = self._get_update_conditions(
+                    key_attribute_map, old_item
+                )
 
-            result = self.__cluster_handler.execute_query(
-                "".join(query_builder), consistent=True
-            )
+                query_builder = self._append_update_query(
+                    table_info, attribute_map,
+                    expected_condition_map=update_conditions
+                )
 
-            if result and not result[0]['[applied]']:
-                raise ConditionalCheckFailedException()
-            return (True, old_item)
+                result = self.__cluster_handler.execute_query(
+                    "".join(query_builder), consistent=True
+                )
+
+                if result and not result[0]['[applied]']:
+                    raise ConditionalCheckFailedException()
+                return (True, old_item)
 
     def _get_item_to_update(self, context, table_name, key_attribute_map):
         indexed_condition_map = {
@@ -1261,11 +1278,10 @@ class CassandraStorageDriver(StorageDriver):
                                  consistent=True).items
         return items[0] if items else None
 
-    def _get_delete_attr_value(self, attr_name, attr_value, old_item,
-                               expected_condition_map):
+    def _get_del_attr_value(self, attr_name, attr_value, old_item):
         # We have no value, just remove an attr
         if not attr_value or not old_item:
-            return (None, {})
+            return None
 
         # TODO(achudnovets): use correct exception
         if old_item[attr_name].type != attr_value.type:
@@ -1275,24 +1291,54 @@ class CassandraStorageDriver(StorageDriver):
         if not any((attr_value.is_str_set,
                     attr_value.is_number_set,
                     attr_value.is_number_set)):
-            return (None, {})
+            return None
 
-        # Add new conditions to garantee consistensy
-        conditions = [models.ExpectedCondition.eq(old_item[attr_name])]
+        if attr_name not in old_item:
+            return None
 
-        if (attr_name in expected_condition_map and
-                expected_condition_map[attr_name] != conditions):
+        return models.AttributeValue(
+            old_item[attr_name].type,
+            old_item[attr_name].value - attr_value.value
+        )
+
+    def _get_add_attr_value(self, attr_name, attr_value, old_item):
+        if not old_item:
+            return attr_value
+
+        if not any((attr_value.is_str_set,
+                    attr_value.is_number_set,
+                    attr_value.is_number_set,
+                    attr_value.is_number)):
             raise ConditionalCheckFailedException()
 
         if attr_name not in old_item:
-            return (None, conditions)
+            return attr_value
 
-        return (
-            models.AttributeValue(
+        # TODO(achudnovets): use correct exception
+        if old_item[attr_name].type != attr_value.type:
+            raise ConditionalCheckFailedException()
+
+        if attr_name not in old_item:
+            return attr_value
+
+        if attr_value.is_number:
+            return models.AttributeValue(
                 old_item[attr_name].type,
-                old_item[attr_name].value - attr_value.value),
-            conditions
+                old_item[attr_name].value + attr_value.value
+            )
+
+        return models.AttributeValue(
+            old_item[attr_name].type,
+            old_item[attr_name].value.union(attr_value.value)
         )
+
+    def _get_update_conditions(self, key_attribute_map, old_item):
+        conditions = {}
+        for attr_name, attr_value in old_item.iteritems():
+            if attr_name in key_attribute_map:
+                continue
+            conditions[attr_name] = [models.ExpectedCondition.eq(attr_value)]
+        return conditions
 
     def select_item(self, context, table_name, indexed_condition_map=None,
                     select_type=None, index_name=None, limit=None,
