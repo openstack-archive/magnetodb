@@ -57,13 +57,9 @@ copyright = u'2014, MagnetoDB Contributors'
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
-#
-# The short X.Y version.
-# version = '2.0'
-version = get_file_contents('version.txt')
-# The full version, including alpha/beta/rc tags.
+
 # release = '2.0.5'
-release = version + ' ' + get_file_contents('release.txt')
+release = get_file_contents('release.txt')
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = True
