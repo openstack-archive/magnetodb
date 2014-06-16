@@ -21,9 +21,6 @@ import string
 from threading import Event
 import Queue
 
-from gevent import monkey
-monkey.patch_all()
-
 from magnetodb import common
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
