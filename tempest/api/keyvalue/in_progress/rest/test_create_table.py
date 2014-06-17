@@ -52,10 +52,11 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         tname = rand_name().replace('-', '')
         headers, body = self._create_test_table(self.one_attr, tname,
                                                 self.schema_hash_only)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body,
-                                    self.one_attr, tname,
-                                    self.schema_hash_only)
+        self.assertEqual(body['table_description']['key_schema'],
+                         self.schema_hash_only)
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-45'])
     def test_create_table_max_table_name(self):
@@ -63,9 +64,10 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         tname = tname + 'q' * (255 - len(tname))
         headers, body = self._create_test_table(self.smoke_attrs, tname,
                                                 self.smoke_schema)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body, self.smoke_attrs,
-                                    tname, self.smoke_schema)
+        self.assertEqual(body['table_description']['table_name'], tname)
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-81'])
     def test_create_table_index_1_non_key(self):
@@ -96,6 +98,9 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         self.assertIn('non_key_attributes', indexes[0]['projection'])
         self.assertEqual(non_key_attributes,
                          indexes[0]['projection']['non_key_attributes'])
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-85'])
     def test_create_table_index_20_non_key_1_index(self):
@@ -121,11 +126,13 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
-        self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertIn('non_key_attributes', indexes[0]['projection'])
         self.assertEqual(20,
                          len(indexes[0]['projection']['non_key_attributes']))
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-87'])
     def test_create_table_index_20_non_key_3_indexes(self):
@@ -156,10 +163,22 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
-        self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         for i in range(0, 3):
             self.assertIn('non_key_attributes', indexes[i]['projection'])
             self.assertEqual(len(non_key_attributes[i]),
                              len(indexes[i]['projection']
                                         ['non_key_attributes']))
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
+
+    @attr(type=['CreT-48'])
+    def test_create_table_symbols(self):
+        tname = rand_name().replace('-', '') + 'Aa5-._'
+        headers, body = self._create_test_table(self.smoke_attrs, tname,
+                                                self.smoke_schema)
+        self.assertEqual(body['table_description']['table_name'], tname)
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
