@@ -18,6 +18,8 @@
 import os
 import sys
 
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
 sys.path.insert(0, os.path.abspath('../../'))
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('./'))
@@ -34,8 +36,10 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinxcontrib.httpdomain',
     'sphinx.ext.intersphinx',
-    'oslosphinx',
 ]
+
+if not on_rtd:
+    extensions.append('oslosphinx')
 
 wsme_protocols = ['restjson', 'restxml']
 
@@ -51,15 +55,18 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'magnetodb'
-copyright = u'2014, MagnetoDB Contributors'
+copyright = u'2014, OpenStack Foundation'
 
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-# release = '2.0.5'
-release = get_file_contents('release.txt')
+if not on_rtd:
+  from magnetodb.version import version_info as s_version
+  release = s_version.release_string()
+  # The short X.Y version.
+  version = s_version.version_string()
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = True
@@ -72,6 +79,12 @@ add_module_names = True
 pygments_style = 'sphinx'
 
 # -- Options for HTML output --------------------------------------------------
+
+# If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
+# using the given strftime format.
+#html_last_updated_fmt = '%b %d, %Y'
+git_cmd = "git log --pretty=format:'%ad, commit %h' --date=local -n1"
+html_last_updated_fmt = os.popen(git_cmd).read()
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
