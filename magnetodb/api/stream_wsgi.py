@@ -103,7 +103,12 @@ def bulk_load_app(environ, start_response):
     future_ready_queue = Queue.Queue()
 
     stream = environ['wsgi.input']
-    for chunk in stream:
+    while True:
+        chunk = stream.readline()
+
+        if not chunk:
+            break
+
         read_count += 1
 
         if dont_process:

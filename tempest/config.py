@@ -656,6 +656,16 @@ MagnetoDBGroup = [
                help="The name of the MagnetoDB service type"),
 ]
 
+magnetodb_streaming_group = cfg.OptGroup(
+    name="magnetodb_streaming",
+    title="Key-Value storage steaming API options")
+
+MagnetoDBStreamingGroup = [
+    cfg.StrOpt('service_type',
+               default="kv-streaming",
+               help="The name of the MagnetoDB streaming API service type"),
+]
+
 
 @singleton
 class TempestConfig:
@@ -722,6 +732,8 @@ class TempestConfig:
                            ServiceAvailableGroup)
         register_opt_group(cfg.CONF, debug_group, DebugGroup)
         register_opt_group(cfg.CONF, magnetodb_group, MagnetoDBGroup)
+        register_opt_group(cfg.CONF, magnetodb_streaming_group,
+                           MagnetoDBStreamingGroup)
         self.compute = cfg.CONF.compute
         self.compute_feature_enabled = cfg.CONF['compute-feature-enabled']
         self.identity = cfg.CONF.identity
@@ -743,6 +755,7 @@ class TempestConfig:
         self.service_available = cfg.CONF.service_available
         self.debug = cfg.CONF.debug
         self.magnetodb = cfg.CONF.magnetodb
+        self.magnetodb_streaming = cfg.CONF.magnetodb_streaming
         if not self.compute_admin.username:
             self.compute_admin.username = self.identity.admin_username
             self.compute_admin.password = self.identity.admin_password
