@@ -12,12 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from greenlet import GreenletExit
 
 import eventlet
 from eventlet.green import select, socket
 from eventlet.queue import Queue
 
-import threading
+from threading import Event
 
 from collections import defaultdict
 from functools import partial
@@ -59,8 +60,9 @@ class EventletConnection(Connection):
 
     @classmethod
     def factory(cls, *args, **kwargs):
+        timeout = kwargs.pop('timeout', 5.0)
         conn = cls(*args, **kwargs)
-        conn.connected_event.wait()
+        conn.connected_event.wait(timeout)
         if conn.last_error:
             raise conn.last_error
         elif not conn.connected_event.is_set():
@@ -72,7 +74,7 @@ class EventletConnection(Connection):
     def __init__(self, *args, **kwargs):
         Connection.__init__(self, *args, **kwargs)
 
-        self.connected_event = threading.Event()
+        self.connected_event = Event()
         self._iobuf = StringIO()
         self._write_queue = Queue()
 
@@ -98,9 +100,12 @@ class EventletConnection(Connection):
             self.is_closed = True
 
         log.debug("Closing connection (%s) to %s" % (id(self), self.host))
-        if self._read_watcher:
+
+        cur_gthread = eventlet.getcurrent()
+
+        if self._read_watcher and self._read_watcher != cur_gthread:
             self._read_watcher.kill()
-        if self._write_watcher:
+        if self._write_watcher and self._write_watcher != cur_gthread:
             self._write_watcher.kill()
         if self._socket:
             self._socket.close()
@@ -111,10 +116,6 @@ class EventletConnection(Connection):
                 ConnectionShutdown("Connection to %s was closed" % self.host))
             # don't leave in-progress operations hanging
             self.connected_event.set()
-
-    def handle_close(self):
-        log.debug("connection closed by server")
-        self.close()
 
     def handle_write(self):
         run_select = partial(select.select, (), (self._socket,), ())
