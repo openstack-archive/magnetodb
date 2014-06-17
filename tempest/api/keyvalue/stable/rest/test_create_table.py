@@ -59,14 +59,17 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table', body, self.smoke_attrs,
                                     tname, self.smoke_schema)
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-44'])
     def test_create_table_min_table_name(self):
         tname = 'qqq'
         headers, body = self._create_test_table(self.smoke_attrs, tname,
                                                 self.smoke_schema)
-        self.assertEqual(dict, type(body))
         self.assertEqual(tname, body['table_description']['table_name'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-2', 'Cret-93', 'Cret-94', 'Cret-95', 'Cret-97'])
     def test_create_table_all_params(self):
@@ -83,6 +86,7 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
                                     tname,
                                     self.smoke_schema,
                                     self.smoke_lsi)
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-17_1'])
     def test_create_table_min_attr_length(self):
@@ -96,9 +100,14 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 's', 'key_type': 'RANGE'}
         ]
         headers, body = self._create_test_table(attr_def, tname, schema)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body, attr_def, tname,
-                                    schema)
+        desc = body['table_description']
+        self.assertEqual(len(attr_def), len(desc['attribute_definitions']))
+        for attribute in attr_def:
+            self.assertIn(attribute, desc['attribute_definitions'])
+        self.assertEqual(schema, desc['key_schema'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-17_2'])
     def test_create_table_max_attr_length(self):
@@ -112,9 +121,14 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 's' * 255, 'key_type': 'RANGE'}
         ]
         headers, body = self._create_test_table(attr_def, tname, schema)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body, attr_def, tname,
-                                    schema)
+        desc = body['table_description']
+        self.assertEqual(len(attr_def), len(desc['attribute_definitions']))
+        for attribute in attr_def:
+            self.assertIn(attribute, desc['attribute_definitions'])
+        self.assertEqual(schema, desc['key_schema'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-21_1'])
     def test_create_table_s(self):
@@ -128,9 +142,14 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         headers, body = self._create_test_table(attr_def, tname, schema)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body, attr_def, tname,
-                                    schema)
+        desc = body['table_description']
+        self.assertEqual(len(attr_def), len(desc['attribute_definitions']))
+        for attribute in attr_def:
+            self.assertIn(attribute, desc['attribute_definitions'])
+        self.assertEqual(schema, desc['key_schema'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-21_2'])
     def test_create_table_n(self):
@@ -144,9 +163,14 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         headers, body = self._create_test_table(attr_def, tname, schema)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body, attr_def, tname,
-                                    schema)
+        desc = body['table_description']
+        self.assertEqual(len(attr_def), len(desc['attribute_definitions']))
+        for attribute in attr_def:
+            self.assertIn(attribute, desc['attribute_definitions'])
+        self.assertEqual(schema, desc['key_schema'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-28'])
     def test_create_table_hash_range(self):
@@ -160,13 +184,17 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         headers, body = self._create_test_table(attr_def, tname, schema)
-        self.assertEqual(dict, type(body))
-        self.assertEqual(schema, body['table_description']['key_schema'])
-        self.assertEqual(attr_def,
-                         body['table_description']['attribute_definitions'])
+        desc = body['table_description']
+        self.assertEqual(len(attr_def), len(desc['attribute_definitions']))
+        for attribute in attr_def:
+            self.assertIn(attribute, desc['attribute_definitions'])
+        self.assertEqual(schema, desc['key_schema'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-29'])
-    def test_create_table_wrong_order(self):
+    def test_create_table_wrong_order_schema(self):
         tname = rand_name().replace('-', '')
         attr_def = [
             {'attribute_name': 'forum', 'attribute_type': 'N'},
@@ -177,9 +205,11 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'forum', 'key_type': 'HASH'}
         ]
         headers, body = self._create_test_table(attr_def, tname, schema)
-        self.assertEqual(dict, type(body))
         schema.reverse()
         self.assertEqual(body['table_description']['key_schema'], schema)
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-21_3'])
     def test_create_table_b(self):
@@ -193,9 +223,14 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             {'attribute_name': 'subject', 'key_type': 'RANGE'}
         ]
         headers, body = self._create_test_table(attr_def, tname, schema)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body, attr_def, tname,
-                                    schema)
+        desc = body['table_description']
+        self.assertEqual(len(attr_def), len(desc['attribute_definitions']))
+        for attribute in attr_def:
+            self.assertIn(attribute, desc['attribute_definitions'])
+        self.assertEqual(schema, desc['key_schema'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-14'])
     def test_create_table_non_key_attr_s(self):
@@ -205,10 +240,13 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             self.smoke_attrs + additional_attr,
             tname,
             self.smoke_schema)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body,
-                                    self.smoke_attrs + additional_attr,
-                                    tname, self.smoke_schema)
+        desc = body['table_description']
+        self.assertEqual(3, len(desc['attribute_definitions']))
+        for attribute in (self.smoke_attrs + additional_attr):
+            self.assertIn(attribute, desc['attribute_definitions'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-23'])
     def test_create_table_non_key_attr_ss(self):
@@ -218,10 +256,13 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             self.smoke_attrs + additional_attr,
             tname,
             self.smoke_schema)
-        self.assertEqual(dict, type(body))
-        self._verify_table_response('create_table', body,
-                                    self.smoke_attrs + additional_attr,
-                                    tname, self.smoke_schema)
+        desc = body['table_description']
+        self.assertEqual(3, len(desc['attribute_definitions']))
+        for attribute in (self.smoke_attrs + additional_attr):
+            self.assertIn(attribute, desc['attribute_definitions'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-54'])
     def test_create_table_one_index(self):
@@ -232,13 +273,15 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
-        self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(1, len(indexes))
         for request_index in request_lsi:
             request_index['index_size_bytes'] = 0
             request_index['item_count'] = 0
         self.assertEqual(request_lsi, indexes)
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-55'])
     def test_create_table_five_indexes(self):
@@ -264,13 +307,15 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
-        self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(5, len(indexes))
         for lsi in request_lsi:
             lsi['index_size_bytes'] = 0
             lsi['item_count'] = 0
             self.assertIn(lsi, indexes)
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-61'])
     def test_create_table_index_name_3_char(self):
@@ -283,10 +328,12 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
-        self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(1, len(indexes))
         self.assertEqual(request_index_name, indexes[0]['index_name'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-62'])
     def test_create_table_index_name_255_char(self):
@@ -299,10 +346,12 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
-        self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(1, len(indexes))
         self.assertEqual(request_index_name, indexes[0]['index_name'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-65'])
     def test_create_table_index_name_upper_case(self):
@@ -316,10 +365,12 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
             tname,
             self.smoke_schema,
             request_lsi)
-        self.assertEqual(dict, type(body))
         indexes = body['table_description']['local_secondary_indexes']
         self.assertEqual(1, len(indexes))
         self.assertEqual(request_index_name, indexes[0]['index_name'])
+        #NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        #theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-66'])
     def test_create_table_index_name_same_two_tables(self):
@@ -346,10 +397,3 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         self.assertEqual(1, len(indexes2))
         self.assertEqual(request_index_name, indexes1[0]['index_name'])
         self.assertEqual(request_index_name, indexes2[0]['index_name'])
-
-    @attr(type=['CreT-48'])
-    def test_create_table_symbols(self):
-        tname = 'Aa5-._'
-        headers, body = self._create_test_table(self.smoke_attrs, tname,
-                                                self.smoke_schema)
-        self.assertEqual(body['table_description']['table_name'], tname)

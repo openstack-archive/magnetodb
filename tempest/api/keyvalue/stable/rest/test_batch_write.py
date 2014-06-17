@@ -18,6 +18,7 @@ import base64
 
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
+from tempest import exceptions
 from tempest.test import attr
 
 
@@ -85,8 +86,6 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         request_body = {'request_items': {self.tname: [{'put_request':
                                                         {'item': item}}]}}
         headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
         key_conditions = {
             self.hashkey: {
                 'attribute_value_list': [{'N': '1000'}],
@@ -109,8 +108,6 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         request_body = {'request_items': {self.tname: [{'put_request':
                                                         {'item': item}}]}}
         headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
         key_conditions = {
             self.hashkey: {
                 'attribute_value_list': [{'N': '1000'}],
@@ -143,14 +140,13 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         headers, body = self.client.query(self.tname,
                                           key_conditions=key_conditions,
                                           consistent_read=True)
-        self.assertEqual(body['count'], 1)
+        if not body['count']:
+            raise exceptions.TempestException("No item to delete.")
 
         key = {self.hashkey: {'S': 'forum1'}, self.rangekey: {'S': 'subject2'}}
         request_body = {'request_items': {self.tname: [{'delete_request':
                                                         {'key': key}}]}}
-        headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
+        self.client.batch_write_item(request_body)
         headers, body = self.client.query(self.tname,
                                           key_conditions=key_conditions,
                                           consistent_read=True)
@@ -177,14 +173,13 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         headers, body = self.client.query(self.tname,
                                           key_conditions=key_conditions,
                                           consistent_read=True)
-        self.assertEqual(body['count'], 1)
+        if not body['count']:
+            raise exceptions.TempestException("No item to delete.")
 
         key = {self.hashkey: {'S': 'forum1'}, self.rangekey: {'S': 'subject2'}}
         request_body = {'request_items': {self.tname: [{'delete_request':
                                                         {'key': key}}]}}
-        headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
+        self.client.batch_write_item(request_body)
         headers, body = self.client.query(self.tname,
                                           key_conditions=key_conditions,
                                           consistent_read=True)
@@ -211,7 +206,8 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         headers, body = self.client.query(self.tname,
                                           key_conditions=key_conditions,
                                           consistent_read=True)
-        self.assertEqual(body['count'], 1)
+        if not body['count']:
+            raise exceptions.TempestException("No item to delete.")
 
         item = self.build_smoke_item('forum1', 'subject3',
                                      'message text', 'John', '10')
@@ -221,9 +217,7 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
                                                         {'key': key}},
                                                        {'put_request':
                                                         {'item': item}}]}}
-        headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
+        self.client.batch_write_item(request_body)
         headers, body = self.client.query(self.tname,
                                           key_conditions=key_conditions,
                                           consistent_read=True)
@@ -253,9 +247,7 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
                 'comparison_operator': 'BEGINS_WITH'
             }
         }
-        headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
+        self.client.batch_write_item(request_body)
         for tname in tnames:
             headers, body = self.client.query(tname,
                                               key_conditions=key_conditions,
@@ -273,9 +265,7 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
                                  ('message', 'S', 'message text'))
         request_body = {'request_items': {self.tname: [{'put_request':
                                                         {'item': item}}]}}
-        headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
+        self.client.batch_write_item(request_body)
         key_conditions = {
             self.hashkey: {
                 'attribute_value_list': [{'S': 'forum1'}],
@@ -298,9 +288,7 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
                                  ('message', 'B', value))
         request_body = {'request_items': {self.tname: [{'put_request':
                                                         {'item': item}}]}}
-        headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
+        self.client.batch_write_item(request_body)
         key_conditions = {
             self.hashkey: {
                 'attribute_value_list': [{'S': 'forum1'}],
@@ -324,9 +312,7 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
                                  ('message', 'BS', [value1, value2]))
         request_body = {'request_items': {self.tname: [{'put_request':
                                                         {'item': item}}]}}
-        headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
+        self.client.batch_write_item(request_body)
         key_conditions = {
             self.hashkey: {
                 'attribute_value_list': [{'S': 'forum1'}],
@@ -347,9 +333,7 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         item = self.build_x_item('S', 'forum1', 'subject2')
         request_body = {'request_items': {self.tname: [{'put_request':
                                                         {'item': item}}]}}
-        headers, body = self.client.batch_write_item(request_body)
-        self.assertIn('unprocessed_items', body)
-        self.assertEqual(body['unprocessed_items'], {})
+        self.client.batch_write_item(request_body)
         key_conditions = {
             self.hashkey: {
                 'attribute_value_list': [{'S': 'forum1'}],
