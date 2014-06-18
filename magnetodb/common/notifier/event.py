@@ -113,18 +113,18 @@ class Notification(object):
 
     def __call__(self, context, event_type, payload,
                  priority=notifier_api.CONF.default_notification_level):
-        if priority is not None:
-            self.priority = priority
+        if priority is None:
+            priority = self.priority
 
         if event_type not in self.event_types:
             raise BadEventTypeException(
                 _('%s is not a valid event type') % event_type)
-        if self.priority not in log_levels:
+        if priority not in log_levels:
             raise BadPriorityException(
-                _('%s not in valid priorities') % self.priority)
+                _('%s not in valid priorities') % priority)
 
         notifier_api.notify(context, self.publisher_id, event_type,
-                            self.priority, payload)
+                            priority, payload)
 
 notify = Notification()
 
