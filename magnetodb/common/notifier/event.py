@@ -13,12 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from oslo.config import cfg
 
 from magnetodb.openstack.common.gettextutils import _
 from magnetodb.openstack.common.notifier.api import log_levels
 from magnetodb.openstack.common.notifier.api import BadPriorityException
 from magnetodb.openstack.common.notifier import api as notifier_api
+
+RPC_DRIVER_NAME = "magnetodb.openstack.common.notifier.rpc_notifier"
 
 
 class Notification(object):
@@ -123,8 +127,28 @@ class Notification(object):
             raise BadPriorityException(
                 _('%s not in valid priorities') % self.priority)
 
-        notifier_api.notify(context, self.publisher_id, event_type,
-                            self.priority, payload)
+        if (self.priority == self.DEBUG and RPC_DRIVER_NAME
+                in cfg.CONF.notification_driver):
+            # do thing for rpc notifier if message is for DEBUG queue
+            try:
+                orig_drivers = copy.copy(cfg.CONF.notification_driver)
+                notify_drivers_without_rpc = (cfg.CONF.notification_driver.
+                                              remove(RPC_DRIVER_NAME))
+                if notify_drivers_without_rpc is None or len(
+                        notify_drivers_without_rpc) == 0:
+                    notify_drivers_without_rpc = [
+                        "magnetodb.openstack.common.notifier.no_op_notifier"]
+                cfg.CONF.set_override("notification_driver",
+                                      notify_drivers_without_rpc)
+                notifier_api._reset_drivers()
+                notifier_api.notify(context, self.publisher_id, event_type,
+                                    self.priority, payload)
+            finally:
+                cfg.CONF.set_override("notification_driver", orig_drivers)
+                notifier_api._reset_drivers()
+        else:
+            notifier_api.notify(context, self.publisher_id, event_type,
+                                self.priority, payload)
 
 notify = Notification()
 
