@@ -21,16 +21,20 @@ import wsgi_intercept
 from wsgi_intercept import http_client_intercept
 
 from magnetodb.tests import PROJECT_ROOT_DIR
+from magnetodb.tests import setup_global_env_for_test
+from magnetodb.tests import reset_global_env_for_test
 
 PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste-test.ini')
 
 
 def run_fake_magnetodb_api():
+    setup_global_env_for_test()
     http_client_intercept.install()
     app = deploy.loadapp("config:{}".format(PASTE_CONFIG_FILE))
     wsgi_intercept.add_wsgi_intercept("localhost", 8080, lambda: app)
 
 
 def stop_fake_magnetodb_api():
+    reset_global_env_for_test()
     wsgi_intercept.remove_wsgi_intercept("localhost", 8080)
     wsgi_intercept.http_client_intercept.uninstall()

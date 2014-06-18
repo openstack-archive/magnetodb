@@ -43,3 +43,12 @@ def setup_global_env(program=None, args=None):
     storage.setup()
 
     __setup_complete = True
+
+
+def reset_global_env():
+    from magnetodb import storage
+
+    storage.reset()
+
+    global __setup_complete
+    __setup_complete = False
