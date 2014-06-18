@@ -17,12 +17,14 @@ from oslo.config import cfg
 
 from magnetodb.common import PROJECT_NAME
 
+extra_notifier_opts = [
+    cfg.StrOpt('notification_service',
+               default=PROJECT_NAME,
+               help='Service publisher_id for outgoing notifications')
+]
+
+cfg.CONF.register_opts(extra_notifier_opts)
+
 
 def setup():
-    extra_notifier_opts = [
-        cfg.StrOpt('notification_service',
-                   default=PROJECT_NAME,
-                   help='Service publisher_id for outgoing notifications')
-    ]
-
-    cfg.CONF.register_opts(extra_notifier_opts)
+    pass

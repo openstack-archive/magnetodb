@@ -81,6 +81,11 @@ def setup():
     __STORAGE_MANAGER_IMPL = context["storage_manager"]
 
 
+def reset():
+    global __STORAGE_MANAGER_IMPL
+    __STORAGE_MANAGER_IMPL = None
+
+
 def create_table(context, table_name, table_schema):
     """
     Creates table
