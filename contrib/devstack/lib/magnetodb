@@ -50,9 +50,13 @@ MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
 #Keystone variables
 MAGNETODB_USER=${MAGNETODB_USER:-magnetodb}
 MAGNETODB_SERVICE=${MAGNETODB_SERVICE:-magnetodb}
+MAGNETODB_STREAMING_SERVICE=${MAGNETODB_STREAMING_SERVICE:-magnetodb-streaming}
 MAGNETODB_SERVICE_HOST=${MAGNETODB_SERVICE_HOST:-$SERVICE_HOST}
 MAGNETODB_SERVICE_PORT=${MAGNETODB_SERVICE_PORT:-8480}
+MAGNETODB_STREAMING_SERVICE_PORT=${MAGNETODB_STREAMING_SERVICE_PORT:-8481}
 MAGNETODB_SERVICE_PROTOCOL=${MAGNETODB_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
+
+
 # Functions
 # ---------
 
@@ -89,6 +93,17 @@ function create_magnetodb_credentials() {
             --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/\$(tenant_id)s" \
             --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/\$(tenant_id)s" \
             --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/\$(tenant_id)s"
+        MAGNETODB_STREAMING_SERVICE=$(openstack service create \
+            $MAGNETODB_STREAMING_SERVICE \
+            --type=kv-streaming \
+            --description="MagnetoDB Streaming Service" \
+            | grep " id " | get_field 2)
+        openstack endpoint create \
+            $MAGNETODB_STREAMING_SERVICE \
+            --region RegionOne \
+            --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/\$(tenant_id)s" \
+            --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/\$(tenant_id)s" \
+            --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/\$(tenant_id)s"
     fi
 }
 
@@ -217,6 +232,7 @@ function configure_magnetodb() {
     fi
     sudo chown $MAGNETODB_RUN_USER $MAGNETODB_CONF_DIR
     sudo touch $MAGNETODB_LOG_DIR/magnetodb.log
+    sudo touch $MAGNETODB_LOG_DIR/magnetodb-streaming.log
     sudo chown -R $MAGNETODB_RUN_USER $MAGNETODB_LOG_DIR
     cp -r $MAGNETODB_DIR/etc/* $MAGNETODB_CONF_DIR
 
@@ -227,16 +243,75 @@ function configure_magnetodb() {
     iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:tokenauth admin_user $MAGNETODB_USER
     iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:tokenauth admin_password $SERVICE_PASSWORD
     iniset $MAGNETODB_CONF_DIR/api-paste.ini filter:ec2authtoken auth_uri $KEYSTONE_AUTH_PROTOCOL://$KEYSTONE_AUTH_HOST:$KEYSTONE_AUTH_PORT/v2.0
+
+    iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth auth_host $KEYSTONE_AUTH_HOST
+    iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth auth_port $KEYSTONE_AUTH_PORT
+    iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth auth_protocol $KEYSTONE_AUTH_PROTOCOL
+    iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_tenant_name $SERVICE_TENANT_NAME
+    iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_user $MAGNETODB_USER
+    iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_password $SERVICE_PASSWORD
+}
+
+# function screen_run - This function is a modification of function screen_it and allows you to run processes are not declared as service
+# Helper to launch a service in a named screen
+# screen_run service "command-line"
+function screen_run {
+    SCREEN_NAME=${SCREEN_NAME:-stack}
+    SERVICE_DIR=${SERVICE_DIR:-${DEST}/status}
+    USE_SCREEN=$(trueorfalse True $USE_SCREEN)
+
+    # Append the service to the screen rc file
+    screen_rc "$1" "$2"
+
+    if [[ "$USE_SCREEN" = "True" ]]; then
+        screen -S $SCREEN_NAME -X screen -t $1
+        if [[ -n ${SCREEN_LOGDIR} ]]; then
+            screen -S $SCREEN_NAME -p $1 -X logfile ${SCREEN_LOGDIR}/screen-${1}.${CURRENT_LOG_TIME}.log
+            screen -S $SCREEN_NAME -p $1 -X log on
+            ln -sf ${SCREEN_LOGDIR}/screen-${1}.${CURRENT_LOG_TIME}.log ${SCREEN_LOGDIR}/screen-${1}.log
+        fi
+
+        # sleep to allow bash to be ready to be send the command - we are
+        # creating a new window in screen and then sends characters, so if
+        # bash isn't running by the time we send the command, nothing happens
+        sleep 3
+
+        NL=`echo -ne '\015'`
+        # This fun command does the following:
+        # - the passed server command is backgrounded
+        # - the pid of the background process is saved in the usual place
+        # - the server process is brought back to the foreground
+        # - if the server process exits prematurely the fg command errors
+        #   and a message is written to stdout and the service failure file
+        # The pid saved can be used in screen_stop() as a process group
+        # id to kill off all child processes
+        screen -S $SCREEN_NAME -p $1 -X stuff "$2 & echo \$! >$SERVICE_DIR/$SCREEN_NAME/$1.pid; fg || echo \"$1 failed to start\" | tee \"$SERVICE_DIR/$SCREEN_NAME/$1.failure\"$NL"
+    else
+        # Spawn directly without screen
+        run_process "$1" "$2" >$SERVICE_DIR/$SCREEN_NAME/$1.pid
+    fi
 }
 
 function start_cassandra() {
-
     echo "===  Starting Cassandra Cluster  ==="
     ccm start
     screen_rc 'cassandra' "n=1; addr=2; while [ \\\$n -lt $CASSANDRA_AMOUNT_NODES ]; do sudo ip addr add 127.0.0.\\\${addr}/8 dev lo || [ \\\$? -eq 2 ] && true; let addr=\\\$addr+1; let n=\\\$n+1; done; ccm start"
     echo "===  Load cql.txt  ==="
     timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
     ccm node1 cqlsh -f ~/.ccm/cql.txt
+}
+
+function start_magnetodb_streaming() {
+    if is_ubuntu; then
+        use_Python="python"
+    elif is_fedora; then
+        use_Python="python2.7"
+    fi
+
+    cmd="timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-streaming-api-server \
+        --config-file $MAGNETODB_CONF_DIR/magnetodb-streaming-api-server.conf"
+
+    screen_run magnetodb-streaming "$cmd"
 }
 
 # start_magnetodb() - Start running processes, including screen
@@ -252,6 +327,7 @@ function start_magnetodb() {
         use_Python="python2.7"
     fi
     screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-file $MAGNETODB_CONF_DIR/magnetodb-api-server.conf"
+    start_magnetodb_streaming
 }
 
 function stop_cassandra(){
@@ -269,6 +345,9 @@ function stop_magnetodb() {
 
     # Kill the magnetodb screen windows
     screen -S $SCREEN_NAME -p magnetodb -X kill
+
+    # Kill the magnetodb-streaming screen windows
+    screen -S $SCREEN_NAME -p magnetodb-streaming -X kill
 }
 
 function clean_magnetodb() {
