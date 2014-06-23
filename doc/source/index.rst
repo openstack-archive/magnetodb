@@ -7,24 +7,53 @@
 Welcome to MagnetoDB's documentation!
 =====================================
 
-Contents:
+Introduction
+=============
 
+**MagnetoDB** is a key-value storage for OpenStack with seamless scalability and predictable performance.
+You can easily put/get/query you data with simple RESTful API. It supports Amazon DynamoDB API as well.
+
+
+
+Developer documentation
+=======================
+.. toctree::
+   :maxdepth: 1
+
+   developer_guide.rst
+   configuration.rst
+
+User guide
+==========
 .. toctree::
    :maxdepth: 2
 
-   introduction.rst
-
-   developer_guide.rst
-
    user_guide.rst
+
+Admin guide
+===========
+.. toctree::
+   :maxdepth: 1
 
    admin_guide.rst
 
+API Reference
+=============
+.. toctree::
+   :maxdepth: 2
+
    api_reference.rst
+   dynamodb_api.rst
+
+
+MagnetoDB CLI
+=============
+.. toctree::
+   :maxdepth: 1
 
    cli.rst
 
-==================
+
 Indices and tables
 ==================
 

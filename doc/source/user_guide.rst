@@ -1,8 +1,6 @@
-==========
-User Guide
-==========
-
-
+====================
+MagnetoDB User Guide
+====================
 
 --------------------
 MagnetoDB Data Model

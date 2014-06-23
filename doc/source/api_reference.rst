@@ -1,10 +1,6 @@
 =============
-Api Reference
-=============
-
---------------------
 RESTful Web API (v1)
---------------------
+=============
 
 MagnetoDB API is a RESTful API what uses JSON media type for interaction between client and server
 
@@ -82,7 +78,3 @@ MagnetoDB actions
    batch_get_item.rst
    batch_write_item.rst
 
-
-------------
-DynamoDB API
-------------

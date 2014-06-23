@@ -1,6 +1,6 @@
-===========
-Admin Guide
-===========
+=====================
+MagnetoDB Admin Guide
+=====================
 
 ------------------
 Installation guide
