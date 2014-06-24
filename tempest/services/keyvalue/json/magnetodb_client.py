@@ -44,8 +44,17 @@ class MagnetoDBClientJSON(rest_client.RestClient):
         resp, body = self.delete(url, self.headers)
         return resp, self._parse_resp(body)
 
-    def list_tables(self):
-        resp, body = self.get('data/tables', self.headers)
+    def list_tables(self, limit=None, exclusive_start_table_name=None):
+        url = 'data/tables'
+        add_url = ''
+        if limit is not None:
+            add_url = '?limit=%s' % limit
+        if exclusive_start_table_name:
+            divider = '&' if add_url else '?'
+            add_url += (divider + 'exclusive_start_table_name=%s' %
+                exclusive_start_table_name)
+        url += add_url
+        resp, body = self.get(url, self.headers)
         return resp, self._parse_resp(body)
 
     def describe_table(self, table_name):
