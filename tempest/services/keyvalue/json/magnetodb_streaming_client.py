@@ -32,8 +32,11 @@ class MagnetoDBStreamingClientJSON(rest_client.RestClient):
 
         self.service = CONF.magnetodb_streaming.service_type
 
-    def upload(self, table_name, items):
-        url = '/'.join(['data/tables', table_name, 'bulk_load'])
+    def upload_items(self, table_name, items):
         post_body = ''.join([json.dumps(item) + '\n' for item in items])
-        resp, body = self.post(url, post_body, self.headers)
+        return self.upload_raw_stream(table_name, post_body)
+
+    def upload_raw_stream(self, table_name, stream):
+        url = '/'.join(['data/tables', table_name, 'bulk_load'])
+        resp, body = self.post(url, stream, self.headers)
         return resp, self._parse_resp(body)
