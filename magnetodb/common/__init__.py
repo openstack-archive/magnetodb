@@ -26,9 +26,9 @@ def setup_global_env(program=None, args=None):
     global __setup_complete
     assert not __setup_complete
 
+    from magnetodb import notifier
     from magnetodb import storage
     from magnetodb.common import config
-    from magnetodb.common import notifier
     from magnetodb.openstack.common import log
     from magnetodb.openstack.common import gettextutils
 

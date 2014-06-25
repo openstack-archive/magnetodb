@@ -16,6 +16,7 @@
 import base64
 import json
 
+import mock
 import unittest
 import uuid
 import binascii
@@ -140,11 +141,22 @@ class TestCassandraBase(unittest.TestCase):
     def setUpClass(cls):
         super(TestCassandraBase, cls).setUpClass()
 
+        cls.notifier_patcher = mock.patch('magnetodb.notifier.notify')
+        cls.notifier_patcher.start()
+
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
-        cluster_hadler = ClusterHandler(cls.CLUSTER, query_timeout=300)
+        cluster_hadler = ClusterHandler(TEST_CONNECTION, query_timeout=300)
         table_info_repo = CassandraTableInfoRepository(cluster_hadler)
+
+        default_keyspace_opts = {
+            "replication": {
+                "replication_factor": 1,
+                "class": "SimpleStrategy"
+            }
+        }
+
         storage_driver = cassandra_impl.CassandraStorageDriver(
-            cluster_hadler, table_info_repo
+            cluster_hadler, table_info_repo, default_keyspace_opts
         )
         cls.CASANDRA_STORAGE_IMPL = SimpleStorageManager(storage_driver,
                                                          table_info_repo)
@@ -168,6 +180,7 @@ class TestCassandraBase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         super(TestCassandraBase, cls).tearDownClass()
+        cls.notifier_patcher.stop()
         if cls._tenant_scope == cls.TENANT_PER_TEST_CLASS:
             cls._drop_tenant(cls.tenant)
 

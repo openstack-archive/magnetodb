@@ -15,7 +15,8 @@
 
 import os
 
-from magnetodb.common import PROJECT_NAME, setup_global_env
+from magnetodb.common import PROJECT_NAME
+from magnetodb.common import setup_global_env
 
 
 def get_root_source(start_search_path, root_dir_name):

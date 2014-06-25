@@ -38,7 +38,7 @@ import itertools
 import sys
 
 import codecs
-from magnetodb.common.notifier.decimal_encoder import DecimalEncoder
+from magnetodb.common.utils.decimal_encoder import DecimalEncoder
 
 
 if sys.version_info < (2, 7):
