@@ -19,13 +19,16 @@ import time
 
 from concurrent.futures import Future
 
+from oslo.config import cfg
+
 from magnetodb.openstack.common.notifier import test_notifier
 
-from magnetodb.common.notifier.event import Notification
 from magnetodb.tests.unittests.common.notifier.test_notification \
     import TestNotify
 from magnetodb.tests.unittests.common.notifier.test_notification \
     import DATETIMEFORMAT
+
+from magnetodb import notifier
 
 from magnetodb.storage import models
 from magnetodb.storage.manager.simple_impl import SimpleStorageManager
@@ -68,15 +71,15 @@ class TestNotifyStorageManager(TestNotify):
         end_event = test_notifier.NOTIFICATIONS[1]
 
         self.assertEqual(start_event['priority'],
-                         Notification.CONF.default_notification_level)
+                         cfg.CONF.default_notification_level)
         self.assertEqual(start_event['event_type'],
-                         Notification.TABLE_CREATE_START)
+                         notifier.EVENT_TYPE_TABLE_CREATE_START)
         self.assertEqual(start_event['payload'], table_schema)
 
         self.assertEqual(end_event['priority'],
-                         Notification.CONF.default_notification_level)
+                         cfg.CONF.default_notification_level)
         self.assertEqual(end_event['event_type'],
-                         Notification.TABLE_CREATE_END)
+                         notifier.EVENT_TYPE_TABLE_CREATE_END)
         self.assertEqual(end_event['payload'], table_schema)
 
         time_start = datetime.datetime.strptime(
@@ -118,15 +121,15 @@ class TestNotifyStorageManager(TestNotify):
         end_event = test_notifier.NOTIFICATIONS[1]
 
         self.assertEqual(start_event['priority'],
-                         Notification.CONF.default_notification_level)
+                         cfg.CONF.default_notification_level)
         self.assertEqual(start_event['event_type'],
-                         Notification.TABLE_DELETE_START)
+                         notifier.EVENT_TYPE_TABLE_DELETE_START)
         self.assertEqual(start_event['payload'], table_name)
 
         self.assertEqual(end_event['priority'],
-                         Notification.CONF.default_notification_level)
+                         cfg.CONF.default_notification_level)
         self.assertEqual(end_event['event_type'],
-                         Notification.TABLE_DELETE_END)
+                         notifier.EVENT_TYPE_TABLE_DELETE_END)
         self.assertEqual(end_event['payload'], table_name)
 
         time_start = datetime.datetime.strptime(
@@ -182,15 +185,15 @@ class TestNotifyStorageManager(TestNotify):
         end_event = test_notifier.NOTIFICATIONS[1]
 
         self.assertEqual(start_event['priority'],
-                         Notification.CONF.default_notification_level)
+                         cfg.CONF.default_notification_level)
         self.assertEqual(start_event['event_type'],
-                         Notification.DATA_BATCHWRITE_START)
+                         notifier.EVENT_TYPE_DATA_BATCHWRITE_START)
         self.assertEqual(len(start_event['payload']), len(request_list))
 
         self.assertEqual(end_event['priority'],
-                         Notification.CONF.default_notification_level)
+                         cfg.CONF.default_notification_level)
         self.assertEqual(end_event['event_type'],
-                         Notification.DATA_BATCHWRITE_END)
+                         notifier.EVENT_TYPE_DATA_BATCHWRITE_END)
         self.assertEqual(len(end_event['payload']['write_request_list']),
                          len(request_list))
         self.assertEqual(len(end_event['payload']['unprocessed_items']), 0)
