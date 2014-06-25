@@ -40,17 +40,31 @@ def process_object_spec(obj_name, obj_spec_map, context):
             )
         )
 
-    params = obj_spec["params"]
-    res_params = {}
-    for param_name, param_value in params.iteritems():
-        if (isinstance(param_value, basestring) and
-                len(param_value) > 1 and param_value[0] == "@"):
-            param_value = param_value[1:]
-            if param_value[0] != "@":
-                param_value = process_object_spec(
-                    param_value, obj_spec_map, context
-                )
-        res_params[param_name] = param_value
+    args = obj_spec.get("args")
+    res_args = []
+    if args:
+        for param_value in args:
+            if (isinstance(param_value, basestring) and
+                    len(param_value) > 1 and param_value[0] == "@"):
+                param_value = param_value[1:]
+                if param_value[0] != "@":
+                    param_value = process_object_spec(
+                        param_value, obj_spec_map, context
+                    )
+            res_args.append(param_value)
+
+    kwargs = obj_spec.get("kwargs")
+    res_kwargs = {}
+    if kwargs:
+        for param_name, param_value in kwargs.iteritems():
+            if (isinstance(param_value, basestring) and
+                    len(param_value) > 1 and param_value[0] == "@"):
+                param_value = param_value[1:]
+                if param_value[0] != "@":
+                    param_value = process_object_spec(
+                        param_value, obj_spec_map, context
+                    )
+            res_kwargs[param_name] = param_value
 
     type_str = obj_spec["type"]
     mod_str, _sep, class_str = type_str.rpartition('.')
@@ -59,7 +73,7 @@ def process_object_spec(obj_name, obj_spec_map, context):
         cls = getattr(module, class_str)
     else:
         cls = eval(type_str)
-    obj = cls(**res_params)
+    obj = cls(*res_args, **res_kwargs)
     context[obj_name] = obj
 
     return obj
