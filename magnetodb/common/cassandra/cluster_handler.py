@@ -14,8 +14,13 @@
 #    under the License.
 
 import logging
+
 from threading import BoundedSemaphore
+from threading import Lock
+from threading import Thread
+
 import time
+
 from cassandra import cluster as cassandra_cluster
 from magnetodb.common import exception
 from cassandra import query as cassandra_query
@@ -24,15 +29,52 @@ LOG = logging.getLogger(__name__)
 
 
 class ClusterHandler(object):
-    def __init__(self, cluster, query_timeout=2,  concurrent_queries=100):
+    def __init__(self, cluster_params, query_timeout=2,
+                 concurrent_queries=100):
         self.__task_semaphore = BoundedSemaphore(concurrent_queries)
 
-        self.__cluster = cluster
-        self.__session = self.__cluster.connect()
-        self.__session.row_factory = cassandra_query.dict_factory
-        self.__session.default_timeout = query_timeout
+        self.__cluster_params = cluster_params
+        self.__query_timeout = query_timeout
+        self.__connection_lock = Lock()
+        self.__cluster = None
+        self.__session = None
+        self.__connection_monitor_thread = Thread(
+            target=self.__monitor_control_connection
+        )
+        self.__connection_monitor_thread.start()
+
+    def __connect(self):
+        with self.__connection_lock:
+            assert self.__cluster is None
+            cluster = cassandra_cluster.Cluster(**self.__cluster_params)
+            session = cluster.connect()
+            session.row_factory = cassandra_query.dict_factory
+            session.default_timeout = self.__query_timeout
+            self.__cluster = cluster
+            self.__session = session
+
+    def __disconnect(self):
+        with self.__connection_lock:
+            assert self.__cluster is not None
+            self.__cluster.shutdown()
+            self.__cluster = None
+            self.__session = None
+
+    def __monitor_control_connection(self):
+        while True:
+            try:
+                if not self.__cluster:
+                    self.__connect()
+                elif self.__cluster.control_connection._connection.is_closed:
+                    self.__disconnect()
+                    self.__connect()
+            except:
+                LOG.exception("Error during connecting to the cluster")
+            time.sleep(1)
 
     def execute_query(self, query, consistent=False):
+        if self.__cluster is None:
+            raise ClusterIsNotConnectedException()
         ex = None
         if consistent:
             query = cassandra_cluster.SimpleStatement(
@@ -88,3 +130,7 @@ class ClusterHandler(object):
                   "table_meta: %(table_meta)s).",
                   {'expected_exists': expected_exists,
                    'table_meta': table_meta})
+
+
+class ClusterIsNotConnectedException(Exception):
+    pass
