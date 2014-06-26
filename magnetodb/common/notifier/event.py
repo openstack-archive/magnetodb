@@ -72,6 +72,14 @@ class Notification(object):
 
     DATA_SCAN_END = 'magnetodb.data.scan.end'
 
+    STREAMING_PATH_ERROR = 'magnetodb.streaming.path.error'
+
+    STREAMING_DATA_START = 'magnetodb.streaming.data.start'
+
+    STREAMING_DATA_END = 'magnetodb.streaming.data.end'
+
+    STREAMING_DATA_ERROR = 'magnetodb.streaming.data.error'
+
     event_types = (TABLE_CREATE_START,
                    TABLE_CREATE_END,
                    TABLE_CREATE_ERROR,
@@ -96,7 +104,11 @@ class Notification(object):
                    DATA_SELECTITEM_START,
                    DATA_SELECTITEM_END,
                    DATA_SCAN_START,
-                   DATA_SCAN_END)
+                   DATA_SCAN_END,
+                   STREAMING_PATH_ERROR,
+                   STREAMING_DATA_START,
+                   STREAMING_DATA_END,
+                   STREAMING_DATA_ERROR)
 
     WARN = notifier_api.WARN
     INFO = notifier_api.INFO
