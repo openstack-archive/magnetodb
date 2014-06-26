@@ -28,14 +28,10 @@ from magnetodb.storage import models
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 
+
 LOG = logging.getLogger(__name__)
 
 MAX_FUTURES = 100
-
-
-class Ctx:
-    def __init__(self, tenant):
-        self.tenant = tenant
 
 
 def app_factory(global_conf, **local_conf):
@@ -69,6 +65,11 @@ def make_put_item(table_name, item):
 
 
 def bulk_load_app(environ, start_response):
+
+    from magnetodb import notifier
+
+    context = environ['webob.adhoc_attrs']['context']
+
     path = environ['PATH_INFO']
 
     LOG.debug('Request received: %s', path)
@@ -76,6 +77,8 @@ def bulk_load_app(environ, start_response):
     if not re.match("^/v1/\w+/data/tables/\w+/bulk_load$", path):
         start_response('404 Not found', [('Content-Type', 'text/html')])
         yield 'Incorrect url. Please check it and try again\n'
+        notifier.notify(context, notifier.EVENT_TYPE_STREAMING_PATH_ERROR,
+                        path, priority=notifier.PRIORITY_ERROR)
         return
 
     url_comp = path.split('/')
@@ -84,9 +87,9 @@ def bulk_load_app(environ, start_response):
 
     LOG.debug('Tenant: %s, table name: %s', project_id, table_name)
 
-    context = environ['webob.adhoc_attrs']['context']
-
     utils.check_project_id(context, project_id)
+
+    notifier.notify(context, notifier.EVENT_TYPE_STREAMING_DATA_START, path)
 
     read_count = 0
     processed_count = 0
@@ -147,6 +150,9 @@ def bulk_load_app(environ, start_response):
             LOG.debug('Error inserting item: %s, message: %s',
                       chunk, repr(e))
 
+            notifier.notify(context, notifier.EVENT_TYPE_STREAMING_DATA_ERROR,
+                            {'path': path, 'item': chunk, 'error': e.message})
+
     LOG.debug('Request body has been read completely')
 
     # wait for all futures to be finished
@@ -175,6 +181,9 @@ def bulk_load_app(environ, start_response):
             LOG.debug('Error inserting item: %s, message: %s',
                       chunk, repr(e))
 
+            notifier.notify(context, notifier.EVENT_TYPE_STREAMING_DATA_ERROR,
+                            {'path': path, 'item': chunk, 'error': e.message})
+
     # Update count if error happened before put_item_async was invoked
     if dont_process:
         failed_count += 1
@@ -189,5 +198,8 @@ def bulk_load_app(environ, start_response):
         'last_item': last_read,
         'failed_items': failed_items
     }
+
+    notifier.notify(context, notifier.EVENT_TYPE_STREAMING_DATA_END,
+                    {'path': path, 'response': resp})
 
     yield json.dumps(resp)
