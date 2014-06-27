@@ -20,13 +20,13 @@ class StorageManager(object):
         """
         Create table
 
-        @param context: current request context
-        @param table_name: String, name of the table to create
-        @param table_schema: TableSchema instance which define table to create
+        :param context: current request context
+        :param table_name: String, name of the table to create
+        :param table_schema: TableSchema instance which define table to create
 
-        @return TableMeta instance with metadata of created table
+        :returns: TableMeta instance with metadata of created table
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
@@ -34,12 +34,12 @@ class StorageManager(object):
         """
         Delete table
 
-        @param context: current request context
-        @param table_name: String, name of table to delete
+        :param context: current request context
+        :param table_name: String, name of table to delete
 
-        @return TableMeta instance with metadata of created table
+        :returns: TableMeta instance with metadata of created table
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
@@ -47,138 +47,138 @@ class StorageManager(object):
         """
         Describe table
 
-        @param context: current request context
-        @param table_name: String, name of table to describes
+        :param context: current request context
+        :param table_name: String, name of table to describes
 
-        @return: TableMeta instance
+        :returns: TableMeta instance
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
     def list_tables(self, context, exclusive_start_table_name=None,
                     limit=None):
         """
-        @param context: current request context
-        @param exclusive_start_table_name
-        @param limit: limit of returned table names
-        @return list of table names
+        :param context: current request context
+        :param exclusive_start_table_name:
+        :param limit: limit of returned table names
+        :returns: list of table names
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
     def put_item(self, context, put_request, if_not_exist=False,
                  expected_condition_map=None):
         """
-        @param context: current request context
-        @param put_request: PutItemRequest instance which specifies item to put
-        @param if_not_exist: put item only is row is new record (It is possible
+        :param context: current request context
+        :param put_request: PutItemRequest instance which specifies item to put
+        :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
-        @param expected_condition_map: expected attribute name to
+        :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
                     preconditions to make decision about should item be put or
                     not
 
-        @return: True if operation performed, otherwise False
+        :returns: True if operation performed, otherwise False
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
     def put_item_async(self, context, put_request, if_not_exist=False,
                        expected_condition_map=None):
         """
-        @param context: current request context
-        @param put_request: PutItemRequest instance which specifies item to put
-        @param if_not_exist: put item only is row is new record (It is possible
+        :param context: current request context
+        :param put_request: PutItemRequest instance which specifies item to put
+        :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
-        @param expected_condition_map: expected attribute name to
+        :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
                     preconditions to make decision about should item be put or
                     not
 
-        @return: Future instance
+        :returns: Future instance
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
     def delete_item(self, context, delete_request,
                     expected_condition_map=None):
         """
-        @param context: current request context
-        @param delete_request: DeleteItemRequest instance which identifies item
+        :param context: current request context
+        :param delete_request: DeleteItemRequest instance which identifies item
                     to delete
-        @param expected_condition_map: expected attribute name to
+        :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
                     preconditions to make decision about should item be deleted
                     or not
 
-        @return: True if operation performed, otherwise False (if operation was
-                    skipped by out of date timestamp, it is considered as
+        :returns: True if operation performed, otherwise False (if operation
+                    was skipped by out of date timestamp, it is considered as
                     successfully performed)
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
     def delete_item_async(self, context, delete_request,
                           expected_condition_map=None):
         """
-        @param context: current request context
-        @param delete_request: DeleteItemRequest instance which identifies item
+        :param context: current request context
+        :param delete_request: DeleteItemRequest instance which identifies item
                     to delete
-        @param expected_condition_map: expected attribute name to
+        :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
                     preconditions to make decision about should item be deleted
                     or not
 
-        @return: Future instance
+        :returns: Future instance
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
     def execute_write_batch(self, context, write_request_list):
         """
-        @param context: current request context
-        @param write_request_list: contains PutItemRequest or DeleteItemRequest
+        :param context: current request context
+        :param write_request_list: contains PutItemRequest or DeleteItemRequest
                     instances to execute batch operation
 
-        @return: Unprocessed request list
+        :returns: Unprocessed request list
         """
         raise NotImplementedError()
 
     def execute_get_batch(self, context, get_request_list):
         """
-        @param context: current request context
-        @param get_request_list: contains GetItemRequest instances to execute
+        :param context: current request context
+        :param get_request_list: contains GetItemRequest instances to execute
                     batch operation
 
-        @return: tuple of items list and unprocessed request list
+        :returns: tuple of items list and unprocessed request list
         """
         raise NotImplementedError()
 
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
         """
-        @param context: current request context
-        @param table_name: String, name of table to delete item from
-        @param key_attribute_map: key attribute name to
+        :param context: current request context
+        :param table_name: String, name of table to delete item from
+        :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row it to update item
-        @param attribute_action_map: attribute name to UpdateItemAction
+        :param attribute_action_map: attribute name to UpdateItemAction
                     instance mapping. It defines actions to perform for each
                     given attribute
-        @param expected_condition_map: expected attribute name to
+        :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
                     preconditions
                     to make decision about should item be updated or not
-        @return: True if operation performed, otherwise False
+        :returns: True if operation performed, otherwise False
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
@@ -187,27 +187,27 @@ class StorageManager(object):
                     exclusive_start_key=None, consistent=True,
                     order_type=None):
         """
-        @param context: current request context
-        @param table_name: String, name of table to get item from
-        @param indexed_condition_map: indexed attribute name to
+        :param context: current request context
+        :param table_name: String, name of table to get item from
+        :param indexed_condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be selected
-        @param select_type: SelectType instance. It defines with attributes
+        :param select_type: SelectType instance. It defines with attributes
                     will be returned. If not specified, default will be used:
-                        SelectType.all() for query on table and
-                        SelectType.all_projected() for query on index
-        @param index_name: String, name of index to search with
-        @param limit: maximum count of returned values
-        @param exclusive_start_key: key attribute names to AttributeValue
+                    SelectType.all() for query on table and
+                    SelectType.all_projected() for query on index
+        :param index_name: String, name of index to search with
+        :param limit: maximum count of returned values
+        :param exclusive_start_key: key attribute names to AttributeValue
                     instance
-        @param consistent: define is operation consistent or not (by default it
+        :param consistent: define is operation consistent or not (by default it
                     is not consistent)
-        @param order_type: defines order of returned rows, if 'None' - default
+        :param order_type: defines order of returned rows, if 'None' - default
                     order will be used
 
-        @return SelectResult instance
+        :returns: SelectResult instance
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
@@ -215,21 +215,21 @@ class StorageManager(object):
              limit=None, exclusive_start_key=None,
              consistent=False):
         """
-        @param context: current request context
-        @param table_name: String, name of table to get item from
-        @param condition_map: attribute name to
+        :param context: current request context
+        :param table_name: String, name of table to get item from
+        :param condition_map: attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be selected
-        @param attributes_to_get: list of attribute names to be included in
+        :param attributes_to_get: list of attribute names to be included in
                     result. If None, all attributes will be included
-        @param limit: maximum count of returned values
-        @param exclusive_start_key: key attribute names to AttributeValue
+        :param limit: maximum count of returned values
+        :param exclusive_start_key: key attribute names to AttributeValue
                     instance
-        @param consistent: define is operation consistent or not (by default it
+        :param consistent: define is operation consistent or not (by default it
                     is not consistent)
 
-        @return list of attribute name to AttributeValue mappings
+        :returns: list of attribute name to AttributeValue mappings
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         raise NotImplementedError()

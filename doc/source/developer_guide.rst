@@ -563,3 +563,128 @@ big picture.
 --------------------
 Source documentation
 --------------------
+
+magnetodb.common
+================
+
+.. automodule:: magnetodb.common.config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.common.wsgi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+magnetodb.common.cassandra
+==========================
+
+.. automodule:: magnetodb.common.cassandra.cluster_handler
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.common.cassandra.io.eventletreactor
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+magnetodb.common.middleware
+===========================
+
+.. automodule:: magnetodb.common.middleware.connection_handler
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.common.middleware.context
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.common.middleware.ec2token
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+.. automodule:: magnetodb.common.middleware.fault
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+magnetodb.common.notifier
+=========================
+
+.. automodule:: magnetodb.common.notifier.decimal_encoder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.common.notifier.event
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+magnetodb.storage
+=================
+
+.. automodule:: magnetodb.storage
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.storage.models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+
+magnetodb.storage.driver
+========================
+
+.. automodule:: magnetodb.storage.driver
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.storage.driver.cassandra.cassandra_impl
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+magnetodb.storage.manager
+=========================
+
+.. automodule:: magnetodb.storage.manager
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.storage.manager.async_simple_impl
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.storage.manager.simple_impl
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+magnetodb.storage.table_info_repo
+=================================
+
+.. automodule:: magnetodb.storage.table_info_repo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: magnetodb.storage.table_info_repo.cassandra_impl
+   :members:
+   :undoc-members:
+   :show-inheritance:
