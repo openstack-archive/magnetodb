@@ -617,20 +617,20 @@ class CassandraStorageDriver(StorageDriver):
     def put_item(self, context, put_request, if_not_exist=False,
                  expected_condition_map=None):
         """
-        @param context: current request context
-        @param put_request: contains PutItemRequest items to perform
+        :param context: current request context
+        :param put_request: contains PutItemRequest items to perform
                     put item operation
-        @param if_not_exist: put item only is row is new record (It is possible
+        :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
-        @param expected_condition_map: expected attribute name to
+        :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
                     preconditions to make decision about should item be put or
                     not
 
-        @return: True if operation performed, otherwise False
+        :returns: True if operation performed, otherwise False
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
 
         table_info = self.__table_info_repo.get(context,
@@ -796,19 +796,19 @@ class CassandraStorageDriver(StorageDriver):
     def delete_item(self, context, delete_request,
                     expected_condition_map=None):
         """
-        @param context: current request context
-        @param delete_request: contains DeleteItemRequest items to perform
+        :param context: current request context
+        :param delete_request: contains DeleteItemRequest items to perform
                     delete item operation
-        @param expected_condition_map: expected attribute name to
+        :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
                     preconditions to make decision about should item be deleted
                     or not
 
-        @return: True if operation performed, otherwise False (if operation was
-                    skipped by out of date timestamp, it is considered as
+        :returns: True if operation performed, otherwise False (if operation
+                    was skipped by out of date timestamp, it is considered as
                     successfully performed)
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
 
         table_info = self.__table_info_repo.get(context,
@@ -1072,13 +1072,13 @@ class CassandraStorageDriver(StorageDriver):
 
     def execute_write_batch(self, context, write_request_list):
         """
-        @param context: current request context
-        @param write_request_list: contains WriteItemBatchableRequest items to
+        :param context: current request context
+        :param write_request_list: contains WriteItemBatchableRequest items to
                     perform batch
 
-        @return: List of unprocessed items
+        :returns: List of unprocessed items
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
 
         assert write_request_list
@@ -1100,20 +1100,19 @@ class CassandraStorageDriver(StorageDriver):
     def update_item(self, context, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
         """
-        @param context: current request context
-        @param table_name: String, name of table to delete item from
-        @param key_attribute_map: key attribute name to
-                    AttributeValue mapping. It defines row it to update item
-        @param attribute_action_map: attribute name to UpdateItemAction
-                    instance mapping. It defines actions to perform for each
-                    given attribute
-        @param expected_condition_map: expected attribute name to
-                    ExpectedCondition instance mapping. It provides
-                    preconditions to make decision about should item be updated
-                    or not
-        @return: True if operation performed, otherwise False
-
-        @raise BackendInteractionException
+        :param context: current request context
+        :param table_name: String, name of table to delete item from
+        :param key_attribute_map: key attribute name to
+            AttributeValue mapping. It defines row it to update item
+        :param attribute_action_map: attribute name to UpdateItemAction
+            instance mapping. It defines actions to perform for each
+            given attribute
+        :param expected_condition_map: expected attribute name to
+            ExpectedCondition instance mapping. It provides
+            preconditions to make decision about should item be updated
+            or not
+        :returns: True if operation performed, otherwise False
+        :raises: BackendInteractionException
         """
         attribute_action_map = attribute_action_map or {}
 
@@ -1237,27 +1236,27 @@ class CassandraStorageDriver(StorageDriver):
                     exclusive_start_key=None, consistent=True,
                     order_type=None):
         """
-        @param context: current request context
-        @param table_name: String, name of table to get item from
-        @param indexed_condition_map: indexed attribute name to
+        :param context: current request context
+        :param table_name: String, name of table to get item from
+        :param indexed_condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be selected
-        @param select_type: SelectType instance. It defines with attributes
+        :param select_type: SelectType instance. It defines with attributes
                     will be returned. If not specified, default will be used:
-                        SelectType.all() for query on table and
-                        SelectType.all_projected() for query on index
-        @param index_name: String, name of index to search with
-        @param limit: maximum count of returned values
-        @param exclusive_start_key: key attribute names to AttributeValue
+                    SelectType.all() for query on table and
+                    SelectType.all_projected() for query on index
+        :param index_name: String, name of index to search with
+        :param limit: maximum count of returned values
+        :param exclusive_start_key: key attribute names to AttributeValue
                     instance
-        @param consistent: define is operation consistent or not (by default it
+        :param consistent: define is operation consistent or not (by default it
                     is not consistent)
-        @param order_type: defines order of returned rows, if 'None' - default
+        :param order_type: defines order of returned rows, if 'None' - default
                     order will be used
 
-        @return SelectResult instance
+        :returns: SelectResult instance
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
 
         table_info = self.__table_info_repo.get(context, table_name)
@@ -1540,20 +1539,20 @@ class CassandraStorageDriver(StorageDriver):
     def scan(self, context, table_name, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None, consistent=False):
         """
-        @param context: current request context
-        @param table_name: String, name of table to get item from
-        @param condition_map: indexed attribute name to
+        :param context: current request context
+        :param table_name: String, name of table to get item from
+        :param condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be selected
-        @param limit: maximum count of returned values
-        @param exclusive_start_key: key attribute names to AttributeValue
+        :param limit: maximum count of returned values
+        :param exclusive_start_key: key attribute names to AttributeValue
                     instance
-        @param consistent: define is operation consistent or not (by default it
+        :param consistent: define is operation consistent or not (by default it
                     is not consistent)
 
-        @return list of attribute name to AttributeValue mappings
+        :returns: list of attribute name to AttributeValue mappings
 
-        @raise BackendInteractionException
+        :raises: BackendInteractionException
         """
         if not condition_map:
             condition_map = {}

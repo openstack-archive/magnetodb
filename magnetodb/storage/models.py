@@ -362,8 +362,8 @@ class SelectType(ModelBase):
 class WriteItemBatchableRequest(ModelBase):
     def __init__(self, table_name, **kwargs):
         """
-        @param table_name: String, name of table to delete item from
-        @param timestamp: timestamp of operation. Operation will be skipped
+        :param table_name: String, name of table to delete item from
+        :param timestamp: timestamp of operation. Operation will be skipped
                     if another one already performed with greater or equal
                     timestamp
         """
@@ -374,10 +374,10 @@ class WriteItemBatchableRequest(ModelBase):
 class DeleteItemRequest(WriteItemBatchableRequest):
     def __init__(self, table_name, key_attribute_map):
         """
-        @param table_name: String, name of table to delete item from
-        @param key_attribute_map: key attribute name to
+        :param table_name: String, name of table to delete item from
+        :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row to be deleted
-        @param indexed_condition_map: indexed attribute name to
+        :param indexed_condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
                     set to be removed
         """
@@ -388,8 +388,8 @@ class DeleteItemRequest(WriteItemBatchableRequest):
 class PutItemRequest(WriteItemBatchableRequest):
     def __init__(self, table_name, attribute_map):
         """
-        @param table_name: String, name of table to delete item from
-        @param attribute_map: attribute name to AttributeValue mapping.
+        :param table_name: String, name of table to delete item from
+        :param attribute_map: attribute name to AttributeValue mapping.
                     It defines row key and additional attributes to put
                     item
         """
@@ -401,8 +401,8 @@ class GetItemRequest(ModelBase):
     def __init__(self, table_name, indexed_condition_map, select_type,
                  consistent):
         """
-        @param table_name: String, name of table to get item from
-        @param attribute_map: attribute name to AttributeValue mapping.
+        :param table_name: String, name of table to get item from
+        :param attribute_map: attribute name to AttributeValue mapping.
         """
         super(GetItemRequest, self).__init__(
             table_name=table_name,
@@ -422,8 +422,8 @@ class UpdateItemAction(ModelBase):
 
     def __init__(self, action, value):
         """
-        @param action: one of available action names
-        @param value: AttributeValue instance, parameter for action
+        :param action: one of available action names
+        :param value: AttributeValue instance, parameter for action
         """
         assert action in self._allowed_actions, (
             "Update action '%s' isn't allowed" % action
@@ -435,9 +435,9 @@ class UpdateItemAction(ModelBase):
 class IndexDefinition(ModelBase):
     def __init__(self, attribute_to_index, projected_attributes=None):
         """
-        @param index_name: name of index
-        @param attribute_to_index: attribute name to be indexed
-        @param projected_attributes: set of non key attribute names to be
+        :param index_name: name of index
+        :param attribute_to_index: attribute name to be indexed
+        :param projected_attributes: set of non key attribute names to be
                     projected. If 'None' - all attributes will be projected
         """
         projected_attributes = (
@@ -456,8 +456,8 @@ class SelectResult(ModelBase):
     def __init__(self, items=None, last_evaluated_key=None, count=None,
                  **kwargs):
         """
-        @param items: list of attribute name to AttributeValue mappings
-        @param last_evaluated_key: attribute name to AttributeValue mapping,
+        :param items: list of attribute name to AttributeValue mappings
+        :param last_evaluated_key: attribute name to AttributeValue mapping,
                     which defines last evaluated key
         """
 
@@ -485,12 +485,12 @@ class TableSchema(ModelBase):
 
     def __init__(self, attribute_type_map, key_attributes, index_def_map=None):
         """
-        @param attribute_type_map: attribute name to AttributeType mapping
-        @param key_attrs: list of key attribute names, contains partition key
+        :param attribute_type_map: attribute name to AttributeType mapping
+        :param key_attrs: list of key attribute names, contains partition key
                     (the first in list, required) attribute name and extra key
                     attribute names (the second and other list items, not
                     required)
-        @param index_def_map: index name to IndexDefinition mapping
+        :param index_def_map: index name to IndexDefinition mapping
         """
 
         if index_def_map is None:
@@ -512,8 +512,8 @@ class TableMeta(ModelBase):
 
     def __init__(self, schema, status):
         """
-        @param table_schema: TableSchema instance
-        @param status: table status
+        :param table_schema: TableSchema instance
+        :param status: table status
         """
 
         assert status in self._allowed_statuses, (
