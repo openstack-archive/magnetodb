@@ -86,7 +86,8 @@ class SimpleStorageManager(StorageManager):
         table_info = self._table_info_repo.get(context,
                                                table_name,
                                                ['status'])
-        notify(context, Notification.TABLE_DESCRIBE, table_name)
+        notify(context, Notification.TABLE_DESCRIBE, table_name,
+               priority=Notification.DEBUG)
 
         return models.TableMeta(table_info.schema, table_info.status)
 
@@ -97,7 +98,7 @@ class SimpleStorageManager(StorageManager):
         )
         notify(context, Notification.TABLE_LIST,
                dict(exclusive_start_table_name=exclusive_start_table_name,
-                    limit=limit))
+                    limit=limit), priority=Notification.DEBUG)
 
         return tnames
 
@@ -127,7 +128,8 @@ class SimpleStorageManager(StorageManager):
             notify(context, Notification.DATA_PUTITEM,
                    dict(put_request=put_request,
                         if_not_exist=if_not_exist,
-                        expected_condition_map=expected_condition_map))
+                        expected_condition_map=expected_condition_map),
+                   priority=Notification.DEBUG)
 
             return result
 
@@ -165,7 +167,8 @@ class SimpleStorageManager(StorageManager):
                                                       expected_condition_map)
             notify(context, Notification.DATA_DELETEITEM,
                    dict(delete_request=delete_request,
-                        expected_condition_map=expected_condition_map))
+                        expected_condition_map=expected_condition_map),
+                   priority=Notification.DEBUG)
 
             return result
 
@@ -286,7 +289,8 @@ class SimpleStorageManager(StorageManager):
                    dict(table_name=table_name,
                         key_attribute_map=key_attribute_map,
                         attribute_action_map=attribute_action_map,
-                        expected_condition_map=expected_condition_map))
+                        expected_condition_map=expected_condition_map),
+                   priority=Notification.DEBUG)
 
             return result
 
@@ -307,7 +311,8 @@ class SimpleStorageManager(StorageManager):
                         limit=limit,
                         exclusive_start_key=exclusive_start_key,
                         consistent=consistent,
-                        order_type=order_type))
+                        order_type=order_type),
+                   priority=Notification.DEBUG)
 
             return result
 
