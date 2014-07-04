@@ -108,7 +108,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         del cls._resource_trash_bin[key]
 
     @classmethod
-    def wait_for_table_active(cls, table_name, timeout=120, interval=3):
+    def wait_for_table_active(cls, table_name, timeout=60, interval=3):
         def check():
             headers, body = cls.client.describe_table(table_name)
             if "table" in body and "table_status" in body["table"]:
