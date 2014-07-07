@@ -33,6 +33,7 @@ from magnetodb.storage.manager.simple_impl import SimpleStorageManager
 from magnetodb.storage.table_info_repo.cassandra_impl import (
     CassandraTableInfoRepository
 )
+from magnetodb.common.exception import TableAlreadyExistsException
 
 TEST_CONNECTION = {
     'contact_points': ("localhost",),
@@ -605,6 +606,33 @@ class TestCassandraTableCrud(TestCassandraBase):
         )
 
         self.assertEqual([self.table_name], self._get_table_names())
+
+    def test_create_duplicate_table(self):
+        self.assertEqual([], self._get_table_names())
+
+        attrs = {}
+        for name, (typ, _, _) in self.test_data_keys.iteritems():
+            attrs[name] = self.C2S_TYPES[typ]
+        for name, (typ, _, _) in self.test_data_predefined_fields.iteritems():
+            attrs[name] = self.C2S_TYPES[typ]
+
+        index_def_map = {
+            'index_name': models.IndexDefinition('indexed')
+        }
+
+        schema = models.TableSchema(attrs, ['id', 'range'],
+                                    index_def_map)
+
+        with self.assertRaises(TableAlreadyExistsException):
+            self.CASANDRA_STORAGE_IMPL.create_table(
+                self.context, self.table_name, schema
+            )
+
+            self.assertEqual([self.table_name], self._get_table_names())
+
+            self.CASANDRA_STORAGE_IMPL.create_table(
+                self.context, self.table_name, schema
+            )
 
     def test_list_table(self):
         self.assertNotIn(self.table_name,
