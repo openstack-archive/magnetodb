@@ -1,0 +1,26 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+version = '0.0.1'
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+
+    //provided dependencies
+    compile group: 'org.apache.cassandra', name: 'cassandra-all', version: '2.0.11'
+}
+
+install {
+    repositories.mavenInstaller {
+        pom.version = '0.0.1'
+        pom.groupId = 'com.mirantis.magnetodb'
+        pom.artifactId = 'cassandra-custom-indices'
+    }
+}

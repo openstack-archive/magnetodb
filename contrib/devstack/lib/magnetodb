@@ -41,6 +41,9 @@ CASSANDRA_HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-100M}
 
 CASSANDRA_JOLOKIA_URL=${CASSANDRA_JOLOKIA_URL:-'http://labs.consol.de/maven/repository/org/jolokia/jolokia-jvm/1.2.2/jolokia-jvm-1.2.2-agent.jar'}
 
+GRADLE_VER=${GRADLE_VER:-2.2.1}
+GRADLE_REPO=${GRADLE_REPO:-"https://services.gradle.org/distributions/gradle-$GRADLE_VER-bin.zip"}
+
 # Set up default directories
 MAGNETODB_CONF_DIR=${MAGNETODB_CONF_DIR:-/etc/magnetodb}
 MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
@@ -229,6 +232,17 @@ function configure_cassandra() {
     sed -i -e 's/^#MAX_HEAP_SIZE="4G"$/MAX_HEAP_SIZE="'${CASSANDRA_MAX_HEAP_SIZE}'"/' ~/.ccm/repository/${CASSANDRA_VER}/conf/cassandra-env.sh
     sed -i -e 's/^#HEAP_NEWSIZE="800M"$/HEAP_NEWSIZE="'${CASSANDRA_HEAP_NEWSIZE}'"/' ~/.ccm/repository/${CASSANDRA_VER}/conf/cassandra-env.sh
 
+    # Build cassandra custom index
+    wget -q $GRADLE_REPO -O $DEST/gradle.zip
+    cd $DEST
+    unzip gradle.zip
+    PATH=$PATH:/opt/stack/gradle-$GRADLE_VER/bin
+    cd $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices
+    gradle build
+    CCIV=`grep '^version' build.gradle | cut -d"'" -f2`
+    cp $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices/build/libs/magnetodb-cassandra-custom-indices-$CCIV.jar ~/.ccm/repository/${CASSANDRA_VER}/lib/
+
+    # Populate cassandra nodes
     ccm populate -n $CASSANDRA_AMOUNT_NODES || true
 
     wget -q $CASSANDRA_JOLOKIA_URL -O ~/.ccm/jolokia-jvm-agent.jar
