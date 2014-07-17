@@ -18,7 +18,6 @@ import jsonschema
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb import storage
-from magnetodb.storage import models
 from magnetodb.common import exception
 
 
@@ -69,10 +68,7 @@ class UpdateItemController(object):
             parser.Props.RETURN_VALUES: {
                 "type": "string",
                 "enum": [parser.Values.RETURN_VALUES_NONE,
-                         parser.Values.RETURN_VALUES_ALL_OLD,
-                         parser.Values.RETURN_VALUES_ALL_NEW,
-                         parser.Values.RETURN_VALUES_UPDATED_OLD,
-                         parser.Values.RETURN_VALUES_UPDATED_NEW]
+                         parser.Values.RETURN_VALUES_ALL_OLD]
             },
         }
     }
@@ -99,21 +95,8 @@ class UpdateItemController(object):
         return_values = body.get(parser.Props.RETURN_VALUES,
                                  parser.Values.RETURN_VALUES_NONE)
 
-        select_result = None
-
-        indexed_condition_map_for_select = {
-            name: models.IndexedCondition.eq(value)
-            for name, value in key_attributes.iteritems()
-        }
-
-        if return_values in (parser.Values.RETURN_VALUES_UPDATED_OLD,
-                             parser.Values.RETURN_VALUES_ALL_OLD):
-            select_result = storage.select_item(
-                req.context, table_name,
-                indexed_condition_map_for_select)
-
         # update item
-        result = storage.update_item(
+        result, old_item = storage.update_item(
             req.context,
             table_name,
             key_attribute_map=key_attributes,
@@ -123,20 +106,12 @@ class UpdateItemController(object):
         if not result:
             raise exception.BackendInteractionException()
 
-        if return_values in (parser.Values.RETURN_VALUES_UPDATED_NEW,
-                             parser.Values.RETURN_VALUES_ALL_NEW):
-
-            select_result = storage.select_item(
-                req.context, table_name,
-                indexed_condition_map_for_select)
-
         # format response
         response = {}
 
         if return_values != parser.Values.RETURN_VALUES_NONE:
             response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(
-                    select_result.items[0])
+                parser.Parser.format_item_attributes(old_item)
             )
 
         return response

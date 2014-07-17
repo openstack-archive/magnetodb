@@ -72,10 +72,7 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
             parser.Props.RETURN_VALUES: {
                 "type": "string",
                 "enum": [parser.Values.RETURN_VALUES_NONE,
-                         parser.Values.RETURN_VALUES_ALL_OLD,
-                         parser.Values.RETURN_VALUES_ALL_NEW,
-                         parser.Values.RETURN_VALUES_UPDATED_OLD,
-                         parser.Values.RETURN_VALUES_UPDATED_NEW]
+                         parser.Values.RETURN_VALUES_ALL_OLD]
             },
             parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
         }
@@ -117,26 +114,12 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                 parser.Props.RETURN_CONSUMED_CAPACITY,
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
-
-            select_result = None
-
-            indexed_condition_map_for_select = {
-                name: models.IndexedCondition.eq(value)
-                for name, value in key_attributes.iteritems()
-            }
         except Exception:
             raise exception.ValidationException()
 
         try:
-            if return_values in (parser.Values.RETURN_VALUES_UPDATED_OLD,
-                                 parser.Values.RETURN_VALUES_ALL_OLD):
-
-                select_result = storage.select_item(
-                    self.context, table_name,
-                    indexed_condition_map_for_select)
-
             # update item
-            result = storage.update_item(
+            result, old_item = storage.update_item(
                 self.context,
                 table_name,
                 key_attribute_map=key_attributes,
@@ -146,20 +129,12 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
             if not result:
                 raise exception.AWSErrorResponseException()
 
-            if return_values in (parser.Values.RETURN_VALUES_UPDATED_NEW,
-                                 parser.Values.RETURN_VALUES_ALL_NEW):
-
-                select_result = storage.select_item(
-                    self.context, table_name,
-                    indexed_condition_map_for_select)
-
             # format response
             response = {}
 
             if return_values != parser.Values.RETURN_VALUES_NONE:
                 response[parser.Props.ATTRIBUTES] = (
-                    parser.Parser.format_item_attributes(
-                        select_result.items[0])
+                    parser.Parser.format_item_attributes(old_item)
                 )
 
             if (return_item_collection_metrics !=
