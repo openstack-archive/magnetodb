@@ -18,6 +18,7 @@
 import tempest.clients
 import tempest.config
 import tempest.test
+from tempest.common import isolated_creds
 from tempest.common.utils import data_utils
 from tempest.openstack.common import log as logging
 
@@ -27,10 +28,22 @@ LOG = logging.getLogger(__name__)
 
 class MagnetoDBTestCase(tempest.test.BaseTestCase):
 
+    tenant_isolation = False
+
     @classmethod
     def setUpClass(cls):
         super(MagnetoDBTestCase, cls).setUpClass()
-        cls.os = tempest.clients.Manager()
+        cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__, False)
+
+        if cls.config.compute.allow_tenant_isolation and cls.tenant_isolation:
+            creds = cls.isolated_creds.get_primary_creds()
+            username, tenant_name, password = creds
+            cls.os = tempest.clients.Manager(username=username,
+                                             password=password,
+                                             tenant_name=tenant_name)
+        else:
+            cls.os = tempest.clients.Manager()
+
         cls.client = cls.os.magnetodb_client
         cls.streaming_client = cls.os.magnetodb_streaming_client
         cls._sequence = -1
@@ -89,6 +102,9 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
                 LOG.exception(exc)
             finally:
                 del cls._resource_trash_bin[key]
+
+        cls.isolated_creds.clear_isolated_creds()
+
         super(MagnetoDBTestCase, cls).tearDownClass()
         if fail_count:
             LOG.error('%s cleanUp operation failed', fail_count)
