@@ -70,3 +70,16 @@ class Manager(object):
         self.magnetodb_streaming_client = (
             magnetodb_streaming_client.MagnetoDBStreamingClientJSON(
                 *client_args))
+
+
+class AltManager(Manager):
+    """
+    Manager object that uses the alt_XXX credentials for its
+    managed client objects
+    """
+
+    def __init__(self):
+        conf = config.TempestConfig()
+        super(AltManager, self).__init__(conf.identity.alt_username,
+                                         conf.identity.alt_password,
+                                         conf.identity.alt_tenant_name)
