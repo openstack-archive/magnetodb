@@ -16,6 +16,8 @@ Contents:
 
    developer_guide.rst
 
+   configuration_guide.rst
+
    user_guide.rst
 
    admin_guide.rst
