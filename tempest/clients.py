@@ -47,7 +47,7 @@ class Manager(object):
         # If no creds are provided, we fall back on the defaults
         # in the config file for the Compute API.
         # Using admin_username to create ec2 creds.
-        self.username = username or self.config.identity.admin_username
+        self.username = username or self.config.identity.username
         self.password = password or self.config.identity.password
         self.tenant_name = tenant_name or self.config.identity.tenant_name
 
@@ -70,3 +70,16 @@ class Manager(object):
         self.magnetodb_streaming_client = (
             magnetodb_streaming_client.MagnetoDBStreamingClientJSON(
                 *client_args))
+
+
+class AltManager(Manager):
+    """
+    Manager object that uses the alt_XXX credentials for its
+    managed client objects
+    """
+
+    def __init__(self):
+        conf = config.TempestConfig()
+        super(AltManager, self).__init__(conf.identity.alt_username,
+                                         conf.identity.alt_password,
+                                         conf.identity.alt_tenant_name)

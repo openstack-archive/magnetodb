@@ -79,7 +79,7 @@ class MagnetoDBClientJSON(rest_client.RestClient):
 
     def update_item(self, table_name, key, attribute_updates=None,
                     expected=None, time_to_live=None, return_values=None):
-        url = '/'.join(['data/tables', table_name, 'put_item'])
+        url = '/'.join(['data/tables', table_name, 'update_item'])
         post_body = {'key': key,
                      'expected': expected,
                      'time_to_live': time_to_live,
