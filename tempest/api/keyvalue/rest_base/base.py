@@ -29,23 +29,37 @@ LOG = logging.getLogger(__name__)
 class MagnetoDBTestCase(tempest.test.BaseTestCase):
 
     tenant_isolation = False
+    alt_tenant = False
 
     @classmethod
     def setUpClass(cls):
         super(MagnetoDBTestCase, cls).setUpClass()
         cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__, False)
 
-        if cls.config.compute.allow_tenant_isolation and cls.tenant_isolation:
+        if (cls.config.compute.allow_tenant_isolation and
+                cls.tenant_isolation):
+
             creds = cls.isolated_creds.get_primary_creds()
             username, tenant_name, password = creds
             cls.os = tempest.clients.Manager(username=username,
                                              password=password,
                                              tenant_name=tenant_name)
+            if cls.alt_tenant:
+                creds = cls.isolated_creds.get_alt_creds()
+                username, tenant_name, password = creds
+                cls.os_alt = tempest.clients.Manager(username=username,
+                                                     password=password,
+                                                     tenant_name=tenant_name)
         else:
             cls.os = tempest.clients.Manager()
+            if cls.alt_tenant:
+                cls.os_alt = tempest.clients.AltManager()
 
         cls.client = cls.os.magnetodb_client
         cls.streaming_client = cls.os.magnetodb_streaming_client
+        if cls.alt_tenant:
+            cls.client_alt = cls.os_alt.magnetodb_client
+            cls.streaming_client_alt = cls.os_alt.magnetodb_streaming_client
         cls._sequence = -1
         cls._resource_trash_bin = {}
 
@@ -124,17 +138,22 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         del cls._resource_trash_bin[key]
 
     @classmethod
-    def wait_for_table_active(cls, table_name, timeout=60, interval=3):
+    def wait_for_table_active(cls, table_name, timeout=60, interval=3,
+                              alt=False):
         def check():
-            headers, body = cls.client.describe_table(table_name)
+            client = cls.client if not alt else cls.client_alt
+            headers, body = client.describe_table(table_name)
             if "table" in body and "table_status" in body["table"]:
                 return body["table"]["table_status"] == "ACTIVE"
 
         return tempest.test.call_until_true(check, timeout, interval)
 
-    def wait_for_table_deleted(self, table_name, timeout=120, interval=3):
+    def wait_for_table_deleted(self, table_name, timeout=60, interval=3,
+                               alt=False):
         def check():
-            return table_name not in self.client.list_tables()['table_names']
+            client = self.client if not alt else self.client_alt
+            names = [d['href'] for d in client.list_tables()[1]['tables']]
+            return table_name not in names
 
         return tempest.test.call_until_true(check, timeout, interval)
 
@@ -211,6 +230,13 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
             self.wait_for_table_active(table_name)
 
         return headers, body
+
+    def _check_exception(self, expected_exc, expected_message, method,
+                         *args, **kwargs):
+        with self.assertRaises(expected_exc) as r_exc:
+            method(*args, **kwargs)
+        message = r_exc.exception._error_string
+        self.assertIn(expected_message, message)
 
 
 def friendly_function_name_simple(call_able):
