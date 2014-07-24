@@ -15,8 +15,13 @@
 #    under the License.
 
 import logging
-from threading import BoundedSemaphore, Event
-from concurrent.futures import ThreadPoolExecutor, Future
+
+from threading import BoundedSemaphore
+from threading import Event
+
+import weakref
+
+from concurrent.futures import ThreadPoolExecutor
 
 from magnetodb.common.exception import TableAlreadyExistsException
 from magnetodb.common.exception import BackendInteractionException
@@ -37,6 +42,9 @@ class SimpleStorageManager(StorageManager):
         self._table_info_repo = table_info_repo
         self.__task_executor = ThreadPoolExecutor(concurrent_tasks)
         self.__task_semaphore = BoundedSemaphore(concurrent_tasks)
+
+    def __del__(self):
+        self.__task_executor.shutdown()
 
     def create_table(self, context, table_name, table_schema):
         table_info = TableInfo(table_name, table_schema,
@@ -112,20 +120,14 @@ class SimpleStorageManager(StorageManager):
         return tnames
 
     def _execute_async(self, func, *args, **kwargs):
-        def wrapper(future_result):
-            try:
-                future_result.set_result(func(*args, **kwargs))
-            except Exception as e:
-                future_result.set_exception(e)
-
-        future = Future()
+        weak_self = weakref.proxy(self)
 
         def callback(future):
-            self.__task_semaphore.release()
+            weak_self.__task_semaphore.release()
 
-        future.add_done_callback(callback)
         self.__task_semaphore.acquire()
-        self.__task_executor.submit(wrapper, future)
+        future = self.__task_executor.submit(func, *args, **kwargs)
+        future.add_done_callback(callback)
         return future
 
     def put_item(self, context, put_request, if_not_exist=False,

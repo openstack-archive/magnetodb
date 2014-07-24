@@ -22,6 +22,7 @@ from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.storage.models import IndexedCondition
 
 LOG = logging.getLogger(__name__)
 
@@ -44,14 +45,7 @@ class QueryController(object):
                 "type": "boolean"
             },
 
-            parser.Props.EXCLUSIVE_START_KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: (
-                        parser.Types.SINGLE_ITEM_VALUE
-                    )
-                }
-            },
+            parser.Props.EXCLUSIVE_START_KEY: parser.Types.ITEM,
 
             parser.Props.INDEX_NAME: {
                 "type": "string",
@@ -68,7 +62,7 @@ class QueryController(object):
                         "properties": {
                             parser.Props.ATTRIBUTE_VALUE_LIST: {
                                 "type": "array",
-                                "items": parser.Types.SINGLE_ITEM_VALUE
+                                "items": parser.Types.TYPED_ATTRIBUTE_VALUE
                             },
                             parser.Props.COMPARISON_OPERATOR: (
                                 parser.Types.QUERY_OPERATOR
@@ -122,7 +116,9 @@ class QueryController(object):
 
         # parse indexed_condition_map
         indexed_condition_map = parser.Parser.parse_attribute_conditions(
-            body.get(parser.Props.KEY_CONDITIONS))
+            body.get(parser.Props.KEY_CONDITIONS),
+            condition_class=IndexedCondition
+        )
 
         # TODO(dukhlov):
         # it would be nice to validate given table_name, key_attributes and

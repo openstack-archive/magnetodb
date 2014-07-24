@@ -74,8 +74,8 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
                 )
             return result
 
-        except exception.TableNotExistsException as e:
-            raise exception.ResourceNotFoundException(e.message)
+        except exception.TableNotExistsException:
+            raise exception.ResourceNotFoundException()
         except exception.AWSErrorResponseException as e:
             raise e
         except Exception:

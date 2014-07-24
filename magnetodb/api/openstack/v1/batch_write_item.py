@@ -40,7 +40,7 @@ class BatchWriteItemController(object):
                         "type": "object",
                         "patternProperties": {
                             parser.ATTRIBUTE_NAME_PATTERN:
-                                parser.Types.ITEM_VALUE
+                                parser.Types.TYPED_ATTRIBUTE_VALUE
                         }
                     }
                 }
@@ -60,7 +60,7 @@ class BatchWriteItemController(object):
                         "type": "object",
                         "patternProperties": {
                             parser.ATTRIBUTE_NAME_PATTERN:
-                                parser.Types.ITEM_VALUE
+                                parser.Types.TYPED_ATTRIBUTE_VALUE
                         }
                     }
                 }

@@ -37,12 +37,7 @@ class GetItemDynamoDBAction(DynamoDBAction):
             parser.Props.CONSISTENT_READ: {
                 "type": "boolean"
             },
-            parser.Props.KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
-                }
-            },
+            parser.Props.KEY: parser.Types.ITEM,
             parser.Props.RETURN_CONSUMED_CAPACITY: (
                 parser.Types.RETURN_CONSUMED_CAPACITY
             ),

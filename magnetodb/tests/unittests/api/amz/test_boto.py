@@ -93,9 +93,9 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableMeta(
                 models.TableSchema(
                     {
-                        'city1': models.ATTRIBUTE_TYPE_STRING,
-                        'id': models.ATTRIBUTE_TYPE_STRING,
-                        'name': models.ATTRIBUTE_TYPE_STRING
+                        'city1': models.AttributeType('S'),
+                        'id': models.AttributeType('S'),
+                        'name': models.AttributeType('S')
                     },
                     ['id', 'name'],
                     {'index_name': models.IndexDefinition('city1')}
@@ -162,9 +162,9 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableMeta(
                 models.TableSchema(
                     {
-                        'city1': models.ATTRIBUTE_TYPE_STRING,
-                        'id': models.ATTRIBUTE_TYPE_STRING,
-                        'name': models.ATTRIBUTE_TYPE_STRING
+                        'city1': models.AttributeType('S'),
+                        'id': models.AttributeType('S'),
+                        'name': models.AttributeType('S')
                     },
                     ['id', 'name'],
                     {'index_name': models.IndexDefinition('city1')}
@@ -187,9 +187,9 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableMeta(
                 models.TableSchema(
                     {
-                        'hash': models.ATTRIBUTE_TYPE_NUMBER,
-                        'range': models.ATTRIBUTE_TYPE_STRING,
-                        'indexed_field': models.ATTRIBUTE_TYPE_STRING
+                        'hash': models.AttributeType('N'),
+                        'range': models.AttributeType('S'),
+                        'indexed_field': models.AttributeType('S')
                     },
                     ['hash', 'range'],
                     {
@@ -215,6 +215,7 @@ class BotoIntegrationTest(unittest.TestCase):
                 fields.KeysOnlyIndex(
                     'index_name',
                     parts=[
+                        fields.HashKey('hash', data_type=schema_types.NUMBER),
                         fields.RangeKey('indexed_field',
                                         data_type=schema_types.STRING)
                     ]
@@ -231,9 +232,9 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableMeta(
                 models.TableSchema(
                     {
-                        'hash': models.ATTRIBUTE_TYPE_NUMBER,
-                        'range': models.ATTRIBUTE_TYPE_STRING,
-                        'indexed_field': models.ATTRIBUTE_TYPE_STRING
+                        'hash': models.AttributeType('N'),
+                        'range': models.AttributeType('S'),
+                        'indexed_field': models.AttributeType('S')
                     },
                     ['hash', 'range'],
                     {
@@ -262,6 +263,7 @@ class BotoIntegrationTest(unittest.TestCase):
                 fields.KeysOnlyIndex(
                     'index_name',
                     parts=[
+                        fields.HashKey('hash', data_type=schema_types.NUMBER),
                         fields.RangeKey('indexed_field',
                                         data_type=schema_types.STRING)
                     ]
@@ -285,6 +287,8 @@ class BotoIntegrationTest(unittest.TestCase):
                     fields.KeysOnlyIndex(
                         'index_name',
                         parts=[
+                            fields.HashKey('hash',
+                                           data_type=schema_types.NUMBER),
                             fields.RangeKey('indexed_field',
                                             data_type=schema_types.STRING)
                         ]
@@ -306,8 +310,8 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableMeta(
                 models.TableSchema(
                     {
-                        'hash': models.ATTRIBUTE_TYPE_NUMBER,
-                        'indexed_field': models.ATTRIBUTE_TYPE_STRING
+                        'hash': models.AttributeType('N'),
+                        'indexed_field': models.AttributeType('S')
                     },
                     ['hash'],
                     {
@@ -332,6 +336,7 @@ class BotoIntegrationTest(unittest.TestCase):
                 fields.KeysOnlyIndex(
                     'index_name',
                     parts=[
+                        fields.HashKey('hash', data_type=schema_types.NUMBER),
                         fields.RangeKey('indexed_field',
                                         data_type=schema_types.STRING)
                     ]
@@ -397,19 +402,13 @@ class BotoIntegrationTest(unittest.TestCase):
             models.SelectResult(
                 items=[
                     {
-                        "hash_key": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_NUMBER,
-                            decimal.Decimal(hash_key)
-                        ),
-                        "range_key": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_STRING, range_key
-                        ),
+                        "hash_key": models.AttributeValue('N', hash_key),
+                        "range_key": models.AttributeValue('S', range_key),
                         "value_blob": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_BLOB, blob_data1
+                            'B', decoded_value=blob_data1
                         ),
                         "value_blob_set": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_BLOB_SET,
-                            set([blob_data1, blob_data2])
+                            'BS', decoded_value={blob_data1, blob_data2}
                         )
                     }
                 ]
@@ -452,19 +451,13 @@ class BotoIntegrationTest(unittest.TestCase):
             models.SelectResult(
                 items=[
                     {
-                        "hash_key": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_NUMBER,
-                            decimal.Decimal(hash_key)
-                        ),
-                        "range_key": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_STRING, range_key
-                        ),
+                        "hash_key": models.AttributeValue('N', hash_key),
+                        "range_key": models.AttributeValue('S', range_key),
                         "value_blob": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_BLOB, blob_data1
+                            'B', decoded_value=blob_data1
                         ),
                         "value_blob_set": models.AttributeValue(
-                            models.ATTRIBUTE_TYPE_BLOB_SET,
-                            set([blob_data1, blob_data2])
+                            'BS', decoded_value={blob_data1, blob_data2}
                         )
                     }
                 ]
@@ -529,9 +522,9 @@ class BotoIntegrationTest(unittest.TestCase):
             models.SelectResult(
                 items=[
                     {
-                        "hash_key": models.AttributeValue.number(hash_key),
-                        "range_key": models.AttributeValue.str(range_key),
-                        "attr_value": models.AttributeValue.str('val')
+                        "hash_key": models.AttributeValue('N', hash_key),
+                        "range_key": models.AttributeValue('S', range_key),
+                        "attr_value": models.AttributeValue('S', 'val')
                     }
                 ]
             )
@@ -543,8 +536,8 @@ class BotoIntegrationTest(unittest.TestCase):
             models.TableMeta(
                 models.TableSchema(
                     {
-                        'hash_key': models.ATTRIBUTE_TYPE_NUMBER,
-                        'range_key': models.ATTRIBUTE_TYPE_STRING
+                        'hash_key': models.AttributeType('N'),
+                        'range_key': models.AttributeType('S')
                     },
                     ['hash_key', 'range_key'],
                 ),

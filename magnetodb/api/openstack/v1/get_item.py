@@ -38,12 +38,7 @@ class GetItemController(object):
             parser.Props.CONSISTENT_READ: {
                 "type": "boolean"
             },
-            parser.Props.KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
-                }
-            },
+            parser.Props.KEY: parser.Types.ITEM
         }
     }
 
@@ -58,7 +53,7 @@ class GetItemController(object):
         select_type = (
             models.SelectType.all()
             if attributes_to_get is None else
-            models.SelectType.specified_attributes(attributes_to_get)
+            models.SelectType.specific_attributes(attributes_to_get)
         )
 
         # parse key_attributes

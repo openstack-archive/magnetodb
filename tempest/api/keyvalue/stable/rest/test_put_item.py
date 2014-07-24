@@ -605,8 +605,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             self.client.put_item(self.table_name, new_item, expected)
 
         exception_str = str(raises_cm.exception)
-        self.assertIn("u'message': u\"{u'value': {u'KK': u'Bob'}}"
-                      " is not valid under any of the given schemas\"",
+        self.assertIn("u'message': u\"Attribute type 'KK' isn't recognized\"",
                       exception_str)
         self.assertIn("u'type': u'ValidationError'", exception_str)
 
@@ -646,8 +645,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             self.client.put_item(self.table_name, item)
 
         exception_str = str(raises_cm.exception)
-        self.assertIn("u'message': u'{} is not valid"
-                      " under any of the given schemas'",
+        self.assertIn("u'message': u\"Can't recognize attribute format "
+                      "['{}']\"",
                       exception_str)
         self.assertIn("u'type': u'ValidationError'", exception_str)
 
