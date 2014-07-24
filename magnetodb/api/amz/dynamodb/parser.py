@@ -13,29 +13,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import base64
-import decimal
+import json
 
 from magnetodb.storage import models
 from magnetodb.storage.models import IndexDefinition
-from magnetodb.common.exception import MagnetoError
-
-
-# init decimal context to meet DynamoDB number type behaviour expectation
-DECIMAL_CONTEXT = decimal.Context(
-    prec=38, rounding=None,
-    traps=[],
-    flags=[],
-    Emax=126,
-    Emin=-128
-)
-
-TYPE_STRING = "S"
-TYPE_NUMBER = "N"
-TYPE_BLOB = "B"
-TYPE_STRING_SET = "SS"
-TYPE_NUMBER_SET = "NS"
-TYPE_BLOB_SET = "BS"
+from magnetodb.common.exception import ValidationException
 
 
 class Props():
@@ -71,12 +53,6 @@ class Props():
     EXPECTED = "Expected"
     EXISTS = "Exists"
     VALUE = "Value"
-    ITEM_TYPE_STRING = TYPE_STRING
-    ITEM_TYPE_NUMBER = TYPE_NUMBER
-    ITEM_TYPE_BLOB = TYPE_BLOB
-    ITEM_TYPE_STRING_SET = TYPE_STRING_SET
-    ITEM_TYPE_NUMBER_SET = TYPE_NUMBER_SET
-    ITEM_TYPE_BLOB_SET = TYPE_BLOB_SET
     ITEM = "Item"
     RETURN_CONSUMED_CAPACITY = "ReturnConsumedCapacity"
     RETURN_ITEM_COLLECTION_METRICS = "ReturnItemCollectionMetrics"
@@ -116,13 +92,6 @@ class Props():
 
 
 class Values():
-    ATTRIBUTE_TYPE_STRING = TYPE_STRING
-    ATTRIBUTE_TYPE_NUMBER = TYPE_NUMBER
-    ATTRIBUTE_TYPE_BLOB = TYPE_BLOB
-    ATTRIBUTE_TYPE_STRING_SET = TYPE_STRING_SET
-    ATTRIBUTE_TYPE_NUMBER_SET = TYPE_NUMBER_SET
-    ATTRIBUTE_TYPE_BLOB_SET = TYPE_BLOB_SET
-
     KEY_TYPE_HASH = "HASH"
     KEY_TYPE_RANGE = "RANGE"
 
@@ -130,9 +99,9 @@ class Values():
     PROJECTION_TYPE_INCLUDE = "INCLUDE"
     PROJECTION_TYPE_ALL = "ALL"
 
-    ACTION_TYPE_PUT = "PUT"
-    ACTION_TYPE_ADD = "ADD"
-    ACTION_TYPE_DELETE = "DELETE"
+    ACTION_TYPE_PUT = models.UpdateItemAction.UPDATE_ACTION_PUT
+    ACTION_TYPE_ADD = models.UpdateItemAction.UPDATE_ACTION_ADD
+    ACTION_TYPE_DELETE = models.UpdateItemAction.UPDATE_ACTION_DELETE
 
     PROVISIONED_THROUGHPUT_DUMMY = {
         "LastDecreaseDateTime": 0,
@@ -142,9 +111,9 @@ class Values():
         "WriteCapacityUnits": 0
     }
 
-    TABLE_STATUS_ACTIVE = "ACTIVE"
-    TABLE_STATUS_CREATING = "CREATING"
-    TABLE_STATUS_DELETING = "DELETING"
+    TABLE_STATUS_ACTIVE = models.TableMeta.TABLE_STATUS_ACTIVE
+    TABLE_STATUS_CREATING = models.TableMeta.TABLE_STATUS_CREATING
+    TABLE_STATUS_DELETING = models.TableMeta.TABLE_STATUS_DELETING
     TABLE_STATUS_UPDATING = "UPDATING"
 
     RETURN_CONSUMED_CAPACITY_INDEXES = "INDEXES"
@@ -160,24 +129,28 @@ class Values():
     RETURN_VALUES_ALL_NEW = "ALL_NEW"
     RETURN_VALUES_UPDATED_NEW = "UPDATED_NEW"
 
-    ALL_ATTRIBUTES = "ALL_ATTRIBUTES"
-    ALL_PROJECTED_ATTRIBUTES = "ALL_PROJECTED_ATTRIBUTES"
-    SPECIFIC_ATTRIBUTES = "SPECIFIC_ATTRIBUTES"
-    COUNT = "COUNT"
+    ALL_ATTRIBUTES = models.SelectType.SELECT_TYPE_ALL
+    ALL_PROJECTED_ATTRIBUTES = models.SelectType.SELECT_TYPE_ALL_PROJECTED
+    SPECIFIC_ATTRIBUTES = models.SelectType.SELECT_TYPE_SPECIFIC
+    COUNT = models.SelectType.SELECT_TYPE_COUNT
 
-    EQ = "EQ"
-    NE = "NE"
-    LE = "LE"
-    LT = "LT"
-    GE = "GE"
-    GT = "GT"
+    EQ = models.Condition.CONDITION_TYPE_EQUAL
+
+    LE = models.IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL
+    LT = models.IndexedCondition.CONDITION_TYPE_LESS
+    GE = models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL
+    GT = models.IndexedCondition.CONDITION_TYPE_GREATER
+    BEGINS_WITH = "BEGINS_WITH"
+    BETWEEN = "BETWEEN"
+
+    NE = models.ScanCondition.CONDITION_TYPE_NOT_EQUAL
+    CONTAINS = models.ScanCondition.CONDITION_TYPE_CONTAINS
+    NOT_CONTAINS = models.ScanCondition.CONDITION_TYPE_NOT_CONTAINS
+    IN = models.ScanCondition.CONDITION_TYPE_IN
+
     NOT_NULL = "NOT_NULL"
     NULL = "NULL"
-    CONTAINS = "CONTAINS"
-    NOT_CONTAINS = "NOT_CONTAINS"
-    BEGINS_WITH = "BEGINS_WITH"
-    IN = "IN"
-    BETWEEN = "BETWEEN"
+
 
 ATTRIBUTE_NAME_PATTERN = "^\w+"
 TABLE_NAME_PATTERN = "^\w+"
@@ -190,14 +163,23 @@ class Types():
         "pattern": ATTRIBUTE_NAME_PATTERN
     }
 
-    ATTRIBUTE_TYPE = {
-        "type": "string",
-        "enum": [Values.ATTRIBUTE_TYPE_STRING,
-                 Values.ATTRIBUTE_TYPE_NUMBER,
-                 Values.ATTRIBUTE_TYPE_BLOB,
-                 Values.ATTRIBUTE_TYPE_STRING_SET,
-                 Values.ATTRIBUTE_TYPE_NUMBER_SET,
-                 Values.ATTRIBUTE_TYPE_BLOB_SET]
+    TYPED_ATTRIBUTE_VALUE = {
+        "type": "object"
+    }
+
+    ATTRIBUTE = {
+        "type": "object",
+        "maxProperties": 1,
+        "patternProperties": {
+            ATTRIBUTE_NAME_PATTERN: TYPED_ATTRIBUTE_VALUE
+        }
+    }
+
+    ITEM = {
+        "type": "object",
+        "patternProperties": {
+            ATTRIBUTE_NAME_PATTERN: TYPED_ATTRIBUTE_VALUE
+        }
     }
 
     ATTRIBUTE_DEFINITION = {
@@ -205,13 +187,10 @@ class Types():
         "required": [Props.ATTRIBUTE_NAME, Props.ATTRIBUTE_TYPE],
         "properties": {
             Props.ATTRIBUTE_NAME: ATTRIBUTE_NAME,
-            Props.ATTRIBUTE_TYPE: ATTRIBUTE_TYPE
+            Props.ATTRIBUTE_TYPE: {
+                "type": "string"
+            }
         }
-    }
-
-    KEY_TYPE = {
-        "type": "string",
-        "enum": [Values.KEY_TYPE_HASH, Values.KEY_TYPE_RANGE]
     }
 
     ACTION_TYPE = {
@@ -238,7 +217,9 @@ class Types():
             "required": [Props.ATTRIBUTE_NAME, Props.KEY_TYPE],
             "properties": {
                 Props.ATTRIBUTE_NAME: ATTRIBUTE_NAME,
-                Props.KEY_TYPE: KEY_TYPE
+                Props.KEY_TYPE: {
+                    "type": "string"
+                }
             }
         }
     }
@@ -275,74 +256,6 @@ class Types():
                 "type": "integer"
             }
         }
-    }
-
-    ITEM_VALUE = {
-        "oneOf": [
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_STRING],
-                "properties": {
-                    Props.ITEM_TYPE_STRING: {
-                        "type": "string"
-                    }
-                }
-            },
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_NUMBER],
-                "properties": {
-                    Props.ITEM_TYPE_NUMBER: {
-                        "type": "string"
-                    }
-                }
-            },
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_BLOB],
-                "properties": {
-                    Props.ITEM_TYPE_BLOB: {
-                        "type": "string"
-                    }
-                }
-            },
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_STRING_SET],
-                "properties": {
-                    Props.ITEM_TYPE_STRING_SET: {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_NUMBER_SET],
-                "properties": {
-                    Props.ITEM_TYPE_NUMBER_SET: {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            {
-                "type": "object",
-                "required": [Props.ITEM_TYPE_BLOB_SET],
-                "properties": {
-                    Props.ITEM_TYPE_BLOB_SET: {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        ]
     }
 
     RETURN_CONSUMED_CAPACITY = {
@@ -396,38 +309,18 @@ class Types():
 
 
 class Parser():
-    DYNAMODB_TO_STORAGE_TYPE_MAP = {
-        Values.ATTRIBUTE_TYPE_STRING: models.ATTRIBUTE_TYPE_STRING,
-        Values.ATTRIBUTE_TYPE_STRING_SET: models.ATTRIBUTE_TYPE_STRING_SET,
-        Values.ATTRIBUTE_TYPE_NUMBER: models.ATTRIBUTE_TYPE_NUMBER,
-        Values.ATTRIBUTE_TYPE_NUMBER_SET: models.ATTRIBUTE_TYPE_NUMBER_SET,
-        Values.ATTRIBUTE_TYPE_BLOB: models.ATTRIBUTE_TYPE_BLOB,
-        Values.ATTRIBUTE_TYPE_BLOB_SET: models.ATTRIBUTE_TYPE_BLOB_SET
-    }
-
-    STORAGE_TO_DYNAMODB_TYPE_MAP = {
-        v: k for k, v in DYNAMODB_TO_STORAGE_TYPE_MAP.iteritems()
-    }
-
     @classmethod
     def parse_attribute_definition(cls, attr_def_json):
         dynamodb_attr_name = attr_def_json.get(Props.ATTRIBUTE_NAME, None)
-        dynamodb__attr_type = attr_def_json.get(Props.ATTRIBUTE_TYPE, "")
+        dynamodb_attr_type = attr_def_json.get(Props.ATTRIBUTE_TYPE, "")
 
-        storage_type = cls.DYNAMODB_TO_STORAGE_TYPE_MAP.get(
-            dynamodb__attr_type, None
-        )
+        storage_type = models.AttributeType(dynamodb_attr_type)
 
         return dynamodb_attr_name, storage_type
 
     @classmethod
     def format_attribute_definition(cls, attr_name, attr_type):
-        dynamodb_type = cls.STORAGE_TO_DYNAMODB_TYPE_MAP.get(attr_type,
-                                                             None)
-
-        assert dynamodb_type, (
-            "Unknown Attribute type returned by backend: %s" % attr_type
-        )
+        dynamodb_type = attr_type.type
 
         return {
             Props.ATTRIBUTE_NAME: attr_name,
@@ -463,20 +356,24 @@ class Parser():
             dynamodb_key_type = key_def.get(Props.KEY_TYPE, None)
 
             if dynamodb_key_type == Values.KEY_TYPE_HASH:
-                assert hash_key_attr_name is None, (
-                    "Only one HASH key is allowed"
-                )
-
+                if hash_key_attr_name is not None:
+                    raise ValidationException("Only one 'HASH' key is allowed")
                 hash_key_attr_name = dynamodb_key_attr_name
             elif dynamodb_key_type == Values.KEY_TYPE_RANGE:
-                assert range_key_attr_name is None, (
-                    "Only one RANGE key is allowed"
-                )
+                if range_key_attr_name is not None:
+                    raise ValidationException(
+                        "Only one 'RANGE' key is allowed"
+                    )
                 range_key_attr_name = dynamodb_key_attr_name
-
+            else:
+                raise ValidationException(
+                    "Only 'RANGE' or 'HASH' key types are allowed, but '{}' "
+                    "is found".format(dynamodb_key_type))
+        if hash_key_attr_name is None:
+            raise ValidationException("HASH key is missing")
         if range_key_attr_name:
-            return hash_key_attr_name, range_key_attr_name
-        return hash_key_attr_name,
+            return (hash_key_attr_name, range_key_attr_name)
+        return (hash_key_attr_name,)
 
     @classmethod
     def format_key_schema(cls, key_attr_names):
@@ -512,7 +409,7 @@ class Parser():
         try:
             range_key = key_attrs_for_projection[1]
         except IndexError:
-            raise MagnetoError("Range key in index wasn't specified")
+            raise ValidationException("Range key in index wasn't specified")
 
         index_name = local_secondary_index_json[Props.INDEX_NAME]
 
@@ -564,9 +461,9 @@ class Parser():
     def parse_local_secondary_indexes(cls, local_secondary_index_list_json):
         res = {}
 
-        for index__json in local_secondary_index_list_json:
+        for index_json in local_secondary_index_list_json:
             index_name, index_def = (
-                cls.parse_local_secondary_index(index__json)
+                cls.parse_local_secondary_index(index_json)
             )
             res[index_name] = index_def
 
@@ -580,75 +477,36 @@ class Parser():
             for index_name, index_def in local_secondary_index_map.iteritems()
         ]
 
-    @staticmethod
-    def decode_single_value(single_value_type, encoded_single_value):
-        assert isinstance(encoded_single_value, (str, unicode))
-        if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            return encoded_single_value
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-            return DECIMAL_CONTEXT.create_decimal(encoded_single_value)
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            return base64.b64decode(encoded_single_value)
-        else:
-            assert False, "Value type wasn't recognized"
-
-    @staticmethod
-    def encode_single_value(single_value_type, decoded_single_value):
-        if single_value_type == models.AttributeType.ELEMENT_TYPE_STRING:
-            isinstance(decoded_single_value, (str, unicode))
-            return decoded_single_value
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-            assert isinstance(decoded_single_value, decimal.Decimal)
-            return str(decoded_single_value)
-        elif single_value_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-            assert isinstance(decoded_single_value, str)
-            return base64.b64encode(decoded_single_value)
-        else:
-            assert False, "Value type wasn't recognized"
-
     @classmethod
     def decode_attr_value(cls, dynamodb_attr_type, dynamodb_attr_value):
-        attr_type = cls.DYNAMODB_TO_STORAGE_TYPE_MAP[dynamodb_attr_type]
-        if attr_type.collection_type is not None:
-            attr_value = {
-                cls.decode_single_value(attr_type.element_type, val)
-                for val in dynamodb_attr_value
-            }
-        else:
-            attr_value = cls.decode_single_value(
-                attr_type.element_type, dynamodb_attr_value
-            )
-        return models.AttributeValue(attr_type, attr_value)
+        return models.AttributeValue(dynamodb_attr_type, dynamodb_attr_value)
 
     @classmethod
     def encode_attr_value(cls, attr_value):
-        if attr_value.type.collection_type is not None:
-            dynamodb_attr_value = map(
-                lambda val: cls.encode_single_value(
-                    attr_value.type.element_type,
-                    val),
-                attr_value.value
-            )
-        else:
-            dynamodb_attr_value = cls.encode_single_value(
-                attr_value.type.element_type, attr_value.value
-            )
-
         return {
-            cls.STORAGE_TO_DYNAMODB_TYPE_MAP[attr_value.type]:
-            dynamodb_attr_value
+            attr_value.attr_type.type: attr_value.encoded_value
         }
+
+    @classmethod
+    def parse_typed_attr_value(cls, typed_attr_value_json):
+        if len(typed_attr_value_json) != 1:
+            raise ValidationException(
+                "Can't recognize attribute format ['{}']".format(
+                    json.dumps(typed_attr_value_json)
+                )
+            )
+        (attr_type_json, attr_value_json) = typed_attr_value_json.items()[0]
+
+        return models.AttributeValue(attr_type_json, attr_value_json)
 
     @classmethod
     def parse_item_attributes(cls, item_attributes_json):
         item = {}
-        for (attr_name, dynamodb_attr) in item_attributes_json.iteritems():
-            assert len(dynamodb_attr) == 1
-            (dynamodb_attr_type, dynamodb_attr_value) = (
-                dynamodb_attr.items()[0]
+        for (attr_name_json, typed_attr_value_json) in (
+                item_attributes_json.iteritems()):
+            item[attr_name_json] = cls.parse_typed_attr_value(
+                typed_attr_value_json
             )
-            item[attr_name] = cls.decode_attr_value(dynamodb_attr_type,
-                                                    dynamodb_attr_value)
 
         return item
 
@@ -665,34 +523,25 @@ class Parser():
             cls, expected_attribute_conditions_json):
         expected_attribute_conditions = {}
 
-        for (attr_name, dynamodb_condition) in (
+        for (attr_name_json, condition_json) in (
                 expected_attribute_conditions_json.iteritems()):
 
-            if Props.VALUE in dynamodb_condition:
-                dynamodb_condition_value = dynamodb_condition[Props.VALUE]
-
-                assert len(dynamodb_condition_value) == 1
-
-                (dynamodb_attr_type, dynamodb_attr_value) = (
-                    dynamodb_condition_value.items()[0]
-                )
-                expected_attribute_conditions[attr_name] = [
+            if Props.VALUE in condition_json:
+                expected_attribute_conditions[attr_name_json] = [
                     models.ExpectedCondition.eq(
-                        cls.decode_attr_value(
-                            dynamodb_attr_type, dynamodb_attr_value
-                        )
+                        cls.parse_typed_attr_value(condition_json[Props.VALUE])
                     )
                 ]
 
-            elif Props.EXISTS in dynamodb_condition:
-                dynamodb_condition_value = dynamodb_condition[Props.EXISTS]
+            elif Props.EXISTS in condition_json:
+                condition_value_json = condition_json[Props.EXISTS]
 
-                assert isinstance(dynamodb_condition_value, bool)
+                assert isinstance(condition_value_json, bool)
 
-                expected_attribute_conditions[attr_name] = [
-                    models.ExpectedCondition.exists()
-                    if dynamodb_condition_value else
-                    models.ExpectedCondition.not_exists()
+                expected_attribute_conditions[attr_name_json] = [
+                    models.ExpectedCondition.not_null()
+                    if condition_value_json else
+                    models.ExpectedCondition.null()
                 ]
 
         return expected_attribute_conditions
@@ -734,7 +583,7 @@ class Parser():
                           select_on_index=False):
         if select is None:
             if attributes_to_get:
-                return models.SelectType.specified_attributes(
+                return models.SelectType.specific_attributes(
                     attributes_to_get
                 )
             else:
@@ -745,7 +594,7 @@ class Parser():
 
         if select == Values.SPECIFIC_ATTRIBUTES:
             assert attributes_to_get
-            return models.SelectType.specified_attributes(attributes_to_get)
+            return models.SelectType.specific_attributes(attributes_to_get)
 
         assert not attributes_to_get
 
@@ -762,96 +611,73 @@ class Parser():
         assert False, "Select type wasn't recognized"
 
     @classmethod
-    def parse_attribute_conditions(
-            cls, attribute_conditions_json):
-        attribute_conditions = {}
+    def parse_attribute_condition(cls, condition_type, condition_args,
+                                  condition_class=models.IndexedCondition):
 
-        attribute_conditions_json = attribute_conditions_json or {}
-
-        for (attr_name, dynamodb_condition) in (
-                attribute_conditions_json.iteritems()):
-            dynamodb_condition_type = (
-                dynamodb_condition[Props.COMPARISON_OPERATOR]
-            )
-            condition_args = map(
-                lambda attr_value: cls.decode_attr_value(
-                    *attr_value.items()[0]),
-                dynamodb_condition.get(Props.ATTRIBUTE_VALUE_LIST, {})
-            )
-
-            if dynamodb_condition_type == Values.EQ:
-                assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.IndexedCondition.eq(condition_args[0])
-                ]
-            elif dynamodb_condition_type == Values.GT:
-                assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.IndexedCondition.gt(condition_args[0])
-                ]
-            elif dynamodb_condition_type == Values.LT:
-                assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.IndexedCondition.lt(condition_args[0])
-                ]
-            elif dynamodb_condition_type == Values.GE:
-                assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.IndexedCondition.ge(condition_args[0])
-                ]
-            elif dynamodb_condition_type == Values.LE:
-                assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.IndexedCondition.le(condition_args[0])
-                ]
-            elif dynamodb_condition_type == Values.BEGINS_WITH:
-                assert len(condition_args) == 1
-
-                first = condition_args[0]
-                second = models.AttributeValue(
-                    first.type,
-                    first.value[:-1] + chr(ord(first.value[-1]) + 1)
+        actual_args_count = (
+            len(condition_args) if condition_args is not None else 0
+        )
+        if condition_type == Values.BETWEEN:
+            if actual_args_count != 2:
+                raise ValidationException(
+                    "{} condition type requires exactly 2 arguments, "
+                    "but {} given".format(condition_type, actual_args_count),
+                )
+            if condition_args[0].attr_type != condition_args[1].attr_type:
+                raise ValidationException(
+                    "{} condition type requires arguments of the "
+                    "same type, but different types given".format(
+                        condition_type
+                    ),
                 )
 
-                attribute_conditions[attr_name] = [
-                    models.IndexedCondition.ge(first),
-                    models.IndexedCondition.lt(second)
-                ]
-            elif dynamodb_condition_type == Values.BETWEEN:
-                assert len(condition_args) == 2
-                assert condition_args[0].type == condition_args[1].type
+            return [
+                condition_class.ge(condition_args[0]),
+                condition_class.le(condition_args[1])
+            ]
 
-                attribute_conditions[attr_name] = [
-                    models.IndexedCondition.ge(condition_args[0]),
-                    models.IndexedCondition.le(condition_args[1])
-                ]
-            elif dynamodb_condition_type == Values.NE:
-                assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.ScanCondition.neq(condition_args[0])
-                ]
-            elif dynamodb_condition_type == Values.CONTAINS:
-                assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.ScanCondition.contains(condition_args[0])
-                ]
-            elif dynamodb_condition_type == Values.NOT_CONTAINS:
-                assert len(condition_args) == 1
-                attribute_conditions[attr_name] = [
-                    models.ScanCondition.not_contains(condition_args[0])
-                ]
-            elif dynamodb_condition_type == Values.IN:
-                attribute_conditions[attr_name] = [
-                    models.ScanCondition.in_set(condition_args)
-                ]
-            elif dynamodb_condition_type == Values.NULL:
-                attribute_conditions[attr_name] = [
-                    models.ExpectedCondition.not_exists()
-                ]
-            elif dynamodb_condition_type == Values.NOT_NULL:
-                attribute_conditions[attr_name] = [
-                    models.ExpectedCondition.exists()
-                ]
+        if condition_type == Values.BEGINS_WITH:
+            first = condition_class(
+                condition_class.CONDITION_TYPE_GREATER_OR_EQUAL,
+                condition_args
+            )
+            condition_arg = first.arg
+            second = condition_class.le(
+                models.AttributeValue(
+                    condition_arg.attr_type, decoded_value=(
+                        condition_arg.decoded_value[:-1] +
+                        chr(ord(condition_arg.decoded_value[-1]) + 1)
+                    )
+                )
+            )
+
+            return [first, second]
+
+        return [condition_class(condition_type, condition_args)]
+
+    @classmethod
+    def parse_attribute_conditions(cls, attribute_conditions_json,
+                                   condition_class=models.IndexedCondition):
+        attribute_conditions_json = attribute_conditions_json or {}
+
+        attribute_conditions = {}
+
+        for (attr_name, condition_json) in (
+                attribute_conditions_json.iteritems()):
+            condition_type_json = (
+                condition_json[Props.COMPARISON_OPERATOR]
+            )
+
+            condition_args = map(
+                cls.parse_typed_attr_value,
+                condition_json.get(Props.ATTRIBUTE_VALUE_LIST, {})
+            )
+
+            attribute_conditions[attr_name] = (
+                cls.parse_attribute_condition(
+                    condition_type_json, condition_args, condition_class
+                )
+            )
 
         return attribute_conditions
 

@@ -53,15 +53,15 @@ class CassandraDriverTestCase(unittest.TestCase):
         )
         driver = self.get_connection(mock_execute_query, mock_table_schema)
 
-        value = models.AttributeValue.str_set(["Update", "Help"])
+        value = models.AttributeValue('SS', {"Update", "Help"})
         mock_select_item.return_value = mock.Mock(items=[{'Tags': value}])
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
 
         key_attrs = {
-            'hash_key': models.AttributeValue.number(1),
-            'range_key': models.AttributeValue.str('two')
+            'hash_key': models.AttributeValue('N', 1),
+            'range_key': models.AttributeValue('S', 'two')
         }
         attr_actions = {
             'Tags': models.UpdateItemAction(
@@ -94,20 +94,20 @@ class CassandraDriverTestCase(unittest.TestCase):
         )
         driver = self.get_connection(mock_execute_query, mock_table_schema)
 
-        value = models.AttributeValue.str_set(["Update", "Help"])
+        value = models.AttributeValue('SS', {"Update", "Help"})
         mock_select_item.return_value = mock.Mock(items=[{'Tags': value}])
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
 
         key_attrs = {
-            'hash_key': models.AttributeValue.number(1),
-            'range_key': models.AttributeValue.str('two')
+            'hash_key': models.AttributeValue('N', 1),
+            'range_key': models.AttributeValue('S', 'two')
         }
         attr_actions = {
             'Tags': models.UpdateItemAction(
                 models.UpdateItemAction.UPDATE_ACTION_DELETE,
-                models.AttributeValue.str_set(["Update"])
+                models.AttributeValue('SS', {"Update"})
             )
         }
 
@@ -136,7 +136,7 @@ class CassandraDriverTestCase(unittest.TestCase):
         driver = self.get_connection(mock_execute_query, mock_table_schema)
 
         def make_select_result(i):
-            value = models.AttributeValue.number(i)
+            value = models.AttributeValue('N', i)
             return mock.Mock(items=[{'ViewsCount': value}])
 
         values = [make_select_result(i) for i in range(10)]
@@ -146,13 +146,13 @@ class CassandraDriverTestCase(unittest.TestCase):
         table_name = 'fake_table'
 
         key_attrs = {
-            'hash_key': models.AttributeValue.number(1),
-            'range_key': models.AttributeValue.str('two')
+            'hash_key': models.AttributeValue('N', 1),
+            'range_key': models.AttributeValue('S', 'two')
         }
         attr_actions = {
             'ViewsCount': models.UpdateItemAction(
                 models.UpdateItemAction.UPDATE_ACTION_ADD,
-                models.AttributeValue.number(1)
+                models.AttributeValue('N', 1)
             )
         }
 

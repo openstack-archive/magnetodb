@@ -157,22 +157,20 @@ class TestNotifyStorageManager(TestNotify):
 
         request_list = [
             models.PutItemRequest(table_name, {
-                'id': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_NUMBER, 1),
-                'range': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, '1'),
-                'str': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, 'str1'), }),
+                'id': models.AttributeValue('N', 1),
+                'range': models.AttributeValue('S', '1'),
+                'str': models.AttributeValue('S', 'str1'), }),
             models.PutItemRequest(table_name, {
-                'id': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_NUMBER, 2),
-                'range': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, '1'),
-                'str': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, 'str1'), }),
-            models.DeleteItemRequest(table_name, {
-                'id': models.AttributeValue.number(3),
-                'range': models.AttributeValue.str('3')})
+                'id': models.AttributeValue('N', 2),
+                'range': models.AttributeValue('S', '1'),
+                'str': models.AttributeValue('S', 'str1'), }),
+            models.DeleteItemRequest(
+                table_name,
+                {
+                    'id': models.AttributeValue('N', 3),
+                    'range': models.AttributeValue('S', '3')
+                }
+            )
         ]
 
         storage_manager = SimpleStorageManager(None, None)

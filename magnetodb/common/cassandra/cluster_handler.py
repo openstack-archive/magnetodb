@@ -20,12 +20,29 @@ from threading import Lock
 from threading import Thread
 
 import time
+import weakref
 
 from cassandra import cluster as cassandra_cluster
 from magnetodb.common import exception
 from cassandra import query as cassandra_query
 
 LOG = logging.getLogger(__name__)
+
+
+def _monitor_control_connection(cluster_handler_ref):
+    while True:
+        cluster_handler = cluster_handler_ref()
+        if cluster_handler is None:
+            return
+
+        try:
+            if not cluster_handler._is_connected():
+                cluster_handler._connect()
+        except:
+            LOG.exception("Error during connecting to the cluster")
+
+        cluster_handler = None
+        time.sleep(1)
 
 
 class ClusterHandler(object):
@@ -39,13 +56,27 @@ class ClusterHandler(object):
         self.__cluster = None
         self.__session = None
         self.__connection_monitor_thread = Thread(
-            target=self.__monitor_control_connection
+            target=_monitor_control_connection, args=(weakref.ref(self),)
         )
         self.__connection_monitor_thread.start()
 
-    def __connect(self):
+    def __del__(self):
+        self.shutdown()
+
+    def shutdown(self):
+        self.__closed = True
+        self.__connection_monitor_thread.join()
+        if self.__cluster:
+            self.__cluster.shutdown()
+
+    def _is_connected(self):
+        return (self.__cluster is not None and
+                not self.__cluster.control_connection._connection.is_closed)
+
+    def _connect(self):
         with self.__connection_lock:
-            assert self.__cluster is None
+            if self.__cluster is not None:
+                self._disconnect()
             cluster = cassandra_cluster.Cluster(**self.__cluster_params)
             session = cluster.connect()
             session.row_factory = cassandra_query.dict_factory
@@ -53,24 +84,13 @@ class ClusterHandler(object):
             self.__cluster = cluster
             self.__session = session
 
-    def __disconnect(self):
+    def _disconnect(self):
         with self.__connection_lock:
-            assert self.__cluster is not None
+            if self.__cluster is None:
+                return
             self.__cluster.shutdown()
             self.__cluster = None
             self.__session = None
-
-    def __monitor_control_connection(self):
-        while True:
-            try:
-                if not self.__cluster:
-                    self.__connect()
-                elif self.__cluster.control_connection._connection.is_closed:
-                    self.__disconnect()
-                    self.__connect()
-            except:
-                LOG.exception("Error during connecting to the cluster")
-            time.sleep(1)
 
     def execute_query(self, query, consistent=False):
         if self.__cluster is None:
