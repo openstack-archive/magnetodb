@@ -18,6 +18,7 @@ from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
 from magnetodb.common import exception
+from magnetodb.storage.models import ScanCondition
 
 
 class ScanDynamoDBAction(DynamoDBAction):
@@ -29,12 +30,7 @@ class ScanDynamoDBAction(DynamoDBAction):
                 "items": parser.Types.ATTRIBUTE_NAME
             },
 
-            parser.Props.EXCLUSIVE_START_KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
-                }
-            },
+            parser.Props.EXCLUSIVE_START_KEY: parser.Types.ITEM,
 
             parser.Props.LIMIT: {
                 "type": "integer",
@@ -53,7 +49,7 @@ class ScanDynamoDBAction(DynamoDBAction):
                         "properties": {
                             parser.Props.ATTRIBUTE_VALUE_LIST: {
                                 "type": "array",
-                                "items": parser.Types.ITEM_VALUE
+                                "items": parser.Types.TYPED_ATTRIBUTE_VALUE
                             },
                             parser.Props.COMPARISON_OPERATOR: (
                                 parser.Types.SCAN_OPERATOR
@@ -112,7 +108,7 @@ class ScanDynamoDBAction(DynamoDBAction):
             )
 
             condition_map = parser.Parser.parse_attribute_conditions(
-                scan_filter
+                scan_filter, condition_class=ScanCondition
             )
 
             segment = self.action_params.get(parser.Props.SEGMENT, 0)

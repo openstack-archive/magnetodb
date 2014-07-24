@@ -28,7 +28,7 @@ class ListTablesTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables'
+        url = '/v1/default_tenant/data/tables'
         conn.request("GET", url, headers=headers)
 
         response = conn.getresponse()

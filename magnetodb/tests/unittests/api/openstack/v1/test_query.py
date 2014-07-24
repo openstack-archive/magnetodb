@@ -29,20 +29,20 @@ class QueryTest(test_base_testcase.APITestCase):
 
         items = [
             {
-                'ForumName': models.AttributeValue.str('Testing OS API'),
-                'LastPostDateTime': models.AttributeValue.str('3/18/14'),
-                'Posts': models.AttributeValue.str_set(['Opening post'])
+                'ForumName': models.AttributeValue('S',  'Testing OS API'),
+                'LastPostDateTime': models.AttributeValue('S',  '3/18/14'),
+                'Posts': models.AttributeValue('SS', ['Opening post'])
             },
             {
-                'ForumName': models.AttributeValue.str('Testing OS API'),
-                'LastPostDateTime': models.AttributeValue.str('3/19/14'),
-                'Posts': models.AttributeValue.str_set(['Hi', 'Hello'])
+                'ForumName': models.AttributeValue('S',  'Testing OS API'),
+                'LastPostDateTime': models.AttributeValue('S',  '3/19/14'),
+                'Posts': models.AttributeValue('SS', ['Hi', 'Hello'])
             },
         ]
 
         last_evaluated_key = {
-            'ForumName': models.AttributeValue.str('Testing OS API'),
-            'LastPostDateTime': models.AttributeValue.str('3/19/14'),
+            'ForumName': models.AttributeValue('S',  'Testing OS API'),
+            'LastPostDateTime': models.AttributeValue('S',  '3/19/14'),
         }
 
         mock_query.return_value = models.SelectResult(
@@ -54,7 +54,7 @@ class QueryTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/Threads/query'
+        url = '/v1/default_tenant/data/tables/Threads/query'
         body = """
             {
                "attributes_to_get": [
@@ -139,7 +139,7 @@ class QueryTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/Threads/query'
+        url = '/v1/default_tenant/data/tables/Threads/query'
         body = """
             {
                 "key_conditions":

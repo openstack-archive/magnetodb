@@ -22,6 +22,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.storage.models import ScanCondition
 
 LOG = logging.getLogger(__name__)
 
@@ -38,12 +39,7 @@ class ScanController(object):
                 "items": parser.Types.ATTRIBUTE_NAME
             },
 
-            parser.Props.EXCLUSIVE_START_KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
-                }
-            },
+            parser.Props.EXCLUSIVE_START_KEY: parser.Types.ITEM,
 
             parser.Props.LIMIT: {
                 "type": "integer",
@@ -58,7 +54,7 @@ class ScanController(object):
                         "properties": {
                             parser.Props.ATTRIBUTE_VALUE_LIST: {
                                 "type": "array",
-                                "items": parser.Types.ITEM_VALUE
+                                "items": parser.Types.TYPED_ATTRIBUTE_VALUE
                             },
                             parser.Props.COMPARISON_OPERATOR: (
                                 parser.Types.SCAN_OPERATOR
@@ -107,7 +103,7 @@ class ScanController(object):
         scan_filter = body.get(parser.Props.SCAN_FILTER, {})
 
         condition_map = parser.Parser.parse_attribute_conditions(
-            scan_filter
+            scan_filter, condition_class=ScanCondition
         )
 
         segment = body.get(parser.Props.SEGMENT, 0)

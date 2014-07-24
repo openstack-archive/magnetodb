@@ -41,23 +41,29 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         table_name = 'fake_table'
 
         request_list = [
-            models.PutItemRequest(table_name, {
-                'id': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_NUMBER, 1),
-                'range': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, '1'),
-                'str': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, 'str1'), }),
-            models.PutItemRequest(table_name, {
-                'id': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_NUMBER, 2),
-                'range': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, '1'),
-                'str': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, 'str1'), }),
-            models.DeleteItemRequest(table_name, {
-                'id': models.AttributeValue.number(3),
-                'range': models.AttributeValue.str('3')})
+            models.PutItemRequest(
+                table_name,
+                {
+                    'id': models.AttributeValue('N', 1),
+                    'range': models.AttributeValue('S', '1'),
+                    'str': models.AttributeValue('S', 'str1'),
+                }
+            ),
+            models.PutItemRequest(
+                table_name,
+                {
+                    'id': models.AttributeValue('N', 2),
+                    'range': models.AttributeValue('S', '1'),
+                    'str': models.AttributeValue('S', 'str1')
+                }
+            ),
+            models.DeleteItemRequest(
+                table_name,
+                {
+                    'id': models.AttributeValue('N', 3),
+                    'range': models.AttributeValue('S', '3')
+                }
+            )
         ]
 
         expected_put = [mock.call(context, request_list[0]),
@@ -89,20 +95,24 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         select_type = models.SelectType.all()
         request_list = [
-            models.GetItemRequest(table_name, {
-                'id': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_NUMBER, 1),
-                'str': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, 'str1'), },
+            models.GetItemRequest(
+                table_name,
+                {
+                    'id': models.AttributeValue('N', 1),
+                    'str': models.AttributeValue('S', 'str1'),
+                },
                 select_type,
-                True),
-            models.GetItemRequest(table_name, {
-                'id': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_NUMBER, 1),
-                'str': models.AttributeValue(
-                    models.ATTRIBUTE_TYPE_STRING, 'str2'), },
+                True
+            ),
+            models.GetItemRequest(
+                table_name,
+                {
+                    'id': models.AttributeValue('N', 1),
+                    'str': models.AttributeValue('S', 'str2'),
+                },
                 select_type,
-                True)
+                True
+            )
         ]
 
         expected_select = [mock.call(context, req.table_name,

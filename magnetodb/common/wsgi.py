@@ -323,7 +323,7 @@ class JSONDictSerializer(DictSerializer):
             return obj
 
         #            return six.text_type(obj)
-        return jsonutils.dumps(data, default=sanitizer)
+        return jsonutils.dumps(data, default=sanitizer, sort_keys=True)
 
 
 class XMLDictSerializer(DictSerializer):
