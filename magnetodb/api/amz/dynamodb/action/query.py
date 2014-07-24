@@ -38,12 +38,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                 "type": "boolean"
             },
 
-            parser.Props.EXCLUSIVE_START_KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
-                }
-            },
+            parser.Props.EXCLUSIVE_START_KEY: parser.Types.ITEM,
 
             parser.Props.INDEX_NAME: {
                 "type": "string",
@@ -58,7 +53,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                         "properties": {
                             parser.Props.ATTRIBUTE_VALUE_LIST: {
                                 "type": "array",
-                                "items": parser.Types.ITEM_VALUE
+                                "items": parser.Types.TYPED_ATTRIBUTE_VALUE
                             },
                             parser.Props.COMPARISON_OPERATOR: (
                                 parser.Types.QUERY_OPERATOR

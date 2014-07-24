@@ -22,12 +22,11 @@ class ModelsTestCase(unittest.TestCase):
     """The test for Models."""
 
     def test_strset_to_json(self):
-        value = models.AttributeValue.str_set(['Update', 'Help'])
+        value = models.AttributeValue('SS', ['Update', 'Help'])
 
         expected = (
             '{"__model__": "AttributeValue", '
-            '"type": {"__model__": "AttributeType", '
-            '"collection_type": "set", "element_type": "s"}, '
+            '"attr_type": {"__model__": "AttributeType", "type": "SS"}, '
             '"value": ["Help", "Update"]}'
         )
         self.assertEqual(expected, value.to_json())

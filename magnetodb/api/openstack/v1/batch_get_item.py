@@ -43,15 +43,7 @@ class BatchGetItemController(object):
             },
             parser.Props.KEYS: {
                 "type": "array",
-                "items": {
-                    "type": "object",
-                    "minProperties": 1,
-                    "maxProperties": 2,
-                    "patternProperties": {
-                        parser.ATTRIBUTE_NAME_PATTERN:
-                            parser.Types.SINGLE_ITEM_VALUE
-                    }
-                }
+                "items": parser.Types.ATTRIBUTE
             }
         }
     }
