@@ -48,7 +48,7 @@ class PutItemController(object):
                                 "required": [parser.Props.VALUE],
                                 "properties": {
                                     parser.Props.VALUE:
-                                        parser.Types.ITEM_VALUE,
+                                        parser.Types.TYPED_ATTRIBUTE_VALUE,
                                 }
                             },
                         ]
@@ -59,7 +59,8 @@ class PutItemController(object):
             parser.Props.ITEM: {
                 "type": "object",
                 "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
+                    parser.ATTRIBUTE_NAME_PATTERN:
+                        parser.Types.TYPED_ATTRIBUTE_VALUE
                 }
             },
 

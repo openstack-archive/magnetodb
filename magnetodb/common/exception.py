@@ -14,34 +14,21 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import re
 from magnetodb.openstack.common import exception as openstack_exception
 from magnetodb.openstack.common import log as logging
 
 from webob.exc import HTTPException
-from webob.response import Response
 
 
 LOG = logging.getLogger(__name__)
 
 
-def safe_fmt_string(text):
-    return re.sub(r'%([0-9]+)', r'\1', text)
-
-
 class MagnetoError(openstack_exception.OpenstackException):
     """Base exception that all custom MagnetoDB app exceptions inherit from."""
-    internal_message = None
 
     def __init__(self, message=None, **kwargs):
         if message is not None:
             self.message = message
-        if self.internal_message is not None:
-            try:
-                LOG.error(safe_fmt_string(self.internal_message), kwargs)
-            except Exception:
-                LOG.error(self.internal_message)
-        self.message = safe_fmt_string(self.message)
         super(MagnetoError, self).__init__(**kwargs)
 
 
@@ -150,7 +137,7 @@ class ValidationError(MagnetoError):
 
 
 # DynamoDB Errors
-class AWSErrorResponseException(HTTPException, Response):
+class AWSErrorResponseException(HTTPException):
     """ Base Exception for rendering to AWS DynamoDB error
     JSON http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/
                                                             ErrorHandling.html
@@ -162,9 +149,13 @@ class AWSErrorResponseException(HTTPException, Response):
     error_code = 'InternalServerError'
     status = '500'
 
-    def __init__(self, message='Exception'):
-        Response.__init__(self, status=self.status)
-        Exception.__init__(self, message)
+    def __init__(self, response_message=None, error_code=None, status=None):
+        if response_message is not None:
+            self.response_message = response_message
+        if error_code is not None:
+            self.error_code = error_code
+        if status is not None:
+            self.status = status
 
     def __call__(self, environ, start_response):
         response_headers = [('Content-type', 'application/x-amz-json-1.0')]

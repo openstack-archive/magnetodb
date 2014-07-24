@@ -28,9 +28,9 @@ class CreateTableTest(test_base_testcase.APITestCase):
         self.headers = {'Content-Type': 'application/json',
                         'Accept': 'application/json'}
 
-        self.url = '/v1/fake_project_id/data/tables'
+        self.url = '/v1/default_tenant/data/tables'
 
-        self.table_url = ('http://localhost:8080/v1/fake_project_id/data'
+        self.table_url = ('http://localhost:8080/v1/default_tenant/data'
                           '/tables/Thread')
 
     @mock.patch('magnetodb.storage.create_table')
@@ -38,9 +38,9 @@ class CreateTableTest(test_base_testcase.APITestCase):
         mock_create_table.return_value = models.TableMeta(
             models.TableSchema(
                 attribute_type_map={
-                    "ForumName": models.ATTRIBUTE_TYPE_STRING,
-                    "Subject": models.ATTRIBUTE_TYPE_STRING,
-                    "LastPostDateTime": models.ATTRIBUTE_TYPE_STRING
+                    "ForumName": models.AttributeType('S'),
+                    "Subject": models.AttributeType('S'),
+                    "LastPostDateTime": models.AttributeType('S')
                 },
                 key_attributes=["ForumName", "Subject"],
                 index_def_map={
@@ -147,9 +147,9 @@ class CreateTableTest(test_base_testcase.APITestCase):
         mock_create_table.return_value = models.TableMeta(
             models.TableSchema(
                 attribute_type_map={
-                    "ForumName": models.ATTRIBUTE_TYPE_STRING,
-                    "Subject": models.ATTRIBUTE_TYPE_STRING,
-                    "LastPostDateTime": models.ATTRIBUTE_TYPE_STRING
+                    "ForumName": models.AttributeType('S'),
+                    "Subject": models.AttributeType('S'),
+                    "LastPostDateTime": models.AttributeType('S')
                 },
                 key_attributes=["ForumName", "Subject"]
             ),
@@ -223,7 +223,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables'
+        url = '/v1/default_tenant/data/tables'
         body = '{"table_name": "spam"}'
 
         conn.request("POST", url, headers=headers, body=body)
@@ -248,9 +248,9 @@ class CreateTableTest(test_base_testcase.APITestCase):
         mock_create_table.return_value = models.TableMeta(
             models.TableSchema(
                 attribute_type_map={
-                    "ForumName": models.ATTRIBUTE_TYPE_STRING,
-                    "Subject": models.ATTRIBUTE_TYPE_STRING,
-                    "LastPostDateTime": models.ATTRIBUTE_TYPE_STRING
+                    "ForumName": models.AttributeType('S'),
+                    "Subject": models.AttributeType('S'),
+                    "LastPostDateTime": models.AttributeType('S')
                 },
                 key_attributes=["ForumName"],
                 index_def_map={

@@ -28,9 +28,9 @@ class DeleteTableTest(test_base_testcase.APITestCase):
     @mock.patch('magnetodb.storage.describe_table')
     def test_delete_table(self, mock_describe_table, mock_delete_table):
 
-        attr_map = {'ForumName': models.ATTRIBUTE_TYPE_STRING,
-                    'Subject': models.ATTRIBUTE_TYPE_STRING,
-                    'LastPostDateTime': models.ATTRIBUTE_TYPE_STRING}
+        attr_map = {'ForumName': models.AttributeType('S'),
+                    'Subject': models.AttributeType('S'),
+                    'LastPostDateTime': models.AttributeType('S')}
 
         key_attrs = ['ForumName', 'Subject']
 
@@ -48,9 +48,9 @@ class DeleteTableTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/Thread'
+        url = '/v1/default_tenant/data/tables/Thread'
 
-        table_url = ('http://localhost:8080/v1/fake_project_id'
+        table_url = ('http://localhost:8080/v1/default_tenant'
                      '/data/tables/Thread')
         expected_response = {'table_description': {
             'attribute_definitions': [

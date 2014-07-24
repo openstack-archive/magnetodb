@@ -39,7 +39,7 @@ class PutitemTestCase(unittest.TestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/the_table/put_item'
+        url = '/v1/default_tenant/data/tables/the_table/put_item'
         body = """
             {
                 "item": {
@@ -94,7 +94,7 @@ class PutitemTestCase(unittest.TestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/the_table/put_item'
+        url = '/v1/default_tenant/data/tables/the_table/put_item'
         body = """
             {
                 "item": {

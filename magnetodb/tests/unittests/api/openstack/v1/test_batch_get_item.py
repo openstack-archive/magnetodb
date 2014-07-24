@@ -28,7 +28,7 @@ class BatchGetItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/batch_get_item'
+        url = '/v1/default_tenant/data/batch_get_item'
         body = """
             {
                 "request_items": {
@@ -76,7 +76,7 @@ class BatchGetItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/batch_get_item'
+        url = '/v1/default_tenant/data/batch_get_item'
         body = '{"foo": "bar"}'
         conn.request("POST", url, headers=headers, body=body)
 
