@@ -28,8 +28,7 @@ class UpdateItemTestCase(test_base_testcase.APITestCase):
     @mock.patch('magnetodb.storage.select_item')
     @mock.patch('magnetodb.storage.update_item')
     def test_update_item(self, mock_update_item, mock_select_item):
-        value = models.AttributeValue(models.ATTRIBUTE_TYPE_STRING,
-                                      'me@test.com')
+        value = models.AttributeValue('S', 'me@test.com')
         mock_select_item.return_value = mock.Mock(
             items=[{'LastPostedBy': value}])
 
@@ -39,7 +38,7 @@ class UpdateItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/the_table/update_item'
+        url = '/v1/default_tenant/data/tables/the_table/update_item'
 
         body = """
             {
@@ -87,7 +86,7 @@ class UpdateItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/the_table/update_item'
+        url = '/v1/default_tenant/data/tables/the_table/update_item'
 
         body = """
             {
@@ -115,7 +114,7 @@ class UpdateItemTestCase(test_base_testcase.APITestCase):
         kwargs = mock_update_item.call_args[1]
         attr = kwargs['attribute_action_map']['LastPostedBy']
 
-        self.assertEqual('del', attr['action'])
+        self.assertEqual('DELETE', attr['action'])
         self.assertIsNone(attr['value'])
 
         self.assertEqual(200, response.status)

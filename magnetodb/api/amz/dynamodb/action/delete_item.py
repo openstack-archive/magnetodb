@@ -46,7 +46,7 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
                                 "required": [parser.Props.VALUE],
                                 "properties": {
                                     parser.Props.VALUE:
-                                        parser.Types.ITEM_VALUE,
+                                        parser.Types.TYPED_ATTRIBUTE_VALUE,
                                 }
                             },
                         ]
@@ -54,12 +54,7 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
                 }
             },
 
-            parser.Props.KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
-                }
-            },
+            parser.Props.KEY: parser.Types.ITEM,
 
             parser.Props.RETURN_CONSUMED_CAPACITY: (
                 parser.Types.RETURN_CONSUMED_CAPACITY

@@ -36,7 +36,9 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                             parser.Props.EXISTS: {
                                 "type": "boolean",
                             },
-                            parser.Props.VALUE: parser.Types.ITEM_VALUE
+                            parser.Props.VALUE: (
+                                parser.Types.TYPED_ATTRIBUTE_VALUE
+                            )
                         }
                     }
                 }
@@ -50,18 +52,15 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                         "required": [parser.Props.ACTION],
                         "properties": {
                             parser.Props.ACTION: parser.Types.ACTION_TYPE,
-                            parser.Props.VALUE: parser.Types.ITEM_VALUE
+                            parser.Props.VALUE: (
+                                parser.Types.TYPED_ATTRIBUTE_VALUE
+                            )
                         }
                     }
                 }
             },
 
-            parser.Props.KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
-                }
-            },
+            parser.Props.KEY: parser.Types.ITEM,
 
             parser.Props.RETURN_CONSUMED_CAPACITY: (
                 parser.Types.RETURN_CONSUMED_CAPACITY

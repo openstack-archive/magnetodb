@@ -46,7 +46,7 @@ class DeleteItemController(object):
                                 "required": [parser.Props.VALUE],
                                 "properties": {
                                     parser.Props.VALUE:
-                                        parser.Types.ITEM_VALUE,
+                                        parser.Types.TYPED_ATTRIBUTE_VALUE,
                                 }
                             },
                         ]
@@ -54,12 +54,7 @@ class DeleteItemController(object):
                 }
             },
 
-            parser.Props.KEY: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: parser.Types.ITEM_VALUE
-                }
-            },
+            parser.Props.KEY: parser.Types.ITEM,
 
             parser.Props.RETURN_VALUES: {
                 "type": "string",

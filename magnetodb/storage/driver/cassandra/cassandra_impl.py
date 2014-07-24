@@ -16,7 +16,6 @@
 
 import base64
 
-from decimal import Decimal
 import json
 import binascii
 
@@ -27,20 +26,9 @@ from magnetodb.common.exception import InvalidQueryParameter
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
 from magnetodb.storage.driver import StorageDriver
+from magnetodb.storage.models import ExpectedCondition
 
 LOG = logging.getLogger(__name__)
-
-STORAGE_TO_CASSANDRA_TYPES = {
-    models.ATTRIBUTE_TYPE_STRING: 'text',
-    models.ATTRIBUTE_TYPE_NUMBER: 'decimal',
-    models.ATTRIBUTE_TYPE_BLOB: 'blob',
-    models.ATTRIBUTE_TYPE_STRING_SET: 'set<text>',
-    models.ATTRIBUTE_TYPE_NUMBER_SET: 'set<decimal>',
-    models.ATTRIBUTE_TYPE_BLOB_SET: 'set<blob>'
-}
-
-CASSANDRA_TO_STORAGE_TYPES = {val: key for key, val
-                              in STORAGE_TO_CASSANDRA_TYPES.iteritems()}
 
 CONDITION_TO_OP = {
     models.Condition.CONDITION_TYPE_EQUAL: '=',
@@ -67,42 +55,63 @@ LOCAL_INDEX_FIELD_LIST = [
 ]
 
 INDEX_TYPE_TO_INDEX_POS_MAP = {
-    models.ATTRIBUTE_TYPE_STRING: 1,
-    models.ATTRIBUTE_TYPE_NUMBER: 2,
-    models.ATTRIBUTE_TYPE_BLOB: 3,
+    models.AttributeType('S'): 1,
+    models.AttributeType('N'): 2,
+    models.AttributeType('B'): 3
 }
 
 SYSTEM_COLUMN_EXTRA_ATTR_DATA = 'extra_attr_data'
 SYSTEM_COLUMN_EXTRA_ATTR_TYPES = 'extra_attr_types'
 SYSTEM_COLUMN_ATTR_EXIST = 'attr_exist'
 
-DEFAULT_STRING_VALUE = models.AttributeValue.str('')
-DEFAULT_NUMBER_VALUE = models.AttributeValue.number(0)
-DEFAULT_BLOB_VALUE = models.AttributeValue.blob('')
+DEFAULT_STRING_VALUE = models.AttributeValue('S', decoded_value='')
+DEFAULT_NUMBER_VALUE = models.AttributeValue('N', decoded_value=0)
+DEFAULT_BLOB_VALUE = models.AttributeValue('B', decoded_value='')
 
 
 def _encode_predefined_attr_value(attr_value):
     if attr_value is None:
         return 'null'
-    if attr_value.type.collection_type:
-        values = ','.join(map(
-            lambda el: _encode_single_value_as_predefined_attr(
-                el, attr_value.type.element_type),
-            attr_value.value
-        ))
-        return '{{{}}}'.format(values)
-    else:
+    collection_type = attr_value.attr_type.collection_type
+    if collection_type is None:
         return _encode_single_value_as_predefined_attr(
-            attr_value.value, attr_value.type.element_type
+            attr_value.decoded_value, attr_value.attr_type.type
         )
+    if collection_type == models.AttributeType.COLLECTION_TYPE_SET:
+        element_type = attr_value.attr_type.element_type
+        values = ','.join(
+            [
+                _encode_single_value_as_predefined_attr(
+                    single_value, element_type
+                ) for single_value in attr_value.decoded_value
+            ]
+        )
+        return '{{{}}}'.format(values)
+    if collection_type == models.AttributeType.COLLECTION_TYPE_MAP:
+        key_type = attr_value.attr_type.key_type
+        value_type = attr_value.attr_type.value_type
+        values = ','.join(
+            [
+                '{}:{}'.format(
+                    _encode_single_value_as_predefined_attr(
+                        key, key_type
+                    ),
+                    _encode_single_value_as_predefined_attr(
+                        value, value_type
+                    )
+                )
+                for key, value in attr_value.decoded_value.iteritems()
+            ]
+        )
+        return '{{{}}}'.format(values)
 
 
 def _encode_single_value_as_predefined_attr(value, element_type):
-    if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
+    if element_type == models.AttributeType.PRIMITIVE_TYPE_STRING:
         return "'{}'".format(value)
-    elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
+    elif element_type == models.AttributeType.PRIMITIVE_TYPE_NUMBER:
         return str(value)
-    elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
+    elif element_type == models.AttributeType.PRIMITIVE_TYPE_BLOB:
         return "0x{}".format(binascii.hexlify(value))
     else:
         assert False, "Value wasn't formatted for cql query"
@@ -112,29 +121,9 @@ def _encode_dynamic_attr_value(attr_value):
     if attr_value is None:
         return 'null'
 
-    val = attr_value.value
-    if attr_value.type.collection_type:
-        val = map(
-            lambda el: _encode_single_value_as_dynamic_attr(
-                el, attr_value.type.element_type
-            ),
-            val
-        )
-    else:
-        val = _encode_single_value_as_dynamic_attr(
-            val, attr_value.type.element_type)
-    return "0x{}".format(binascii.hexlify(json.dumps(val)))
-
-
-def _encode_single_value_as_dynamic_attr(value, element_type):
-    if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
-        return value
-    elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-        return str(value)
-    elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-        return base64.b64encode(value)
-    else:
-        assert False, "Value wasn't formatted for cql query"
+    return "0x{}".format(
+        binascii.hexlify(json.dumps(attr_value.encoded_value, sort_keys=True))
+    )
 
 
 def _decode_predefined_attr(table_info, cas_name, cas_val, prefix=USER_PREFIX):
@@ -142,35 +131,13 @@ def _decode_predefined_attr(table_info, cas_name, cas_val, prefix=USER_PREFIX):
 
     name = cas_name[len(USER_PREFIX):]
     storage_type = table_info.schema.attribute_type_map[name]
-    return name, models.AttributeValue(storage_type, cas_val)
+    return name, models.AttributeValue(storage_type, decoded_value=cas_val)
 
 
 def _decode_dynamic_attr_value(value, storage_type):
     value = json.loads(value)
 
-    if storage_type.collection_type:
-        decoded_value = [
-            _decode_single_value_as_dynamic_attr(
-                storage_type.element_type, el_value
-            ) for el_value in value
-        ]
-    else:
-        decoded_value = _decode_single_value_as_dynamic_attr(
-            storage_type.element_type, value
-        )
-
-    return models.AttributeValue(storage_type, decoded_value)
-
-
-def _decode_single_value_as_dynamic_attr(element_type, value):
-    if element_type == models.AttributeType.ELEMENT_TYPE_STRING:
-        return value
-    elif element_type == models.AttributeType.ELEMENT_TYPE_NUMBER:
-        return Decimal(value)
-    elif element_type == models.AttributeType.ELEMENT_TYPE_BLOB:
-        return base64.b64decode(value)
-    else:
-        assert False, "Value wasn't formatted for cql query"
+    return models.AttributeValue(storage_type, encoded_value=value)
 
 
 ENCODED_DEFAULT_STRING_VALUE = _encode_predefined_attr_value(
@@ -182,6 +149,31 @@ ENCODED_DEFAULT_NUMBER_VALUE = _encode_predefined_attr_value(
 ENCODED_DEFAULT_BLOB_VALUE = _encode_predefined_attr_value(
     DEFAULT_BLOB_VALUE
 )
+
+
+def _storage_to_cassandra_primitive_type(primitive_type):
+    if primitive_type == models.AttributeType.PRIMITIVE_TYPE_STRING:
+        return 'text'
+    if primitive_type == models.AttributeType.PRIMITIVE_TYPE_NUMBER:
+        return 'decimal'
+    if primitive_type == models.AttributeType.PRIMITIVE_TYPE_BLOB:
+        return 'blob'
+
+
+def _storage_to_cassandra_type(storage_type):
+    if storage_type.collection_type is None:
+        return _storage_to_cassandra_primitive_type(storage_type.type)
+    if (storage_type.collection_type ==
+            models.AttributeType.COLLECTION_TYPE_SET):
+        return 'set<{}>'.format(
+            _storage_to_cassandra_primitive_type(storage_type.element_type)
+        )
+    if (storage_type.collection_type ==
+            models.AttributeType.COLLECTION_TYPE_MAP):
+        return 'map<{},{}>'.format(
+            _storage_to_cassandra_primitive_type(storage_type.key_type),
+            _storage_to_cassandra_primitive_type(storage_type.value_type)
+        )
 
 
 class CassandraStorageDriver(StorageDriver):
@@ -228,7 +220,7 @@ class CassandraStorageDriver(StorageDriver):
 
             query_builder += (
                 '"', USER_PREFIX, attr_name, '" ',
-                STORAGE_TO_CASSANDRA_TYPES[attr_type], ","
+                _storage_to_cassandra_type(attr_type), ","
             )
 
         query_builder += (
@@ -312,8 +304,7 @@ class CassandraStorageDriver(StorageDriver):
             if (val is not None) and (
                     attr not in table_schema.attribute_type_map):
                 query_builder += (
-                    prefix, "'", attr, "':'",
-                    STORAGE_TO_CASSANDRA_TYPES[val.type], "'"
+                    prefix, "'", attr, "':'", val.attr_type.type, "'"
                 )
                 prefix = ","
         query_builder.append("}")
@@ -388,7 +379,7 @@ class CassandraStorageDriver(StorageDriver):
 
             if index_name:
                 res_index_values[0] = _encode_single_value_as_predefined_attr(
-                    index_name, models.AttributeType.ELEMENT_TYPE_STRING
+                    index_name, models.AttributeType.PRIMITIVE_TYPE_STRING
                 )
 
                 res_index_values[INDEX_TYPE_TO_INDEX_POS_MAP[
@@ -654,6 +645,11 @@ class CassandraStorageDriver(StorageDriver):
                 )
 
                 if old_indexes is None:
+                    if expected_condition_map:
+                        for attr, cond in expected_condition_map.iteritems():
+                            if (cond.type !=
+                                    ExpectedCondition.CONDITION_TYPE_NULL):
+                                raise ConditionalCheckFailedException()
                     if self._put_item_if_not_exists(table_info,
                                                     put_request.attribute_map):
                         return True
@@ -791,7 +787,8 @@ class CassandraStorageDriver(StorageDriver):
                     attr_name
                 ]
                 index_values[attr_name] = (
-                    models.AttributeValue(attr_type, cas_attr_value)
+                    models.AttributeValue(attr_type,
+                                          decoded_value=cas_attr_value)
                 )
         return index_values
 
@@ -894,52 +891,63 @@ class CassandraStorageDriver(StorageDriver):
         for condition in cond_list:
             if condition.type == models.IndexedCondition.CONDITION_TYPE_EQUAL:
                 if (exact_condition is not None and
-                        condition.arg.value != exact_condition.arg.value):
+                        condition.arg.decoded_value !=
+                        exact_condition.arg.decoded_value):
                     return None
                 exact_condition = condition
             elif condition.is_left_border():
                 if left_condition is None:
                     left_condition = condition
                 elif condition.is_strict_border():
-                    if condition.arg.value >= left_condition.arg.value:
+                    if (condition.arg.decoded_value >=
+                            left_condition.arg.decoded_value):
                         left_condition = condition
                 else:
-                    if condition.arg.value > left_condition.arg.value:
+                    if (condition.arg.decoded_value >
+                            left_condition.arg.decoded_value):
                         left_condition = condition
             elif condition.is_right_border():
                 if right_condition is None:
                     right_condition = condition
                 elif condition.is_strict():
-                    if condition.arg.value <= right_condition.arg.value:
+                    if (condition.arg.decoded_value <=
+                            right_condition.arg.decoded_value):
                         right_condition = condition
                 else:
-                    if condition.arg.value < right_condition.arg.value:
+                    if (condition.arg.decoded_value <
+                            right_condition.arg.decoded_value):
                         right_condition = condition
 
         if exact_condition is not None:
             if left_condition is not None:
                 if left_condition.is_strict():
-                    if left_condition.arg.value >= exact_condition.arg.value:
+                    if (left_condition.arg.decoded_value >=
+                            exact_condition.arg.decoded_value):
                         return None
                 else:
-                    if left_condition.arg.value > exact_condition.arg.value:
+                    if (left_condition.arg.decoded_value >
+                            exact_condition.arg.decoded_value):
                         return None
             if right_condition is not None:
                 if right_condition.is_strict():
-                    if right_condition.arg.value <= exact_condition.arg.value:
+                    if (right_condition.arg.decoded_value <=
+                            exact_condition.arg.decoded_value):
                         return None
                 else:
-                    if right_condition.arg.value < exact_condition.arg.value:
+                    if (right_condition.arg.decoded_value <
+                            exact_condition.arg.decoded_value):
                         return None
             return [exact_condition]
         elif left_condition is not None:
             if right_condition is not None:
                 if (left_condition.is_strict_border() or
                         right_condition.is_strict_border()):
-                    if left_condition.arg.value >= right_condition.arg.value:
+                    if (left_condition.arg.decoded_value >=
+                            right_condition.arg.decoded_value):
                         return None
                 else:
-                    if left_condition.arg.value > right_condition.arg.value:
+                    if (left_condition.arg.decoded_value >
+                            right_condition.arg.decoded_value):
                         return None
                 return [left_condition, right_condition]
             else:
@@ -997,11 +1005,14 @@ class CassandraStorageDriver(StorageDriver):
                                    is_predefined):
         if query_builder is None:
             query_builder = []
-        if condition.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
+        if condition.type == models.ExpectedCondition.CONDITION_TYPE_NOT_NULL:
             query_builder += (
-                SYSTEM_COLUMN_ATTR_EXIST, "['", attr, "']="
+                SYSTEM_COLUMN_ATTR_EXIST, "['", attr, "']=1"
             )
-            query_builder.append("1" if condition.arg else "null")
+        elif condition.type == models.ExpectedCondition.CONDITION_TYPE_NULL:
+            query_builder += (
+                SYSTEM_COLUMN_ATTR_EXIST, "['", attr, "']=null"
+            )
         elif condition.type == models.ExpectedCondition.CONDITION_TYPE_EQUAL:
             if is_predefined:
                 query_builder += (
@@ -1047,12 +1058,12 @@ class CassandraStorageDriver(StorageDriver):
 
         if index_name:
             res_index_values[0] = _encode_single_value_as_predefined_attr(
-                index_name, models.AttributeType.ELEMENT_TYPE_STRING
+                index_name, models.AttributeType.PRIMITIVE_TYPE_STRING
             )
 
-            res_index_values[INDEX_TYPE_TO_INDEX_POS_MAP[index_value.type]] = (
-                _encode_predefined_attr_value(index_value)
-            )
+            res_index_values[
+                INDEX_TYPE_TO_INDEX_POS_MAP[index_value.attr_type]
+            ] = _encode_predefined_attr_value(index_value)
 
         for i in xrange(len(LOCAL_INDEX_FIELD_LIST)):
             query_builder += (
@@ -1191,37 +1202,48 @@ class CassandraStorageDriver(StorageDriver):
         if not attr_value or not old_item:
             return None
 
-        if old_item[attr_name].type != attr_value.type:
-            raise InvalidQueryParameter("Wrong type for %s" % attr_name)
-
-        # type(attr_value) != set. Remove an attr
-        if not any((attr_value.is_str_set,
-                    attr_value.is_number_set,
-                    attr_value.is_number_set)):
+        old_attr_value = old_item.get(attr_name, None)
+        if old_attr_value is None:
             return None
 
-        if attr_name not in old_item:
-            return None
+        if old_attr_value.is_set:
+            if old_attr_value.attr_type != attr_value.attr_type:
+                raise InvalidQueryParameter("Wrong type for %s" % attr_name)
 
-        return models.AttributeValue(
-            old_item[attr_name].type,
-            old_item[attr_name].value - attr_value.value
-        )
+            return models.AttributeValue(
+                old_attr_value.attr_type,
+                decoded_value=(
+                    old_attr_value.decoded_value - attr_value.decoded_value
+                )
+            )
 
-    def _get_add_attr_value(self, attr_name, attr_value, old_item):
+        if old_attr_value.is_map:
+            if (not attr_value.is_set or
+                    attr_value.attr_type.element_type !=
+                    old_attr_value.attr_type.key_type):
+                raise InvalidQueryParameter("Wrong type for %s" % attr_name)
+            res = old_attr_value.decoded_value.copy()
+            for key in attr_value.decoded_value:
+                res.pop(key, None)
+            return models.AttributeValue(
+                old_attr_value.attr_type, decoded_value=res
+            )
+
+    @staticmethod
+    def _get_add_attr_value(attr_name, attr_value, old_item):
         if not old_item:
             return attr_value
 
-        if not any((attr_value.is_str_set,
-                    attr_value.is_number_set,
-                    attr_value.is_number_set,
-                    attr_value.is_number)):
-            raise InvalidQueryParameter("ADD alows sets or numbers only")
+        if (attr_value.attr_type.collection_type is None and
+                not attr_value.is_number):
+            raise InvalidQueryParameter(
+                "ADD allows collections or numbers only"
+            )
 
         if attr_name not in old_item:
             return attr_value
 
-        if old_item[attr_name].type != attr_value.type:
+        if old_item[attr_name].attr_type != attr_value.attr_type:
             raise InvalidQueryParameter("Wrong type for %s" % attr_name)
 
         if attr_name not in old_item:
@@ -1229,14 +1251,28 @@ class CassandraStorageDriver(StorageDriver):
 
         if attr_value.is_number:
             return models.AttributeValue(
-                old_item[attr_name].type,
-                old_item[attr_name].value + attr_value.value
+                old_item[attr_name].attr_type,
+                decoded_value=(
+                    old_item[attr_name].decoded_value +
+                    attr_value.decoded_value
+                )
             )
 
-        return models.AttributeValue(
-            old_item[attr_name].type,
-            old_item[attr_name].value.union(attr_value.value)
-        )
+        if attr_value.is_set:
+            return models.AttributeValue(
+                old_item[attr_name].attr_type,
+                decoded_value=old_item[attr_name].value.union(
+                    attr_value.decoded_value
+                )
+            )
+
+        if attr_value.is_map:
+            res = old_item[attr_name].decoded_value.copy()
+            res.update(attr_value.decoded_value)
+
+            return models.AttributeValue(old_item[attr_name].attr_type,
+                                         decoded_value=res)
+        assert False
 
     def _get_update_conditions(self, key_attribute_map, old_item):
         conditions = {}
@@ -1393,7 +1429,7 @@ class CassandraStorageDriver(StorageDriver):
             local_indexes_conditions = {
                 SYSTEM_COLUMN_INDEX_NAME: [
                     models.IndexedCondition.eq(
-                        models.AttributeValue.str(index_name)
+                        models.AttributeValue('S', decoded_value=index_name)
                         if index_name else DEFAULT_STRING_VALUE
                     )
                 ],
@@ -1523,7 +1559,7 @@ class CassandraStorageDriver(StorageDriver):
             for name, val in attrs.iteritems():
                 if not attributes_to_get or name in attributes_to_get:
                     typ = types[name]
-                    storage_type = CASSANDRA_TO_STORAGE_TYPES[typ]
+                    storage_type = models.AttributeType(typ)
                     record[name] = _decode_dynamic_attr_value(
                         val, storage_type
                     )
@@ -1671,55 +1707,84 @@ class CassandraStorageDriver(StorageDriver):
 
     @staticmethod
     def _condition_satisfied(attr_val, cond):
+        if cond.type == models.ExpectedCondition.CONDITION_TYPE_NULL:
+            return attr_val is None
 
-        if cond.type == models.ExpectedCondition.CONDITION_TYPE_EXISTS:
-            return cond.arg == bool(attr_val)
-
-        if not attr_val:
-            return False
+        if cond.type == models.ExpectedCondition.CONDITION_TYPE_NOT_NULL:
+            return attr_val is not None
 
         if cond.type == models.Condition.CONDITION_TYPE_EQUAL:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value == cond.arg.value)
+            return (attr_val.attr_type == cond.arg.attr_type and
+                    attr_val.decoded_value == cond.arg.decoded_value)
 
         if cond.type == models.IndexedCondition.CONDITION_TYPE_LESS:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value < cond.arg.value)
+            return (attr_val.attr_type == cond.arg.attr_type and
+                    attr_val.decoded_value < cond.arg.decoded_value)
 
         if cond.type == models.IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value <= cond.arg.value)
+            return (attr_val.attr_type == cond.arg.attr_type and
+                    attr_val.decoded_value <= cond.arg.decoded_value)
 
         if cond.type == models.IndexedCondition.CONDITION_TYPE_GREATER:
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value > cond.arg.value)
+            return (attr_val.attr_type == cond.arg.attr_type and
+                    attr_val.decoded_value > cond.arg.decoded_value)
 
         if (cond.type ==
                 models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL):
-            return (attr_val.type == cond.arg.type and
-                    attr_val.value >= cond.arg.value)
+            return (attr_val.attr_type == cond.arg.attr_type and
+                    attr_val.decoded_value >= cond.arg.decoded_value)
 
         if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_EQUAL:
-            return (attr_val.type != cond.arg.type or
-                    attr_val.value != cond.arg.value)
+            return (attr_val.attr_type != cond.arg.attr_type or
+                    attr_val.decoded_value != cond.arg.decoded_value)
 
         if cond.type == models.ScanCondition.CONDITION_TYPE_CONTAINS:
-            assert not cond.arg.type.collection_type
-            if attr_val.type.element_type != cond.arg.type.element_type:
-                return False
-
-            return cond.arg.value in attr_val.value
+            assert not cond.arg.attr_type.collection_type
+            collection_type = attr_val.attr_type.collection_type
+            arg_type = cond.arg.attr_type.type
+            if collection_type is None:
+                val_type = attr_val.attr_type.type
+                if (val_type != arg_type or val_type ==
+                        models.AttributeType.PRIMITIVE_TYPE_NUMBER):
+                    return False
+                return cond.arg.decoded_value in attr_val.decoded_value
+            elif collection_type == models.AttributeType.COLLECTION_TYPE_SET:
+                val_type = attr_val.attr_type.element_type
+                if val_type != arg_type:
+                    return False
+                return cond.arg.decoded_value in attr_val.decoded_value
+            elif collection_type == models.AttributeType.COLLECTION_TYPE_MAP:
+                key_type = attr_val.attr_type.key_type
+                if key_type != arg_type:
+                    return False
+                return cond.arg.decoded_value in attr_val.decoded_value
+            return False
 
         if cond.type == models.ScanCondition.CONDITION_TYPE_NOT_CONTAINS:
-            assert not cond.arg.type.collection_type
-            if attr_val.type.element_type != cond.arg.type.element_type:
-                return False
-
-            return cond.arg.value not in attr_val.value
+            assert not cond.arg.attr_type.collection_type
+            collection_type = attr_val.attr_type.collection_type
+            arg_type = cond.arg.attr_type.type
+            if collection_type is None:
+                val_type = attr_val.attr_type.type
+                if (val_type != arg_type or val_type ==
+                        models.AttributeType.PRIMITIVE_TYPE_NUMBER):
+                    return False
+                return cond.arg.decoded_value not in attr_val.decoded_value
+            elif collection_type == models.AttributeType.COLLECTION_TYPE_SET:
+                val_type = attr_val.attr_type.element_type
+                if val_type != arg_type:
+                    return False
+                return cond.arg.decoded_value not in attr_val.decoded_value
+            elif collection_type == models.AttributeType.COLLECTION_TYPE_MAP:
+                key_type = attr_val.attr_type.key_type
+                if key_type != arg_type:
+                    return False
+                return cond.arg.decoded_value not in attr_val.decoded_value
+            return False
 
         if cond.type == models.ScanCondition.CONDITION_TYPE_IN:
-            cond_arg = cond.arg or []
+            cond_args = cond.args or []
 
-            return attr_val in cond_arg
+            return attr_val in cond_args
 
         return False

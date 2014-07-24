@@ -29,20 +29,20 @@ class ScanTest(test_base_testcase.APITestCase):
 
         items = [
             {
-                'ForumName': models.AttributeValue.str('Gerrit workflow'),
-                'LastPostDateTime': models.AttributeValue.str('3/19/14'),
-                'Posts': models.AttributeValue.str_set(['Hi', 'Hello'])
+                'ForumName': models.AttributeValue('S', 'Gerrit workflow'),
+                'LastPostDateTime': models.AttributeValue('S', '3/19/14'),
+                'Posts': models.AttributeValue('SS', ['Hi', 'Hello'])
             },
             {
-                'ForumName': models.AttributeValue.str('Testing OS API'),
-                'LastPostDateTime': models.AttributeValue.str('3/18/14'),
-                'Posts': models.AttributeValue.str_set(['Opening post'])
+                'ForumName': models.AttributeValue('S', 'Testing OS API'),
+                'LastPostDateTime': models.AttributeValue('S', '3/18/14'),
+                'Posts': models.AttributeValue('SS', ['Opening post'])
             },
         ]
 
         last_evaluated_key = {
-            'ForumName': models.AttributeValue.str('Testing OS API'),
-            'Subject': models.AttributeValue.str('Some subject'),
+            'ForumName': models.AttributeValue('S', 'Testing OS API'),
+            'Subject': models.AttributeValue('S', 'Some subject'),
         }
 
         mock_scan.return_value = models.ScanResult(
@@ -54,7 +54,7 @@ class ScanTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/fake_project_id/data/tables/Threads/scan'
+        url = '/v1/default_tenant/data/tables/Threads/scan'
         body = """
             {
                "attributes_to_get": [
