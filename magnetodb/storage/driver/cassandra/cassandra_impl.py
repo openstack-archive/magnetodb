@@ -757,26 +757,27 @@ class CassandraStorageDriver(StorageDriver):
 
     def _select_current_index_values(
             self, table_info, attribute_map):
-        query_buider = ["SELECT "]
+        query_builder = ["SELECT "]
         prefix = ""
         for index_def in table_info.schema.index_def_map.itervalues():
-            query_buider += (
+            query_builder += (
                 prefix, '"', USER_PREFIX, index_def.attribute_to_index, '"'
             )
             prefix = ","
 
-        query_buider += (
+        query_builder += (
             ' FROM "', table_info.internal_keyspace, '"."',
             table_info.internal_name, '"'
         )
 
         self._append_primary_key(table_info.schema, attribute_map,
-                                 query_buider)
-        self._append_index_extra_primary_key(query_buider, prefix=" AND ")
+                                 query_builder)
+        self._append_index_extra_primary_key(query_builder, prefix=" AND ")
 
         select_result = self.__cluster_handler.execute_query(
-            "".join(query_buider), consistent=False
+            "".join(query_builder), consistent=False
         )
+
         if not select_result:
             return None
 
