@@ -199,7 +199,7 @@ class EC2Token(wsgi.Middleware):
                 tenant = result['token']['project']['name']
                 tenant_id = result['token']['project']['id']
                 metadata = result['token']['roles']
-                roles = [r['name'] for r in roles]
+                roles = [r['name'] for r in metadata]
             else:
                 raise exception.InvalidClientTokenIdError()
             LOG.info(_("AWS authentication successful."))
