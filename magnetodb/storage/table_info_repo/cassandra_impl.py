@@ -25,6 +25,7 @@ from magnetodb.storage.table_info_repo import TableInfo
 class CassandraTableInfoRepository(object):
     SYSTEM_TABLE_TABLE_INFO = 'magnetodb.table_info'
     __field_list = ("schema", "internal_name", "status")
+    __creating_to_active_field_list_to_update = ("internal_name", "status")
 
     def _save_table_info_to_cache(self, context, table_info):
         tenant_tables_cache = self.__table_info_cache.get(context.tenant)
@@ -61,21 +62,26 @@ class CassandraTableInfoRepository(object):
         self.__table_info_cache = {}
         self.__table_cache_lock = Lock()
 
-    def get(self, context, table_name, refresh_field_list=None):
+    def get(self, context, table_name, fields_to_refresh=tuple()):
         table_info = self._get_table_info_from_cache(context, table_name)
-        if table_info:
-            if refresh_field_list:
-                self.refresh(context, table_info, refresh_field_list)
-            return table_info
+        if table_info is None:
+            with self.__table_cache_lock:
+                table_info = self._get_table_info_from_cache(context,
+                                                             table_name)
+                if table_info is None:
+                    table_info = TableInfo(table_name)
+                    self.refresh(context, table_info)
+                    self._save_table_info_to_cache(context, table_info)
+                    return table_info
 
-        with self.__table_cache_lock:
-            table_info = self._get_table_info_from_cache(context, table_name)
-            if table_info:
-                return table_info
+        if table_info.status == models.TableMeta.TABLE_STATUS_CREATING:
+            fields_to_refresh = set(fields_to_refresh)
+            fields_to_refresh.update(
+                self.__creating_to_active_field_list_to_update
+            )
+        if fields_to_refresh:
+            self.refresh(context, table_info, fields_to_refresh)
 
-            table_info = TableInfo(table_name)
-            self.refresh(context, table_info)
-            self._save_table_info_to_cache(context, table_info)
         return table_info
 
     def get_tenant_table_names(self, context, exclusive_start_table_name=None,
