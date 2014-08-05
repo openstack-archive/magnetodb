@@ -23,6 +23,8 @@ from tempest.test import attr
 
 class MagnetoDBListTableTestCase(MagnetoDBTestCase):
 
+    tenant_isolation = True
+
     def setUp(self):
         super(MagnetoDBListTableTestCase, self).setUp()
         self.tables = []
