@@ -117,21 +117,10 @@ class EventletConnection(Connection):
             self.connected_event.set()
 
     def handle_write(self):
-        run_select = partial(select.select, (), (self._socket,), ())
         while True:
             try:
                 next_msg = self._write_queue.get()
-                run_select()
-            except Exception as exc:
-                if not self.is_closed:
-                    log.debug(
-                        "Exception during write select() for %s: %s",
-                        self, exc)
-                    self.defunct(exc)
-                return
-
-            try:
-                self._socket.sendall(next_msg)
+                self._socket.send(next_msg)
             except socket.error as err:
                 log.debug(
                     "Exception during socket sendall for %s: %s", self, err)

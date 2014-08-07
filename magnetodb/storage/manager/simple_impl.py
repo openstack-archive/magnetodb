@@ -43,9 +43,6 @@ class SimpleStorageManager(StorageManager):
         self.__task_executor = ThreadPoolExecutor(concurrent_tasks)
         self.__task_semaphore = BoundedSemaphore(concurrent_tasks)
 
-    def __del__(self):
-        self.__task_executor.shutdown()
-
     def create_table(self, context, table_name, table_schema):
         table_info = TableInfo(table_name, table_schema,
                                models.TableMeta.TABLE_STATUS_CREATING)
