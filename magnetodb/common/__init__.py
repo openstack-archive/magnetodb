@@ -12,6 +12,19 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import sys
+
+if 'eventlet' in sys.modules:
+    import eventlet
+
+    if eventlet.patcher.is_monkey_patched('thread'):
+        from eventlet import semaphore
+        orig_mod = sys.modules.get('threading')
+        if orig_mod is None:
+            orig_mod = __import__('threading')
+        patched_attr = getattr(semaphore, 'BoundedSemaphore', None)
+        if patched_attr is not None:
+            setattr(orig_mod, 'BoundedSemaphore', patched_attr)
 
 PROJECT_NAME = "magnetodb"
 

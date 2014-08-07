@@ -16,7 +16,7 @@
 import logging
 
 from threading import BoundedSemaphore
-from threading import Lock
+from threading import RLock
 from threading import Thread
 
 import time
@@ -32,7 +32,7 @@ LOG = logging.getLogger(__name__)
 def _monitor_control_connection(cluster_handler_ref):
     while True:
         cluster_handler = cluster_handler_ref()
-        if cluster_handler is None:
+        if cluster_handler is None or cluster_handler._is_closed():
             return
 
         try:
@@ -41,6 +41,7 @@ def _monitor_control_connection(cluster_handler_ref):
         except:
             LOG.exception("Error during connecting to the cluster")
 
+        # clean hardlink to give ability to remove object
         cluster_handler = None
         time.sleep(1)
 
@@ -48,11 +49,12 @@ def _monitor_control_connection(cluster_handler_ref):
 class ClusterHandler(object):
     def __init__(self, cluster_params, query_timeout=2,
                  concurrent_queries=100):
+        self.__closed = False
         self.__task_semaphore = BoundedSemaphore(concurrent_queries)
 
         self.__cluster_params = cluster_params
         self.__query_timeout = query_timeout
-        self.__connection_lock = Lock()
+        self.__connection_lock = RLock()
         self.__cluster = None
         self.__session = None
         self.__connection_monitor_thread = Thread(
@@ -61,7 +63,7 @@ class ClusterHandler(object):
         self.__connection_monitor_thread.start()
 
     def __del__(self):
-        self.shutdown()
+        self.__closed = True
 
     def shutdown(self):
         self.__closed = True
@@ -72,6 +74,9 @@ class ClusterHandler(object):
     def _is_connected(self):
         return (self.__cluster is not None and
                 not self.__cluster.control_connection._connection.is_closed)
+
+    def _is_closed(self):
+        return self.__closed
 
     def _connect(self):
         with self.__connection_lock:

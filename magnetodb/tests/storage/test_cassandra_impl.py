@@ -15,6 +15,7 @@
 
 import base64
 import json
+from decimal import Decimal
 from blist import sortedset
 
 import mock
@@ -1503,6 +1504,320 @@ class TestCassandraUpdateItem(TestCassandraBase):
 
         self.assertEqual([expected], result.items)
 
+    def test_update_item_put_map_str_str(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_string_string': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('SSM', {'new1': 'new2'}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_string_string'] = models.AttributeValue(
+            'SSM', {'new1': 'new2'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_map_str_num(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_string_number': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('SNM', {'new1': 1}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_string_number'] = models.AttributeValue(
+            'SNM', {'new1': 1}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_map_str_blob(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_string_blob': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('SBM', decoded_value={'new1': 'blob1'}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_string_blob'] = models.AttributeValue(
+            'SBM', decoded_value={'new1': 'blob1'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_map_num_str(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_number_string': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('NSM', {1: 'new2'}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_number_string'] = models.AttributeValue(
+            'NSM', {1: 'new2'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_map_num_num(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_number_number': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('NNM', {213: "32.345"}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_number_number'] = models.AttributeValue(
+            'NNM', {213: "32.345"}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_map_num_blob(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_number_blob': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    'NBM', decoded_value={Decimal("324.54353"): 'blob1'}
+                )
+            )
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_number_blob'] = models.AttributeValue(
+            'NBM', decoded_value={Decimal("324.54353"): 'blob1'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_map_blob_str(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_blob_string': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('BSM', decoded_value={'blob1': 'new2'}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_blob_string'] = models.AttributeValue(
+            'BSM', decoded_value={'blob1': 'new2'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_map_blob_num(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_blob_number': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    'BNM', decoded_value={'blob': Decimal("32.345")})
+            )
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_blob_number'] = models.AttributeValue(
+            'BNM', decoded_value={'blob': Decimal("32.345")}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_map_blob_blob(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'map_blob_blob': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    'BBM', decoded_value={'blob2': 'blob1'}
+                )
+            )
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['map_blob_blob'] = models.AttributeValue(
+            'BBM', decoded_value={'blob2': 'blob1'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
     def test_update_item_put_dynamic_str(self):
         self._create_table(indexed=True)
         self._insert_data()
@@ -1702,6 +2017,320 @@ class TestCassandraUpdateItem(TestCassandraBase):
 
         self.assertEqual([expected], result.items)
 
+    def test_update_item_put_dynamic_map_str_str(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_str_str': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('SSM', {'new1': 'new2'}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_str_str'] = models.AttributeValue(
+            'SSM', {'new1': 'new2'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_dynamic_map_str_num(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_str_num': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('SNM', {'new1': 1}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_str_num'] = models.AttributeValue(
+            'SNM', {'new1': 1}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_dynamic_map_str_blob(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_str_blb': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('SBM', decoded_value={'new1': 'blob1'}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_str_blb'] = models.AttributeValue(
+            'SBM', decoded_value={'new1': 'blob1'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_dynamic_map_num_str(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_num_str': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('NSM', {1: 'new2'}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_num_str'] = models.AttributeValue(
+            'NSM', {1: 'new2'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_dynamic_map_num_num(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_num_num': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('NNM', {213: "32.345"}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_num_num'] = models.AttributeValue(
+            'NNM', {213: "32.345"}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_dynamic_map_num_blob(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_num_blb': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    'NBM', decoded_value={Decimal("324.54353"): 'blob1'}
+                )
+            )
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_num_blb'] = models.AttributeValue(
+            'NBM', decoded_value={Decimal("324.54353"): 'blob1'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_dynamic_map_blob_str(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_blb_str': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue('BSM', decoded_value={'blob1': 'new2'}))
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_blb_str'] = models.AttributeValue(
+            'BSM', decoded_value={'blob1': 'new2'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_dynamic_map_blob_num(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_blb_num': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    'BNM', decoded_value={'blob': Decimal("32.345")})
+            )
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_blb_num'] = models.AttributeValue(
+            'BNM', decoded_value={'blob': Decimal("32.345")}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
+    def test_update_item_put_dynamic_map_blob_blob(self):
+        self._create_table(indexed=True)
+        self._insert_data()
+
+        keys = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
+
+        actions = {
+            'fm_blb_blb': models.UpdateItemAction(
+                models.UpdateItemAction.UPDATE_ACTION_PUT,
+                models.AttributeValue(
+                    'BBM', decoded_value={'blob2': 'blob1'}
+                )
+            )
+        }
+
+        self.CASANDRA_STORAGE_IMPL.update_item(
+            self.context, self.table_name, keys, actions)
+
+        expected = self.expected_data.copy()
+
+        expected['fm_blb_blb'] = models.AttributeValue(
+            'BBM', decoded_value={'blob2': 'blob1'}
+        )
+
+        keys_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, keys_condition)
+
+        self.assertEqual([expected], result.items)
+
     def test_update_item_delete(self):
         self._create_table(indexed=True)
         self._insert_data()
@@ -1878,6 +2507,231 @@ class TestCassandraPutItem(TestCassandraBase):
 
         self.assertEqual([put], result.items)
 
+    def test_put_item_map_str_str(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_string_string': models.AttributeValue(
+                'SSM', {'key123': 'value213'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_map_str_num(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_string_number': models.AttributeValue(
+                'SNM', {'key123': 234}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_map_str_blob(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_string_blob': models.AttributeValue(
+                'SBM', decoded_value={'key123': 'blob1'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_map_num_str(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_number_string': models.AttributeValue(
+                'NSM', {Decimal('568.42'): 'value213'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_map_num_num(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_number_number': models.AttributeValue(
+                'NNM', {Decimal('345.234'): 234}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_map_num_blob(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_number_blob': models.AttributeValue(
+                'NBM', decoded_value={13: 'blob1'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_map_blob_str(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_blob_string': models.AttributeValue(
+                'BSM', decoded_value={'\xFF\xFE': 'value213'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_map_blob_num(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_blob_number': models.AttributeValue(
+                'BNM', decoded_value={'\xFF\xFF': 234}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_map_blob_blob(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'map_blob_blob': models.AttributeValue(
+                'BBM', decoded_value={'\xFE\xFF': 'blob1'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
     def test_put_item_dynamic_str(self):
         self._create_table(indexed=True)
 
@@ -2002,6 +2856,231 @@ class TestCassandraPutItem(TestCassandraBase):
             'fsblb': models.AttributeValue(
                 'BS', decoded_value=sortedset(('blob1', 'blob2'))
             ),
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_str_str(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_str_str': models.AttributeValue(
+                'SSM', {'key123': 'value213'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_str_num(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_str_num': models.AttributeValue(
+                'SNM', {'key123': 234}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_str_blob(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_str_blb': models.AttributeValue(
+                'SBM', decoded_value={'key123': 'blob1'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_num_str(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_num_str': models.AttributeValue(
+                'NSM', {Decimal('568.42'): 'value213'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_num_num(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_num_num': models.AttributeValue(
+                'NNM', {Decimal('345.234'): 234}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_num_blob(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_num_blb': models.AttributeValue(
+                'NBM', decoded_value={13: 'blob1'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_blob_str(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_blb_str': models.AttributeValue(
+                'BSM', decoded_value={'\xFF\xFE': 'value213'}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_blob_num(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_blb_num': models.AttributeValue(
+                'BNM', decoded_value={'\xFF\xFF': 234}
+            )
+        }
+
+        put_request = models.PutItemRequest(self.table_name, put)
+
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+
+        key_condition = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+            'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
+        }
+
+        result = self.CASANDRA_STORAGE_IMPL.select_item(
+            self.context, self.table_name, key_condition)
+
+        self.assertEqual([put], result.items)
+
+    def test_put_item_dynamic_map_blob_blob(self):
+        self._create_table(indexed=True)
+
+        put = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1'),
+            'fm_blb_blb': models.AttributeValue(
+                'BBM', decoded_value={'\xFE\xFF': 'blob1'}
+            )
         }
 
         put_request = models.PutItemRequest(self.table_name, put)

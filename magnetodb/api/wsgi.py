@@ -19,7 +19,9 @@ import string
 
 import routes
 
-from magnetodb.common import wsgi, setup_global_env, is_global_env_ready
+from magnetodb.common import setup_global_env
+from magnetodb.common import is_global_env_ready
+from magnetodb.common import wsgi
 
 from magnetodb.api.openstack.v1 import openstack_api
 from magnetodb.api.openstack.v1 import create_resource
