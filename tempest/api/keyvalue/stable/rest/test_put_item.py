@@ -294,6 +294,266 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertEqual(set(get_resp[1]['item']["other"]["SS"]),
                          {"rrrr", "tttt"})
 
+    def test_put_item_with_few_attributes_of_type_ssm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "SSM": {"eeee": "rrrr", "qqqq": "ttttt", "nnnn": "yyyy"}
+            },
+            "other": {"SSM": {"rrrr": "uuuu", "tttt": "gggg"}}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]["item"]["author"]["SSM"],
+                         {"eeee": "rrrr", "qqqq": "ttttt", "nnnn": "yyyy"})
+        self.assertEqual(get_resp[1]['item']["other"]["SSM"],
+                         {"rrrr": "uuuu", "tttt": "gggg"})
+
+    def test_put_item_with_few_attributes_of_type_snm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "SNM": {"eeee": 1, "qqqq": "3123.123", "nnnn": 345}
+            },
+            "other": {"SNM": {"rrrr": 123, "tttt": "33.13223"}}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]["item"]["author"]["SNM"],
+                         {"eeee": '1', "qqqq": "3123.123", "nnnn": '345'})
+        self.assertEqual(get_resp[1]['item']["other"]["SNM"],
+                         {"rrrr": '123', "tttt": "33.13223"})
+
+    def test_put_item_with_few_attributes_of_type_sbm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "SBM": {"eeee": base64.b64encode("\xFF\xFE"),
+                        "qqqq": base64.b64encode("\xFE\xFE"),
+                        "nnnn": base64.b64encode("\xEF\xFE")}
+            },
+            "other": {"SBM": {"rrrr": base64.b64encode("\xFF\xFE"),
+                              "tttt": base64.b64encode("\xFE\xFE")}}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]["item"]["author"]["SBM"],
+                         {"eeee": base64.b64encode("\xFF\xFE"),
+                          "qqqq": base64.b64encode("\xFE\xFE"),
+                          "nnnn": base64.b64encode("\xEF\xFE")})
+        self.assertEqual(get_resp[1]['item']["other"]["SBM"],
+                         {"rrrr": base64.b64encode("\xFF\xFE"),
+                          "tttt": base64.b64encode("\xFE\xFE")})
+
+    def test_put_item_with_few_attributes_of_type_nsm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "NSM": {1: "rrrr", "234.234": "ttttt", 2: "yyyy"}
+            },
+            "other": {2: "uuuu", "23": "gggg"}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]["item"]["author"]["NSM"],
+                         {"1": "rrrr", "234.234": "ttttt", "2": "yyyy"})
+        self.assertEqual(get_resp[1]['item']["other"]["NSM"],
+                         {"2": "uuuu", "23": "gggg"})
+
+    def test_put_item_with_few_attributes_of_type_nnm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "NNM": {"345": 1, "345.345": "3123.123", 546: 345}
+            },
+            "other": {"NNM": {"45.2": 123, 234: "33.13223"}}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]["item"]["author"]["NNM"],
+                         {"345": '1', "345.345": "3123.123", '546': '345'})
+        self.assertEqual(get_resp[1]['item']["other"]["NNM"],
+                         {"45.2": '123', '234': "33.13223"})
+
+    def test_put_item_with_few_attributes_of_type_nbm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "NBM": {"56": base64.b64encode("\xFF\xFE"),
+                        546: base64.b64encode("\xFE\xFE"),
+                        "456.567": base64.b64encode("\xEF\xFE")}
+            },
+            "other": {"NBM": {"567.567": base64.b64encode("\xFF\xFE"),
+                              546: base64.b64encode("\xFE\xFE")}}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]["item"]["author"]["NBM"],
+                         {"56": base64.b64encode("\xFF\xFE"),
+                          "546": base64.b64encode("\xFE\xFE"),
+                          "456.567": base64.b64encode("\xEF\xFE")})
+        self.assertEqual(get_resp[1]['item']["other"]["NBM"],
+                         {"567.567": base64.b64encode("\xFF\xFE"),
+                          "546": base64.b64encode("\xFE\xFE")})
+
+    def test_put_item_with_few_attributes_of_type_bsm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "BSM": {base64.b64encode("\xAA\xBA"): "rrrr",
+                        base64.b64encode("\xAF\xBA"): "ttttt",
+                        base64.b64encode("\xBA\xFA"): "yyyy"}
+            },
+            "other": {"BSM": {base64.b64encode("\xAF\xFA"): "uuuu",
+                              base64.b64encode("\xAD\xDA"): "gggg"}}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]["item"]["author"]["BSM"],
+                         {base64.b64encode("\xAA\xBA"): "rrrr",
+                          base64.b64encode("\xAF\xBA"): "ttttt",
+                          base64.b64encode("\xBA\xFA"): "yyyy"})
+        self.assertEqual(get_resp[1]['item']["other"]["BSM"],
+                         {base64.b64encode("\xAF\xFA"): "uuuu",
+                          base64.b64encode("\xAD\xDA"): "gggg"})
+
+    def test_put_item_with_few_attributes_of_type_bnm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "BNM": {base64.b64encode("\xBA\xBB"): 1,
+                        base64.b64encode("\xAA\xBF"): "3123.123",
+                        base64.b64encode("\xDA\xBD"): 345}
+            },
+            "other": {"BNM": {base64.b64encode("\xAA\xBA"): 123,
+                              base64.b64encode("\xAA\xBA"): "33.13223"}}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]["item"]["author"]["BNM"],
+                         {base64.b64encode("\xBA\xBB"): "1",
+                          base64.b64encode("\xAA\xBF"): "3123.123",
+                          base64.b64encode("\xDA\xBD"): "345"})
+        self.assertEqual(get_resp[1]['item']["other"]["BNM"],
+                         {base64.b64encode("\xAA\xBA"): "123",
+                          base64.b64encode("\xAA\xBA"): "33.13223"})
+
+    def test_put_item_with_few_attributes_of_type_bbm(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{"attribute_name": "message", "attribute_type": "S"}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": "message"},
+            "author": {
+                "BBM": {
+                    base64.b64encode("\xAF\xFE"): base64.b64encode("\xFF\xFE"),
+                    base64.b64encode("\xDF\xDE"): base64.b64encode("\xFE\xFE"),
+                    base64.b64encode("\xFF\xFD"): base64.b64encode("\xEF\xFE")
+                }
+            },
+            "other": {
+                "BBM": {
+                    base64.b64encode("\xDF\xDE"): base64.b64encode("\xFF\xFE"),
+                    base64.b64encode("\xDF\xDE"): base64.b64encode("\xFE\xFE")
+                }
+            }
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": "message"}},
+                                        consistent_read=True)
+        self.assertEqual(
+            get_resp[1]["item"]["author"]["BBM"],
+            {
+                base64.b64encode("\xAF\xFE"): base64.b64encode("\xFF\xFE"),
+                base64.b64encode("\xDF\xDE"): base64.b64encode("\xFE\xFE"),
+                base64.b64encode("\xFF\xFD"): base64.b64encode("\xEF\xFE")
+            }
+        )
+        self.assertEqual(
+            get_resp[1]['item']["other"]["BBM"],
+            {
+                base64.b64encode("\xDF\xDE"): base64.b64encode("\xFF\xFE"),
+                base64.b64encode("\xDF\xDE"): base64.b64encode("\xFE\xFE")
+            }
+        )
+
     @attr(type='PI-15')
     def test_put_item_with_attributes_of_all_types(self):
         self.table_name = rand_name().replace('-', '')
