@@ -79,11 +79,10 @@ class CreateTableController():
         key_attrs = parser.Parser.parse_key_schema(
             body.get(parser.Props.KEY_SCHEMA, [])
         )
-
         # parse table indexed field list
         indexed_attr_names = parser.Parser.parse_local_secondary_indexes(
-            body.get(
-                parser.Props.LOCAL_SECONDARY_INDEXES, [])
+            body.get(parser.Props.LOCAL_SECONDARY_INDEXES, []),
+            key_attrs[0]
         )
 
         # prepare table_schema structure

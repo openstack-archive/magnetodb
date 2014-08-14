@@ -371,17 +371,24 @@ class Parser():
         return res
 
     @classmethod
-    def parse_local_secondary_index(cls, local_secondary_index_json):
+    def parse_local_secondary_index(cls, local_secondary_index_json,
+                                    primary_hash_key):
         key_attrs_for_projection = cls.parse_key_schema(
             local_secondary_index_json.get(Props.KEY_SCHEMA, {})
         )
+        hash_key = key_attrs_for_projection[0]
+        index_name = local_secondary_index_json[Props.INDEX_NAME]
+        if hash_key != primary_hash_key:
+            msg = _("HASH key '%(hash_key)s' of index '%(index_name)s' "
+                    "does not conside with primary HASH key '%(pr_hash_key)s'")
+            raise ValidationError(msg % {'hash_key': hash_key,
+                                         'index_name': index_name,
+                                         'pr_hash_key': primary_hash_key})
 
         try:
             range_key = key_attrs_for_projection[1]
         except IndexError:
             raise ValidationError("Range key in index wasn't specified")
-
-        index_name = local_secondary_index_json[Props.INDEX_NAME]
 
         projection_type = local_secondary_index_json.get(
             Props.PROJECTION_TYPE, Values.PROJECTION_TYPE_INCLUDE
@@ -428,12 +435,13 @@ class Parser():
         }
 
     @classmethod
-    def parse_local_secondary_indexes(cls, local_secondary_index_list_json):
+    def parse_local_secondary_indexes(cls, local_secondary_index_list_json,
+                                      primary_hash_key):
         res = {}
 
         for index_json in local_secondary_index_list_json:
             index_name, index_def = (
-                cls.parse_local_secondary_index(index_json)
+                cls.parse_local_secondary_index(index_json, primary_hash_key)
             )
             res[index_name] = index_def
 

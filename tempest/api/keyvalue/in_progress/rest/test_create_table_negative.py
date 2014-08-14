@@ -282,30 +282,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                     self.smoke_schema,
                                     request_lsi)
 
-    @test.attr(type=['CreT-70', 'negative'])
-    def test_create_table_index_hash_key_differs_from_table_hash(self):
-        index_attrs = [{'attribute_name': 'attr_name1',
-                        'attribute_type': 'S'},
-                       {'attribute_name': 'attr_name2',
-                        'attribute_type': 'S'}
-                       ]
-        request_lsi = []
-        request_lsi.append(
-            {
-                'index_name': 'index_name',
-                'key_schema': [
-                    {'attribute_name': 'attr_name1', 'key_type': 'HASH'},
-                    {'attribute_name': 'attr_name2', 'key_type': 'RANGE'}
-                ],
-                'projection': {'projection_type': 'ALL'}
-            }
-        )
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + index_attrs,
-                                    self.tname,
-                                    self.smoke_schema,
-                                    request_lsi)
-
     @test.attr(type=['CreT-73', 'negative'])
     def test_create_table_index_schema_only_hash(self):
         request_lsi = []
