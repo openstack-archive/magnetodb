@@ -1279,16 +1279,18 @@ class CassandraStorageDriver(StorageDriver):
             conditions[attr_name] = [models.ExpectedCondition.eq(attr_value)]
         return conditions
 
-    def select_item(self, context, table_name, indexed_condition_map=None,
-                    select_type=None, index_name=None, limit=None,
-                    exclusive_start_key=None, consistent=True,
-                    order_type=None):
+    def select_item(self, context, table_name, hash_key_condition_list,
+                    range_key_to_query_condition_list, select_type,
+                    index_name=None, limit=None, exclusive_start_key=None,
+                    consistent=True, order_type=None):
         """
         :param context: current request context
         :param table_name: String, name of table to get item from
-        :param indexed_condition_map: indexed attribute name to
-                    IndexedCondition instance mapping. It defines rows
-                    set to be selected
+        :param hash_key_condition_list: list of IndexedCondition instances.
+                    Defines conditions for hash key to perform query on
+        :param range_key_to_query_condition_list: list of IndexedCondition
+                    instances. Defines conditions for range key or indexed
+                    attribute to perform query on
         :param select_type: SelectType instance. It defines with attributes
                     will be returned. If not specified, default will be used:
                     SelectType.all() for query on table and
@@ -1308,16 +1310,6 @@ class CassandraStorageDriver(StorageDriver):
         """
 
         table_info = self.__table_info_repo.get(context, table_name)
-
-        assert (
-            not index_name or (
-                table_info.schema.index_def_map and
-                index_name in table_info.schema.index_def_map
-            )
-        ), "index_name '{}' isn't specified in the schema".format(
-            index_name
-        )
-        select_type = select_type or models.SelectType.all()
 
         query_builder = [
             "SELECT ", 'COUNT(*)' if select_type.is_count else '*', ' FROM "',
@@ -1340,22 +1332,13 @@ class CassandraStorageDriver(StorageDriver):
         index_attr_cond_list = []
         range_condition_list = []
 
-        if indexed_condition_map:
-            indexed_condition_map_copy = indexed_condition_map.copy()
-            # Extracting conditions
-            if hash_name in indexed_condition_map_copy:
-                hash_key_cond_list = indexed_condition_map_copy.pop(hash_name)
-
-            if index_name and (
-                    indexed_attr_name in indexed_condition_map_copy):
-                index_attr_cond_list = indexed_condition_map_copy.pop(
-                    indexed_attr_name
-                )
-            if range_name and range_name in indexed_condition_map_copy:
-                range_condition_list = indexed_condition_map_copy.pop(
-                    range_name
-                )
-            assert not indexed_condition_map_copy
+        if hash_key_condition_list is not None:
+            hash_key_cond_list.extend(hash_key_condition_list)
+        if range_key_to_query_condition_list is not None:
+            if index_name is not None:
+                index_attr_cond_list.extend(range_key_to_query_condition_list)
+            else:
+                range_condition_list.extend(range_key_to_query_condition_list)
 
         # processing exclusive_start_key and append conditions
         if exclusive_start_key:
@@ -1500,10 +1483,6 @@ class CassandraStorageDriver(StorageDriver):
                 )
                 prefix = " AND "
 
-        # add limit
-        if limit:
-            query_builder += (" LIMIT ", str(limit))
-
         # add ordering
         if order_type:
             query_builder.append(' ORDER BY ')
@@ -1517,6 +1496,10 @@ class CassandraStorageDriver(StorageDriver):
                 )
             else:
                 assert False
+
+        # add limit
+        if limit:
+            query_builder += (" LIMIT ", str(limit))
 
         if not hash_key_cond_list or (
                 hash_key_cond_list[0].type !=
@@ -1589,8 +1572,8 @@ class CassandraStorageDriver(StorageDriver):
         """
         :param context: current request context
         :param table_name: String, name of table to get item from
-        :param condition_map: indexed attribute name to
-                    IndexedCondition instance mapping. It defines rows
+        :param condition_map: indexed attribute name to list of
+                    ScanCondition instances mapping. It defines rows
                     set to be selected
         :param limit: maximum count of returned values
         :param exclusive_start_key: key attribute names to AttributeValue
@@ -1611,52 +1594,45 @@ class CassandraStorageDriver(StorageDriver):
         except IndexError:
             range_name = None
 
-        key_conditions = {
-            hash_name: []
-        }
-
-        if range_name:
-            key_conditions[range_name] = []
-
-        if hash_name in condition_map:
-            key_conditions[hash_name] = condition_map[hash_name]
-
-            if (range_name and range_name in condition_map
-                and condition_map[range_name].type in
-                    models.IndexedCondition._allowed_types):
-
-                key_conditions[range_name] = condition_map[range_name]
-        if exclusive_start_key:
-            if range_name:
-                key_conditions[hash_name].append(
-                    models.IndexedCondition.eq(exclusive_start_key[hash_name])
-                )
-                key_conditions[range_name].append(
-                    models.IndexedCondition.gt(exclusive_start_key[range_name])
-                )
-            else:
-                key_conditions[hash_name].append(
-                    models.IndexedCondition.gt(exclusive_start_key[hash_name])
-                )
-
-        selected = self.select_item(context, table_name, key_conditions,
-                                    models.SelectType.all(), limit=limit,
-                                    consistent=consistent)
-
-        if (range_name and exclusive_start_key
-                and range_name in exclusive_start_key
-                and (not limit or limit > selected.count)):
-
-            del key_conditions[range_name][-1]
-            del key_conditions[hash_name][-1]
-            key_conditions[hash_name].append(
-                models.IndexedCondition.gt(exclusive_start_key[hash_name])
+        hash_key_condition_list = condition_map.get(hash_name, None)
+        range_key_condition_list = (
+            condition_map.get(range_name, None) if range_name else None
+        )
+        if hash_key_condition_list:
+            iterator = iter(hash_key_condition_list)
+            while iterator.has_next():
+                condition = iterator.next()
+                if not isinstance(condition, models.IndexedCondition):
+                    iterator.remove()
+            hash_key_condition_list = self._compact_indexed_condition(
+                hash_key_condition_list
             )
+        if range_key_condition_list is not None:
+            iterator = iter(range_key_condition_list)
+            while iterator.has_next():
+                condition = iterator.next()
+                if not isinstance(condition, models.IndexedCondition):
+                    iterator.remove()
+
+        selected = self.select_item(
+            context, table_name, hash_key_condition_list,
+            range_key_condition_list, models.SelectType.all(), limit=limit,
+            exclusive_start_key=exclusive_start_key, consistent=consistent
+        )
+
+        if not limit or limit > selected.count:
+            if len(hash_key_condition_list) == 1:
+                hash_key_condition = hash_key_condition_list[0]
+                if (hash_key_condition.type ==
+                        models.IndexedCondition.CONDITION_TYPE_EQUAL):
+                    hash_key_condition_list = [
+                        models.IndexedCondition.gt(hash_key_condition.arg)
+                    ]
 
             limit2 = limit - selected.count if limit else None
 
             selected2 = self.select_item(
-                context, table_name, key_conditions,
+                context, table_name, hash_key_condition_list, None,
                 models.SelectType.all(), limit=limit2,
                 consistent=consistent)
 
