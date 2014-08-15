@@ -182,10 +182,9 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def select_item(self, context, table_name, indexed_condition_map,
-                    select_type=None, index_name=None, limit=None,
-                    exclusive_start_key=None, consistent=True,
-                    order_type=None):
+    def query(self, context, table_name, indexed_condition_map,
+              select_type=None, index_name=None, limit=None,
+              exclusive_start_key=None, consistent=True, order_type=None):
         """
         :param context: current request context
         :param table_name: String, name of table to get item from
@@ -218,7 +217,7 @@ class StorageManager(object):
         :param context: current request context
         :param table_name: String, name of table to get item from
         :param condition_map: attribute name to
-                    IndexedCondition instance mapping. It defines rows
+                    ScanCondition instance mapping. It defines rows
                     set to be selected
         :param attributes_to_get: list of attribute names to be included in
                     result. If None, all attributes will be included
