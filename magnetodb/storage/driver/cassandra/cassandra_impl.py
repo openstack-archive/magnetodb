@@ -174,17 +174,25 @@ def _storage_to_cassandra_type(storage_type):
 
 
 class CassandraStorageDriver(StorageDriver):
-    def __init__(self, cluster_handler, table_info_repo,
-                 default_keyspace_opts):
+    def __init__(self, cluster_handler, default_keyspace_opts):
         self.__cluster_handler = cluster_handler
-        self.__table_info_repo = table_info_repo
         self.__default_keyspace_opts = default_keyspace_opts
 
-    def create_table(self, context, table_name):
-        table_info = self.__table_info_repo.get(context, table_name)
+    def create_table(self, context, table_info):
+        """
+        Create table at the backend side
+
+        :param context: current request context
+        :param table_info: TableInfo instance with table's meta information
+
+        :returns: internal_table_name created
+
+        :raises: BackendInteractionException
+        """
+
         table_schema = table_info.schema
 
-        cas_table_name = USER_PREFIX + table_name
+        cas_table_name = USER_PREFIX + table_info.name
         cas_keyspace = USER_PREFIX + context.tenant
 
         self._create_keyspace_if_not_exists(cas_keyspace)
@@ -252,27 +260,30 @@ class CassandraStorageDriver(StorageDriver):
             expected_exists=True)
         LOG.debug("Waiting for schema agreement... Done")
 
-        table_info.internal_name = cas_table_name
-        self.__table_info_repo.update(
-            context, table_info, ["internal_name"]
-        )
+        return '"{}"."{}"'.format(cas_keyspace, cas_table_name)
 
-    def delete_table(self, context, table_name):
-        table_info = self.__table_info_repo.get(context, table_name)
+    def delete_table(self, context, table_info):
+        """
+        Delete table from the backend side
 
-        cas_table_name = table_info.internal_name
-        cas_keyspace_name = USER_PREFIX + context.tenant
+        :param context: current request context
+        :param table_info: TableInfo instance with table's meta information
 
-        query = 'DROP TABLE "{}"."{}"'.format(cas_keyspace_name,
-                                              cas_table_name)
+        :raises: BackendInteractionException
+        """
+
+        query = 'DROP TABLE ' + table_info.internal_name
 
         self.__cluster_handler.execute_query(query)
 
         LOG.debug("Delete Table CQL request executed. "
                   "Waiting for schema agreement...")
 
+        internal_name_splited = table_info.internal_name.split()
+
         self.__cluster_handler.wait_for_table_status(
-            keyspace_name=cas_keyspace_name, table_name=cas_table_name,
+            keyspace_name=internal_name_splited[0][1, -1],
+            table_name=internal_name_splited[1][1, -1],
             expected_exists=False
         )
 
@@ -328,8 +339,7 @@ class CassandraStorageDriver(StorageDriver):
             query_builder = []
 
         query_builder += (
-            'INSERT INTO "', table_info.internal_keyspace, '"."',
-            table_info.internal_name, '" ('
+            'INSERT INTO ', table_info.internal_name, ' ('
         )
         attr_values = []
         dynamic_attr_names = []
@@ -421,8 +431,7 @@ class CassandraStorageDriver(StorageDriver):
         )
 
         query_builder += (
-            'UPDATE "', table_info.internal_keyspace, '"."',
-            table_info.internal_name, '" SET '
+            'UPDATE ', table_info.internal_name, ' SET '
         )
 
         dynamic_attrs_to_set = []
@@ -603,12 +612,14 @@ class CassandraStorageDriver(StorageDriver):
 
             return result[0]['[applied]']
 
-    def put_item(self, context, put_request, if_not_exist=False,
+    def put_item(self, context, table_info, attribute_map, if_not_exist=False,
                  expected_condition_map=None):
         """
         :param context: current request context
-        :param put_request: contains PutItemRequest items to perform
-                    put item operation
+        :param table_info: TableInfo instance with table's meta information
+        :param attribute_map: attribute name to AttributeValue mapping.
+                    It defines row key and additional attributes to put
+                    item
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
@@ -622,23 +633,19 @@ class CassandraStorageDriver(StorageDriver):
         :raises: BackendInteractionException
         """
 
-        table_info = self.__table_info_repo.get(context,
-                                                put_request.table_name)
-
         if if_not_exist:
             if expected_condition_map:
                 raise exception.BackendInteractionException(
                     "Specifying expected_condition_map and"
                     "if_not_exist is not allowed both"
                 )
-            if self._put_item_if_not_exists(table_info,
-                                            put_request.attribute_map):
+            if self._put_item_if_not_exists(table_info, attribute_map):
                 return True
             raise ConditionalCheckFailedException()
         elif table_info.schema.index_def_map:
             while True:
                 old_indexes = self._select_current_index_values(
-                    table_info, put_request.attribute_map
+                    table_info, attribute_map
                 )
 
                 if old_indexes is None:
@@ -647,13 +654,12 @@ class CassandraStorageDriver(StorageDriver):
                             if (cond.type !=
                                     ExpectedCondition.CONDITION_TYPE_NULL):
                                 raise ConditionalCheckFailedException()
-                    if self._put_item_if_not_exists(table_info,
-                                                    put_request.attribute_map):
+                    if self._put_item_if_not_exists(table_info, attribute_map):
                         return True
                     continue
 
                 query_builder = self._append_update_query(
-                    table_info, put_request.attribute_map,
+                    table_info, attribute_map,
                     expected_condition_map=expected_condition_map, rewrite=True
                 )
 
@@ -675,7 +681,7 @@ class CassandraStorageDriver(StorageDriver):
                 qb_len = len(query_builder)
 
                 self._append_update_indexes_queries(
-                    table_info, old_indexes, put_request.attribute_map,
+                    table_info, old_indexes, attribute_map,
                     query_builder, rewrite=True
                 )
                 if len(query_builder) > qb_len:
@@ -699,7 +705,7 @@ class CassandraStorageDriver(StorageDriver):
                     raise ConditionalCheckFailedException()
         elif expected_condition_map:
             query_builder = self._append_update_query(
-                table_info, put_request.attribute_map,
+                table_info, attribute_map,
                 expected_condition_map=expected_condition_map, rewrite=True
             )
             result = self.__cluster_handler.execute_query(
@@ -710,7 +716,7 @@ class CassandraStorageDriver(StorageDriver):
             raise ConditionalCheckFailedException()
         else:
             query_builder = self._append_insert_query(
-                table_info, put_request.attribute_map
+                table_info, attribute_map
             )
             self.__cluster_handler.execute_query("".join(query_builder),
                                                  consistent=True)
@@ -722,8 +728,7 @@ class CassandraStorageDriver(StorageDriver):
         if query_builder is None:
             query_builder = []
         query_builder += (
-            'DELETE FROM "', table_info.internal_keyspace, '"."',
-            table_info.internal_name, '"'
+            'DELETE FROM ', table_info.internal_name
         )
         cls._append_primary_key(table_info.schema, attribute_map,
                                 query_builder)
@@ -759,8 +764,7 @@ class CassandraStorageDriver(StorageDriver):
             prefix = ","
 
         query_builder += (
-            ' FROM "', table_info.internal_keyspace, '"."',
-            table_info.internal_name, '"'
+            ' FROM ', table_info.internal_name
         )
 
         self._append_primary_key(table_info.schema, attribute_map,
@@ -789,16 +793,17 @@ class CassandraStorageDriver(StorageDriver):
                 )
         return index_values
 
-    def delete_item(self, context, delete_request,
+    def delete_item(self, context, table_info, key_attribute_map,
                     expected_condition_map=None):
         """
         :param context: current request context
-        :param delete_request: contains DeleteItemRequest items to perform
-                    delete item operation
+        :param table_info: TableInfo instance with table's meta information
+        :param key_attribute_map: key attribute name to
+                    AttributeValue mapping. It defines row to be deleted
         :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
-                    preconditions to make decision about should item be deleted
-                    or not
+                    preconditions to make decision about should item be
+                    deleted or not
 
         :returns: True if operation performed, otherwise False (if operation
                     was skipped by out of date timestamp, it is considered as
@@ -807,11 +812,9 @@ class CassandraStorageDriver(StorageDriver):
         :raises: BackendInteractionException
         """
 
-        table_info = self.__table_info_repo.get(context,
-                                                delete_request.table_name)
         delete_query = "".join(
             self._append_delete_query(
-                table_info, delete_request.key_attribute_map,
+                table_info, key_attribute_map,
                 expected_condition_map=expected_condition_map
             )
         )
@@ -819,7 +822,7 @@ class CassandraStorageDriver(StorageDriver):
         if table_info.schema.index_def_map:
             while True:
                 old_indexes = self._select_current_index_values(
-                    table_info, delete_request.key_attribute_map
+                    table_info, key_attribute_map
                 )
 
                 if old_indexes is None:
@@ -847,7 +850,7 @@ class CassandraStorageDriver(StorageDriver):
                 qb_len = len(query_builder)
 
                 self._append_update_indexes_queries(
-                    table_info, old_indexes, delete_request.key_attribute_map,
+                    table_info, old_indexes, key_attribute_map,
                     query_builder
                 )
                 if len(query_builder) > qb_len:
@@ -1080,38 +1083,11 @@ class CassandraStorageDriver(StorageDriver):
     def _get_batch_apply_clause():
         return ' APPLY BATCH'
 
-    def execute_write_batch(self, context, write_request_list):
-        """
-        :param context: current request context
-        :param write_request_list: contains WriteItemBatchableRequest items to
-                    perform batch
-
-        :returns: List of unprocessed items
-
-        :raises: BackendInteractionException
-        """
-
-        assert write_request_list
-        unprocessed_items = []
-        for req in write_request_list:
-            try:
-                if isinstance(req, models.PutItemRequest):
-                    self.put_item(context, req)
-                elif isinstance(req, models.DeleteItemRequest):
-                    self.delete_item(context, req)
-                else:
-                    assert False, 'Wrong WriteItemRequest'
-            except exception.BackendInteractionException:
-                unprocessed_items.append(req)
-                LOG.exception("Can't process WriteItemRequest")
-
-        return unprocessed_items
-
-    def update_item(self, context, table_name, key_attribute_map,
+    def update_item(self, context, table_info, key_attribute_map,
                     attribute_action_map, expected_condition_map={}):
         """
         :param context: current request context
-        :param table_name: String, name of table to delete item from
+        :param table_info: TableInfo instance with table's meta information
         :param key_attribute_map: key attribute name to
             AttributeValue mapping. It defines row it to update item
         :param attribute_action_map: attribute name to UpdateItemAction
@@ -1126,10 +1102,8 @@ class CassandraStorageDriver(StorageDriver):
         """
         attribute_action_map = attribute_action_map or {}
 
-        table_info = self.__table_info_repo.get(context, table_name)
-
         while True:
-            old_item = self._get_item_to_update(context, table_name,
+            old_item = self._get_item_to_update(context, table_info,
                                                 key_attribute_map)
             if not self._conditions_satisfied(old_item,
                                               expected_condition_map):
@@ -1183,15 +1157,23 @@ class CassandraStorageDriver(StorageDriver):
                 raise ConditionalCheckFailedException()
             return (True, old_item)
 
-    def _get_item_to_update(self, context, table_name, key_attribute_map):
-        indexed_condition_map = {
-            name: [models.IndexedCondition.eq(value)]
-            for name, value in key_attribute_map.iteritems()
-        }
+    def _get_item_to_update(self, context, table_info, key_attribute_map):
+        hash_key_value = key_attribute_map.get(
+            table_info.schema.hash_key_name, None
+        )
+        range_key_value = key_attribute_map.get(
+            table_info.schema.range_key_name, None
+        )
+        hash_condition_list = [models.IndexedCondition.eq(hash_key_value)]
+        range_condition_list = None if range_key_value is None else [
+            models.IndexedCondition.eq(range_key_value)
+        ]
 
-        items = self.select_item(context, table_name, indexed_condition_map,
-                                 select_type=models.SelectType.all(),
-                                 consistent=True).items
+        items = self.select_item(
+            context, table_info.name, hash_condition_list,
+            range_condition_list, select_type=models.SelectType.all(),
+            consistent=True
+        ).items
         return items[0] if items else None
 
     def _get_del_attr_value(self, attr_name, attr_value, old_item):
@@ -1279,16 +1261,18 @@ class CassandraStorageDriver(StorageDriver):
             conditions[attr_name] = [models.ExpectedCondition.eq(attr_value)]
         return conditions
 
-    def select_item(self, context, table_name, indexed_condition_map=None,
-                    select_type=None, index_name=None, limit=None,
-                    exclusive_start_key=None, consistent=True,
-                    order_type=None):
+    def select_item(self, context, table_info, hash_key_condition_list,
+                    range_key_to_query_condition_list, select_type,
+                    index_name=None, limit=None, exclusive_start_key=None,
+                    consistent=True, order_type=None):
         """
         :param context: current request context
-        :param table_name: String, name of table to get item from
-        :param indexed_condition_map: indexed attribute name to
-                    IndexedCondition instance mapping. It defines rows
-                    set to be selected
+        :param table_info: TableInfo instance with table's meta information
+        :param hash_key_condition_list: list of IndexedCondition instances.
+                    Defines conditions for hash key to perform query on
+        :param range_key_to_query_condition_list: list of IndexedCondition
+                    instances. Defines conditions for range key or indexed
+                    attribute to perform query on
         :param select_type: SelectType instance. It defines with attributes
                     will be returned. If not specified, default will be used:
                     SelectType.all() for query on table and
@@ -1307,21 +1291,9 @@ class CassandraStorageDriver(StorageDriver):
         :raises: BackendInteractionException
         """
 
-        table_info = self.__table_info_repo.get(context, table_name)
-
-        assert (
-            not index_name or (
-                table_info.schema.index_def_map and
-                index_name in table_info.schema.index_def_map
-            )
-        ), "index_name '{}' isn't specified in the schema".format(
-            index_name
-        )
-        select_type = select_type or models.SelectType.all()
-
         query_builder = [
-            "SELECT ", 'COUNT(*)' if select_type.is_count else '*', ' FROM "',
-            USER_PREFIX, context.tenant, '"."', table_info.internal_name, '"'
+            "SELECT ", 'COUNT(*)' if select_type.is_count else '*', ' FROM ',
+            table_info.internal_name
         ]
 
         hash_name = table_info.schema.key_attributes[0]
@@ -1340,22 +1312,13 @@ class CassandraStorageDriver(StorageDriver):
         index_attr_cond_list = []
         range_condition_list = []
 
-        if indexed_condition_map:
-            indexed_condition_map_copy = indexed_condition_map.copy()
-            # Extracting conditions
-            if hash_name in indexed_condition_map_copy:
-                hash_key_cond_list = indexed_condition_map_copy.pop(hash_name)
-
-            if index_name and (
-                    indexed_attr_name in indexed_condition_map_copy):
-                index_attr_cond_list = indexed_condition_map_copy.pop(
-                    indexed_attr_name
-                )
-            if range_name and range_name in indexed_condition_map_copy:
-                range_condition_list = indexed_condition_map_copy.pop(
-                    range_name
-                )
-            assert not indexed_condition_map_copy
+        if hash_key_condition_list is not None:
+            hash_key_cond_list.extend(hash_key_condition_list)
+        if range_key_to_query_condition_list is not None:
+            if index_name is not None:
+                index_attr_cond_list.extend(range_key_to_query_condition_list)
+            else:
+                range_condition_list.extend(range_key_to_query_condition_list)
 
         # processing exclusive_start_key and append conditions
         if exclusive_start_key:
@@ -1500,10 +1463,6 @@ class CassandraStorageDriver(StorageDriver):
                 )
                 prefix = " AND "
 
-        # add limit
-        if limit:
-            query_builder += (" LIMIT ", str(limit))
-
         # add ordering
         if order_type:
             query_builder.append(' ORDER BY ')
@@ -1517,6 +1476,10 @@ class CassandraStorageDriver(StorageDriver):
                 )
             else:
                 assert False
+
+        # add limit
+        if limit:
+            query_builder += (" LIMIT ", str(limit))
 
         if not hash_key_cond_list or (
                 hash_key_cond_list[0].type !=
@@ -1584,13 +1547,13 @@ class CassandraStorageDriver(StorageDriver):
                                    last_evaluated_key=last_evaluated_key,
                                    count=count)
 
-    def scan(self, context, table_name, condition_map, attributes_to_get=None,
+    def scan(self, context, table_info, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None, consistent=False):
         """
         :param context: current request context
-        :param table_name: String, name of table to get item from
-        :param condition_map: indexed attribute name to
-                    IndexedCondition instance mapping. It defines rows
+        :param table_info: TableInfo instance with table's meta information
+        :param condition_map: indexed attribute name to list of
+                    ScanCondition instances mapping. It defines rows
                     set to be selected
         :param limit: maximum count of returned values
         :param exclusive_start_key: key attribute names to AttributeValue
@@ -1604,61 +1567,49 @@ class CassandraStorageDriver(StorageDriver):
         """
         if not condition_map:
             condition_map = {}
-        table_info = self.__table_info_repo.get(context, table_name)
-        hash_name = table_info.schema.key_attributes[0]
-        try:
-            range_name = table_info.schema.key_attributes[1]
-        except IndexError:
-            range_name = None
 
-        key_conditions = {
-            hash_name: []
-        }
+        hash_name = table_info.schema.hash_key_name
+        range_name = table_info.schema.range_key_name
 
-        if range_name:
-            key_conditions[range_name] = []
+        hash_key_condition_list = condition_map.get(hash_name, None)
+        range_key_condition_list = None
+        if hash_key_condition_list:
+            iterator = iter(hash_key_condition_list)
+            while iterator.has_next():
+                condition = iterator.next()
+                if not isinstance(condition, models.IndexedCondition):
+                    iterator.remove()
+        if hash_key_condition_list:
+            range_key_condition_list = (
+                condition_map.get(range_name, None) if range_name else None
+            )
+            if range_key_condition_list:
+                iterator = iter(range_key_condition_list)
+                while iterator.has_next():
+                    condition = iterator.next()
+                    if not isinstance(condition, models.IndexedCondition):
+                        iterator.remove()
 
-        if hash_name in condition_map:
-            key_conditions[hash_name] = condition_map[hash_name]
+        selected = self.select_item(
+            context, table_info, hash_key_condition_list,
+            range_key_condition_list, models.SelectType.all(), limit=limit,
+            exclusive_start_key=exclusive_start_key, consistent=consistent
+        )
 
-            if (range_name and range_name in condition_map
-                and condition_map[range_name].type in
-                    models.IndexedCondition._allowed_types):
-
-                key_conditions[range_name] = condition_map[range_name]
-        if exclusive_start_key:
-            if range_name:
-                key_conditions[hash_name].append(
-                    models.IndexedCondition.eq(exclusive_start_key[hash_name])
-                )
-                key_conditions[range_name].append(
-                    models.IndexedCondition.gt(exclusive_start_key[range_name])
-                )
-            else:
-                key_conditions[hash_name].append(
-                    models.IndexedCondition.gt(exclusive_start_key[hash_name])
-                )
-
-        selected = self.select_item(context, table_name, key_conditions,
-                                    models.SelectType.all(), limit=limit,
-                                    consistent=consistent)
-
-        if (range_name and exclusive_start_key
-                and range_name in exclusive_start_key
-                and (not limit or limit > selected.count)):
-
-            del key_conditions[range_name][-1]
-            del key_conditions[hash_name][-1]
-            key_conditions[hash_name].append(
+        if ((not limit or limit > selected.count) and
+                exclusive_start_key is not None):
+            if hash_key_condition_list is None:
+                hash_key_condition_list = []
+            hash_key_condition_list.append(
                 models.IndexedCondition.gt(exclusive_start_key[hash_name])
             )
 
             limit2 = limit - selected.count if limit else None
 
             selected2 = self.select_item(
-                context, table_name, key_conditions,
-                models.SelectType.all(), limit=limit2,
-                consistent=consistent)
+                context, table_info, hash_key_condition_list,
+                range_key_condition_list, models.SelectType.all(),
+                limit=limit2, consistent=consistent)
 
             selected = models.SelectResult(
                 items=selected.items + selected2.items,

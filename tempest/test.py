@@ -229,19 +229,18 @@ class BaseTestCase(testtools.TestCase,
         """
         Returns an Openstack client manager
         """
-        cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__)
-
         force_tenant_isolation = getattr(cls, 'force_tenant_isolation', None)
         if (cls.config.compute.allow_tenant_isolation or
                 force_tenant_isolation):
+            cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__,
+                                                              False)
             creds = cls.isolated_creds.get_primary_creds()
             username, tenant_name, password = creds
             os = clients.Manager(username=username,
                                  password=password,
-                                 tenant_name=tenant_name,
-                                 interface=cls._interface)
+                                 tenant_name=tenant_name)
         else:
-            os = clients.Manager(interface=cls._interface)
+            os = clients.Manager()
         return os
 
     @classmethod
