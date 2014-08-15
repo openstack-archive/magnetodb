@@ -16,15 +16,16 @@
 
 class TableInfo(object):
 
-    def __init__(self, name, schema=None, status=None):
+    def __init__(self, name, schema, status, internal_name=None):
         self.name = name
         self.schema = schema
         self.status = status
+        self.internal_name = internal_name
 
 
 class TableInfoRepository(object):
 
-    def get(self, context, table_name):
+    def get(self, context, table_name, fields_to_refresh):
         raise NotImplementedError()
 
     def get_tenant_table_names(self, context, exclusive_start_table_name=None,
@@ -32,9 +33,6 @@ class TableInfoRepository(object):
         raise NotImplementedError()
 
     def update(self, table_info, field_list=None):
-        raise NotImplementedError()
-
-    def refresh(self, table_info, field_list=None):
         raise NotImplementedError()
 
     def save(self, context, table_info):

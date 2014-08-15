@@ -14,6 +14,7 @@
 #    under the License.
 
 import datetime
+from magnetodb.storage.table_info_repo import TableInfoRepository
 import mock
 import time
 
@@ -56,10 +57,13 @@ class TestNotifyStorageManager(TestNotify):
 
         # wait for async create table call to finish
         for i in range(10):
-            if mock_table_info_repo.update.called:
+            if (mock_table_info_repo.update.called and
+                    len(test_notifier.NOTIFICATIONS) == 2):
                 break
             else:
                 time.sleep(1)
+        else:
+            self.fail("Couldn't wait for async request completion")
 
         # create_table method has been called
         self.assertTrue(mock_storage_driver.create_table.called)
@@ -105,11 +109,14 @@ class TestNotifyStorageManager(TestNotify):
 
         # wait for async delete table call to finish
         for i in range(10):
-            if mock_table_info_repo.delete.called:
+            if (mock_table_info_repo.delete.called and
+                    len(test_notifier.NOTIFICATIONS) == 2):
                 # delete_table method of mock_storage_driver has been called
                 break
             else:
                 time.sleep(1)
+        else:
+            self.fail("Couldn't wait for async request completion")
 
         # delete method of mock_table_info_repo has been called
         self.assertTrue(mock_table_info_repo.delete.called)
@@ -140,10 +147,17 @@ class TestNotifyStorageManager(TestNotify):
                         "start event is later than end event")
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'delete_item_async')
+                '_validate_key_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'put_item_async')
-    def test_notify_batch_write(self, mock_put_item, mock_delete_item):
+                '_validate_table_is_active')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_delete_item_async')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_put_item_async')
+    def test_notify_batch_write(self, mock_put_item, mock_delete_item,
+                                mock_repo_get, mock_validate_table_is_active,
+                                mock_validate_key_schema):
         TestNotify.cleanup_test_notifier()
 
         future = Future()
@@ -173,7 +187,7 @@ class TestNotifyStorageManager(TestNotify):
             )
         ]
 
-        storage_manager = SimpleStorageManager(None, None)
+        storage_manager = SimpleStorageManager(None, TableInfoRepository())
         storage_manager.execute_write_batch(context, request_list)
 
         # check notification queue

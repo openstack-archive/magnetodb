@@ -20,6 +20,7 @@ import sys
 from blist import sortedset
 
 from magnetodb.common.exception import ValidationError
+from magnetodb.openstack.common.gettextutils import _
 
 DECIMAL_CONTEXT = decimal.Context(
     prec=38, rounding=None,
@@ -33,7 +34,7 @@ DECIMAL_CONTEXT = decimal.Context(
 class ModelBase(object):
 
     def __repr__(self):
-        return self.to_json()
+        return self.to_json(add_model_meta_info=False)
 
     def __init__(self, **kwargs):
         self.__dict__["_data"] = kwargs
@@ -69,11 +70,12 @@ class ModelBase(object):
     def _get_model_data(self):
         return self._data
 
-    def to_json(self):
+    def to_json(self, add_model_meta_info=True):
         def encode_model(obj):
             if isinstance(obj, ModelBase):
                 data = obj._get_model_data().copy()
-                data["__model__"] = obj.__class__.__name__
+                if add_model_meta_info:
+                    data["__model__"] = obj.__class__.__name__
                 return data
             if hasattr(obj, "__iter__"):
                 return list(obj)
@@ -106,7 +108,7 @@ class AttributeType(ModelBase):
 
     __cache = dict()
 
-    VALIDATION_ERROR_PATTERN = "Attribute type '%(type)s' isn't recognized"
+    VALIDATION_ERROR_PATTERN = _("Attribute type '%(type)s' isn't recognized")
 
     _allowed_primitive_types = set(
         [PRIMITIVE_TYPE_STRING, PRIMITIVE_TYPE_NUMBER, PRIMITIVE_TYPE_BLOB]
@@ -269,8 +271,10 @@ class AttributeValue(ModelBase):
 
         if decoded_value is None:
             raise ValidationError(
-                "Can't recognize attribute value '%(value)s'"
-                "of type '%(type)s'", type=attr_type, value=encoded_value)
+                _("Can't recognize attribute value '%(value)s'"
+                  "of type %(type)s"),
+                type=attr_type, value=json.dumps(encoded_value)
+            )
 
         return decoded_value
 
@@ -365,7 +369,7 @@ class Condition(ModelBase):
                                                                      None)
         if allowed_arg_count is None:
             raise ValidationError(
-                "%(condition_class)s of type['%(type)s'] is not allowed",
+                _("%(condition_class)s of type['%(type)s'] is not allowed"),
                 condition_class=self.__class__.__name__, type=type)
 
         actual_arg_count = len(args) if args is not None else 0
@@ -374,18 +378,18 @@ class Condition(ModelBase):
                 actual_arg_count > allowed_arg_count[1]):
             if allowed_arg_count[0] == allowed_arg_count[1]:
                 raise ValidationError(
-                    "%(condition_class)s of type['%(type)s'] requires exactly "
-                    "%(allowed_arg_count)s arguments, "
-                    "but %(actual_arg_count)s found",
+                    _("%(condition_class)s of type['%(type)s'] requires "
+                      "exactly %(allowed_arg_count)s arguments, "
+                      "but %(actual_arg_count)s found"),
                     condition_class=self.__class__.__name__, type=type,
                     allowed_arg_count=allowed_arg_count[0],
                     actual_arg_count=actual_arg_count
                 )
             else:
                 raise ValidationError(
-                    "%(condition_class)s of type['%(type)s'] requires from "
-                    "%(min_args_allowed)s to %(max_args_allowed)s arguments "
-                    "provided, but %(actual_arg_count)s found",
+                    _("%(condition_class)s of type['%(type)s'] requires from "
+                      "%(min_args_allowed)s to %(max_args_allowed)s arguments "
+                      "provided, but %(actual_arg_count)s found"),
                     condition_class=self.__class__.__name__, type=type,
                     min_args_allowed=allowed_arg_count[0],
                     max_args_allowed=allowed_arg_count[1],
@@ -396,8 +400,8 @@ class Condition(ModelBase):
             for arg in args:
                 if arg.attr_type.collection_type is not None:
                     raise ValidationError(
-                        "%(condition_class)s of type['%(type)s'] allows only "
-                        "primitive arguments",
+                        _("%(condition_class)s of type['%(type)s'] allows "
+                          "only primitive arguments"),
                         condition_class=self.__class__.__name__, type=type
                     )
 
@@ -537,9 +541,20 @@ class SelectType(ModelBase):
                           SELECT_TYPE_SPECIFIC, SELECT_TYPE_COUNT])
 
     def __init__(self, select_type, attributes=None):
-        assert select_type in self._allowed_types, (
-            "Select type '%s' isn't allowed" % select_type
-        )
+        if select_type not in self._allowed_types:
+            raise ValidationError(
+                _("Select type '%(select_type)s' isn't allowed"),
+                select_type=select_type
+            )
+
+        if attributes is not None:
+            if select_type != self.SELECT_TYPE_SPECIFIC:
+                raise ValidationError(
+                    _("Attribute list is only expected with select_type "
+                      "'%(select_type)s'"),
+                    select_type=self.SELECT_TYPE_SPECIFIC
+                )
+
         super(SelectType, self).__init__(type=select_type,
                                          attributes=attributes)
 
@@ -557,7 +572,7 @@ class SelectType(ModelBase):
 
     @classmethod
     def specific_attributes(cls, attributes):
-        return cls(cls.SELECT_TYPE_SPECIFIC, frozenset(attributes))
+        return cls(cls.SELECT_TYPE_SPECIFIC, attributes)
 
     @property
     def is_count(self):
@@ -594,9 +609,6 @@ class DeleteItemRequest(WriteItemBatchableRequest):
         :param table_name: String, name of table to delete item from
         :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row to be deleted
-        :param indexed_condition_map: indexed attribute name to
-                    IndexedCondition instance mapping. It defines rows
-                    set to be removed
         """
         super(DeleteItemRequest, self).__init__(
             table_name, key_attribute_map=key_attribute_map)
@@ -615,16 +627,16 @@ class PutItemRequest(WriteItemBatchableRequest):
 
 
 class GetItemRequest(ModelBase):
-    def __init__(self, table_name, indexed_condition_map, select_type,
-                 consistent):
+    def __init__(self, table_name, key_attribute_map, attributes_to_get,
+                 consistent, encoded_json=None):
         """
         :param table_name: String, name of table to get item from
         :param attribute_map: attribute name to AttributeValue mapping.
         """
         super(GetItemRequest, self).__init__(
             table_name=table_name,
-            indexed_condition_map=indexed_condition_map,
-            select_type=select_type,
+            key_attribute_map=key_attribute_map,
+            attributes_to_get=attributes_to_get,
             consistent=consistent
         )
 
@@ -642,11 +654,52 @@ class UpdateItemAction(ModelBase):
         :param action: one of available action names
         :param value: AttributeValue instance, parameter for action
         """
-        assert action in self._allowed_actions, (
-            "Update action '%s' isn't allowed" % action
-        )
+
+        if action not in self._allowed_actions:
+            raise ValidationError(
+                _("Update action '%(action)s' isn't allowed"),
+                action=action
+            )
 
         super(UpdateItemAction, self).__init__(action=action, value=value)
+
+
+class InsertReturnValuesType(ModelBase):
+    RETURN_VALUES_TYPE_NONE = "NONE"
+    RETURN_VALUES_TYPE_ALL_OLD = "ALL_OLD"
+    RETURN_VALUES_TYPE_UPDATED_OLD = "UPDATED_OLD"
+    RETURN_VALUES_TYPE_ALL_NEW = "ALL_NEW"
+    RETURN_VALUES_TYPE_UPDATED_NEW = "UPDATED_NEW"
+
+    _allowed_types = set(
+        [RETURN_VALUES_TYPE_NONE, RETURN_VALUES_TYPE_ALL_OLD,
+         RETURN_VALUES_TYPE_ALL_NEW]
+    )
+
+    def __init__(self, type):
+        """
+        :param type: one of available return values type
+        """
+        if type not in self._allowed_types:
+            raise ValidationError(
+                _("Return values type '%(type)s' isn't allowed"),
+                type=type
+            )
+
+        super(InsertReturnValuesType, self).__init__(type=type)
+
+
+class UpdateReturnValuesType(InsertReturnValuesType):
+    RETURN_VALUES_TYPE_UPDATED_OLD = "UPDATED_OLD"
+    RETURN_VALUES_TYPE_UPDATED_NEW = "UPDATED_NEW"
+
+    _allowed_types = set(
+        [InsertReturnValuesType.RETURN_VALUES_TYPE_NONE,
+         InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD,
+         InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_NEW,
+         RETURN_VALUES_TYPE_UPDATED_OLD,
+         RETURN_VALUES_TYPE_UPDATED_NEW]
+    )
 
 
 class IndexDefinition(ModelBase):
@@ -717,6 +770,17 @@ class TableSchema(ModelBase):
             attribute_type_map=attribute_type_map,
             key_attributes=key_attributes,
             index_def_map=index_def_map)
+
+    @property
+    def hash_key_name(self):
+        return self.key_attributes[0]
+
+    @property
+    def range_key_name(self):
+        try:
+            return self.key_attributes[1]
+        except IndexError:
+            return None
 
 
 class TableMeta(ModelBase):
