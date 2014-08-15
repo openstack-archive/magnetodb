@@ -1500,10 +1500,6 @@ class CassandraStorageDriver(StorageDriver):
                 )
                 prefix = " AND "
 
-        # add limit
-        if limit:
-            query_builder += (" LIMIT ", str(limit))
-
         # add ordering
         if order_type:
             query_builder.append(' ORDER BY ')
@@ -1517,6 +1513,10 @@ class CassandraStorageDriver(StorageDriver):
                 )
             else:
                 assert False
+
+        # add limit
+        if limit:
+            query_builder += (" LIMIT ", str(limit))
 
         if not hash_key_cond_list or (
                 hash_key_cond_list[0].type !=

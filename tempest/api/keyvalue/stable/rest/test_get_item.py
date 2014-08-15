@@ -352,7 +352,8 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
                                  True)
         exception = raises_cm.exception
         self.assertIn("ValidationError", exception._error_string)
-        self.assertIn("key\' is a required property", exception._error_string)
+        self.assertIn("Required 'key' wasn't found or it's value is null",
+                      exception._error_string)
 
     @attr(type=['GI-34', 'negative'])
     def test_get_item_empty_key_attribute(self):
