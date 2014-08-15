@@ -72,8 +72,12 @@ class ClusterHandler(object):
             self.__cluster.shutdown()
 
     def _is_connected(self):
-        return (self.__cluster is not None and
-                not self.__cluster.control_connection._connection.is_closed)
+        return (
+            self.__cluster is not None and
+            self.__cluster.control_connection is not None and
+            self.__cluster.control_connection._connection is not None and
+            not self.__cluster.control_connection._connection.is_closed
+        )
 
     def _is_closed(self):
         return self.__closed

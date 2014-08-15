@@ -88,7 +88,7 @@ class UpdateItemController(object):
             body.get(parser.Props.ATTRIBUTE_UPDATES, {}))
 
         # parse key
-        key_attributes = parser.Parser.parse_item_attributes(
+        key_attribute_map = parser.Parser.parse_item_attributes(
             body[parser.Props.KEY])
 
         # parse return_values param
@@ -99,7 +99,7 @@ class UpdateItemController(object):
         result, old_item = storage.update_item(
             req.context,
             table_name,
-            key_attribute_map=key_attributes,
+            key_attribute_map=key_attribute_map,
             attribute_action_map=attribute_updates,
             expected_condition_map=expected_item_conditions)
 
