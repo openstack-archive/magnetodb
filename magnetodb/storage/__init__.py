@@ -258,8 +258,7 @@ def execute_get_batch(context, get_request_list):
 
     :returns: tuple of items list and unprocessed request list
     """
-    return __STORAGE_MANAGER_IMPL.execute_get_batch(context,
-                                                    get_request_list)
+    return __STORAGE_MANAGER_IMPL.execute_get_batch(context, get_request_list)
 
 
 def update_item(context, table_name, key_attribute_map,

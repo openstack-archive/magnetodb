@@ -140,10 +140,13 @@ class TestNotifyStorageManager(TestNotify):
                         "start event is later than end event")
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'delete_item_async')
+                '_validate_key_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'put_item_async')
-    def test_notify_batch_write(self, mock_put_item, mock_delete_item):
+                '_delete_item_async')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_put_item_async')
+    def test_notify_batch_write(self, mock_put_item, mock_delete_item,
+                                mock_validate_table_schema):
         TestNotify.cleanup_test_notifier()
 
         future = Future()
