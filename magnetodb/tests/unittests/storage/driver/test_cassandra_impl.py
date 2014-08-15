@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from magnetodb.storage.models import TableSchema
 
 import mock
 import unittest
@@ -24,27 +25,16 @@ class CassandraDriverTestCase(unittest.TestCase):
     """The test for Cassandra driver."""
 
     def get_connection(self, mock_execute, mock_table_schema):
-        table_info = mock.Mock(
-            schema=mock_table_schema,
-            internal_keyspace='user_fake_tenant',
-            internal_name='user_fake_table'
-        )
-
-        table_repo = mock.Mock()
-        table_repo.get = mock.Mock(return_value=table_info)
-
         cluster_handler = mock.Mock()
         cluster_handler.execute_query = mock_execute
 
-        return cassandra_impl.CassandraStorageDriver(cluster_handler,
-                                                     table_repo,
-                                                     {})
+        return cassandra_impl.CassandraStorageDriver(cluster_handler, {})
 
     @mock.patch('magnetodb.storage.driver.cassandra.'
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_delete_no_val(self, mock_select_item):
         mock_execute_query = mock.Mock(return_value=None)
-        mock_table_schema = mock.Mock(
+        mock_table_schema = TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
                                 'range_key': None,
@@ -57,7 +47,10 @@ class CassandraDriverTestCase(unittest.TestCase):
         mock_select_item.return_value = mock.Mock(items=[{'Tags': value}])
 
         context = mock.Mock(tenant='fake_tenant')
-        table_name = 'fake_table'
+        table_info = mock.Mock(
+            schema=mock_table_schema,
+            internal_name='"user_fake_tenant"."user_fake_table"'
+        )
 
         key_attrs = {
             'hash_key': models.AttributeValue('N', 1),
@@ -70,7 +63,7 @@ class CassandraDriverTestCase(unittest.TestCase):
             )
         }
 
-        driver.update_item(context, table_name, key_attrs, attr_actions)
+        driver.update_item(context, table_info, key_attrs, attr_actions)
 
         expected_calls = [
             mock.call('UPDATE "user_fake_tenant"."user_fake_table" SET '
@@ -85,7 +78,7 @@ class CassandraDriverTestCase(unittest.TestCase):
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_delete_set(self, mock_select_item):
         mock_execute_query = mock.Mock(return_value=None)
-        mock_table_schema = mock.Mock(
+        mock_table_schema = TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
                                 'range_key': None,
@@ -98,7 +91,10 @@ class CassandraDriverTestCase(unittest.TestCase):
         mock_select_item.return_value = mock.Mock(items=[{'Tags': value}])
 
         context = mock.Mock(tenant='fake_tenant')
-        table_name = 'fake_table'
+        table_info = mock.Mock(
+            schema=mock_table_schema,
+            internal_name='"user_fake_tenant"."user_fake_table"'
+        )
 
         key_attrs = {
             'hash_key': models.AttributeValue('N', 1),
@@ -111,7 +107,7 @@ class CassandraDriverTestCase(unittest.TestCase):
             )
         }
 
-        driver.update_item(context, table_name, key_attrs, attr_actions)
+        driver.update_item(context, table_info, key_attrs, attr_actions)
 
         expected_calls = [
             mock.call('UPDATE "user_fake_tenant"."user_fake_table" SET '
@@ -126,7 +122,7 @@ class CassandraDriverTestCase(unittest.TestCase):
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_add_number(self, mock_select_item):
         mock_execute_query = mock.Mock(return_value=None)
-        mock_table_schema = mock.Mock(
+        mock_table_schema = TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
                                 'range_key': None,
@@ -143,7 +139,10 @@ class CassandraDriverTestCase(unittest.TestCase):
         mock_select_item.side_effect = values
 
         context = mock.Mock(tenant='fake_tenant')
-        table_name = 'fake_table'
+        table_info = mock.Mock(
+            schema=mock_table_schema,
+            internal_name='"user_fake_tenant"."user_fake_table"'
+        )
 
         key_attrs = {
             'hash_key': models.AttributeValue('N', 1),
@@ -157,7 +156,7 @@ class CassandraDriverTestCase(unittest.TestCase):
         }
 
         for i in range(10):
-            driver.update_item(context, table_name, key_attrs, attr_actions)
+            driver.update_item(context, table_info, key_attrs, attr_actions)
 
         expected_calls = [
             mock.call('UPDATE "user_fake_tenant"."user_fake_table" SET '

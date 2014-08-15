@@ -13,6 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from magnetodb.storage.table_info_repo import TableInfoRepository
 
 import mock
 import unittest
@@ -27,14 +28,24 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
     """The test for simple storage manager implementation."""
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'delete_item_async')
+                '_validate_key_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'put_item_async')
-    def test_execute_write_batch(self, mock_put_item, mock_delete_item):
+                '_validate_table_is_active')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_delete_item_async')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_put_item_async')
+    def test_execute_write_batch(self, mock_put_item, mock_delete_item,
+                                 mock_repo_get, mock_validate_table_is_active,
+                                 mock_validate_key_schema):
         future = Future()
         future.set_result(True)
         mock_put_item.return_value = future
         mock_delete_item.return_value = future
+
+        table_info = mock.Mock()
+        mock_repo_get.return_value = table_info
 
         context = mock.Mock(tenant='fake_tenant')
 
@@ -66,11 +77,35 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
             )
         ]
 
-        expected_put = [mock.call(context, request_list[0]),
-                        mock.call(context, request_list[1]), ]
-        expected_delete = [mock.call(context, request_list[2])]
+        expected_put = [
+            mock.call(
+                context, table_info,
+                {
+                    'id': models.AttributeValue('N', 1),
+                    'range': models.AttributeValue('S', '1'),
+                    'str': models.AttributeValue('S', 'str1')
+                }
+            ),
+            mock.call(
+                context, table_info,
+                {
+                    'id': models.AttributeValue('N', 2),
+                    'range': models.AttributeValue('S', '1'),
+                    'str': models.AttributeValue('S', 'str1')
+                }
+            ),
+        ]
+        expected_delete = [
+            mock.call(
+                context, table_info,
+                {
+                    'id': models.AttributeValue('N', 3),
+                    'range': models.AttributeValue('S', '3')
+                }
+            )
+        ]
 
-        storage_manager = SimpleStorageManager(None, None)
+        storage_manager = SimpleStorageManager(None, TableInfoRepository())
 
         unprocessed_items = storage_manager.execute_write_batch(
             context, request_list
@@ -83,17 +118,23 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         self.assertEqual(unprocessed_items, [])
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'select_item_async')
-    def test_execute_get_batch(self, mock_select_item):
+                '_validate_key_schema')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_validate_table_is_active')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_get_item_async')
+    def test_execute_get_batch(self, mock_get_item, mock_repo_get,
+                               mock_validate_table_is_active,
+                               mock_validate_key_schema):
         future = Future()
         future.set_result(True)
-        mock_select_item.return_value = future
+        mock_get_item.return_value = future
 
         context = mock.Mock(tenant='fake_tenant')
 
         table_name = 'fake_table'
 
-        select_type = models.SelectType.all()
         request_list = [
             models.GetItemRequest(
                 table_name,
@@ -101,7 +142,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                     'id': models.AttributeValue('N', 1),
                     'str': models.AttributeValue('S', 'str1'),
                 },
-                select_type,
+                None,
                 True
             ),
             models.GetItemRequest(
@@ -110,20 +151,20 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                     'id': models.AttributeValue('N', 1),
                     'str': models.AttributeValue('S', 'str2'),
                 },
-                select_type,
+                None,
                 True
             )
         ]
 
-        expected_select = [mock.call(context, req.table_name,
-                                     req.indexed_condition_map,
-                                     req.select_type, req.consistent)
-                           for req in request_list]
+        expected_get = [mock.call(context, req.table_name,
+                                  req.key_attribute_map,
+                                  req.attributes_to_get, req.consistent)
+                        for req in request_list]
 
-        storage_manager = SimpleStorageManager(None, None)
+        storage_manager = SimpleStorageManager(None, TableInfoRepository())
 
         result, unprocessed_items = storage_manager.execute_get_batch(
             context, request_list
         )
-        mock_select_item.has_calls(expected_select)
+        mock_get_item.has_calls(expected_get)
         self.assertEqual(unprocessed_items, [])
