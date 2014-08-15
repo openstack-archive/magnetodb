@@ -50,16 +50,14 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
 
         future = self._execute_async(self._storage_driver.create_table,
                                      context=context,
-                                     table_name=table_name)
+                                     table_info=table_info)
 
         def callback(future):
             if not future.exception():
-                latest_table_info = (
-                    TableInfo(table_name,
-                              table_schema,
-                              models.TableMeta.TABLE_STATUS_ACTIVE))
+                table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
+                table_info.internal_name = future.result()
                 self._table_info_repo.update(
-                    context, latest_table_info, ["status"]
+                    context, table_info, ["status", "internal_name"]
                 )
                 notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_END,
                                 table_schema)

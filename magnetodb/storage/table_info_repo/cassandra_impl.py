@@ -15,14 +15,17 @@
 #    under the License.
 
 import collections
+from copy import copy
+
 from threading import Lock
 
 from magnetodb.common import exception
 from magnetodb.storage import models
 from magnetodb.storage.table_info_repo import TableInfo
+from magnetodb.storage.table_info_repo import TableInfoRepository
 
 
-class CassandraTableInfoRepository(object):
+class CassandraTableInfoRepository(TableInfoRepository):
     SYSTEM_TABLE_TABLE_INFO = 'magnetodb.table_info'
     __field_list = ("schema", "internal_name", "status")
     __creating_to_active_field_list_to_update = ("internal_name", "status")
@@ -33,24 +36,19 @@ class CassandraTableInfoRepository(object):
             tenant_tables_cache = {}
             self.__table_info_cache[context.tenant] = tenant_tables_cache
 
-        # TODO(dukhlov):
-        # It is temporary solution to set internal_keyspace
-        # In future keyspace should be saved in metadata too
-        from magnetodb.storage.driver.cassandra import cassandra_impl
-
-        table_info.internal_keyspace = (
-            cassandra_impl.USER_PREFIX + context.tenant
-        )
-
         tenant_tables_cache[table_info.name] = table_info
 
     def _get_table_info_from_cache(self, context, table_name):
         tenant_tables_cache = self.__table_info_cache.get(context.tenant)
         if tenant_tables_cache is None:
             return None
-        return tenant_tables_cache.get(table_name)
+        table_info_cached = tenant_tables_cache.get(table_name)
+        if table_info_cached is None:
+            return table_info_cached
 
-    def _remove_table_schema_from_cache(self, context, table_name):
+        return copy(table_info_cached)
+
+    def _remove_table_info_from_cache(self, context, table_name):
         tenant_tables_cache = self.__table_info_cache.get(context.tenant)
         if tenant_tables_cache is None:
             return None
@@ -69,8 +67,8 @@ class CassandraTableInfoRepository(object):
                 table_info = self._get_table_info_from_cache(context,
                                                              table_name)
                 if table_info is None:
-                    table_info = TableInfo(table_name)
-                    self.refresh(context, table_info)
+                    table_info = TableInfo(table_name, None, None)
+                    self.__refresh(context, table_info)
                     self._save_table_info_to_cache(context, table_info)
                     return table_info
 
@@ -80,7 +78,7 @@ class CassandraTableInfoRepository(object):
                 self.__creating_to_active_field_list_to_update
             )
         if fields_to_refresh:
-            self.refresh(context, table_info, fields_to_refresh)
+            self.__refresh(context, table_info, fields_to_refresh)
 
         return table_info
 
@@ -107,7 +105,7 @@ class CassandraTableInfoRepository(object):
 
         return [row['name'] for row in tables]
 
-    def refresh(self, context, table_info, field_list=__field_list):
+    def __refresh(self, context, table_info, field_list=__field_list):
         query_builder = collections.deque()
         query_builder.append("SELECT ")
         query_builder.append(",".join(map('"{}"'.format, field_list)))
@@ -124,7 +122,7 @@ class CassandraTableInfoRepository(object):
         )
 
         if not result:
-            self._remove_table_schema_from_cache(context, table_info.name)
+            self._remove_table_info_from_cache(context, table_info.name)
             raise exception.TableNotExistsException(
                 "Table '{}' does not exist".format(table_info.name)
             )
@@ -166,6 +164,7 @@ class CassandraTableInfoRepository(object):
             raise exception.TableNotExistsException(
                 "Table {} is not exists".format(table_info.name)
             )
+        self._remove_table_info_from_cache(table_info.name)
         return True
 
     def save(self, context, table_info):
@@ -209,7 +208,7 @@ class CassandraTableInfoRepository(object):
                 "Table {} already exists".format(table_info.name)
             )
 
-        self._save_table_info_to_cache(context, table_info)
+        self._save_table_info_to_cache(context, copy(table_info))
         return True
 
     def delete(self, context, table_name):
@@ -220,5 +219,5 @@ class CassandraTableInfoRepository(object):
             )
         )
         self.__cluster_handler.execute_query(query, consistent=True)
-
+        self._remove_table_info_from_cache()
         return True
