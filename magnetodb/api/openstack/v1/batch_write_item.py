@@ -14,13 +14,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import collections
-import jsonschema
-
 from magnetodb import storage
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.api import validation
 
 
 class BatchWriteItemController(object):
@@ -28,79 +26,22 @@ class BatchWriteItemController(object):
     multiple items in one or more tables.
     """
 
-    REQUEST_DELETE_SCEMA = {
-        "type": "object",
-        "required": [parser.Props.REQUEST_DELETE],
-        "properties": {
-            parser.Props.REQUEST_DELETE: {
-                "type": "object",
-                "required": [parser.Props.KEY],
-                "properties": {
-                    parser.Props.KEY: {
-                        "type": "object",
-                        "patternProperties": {
-                            parser.ATTRIBUTE_NAME_PATTERN:
-                                parser.Types.TYPED_ATTRIBUTE_VALUE
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    REQUEST_PUT_SCEMA = {
-        "type": "object",
-        "required": [parser.Props.REQUEST_PUT],
-        "properties": {
-            parser.Props.REQUEST_PUT: {
-                "type": "object",
-                "required": [parser.Props.ITEM],
-                "properties": {
-                    parser.Props.ITEM: {
-                        "type": "object",
-                        "patternProperties": {
-                            parser.ATTRIBUTE_NAME_PATTERN:
-                                parser.Types.TYPED_ATTRIBUTE_VALUE
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    schema = {
-        "required": [parser.Props.REQUEST_ITEMS],
-        "properties": {
-            parser.Props.REQUEST_ITEMS: {
-                "type": "object",
-                "patternProperties": {
-                    parser.TABLE_NAME_PATTERN: {
-                        "type": "array",
-                        "items": {
-                            "oneOf": [
-                                REQUEST_DELETE_SCEMA,
-                                REQUEST_PUT_SCEMA
-                            ]
-                        }
-                    }
-                }
-            },
-        }
-    }
-
     def process_request(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
-
-        # parse request_items
-        request_items = parser.Parser.parse_request_items(
-            body[parser.Props.REQUEST_ITEMS])
-
         req.context.tenant = project_id
 
-        request_list = collections.deque()
-        for rq_item in request_items:
-            request_list.append(rq_item)
+        validation.validate_object(body, "body")
+
+        request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
+        validation.validate_object(request_items_json,
+                                   parser.Props.REQUEST_ITEMS)
+
+        validation.validate_unexpected_props(body, "body")
+
+        # parse request_items
+        request_list = parser.Parser.parse_batch_write_request_items(
+            request_items_json
+        )
 
         unprocessed_items = storage.execute_write_batch(
             req.context, request_list)

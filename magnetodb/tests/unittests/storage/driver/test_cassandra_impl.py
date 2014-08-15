@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from magnetodb.storage.models import TableSchema
 
 import mock
 import unittest
@@ -44,7 +45,7 @@ class CassandraDriverTestCase(unittest.TestCase):
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_delete_no_val(self, mock_select_item):
         mock_execute_query = mock.Mock(return_value=None)
-        mock_table_schema = mock.Mock(
+        mock_table_schema = TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
                                 'range_key': None,
@@ -85,7 +86,7 @@ class CassandraDriverTestCase(unittest.TestCase):
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_delete_set(self, mock_select_item):
         mock_execute_query = mock.Mock(return_value=None)
-        mock_table_schema = mock.Mock(
+        mock_table_schema = TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
                                 'range_key': None,
@@ -126,7 +127,7 @@ class CassandraDriverTestCase(unittest.TestCase):
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_add_number(self, mock_select_item):
         mock_execute_query = mock.Mock(return_value=None)
-        mock_table_schema = mock.Mock(
+        mock_table_schema = TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
                                 'range_key': None,
