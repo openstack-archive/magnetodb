@@ -250,16 +250,16 @@ def execute_write_batch(context, write_request_list):
                                                       write_request_list)
 
 
-def execute_get_batch(context, get_request_list):
+def execute_select_batch(context, select_request_list):
     """
     :param context: current request context
-    :param get_request_list: contains get requests instances to execute
-                             batch operation
+    :param select_request_list: contains get requests instances to execute
+                                batch operation
 
     :returns: tuple of items list and unprocessed request list
     """
-    return __STORAGE_MANAGER_IMPL.execute_get_batch(context,
-                                                    get_request_list)
+    return __STORAGE_MANAGER_IMPL.execute_select_batch(context,
+                                                       select_request_list)
 
 
 def update_item(context, table_name, key_attribute_map,

@@ -270,7 +270,9 @@ class AttributeValue(ModelBase):
         if decoded_value is None:
             raise ValidationError(
                 "Can't recognize attribute value '%(value)s'"
-                "of type '%(type)s'", type=attr_type, value=encoded_value)
+                "of type %(type)s",
+                type=attr_type, value=json.dumps(encoded_value)
+            )
 
         return decoded_value
 
@@ -537,9 +539,23 @@ class SelectType(ModelBase):
                           SELECT_TYPE_SPECIFIC, SELECT_TYPE_COUNT])
 
     def __init__(self, select_type, attributes=None):
-        assert select_type in self._allowed_types, (
-            "Select type '%s' isn't allowed" % select_type
-        )
+        if select_type not in self._allowed_types:
+            raise ValidationError(
+                "Select type '%(select_type)s' isn't allowed",
+                select_type=select_type
+            )
+
+        if attributes is not None:
+            if select_type != self.SELECT_TYPE_SPECIFIC:
+                raise ValidationError(
+                    "Attribute list is only expected with select_type "
+                    "'%(select_type)s'",
+                    select_type=self.SELECT_TYPE_SPECIFIC
+                )
+
+            if not isinstance(attributes, (set, frozenset, sortedset)):
+                attributes = frozenset(attributes)
+
         super(SelectType, self).__init__(type=select_type,
                                          attributes=attributes)
 
@@ -557,7 +573,7 @@ class SelectType(ModelBase):
 
     @classmethod
     def specific_attributes(cls, attributes):
-        return cls(cls.SELECT_TYPE_SPECIFIC, frozenset(attributes))
+        return cls(cls.SELECT_TYPE_SPECIFIC, attributes)
 
     @property
     def is_count(self):
@@ -614,14 +630,14 @@ class PutItemRequest(WriteItemBatchableRequest):
             table_name, attribute_map=attribute_map)
 
 
-class GetItemRequest(ModelBase):
+class SelectItemRequest(ModelBase):
     def __init__(self, table_name, indexed_condition_map, select_type,
                  consistent):
         """
         :param table_name: String, name of table to get item from
         :param attribute_map: attribute name to AttributeValue mapping.
         """
-        super(GetItemRequest, self).__init__(
+        super(SelectItemRequest, self).__init__(
             table_name=table_name,
             indexed_condition_map=indexed_condition_map,
             select_type=select_type,

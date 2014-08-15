@@ -277,7 +277,7 @@ class SimpleStorageManager(StorageManager):
 
         return unprocessed_items
 
-    def execute_get_batch(self, context, read_request_list):
+    def execute_select_batch(self, context, read_request_list):
         assert read_request_list
 
         items = []
