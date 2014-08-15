@@ -14,13 +14,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from copy import deepcopy
+
 import mock
 import time
 import unittest
 
 from magnetodb.storage import models
-from magnetodb.storage.manager.async_simple_impl import \
+from magnetodb.storage.manager.async_simple_impl import (
     AsyncSimpleStorageManager
+)
 
 
 class AsyncStorageManagerTestCase(unittest.TestCase):
@@ -33,27 +36,29 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
         table_schema = 'fake_table_schema'
 
         mock_storage_driver = mock.Mock()
-        mock_storage_driver.create_table.return_value = True
+        mock_storage_driver.create_table.return_value = "fake_internal_name"
+
+        table_info_save_args_list = []
+
+        def side_effect(*args):
+            table_info_save_args_list.append(deepcopy(args))
+
+        mock_table_info_repo.save.side_effect = side_effect
 
         storage_manager = AsyncSimpleStorageManager(mock_storage_driver,
                                                     mock_table_info_repo)
         storage_manager.create_table(context, table_name, table_schema)
 
-        table_info_save_args_list = mock_table_info_repo.save.call_args_list
-
         # called once, length of call_args_list indicates number of calls
         self.assertEqual(1, len(table_info_save_args_list))
 
-        # call object contains a tuple of Mock and param, and a dict
-        self.assertEqual(2, len(table_info_save_args_list[0]))
-
         # CallList is tuple of Mock and TableInfo
-        self.assertEqual(2, len(table_info_save_args_list[0][0]))
+        self.assertEqual(2, len(table_info_save_args_list[0]))
 
         # TableInfo status should be creating initially when
         # table_info_repo.save is called
         self.assertEquals(models.TableMeta.TABLE_STATUS_CREATING,
-                          table_info_save_args_list[0][0][1].status)
+                          table_info_save_args_list[0][1].status)
 
         # wait for async create table call to finish
         for i in range(10):
