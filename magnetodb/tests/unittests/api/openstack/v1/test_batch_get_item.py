@@ -22,8 +22,9 @@ from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 class BatchGetItemTestCase(test_base_testcase.APITestCase):
     """The test for batch_get_item method for v1 ReST API."""
 
-    @mock.patch('magnetodb.storage.execute_get_batch', return_value=([], []))
-    def test_batch_get_item(self, mock_execute_get_batch):
+    @mock.patch('magnetodb.storage.execute_select_batch',
+                return_value=([], []))
+    def test_batch_get_item(self, mock_execute_select_batch):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
@@ -66,7 +67,7 @@ class BatchGetItemTestCase(test_base_testcase.APITestCase):
         json_response = response.read()
         response_payload = json.loads(json_response)
 
-        self.assertTrue(mock_execute_get_batch.called)
+        self.assertTrue(mock_execute_select_batch.called)
         expected = {'responses': {}, 'unprocessed_keys': {}}
         self.assertEqual(expected, response_payload)
 
@@ -87,7 +88,10 @@ class BatchGetItemTestCase(test_base_testcase.APITestCase):
 
         self.assertEqual(400, response.status)
 
-        expected_message = "'request_items' is a required property"
+        expected_message = (
+            "Required property 'request_items' wasn't found or "
+            "it's value is null"
+        )
         expected_type = 'ValidationError'
 
         self.assertEqual(expected_message,

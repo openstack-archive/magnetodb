@@ -60,8 +60,7 @@ class UpdateItemTestCase(test_base_testcase.APITestCase):
                 },
                 "expected": {
                     "LastPostedBy": {
-                        "comparison_operator": "EQ",
-                        "attribute_value_list": [ { "S": "fred@example.com"} ]
+                        "value": { "S": "fred@example.com"}
                     }
                 }
             }
