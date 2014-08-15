@@ -31,6 +31,7 @@ class IsolatedCreds(object):
         self.ports = []
         self.name = name
         self.config = config.TempestConfig()
+
         self.tempest_client = tempest_client
         self.interface = interface
         self.password = password
