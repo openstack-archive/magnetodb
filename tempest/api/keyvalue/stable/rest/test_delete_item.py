@@ -96,15 +96,9 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
                          {'S': 'message_text'})
         self.assertEqual(get_resp[1]['item']['messageId'],
                          {'S': '1'})
-        delete_resp = self.client.delete_item(self.table_name,
-                                              {"message":
-                                               {"S": 'message_text'},
-                                               "messageId": {"S": '1'},
-                                               "subject":
-                                               {"S": 'testSubject'},
-                                               "dateTime":
-                                               {"N": '20140313164951'}}
-                                              )
+        delete_resp = self.client.delete_item(
+            self.table_name, {"message": {"S": 'message_text'},
+                              "messageId": {"S": '1'}})
         self.assertEqual(delete_resp[1], {})
         get_resp = self.client.get_item(self.table_name,
                                         {"message": {"S": 'message_text'},
