@@ -84,7 +84,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 'select_item_async')
-    def test_execute_get_batch(self, mock_select_item):
+    def test_execute_select_batch(self, mock_select_item):
         future = Future()
         future.set_result(True)
         mock_select_item.return_value = future
@@ -95,7 +95,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         select_type = models.SelectType.all()
         request_list = [
-            models.GetItemRequest(
+            models.SelectItemRequest(
                 table_name,
                 {
                     'id': models.AttributeValue('N', 1),
@@ -104,7 +104,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                 select_type,
                 True
             ),
-            models.GetItemRequest(
+            models.SelectItemRequest(
                 table_name,
                 {
                     'id': models.AttributeValue('N', 1),
@@ -122,7 +122,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         storage_manager = SimpleStorageManager(None, None)
 
-        result, unprocessed_items = storage_manager.execute_get_batch(
+        result, unprocessed_items = storage_manager.execute_select_batch(
             context, request_list
         )
         mock_select_item.has_calls(expected_select)

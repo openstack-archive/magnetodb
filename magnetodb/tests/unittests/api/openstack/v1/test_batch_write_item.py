@@ -97,7 +97,10 @@ class BatchWriteItemTestCase(test_base_testcase.APITestCase):
 
         self.assertEqual(400, response.status)
 
-        expected_message = "'request_items' is a required property"
+        expected_message = (
+            "Required property 'request_items' wasn't found or "
+            "it's value is 'null'"
+        )
         expected_type = 'ValidationError'
 
         self.assertEqual(expected_message,
