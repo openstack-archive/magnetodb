@@ -24,7 +24,7 @@ class TableInfo(object):
 
 class TableInfoRepository(object):
 
-    def get(self, context, table_name):
+    def get(self, context, table_name, fields_to_refresh):
         raise NotImplementedError()
 
     def get_tenant_table_names(self, context, exclusive_start_table_name=None,
