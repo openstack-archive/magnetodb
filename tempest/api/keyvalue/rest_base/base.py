@@ -33,9 +33,10 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
     @classmethod
     def setUpClass(cls):
         super(MagnetoDBTestCase, cls).setUpClass()
-        cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__, False)
 
         if cls.config.compute.allow_tenant_isolation and cls.tenant_isolation:
+            cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__,
+                                                              True)
             creds = cls.isolated_creds.get_primary_creds()
             username, tenant_name, password = creds
             cls.os = tempest.clients.Manager(username=username,
@@ -103,7 +104,8 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
             finally:
                 del cls._resource_trash_bin[key]
 
-        cls.isolated_creds.clear_isolated_creds()
+        if cls.config.compute.allow_tenant_isolation and cls.tenant_isolation:
+            cls.isolated_creds.clear_isolated_creds()
 
         super(MagnetoDBTestCase, cls).tearDownClass()
         if fail_count:
