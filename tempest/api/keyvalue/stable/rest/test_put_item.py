@@ -92,7 +92,6 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         }
         expected = {
             "author": {
-                "exists": "true",
                 "value": {"S": "Bob"}
             }
         }
@@ -127,7 +126,6 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         }
         expected = {
             "author": {
-                "exists": "true",
                 "value": {"S": "Bob"}
             }
         }
@@ -640,8 +638,7 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         }
         expected = {
             "author": {
-                "exists": "true",
-                "value": {"S": "Bob"}
+                "exists": True,
             }
         }
         put_resp = self.client.put_item(self.table_name, item)
@@ -905,8 +902,8 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             self.client.put_item(self.table_name, item)
 
         exception_str = str(raises_cm.exception)
-        self.assertIn("u'message': u\"Can't recognize attribute format "
-                      "['{}']\"",
+        self.assertIn("u'message': u\"Can't recognize attribute typed value "
+                      "format: '{}'\"",
                       exception_str)
         self.assertIn("u'type': u'ValidationError'", exception_str)
 

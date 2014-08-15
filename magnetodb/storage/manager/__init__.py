@@ -152,7 +152,7 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def execute_get_batch(self, context, get_request_list):
+    def execute_select_batch(self, context, get_request_list):
         """
         :param context: current request context
         :param get_request_list: contains GetItemRequest instances to execute

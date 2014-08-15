@@ -14,9 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import jsonschema
-
 from magnetodb import storage
+from magnetodb.api import validation
 from magnetodb.openstack.common.log import logging
 from magnetodb.storage import models
 
@@ -30,84 +29,44 @@ LOG = logging.getLogger(__name__)
 class QueryController(object):
     """ Query for an items by primary or index key. """
 
-    schema = {
-        "required": [parser.Props.KEY_CONDITIONS],
-        "properties": {
-            parser.Props.ATTRIBUTES_TO_GET: {
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "pattern": parser.ATTRIBUTE_NAME_PATTERN
-                }
-            },
-
-            parser.Props.CONSISTENT_READ: {
-                "type": "boolean"
-            },
-
-            parser.Props.EXCLUSIVE_START_KEY: parser.Types.ITEM,
-
-            parser.Props.INDEX_NAME: {
-                "type": "string",
-                "pattern": parser.INDEX_NAME_PATTERN
-            },
-
-            parser.Props.KEY_CONDITIONS: {
-                "type": "object",
-                "minProperties": 1,
-                "maxProperties": 2,
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: {
-                        "type": "object",
-                        "properties": {
-                            parser.Props.ATTRIBUTE_VALUE_LIST: {
-                                "type": "array",
-                                "items": parser.Types.TYPED_ATTRIBUTE_VALUE
-                            },
-                            parser.Props.COMPARISON_OPERATOR: (
-                                parser.Types.QUERY_OPERATOR
-                            )
-                        }
-                    }
-                }
-            },
-
-            parser.Props.LIMIT: {
-                "type": "number"
-            },
-
-            parser.Props.SCAN_INDEX_FORWARD: {
-                "type": "boolean"
-            },
-
-            parser.Props.SELECT: parser.Types.SELECT
-        }
-    }
-
     def query(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
         req.context.tenant = project_id
 
-        # parse select_type
-        attributes_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
+        validation.validate_object(body, "request body")
 
-        if attributes_to_get is not None:
-            attributes_to_get = frozenset(attributes_to_get)
+        # get attributes_to_get
+        attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
+        if attributes_to_get:
+            validation.validate_list(attributes_to_get,
+                                     parser.Props.ATTRIBUTES_TO_GET)
+            for attr_name in attributes_to_get:
+                validation.validate_attr_name(attr_name)
 
-        select = body.get(parser.Props.SELECT)
+        index_name = body.pop(parser.Props.INDEX_NAME, None)
+        if index_name is not None:
+            validation.validate_string(index_name, parser.Props.INDEX_NAME)
 
-        index_name = body.get(parser.Props.INDEX_NAME)
+        select = body.pop(parser.Props.SELECT, None)
 
-        select_type = parser.Parser.parse_select_type(select,
-                                                      attributes_to_get,
-                                                      index_name)
+        if select is None:
+            if attributes_to_get:
+                select = models.SelectType.SELECT_TYPE_SPECIFIC
+            else:
+                if index_name is not None:
+                    select = models.SelectType.SELECT_TYPE_ALL_PROJECTED
+                else:
+                    select = models.SelectType.SELECT_TYPE_ALL
+
+        select_type = models.SelectType(select, attributes_to_get)
 
         # parse exclusive_start_key_attributes
-        exclusive_start_key_attributes = body.get(
-            parser.Props.EXCLUSIVE_START_KEY)
+        exclusive_start_key_attributes = body.pop(
+            parser.Props.EXCLUSIVE_START_KEY, None)
 
         if exclusive_start_key_attributes is not None:
+            validation.validate_object(exclusive_start_key_attributes,
+                                       parser.Props.EXCLUSIVE_START_KEY)
             exclusive_start_key_attributes = (
                 parser.Parser.parse_item_attributes(
                     exclusive_start_key_attributes
@@ -115,28 +74,37 @@ class QueryController(object):
             )
 
         # parse indexed_condition_map
+        key_conditions = body.pop(parser.Props.KEY_CONDITIONS, None)
+        validation.validate_object(key_conditions, parser.Props.KEY_CONDITIONS)
+
         indexed_condition_map = parser.Parser.parse_attribute_conditions(
-            body.get(parser.Props.KEY_CONDITIONS),
-            condition_class=IndexedCondition
+            key_conditions, condition_class=IndexedCondition
         )
 
         # TODO(dukhlov):
         # it would be nice to validate given table_name, key_attributes and
         # attributes_to_get to schema expectation
 
-        consistent_read = body.get(
-            parser.Props.CONSISTENT_READ, False)
+        consistent_read = body.pop(parser.Props.CONSISTENT_READ, False)
+        validation.validate_boolean(consistent_read,
+                                    parser.Props.CONSISTENT_READ)
+        limit = body.pop(parser.Props.LIMIT, None)
+        if limit is not None:
+            validation.validate_integer(limit, parser.Props.LIMIT)
 
-        limit = body.get(parser.Props.LIMIT)
+        scan_forward = body.pop(parser.Props.SCAN_INDEX_FORWARD, None)
 
-        order_asc = body.get(parser.Props.SCAN_INDEX_FORWARD)
-
-        if order_asc is None:
-            order_type = None
-        elif order_asc:
-            order_type = models.ORDER_TYPE_ASC
+        if scan_forward is not None:
+            validation.validate_boolean(scan_forward,
+                                        parser.Props.SCAN_INDEX_FORWARD)
+            order_type = (
+                models.ORDER_TYPE_ASC if scan_forward else
+                models.ORDER_TYPE_DESC
+            )
         else:
-            order_type = models.ORDER_TYPE_DESC
+            order_type = None
+
+        validation.validate_unexpected_props(body, "request body")
 
         # select item
         result = storage.select_item(
