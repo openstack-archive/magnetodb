@@ -31,7 +31,12 @@ class IsolatedCreds(object):
         self.ports = []
         self.name = name
         self.config = config.TempestConfig()
-        self.tempest_client = tempest_client
+
+        # TODO(dukhlov):
+        # Enforsing tempest_client to 'False' because current tempest code
+        # doesn't support tempest client
+        # self.tempest_client = tempest_client
+        self.tempest_client = False
         self.interface = interface
         self.password = password
         self.identity_admin_client = self._get_official_admin_clients()
