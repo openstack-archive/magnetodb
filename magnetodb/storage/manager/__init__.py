@@ -87,25 +87,6 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def put_item_async(self, context, put_request, if_not_exist=False,
-                       expected_condition_map=None):
-        """
-        :param context: current request context
-        :param put_request: PutItemRequest instance which specifies item to put
-        :param if_not_exist: put item only is row is new record (It is possible
-                    to use only one of if_not_exist and expected_condition_map
-                    parameter)
-        :param expected_condition_map: expected attribute name to
-                    ExpectedCondition instance mapping. It provides
-                    preconditions to make decision about should item be put or
-                    not
-
-        :returns: Future instance
-
-        :raises: BackendInteractionException
-        """
-        raise NotImplementedError()
-
     def delete_item(self, context, delete_request,
                     expected_condition_map=None):
         """
@@ -120,23 +101,6 @@ class StorageManager(object):
         :returns: True if operation performed, otherwise False (if operation
                     was skipped by out of date timestamp, it is considered as
                     successfully performed)
-
-        :raises: BackendInteractionException
-        """
-        raise NotImplementedError()
-
-    def delete_item_async(self, context, delete_request,
-                          expected_condition_map=None):
-        """
-        :param context: current request context
-        :param delete_request: DeleteItemRequest instance which identifies item
-                    to delete
-        :param expected_condition_map: expected attribute name to
-                    ExpectedCondition instance mapping. It provides
-                    preconditions to make decision about should item be deleted
-                    or not
-
-        :returns: Future instance
 
         :raises: BackendInteractionException
         """
