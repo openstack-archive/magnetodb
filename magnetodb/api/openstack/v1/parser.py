@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import json
+from magnetodb.api import validation
+from magnetodb.openstack.common.gettextutils import _
 from magnetodb.storage.models import IndexDefinition
 from magnetodb.storage.models import UpdateItemAction
 from magnetodb.storage.models import TableMeta
@@ -63,6 +65,7 @@ class Props():
     VALUE = "value"
     ITEM = "item"
     RETURN_VALUES = "return_values"
+    TIME_TO_LIVE = "time_to_live"
 
     ATTRIBUTES = "attributes"
     ITEM_COLLECTION_METRICS = "item_collection_metrics"
@@ -83,7 +86,6 @@ class Props():
 
     KEY_CONDITIONS = "key_conditions"
     SCAN_INDEX_FORWARD = "scan_index_forward"
-    SELECT = "select"
 
     COUNT = "count"
     SCANNED_COUNT = "scanned_count"
@@ -329,18 +331,18 @@ class Parser():
 
             if key_type_json == Values.KEY_TYPE_HASH:
                 if hash_key_attr_name is not None:
-                    raise ValidationError("Only one 'HASH' key is allowed")
+                    raise ValidationError(_("Only one 'HASH' key is allowed"))
                 hash_key_attr_name = key_attr_name_json
             elif key_type_json == Values.KEY_TYPE_RANGE:
                 if range_key_attr_name is not None:
-                    raise ValidationError("Only one 'RANGE' key is allowed")
+                    raise ValidationError(_("Only one 'RANGE' key is allowed"))
                 range_key_attr_name = key_attr_name_json
             else:
                 raise ValidationError(
-                    "Only 'RANGE' or 'HASH' key types are allowed, but "
-                    "'%(key_type)s' is found", key_type=key_type_json)
+                    _("Only 'RANGE' or 'HASH' key types are allowed, but "
+                      "'%(key_type)s' is found"), key_type=key_type_json)
         if hash_key_attr_name is None:
-            raise ValidationError("HASH key is missing")
+            raise ValidationError(_("HASH key is missing"))
         if range_key_attr_name:
             return (hash_key_attr_name, range_key_attr_name)
         return (hash_key_attr_name,)
@@ -379,7 +381,7 @@ class Parser():
         try:
             range_key = key_attrs_for_projection[1]
         except IndexError:
-            raise ValidationError("Range key in index wasn't specified")
+            raise ValidationError(_("Range key in index wasn't specified"))
 
         index_name = local_secondary_index_json[Props.INDEX_NAME]
 
@@ -459,10 +461,12 @@ class Parser():
     def parse_typed_attr_value(cls, typed_attr_value_json):
         if len(typed_attr_value_json) != 1:
             raise ValidationError(
-                "Can't recognize attribute format ['%(attr)s']",
+                _("Can't recognize attribute typed value format: '%(attr)s'"),
                 attr=json.dumps(typed_attr_value_json)
             )
-        (attr_type_json, attr_value_json) = typed_attr_value_json.items()[0]
+        (attr_type_json, attr_value_json) = (
+            typed_attr_value_json.popitem()
+        )
 
         return AttributeValue(attr_type_json, attr_value_json)
 
@@ -471,6 +475,8 @@ class Parser():
         item = {}
         for (attr_name_json, typed_attr_value_json) in (
                 item_attributes_json.iteritems()):
+            validation.validate_attr_name(attr_name_json)
+            validation.validate_object(typed_attr_value_json, attr_name_json)
             item[attr_name_json] = cls.parse_typed_attr_value(
                 typed_attr_value_json
             )
@@ -492,24 +498,36 @@ class Parser():
 
         for (attr_name_json, condition_json) in (
                 expected_attribute_conditions_json.iteritems()):
+            validation.validate_attr_name(attr_name_json)
+            validation.validate_object(condition_json, attr_name_json)
 
-            if Props.VALUE in condition_json:
+            if len(condition_json) != 1:
+                raise ValidationError(
+                    _("Can't recognize attribute expected condition format: "
+                      "'%(attr)s'"),
+                    attr=json.dumps(condition_json)
+                )
+
+            (condition_type, condition_value) = condition_json.popitem()
+
+            if condition_type == Props.VALUE:
+                validation.validate_object(condition_value, Props.VALUE)
                 expected_attribute_conditions[attr_name_json] = [
                     ExpectedCondition.eq(
-                        cls.parse_typed_attr_value(condition_json[Props.VALUE])
+                        cls.parse_typed_attr_value(condition_value)
                     )
                 ]
-
-            elif Props.EXISTS in condition_json:
-                condition_value_json = condition_json[Props.EXISTS]
-
-                assert isinstance(condition_value_json, bool)
-
+            elif condition_type == Props.EXISTS:
+                validation.validate_boolean(condition_value, Props.EXISTS)
                 expected_attribute_conditions[attr_name_json] = [
-                    ExpectedCondition.not_null()
-                    if condition_value_json else
+                    ExpectedCondition.not_null() if condition_value else
                     ExpectedCondition.null()
                 ]
+            else:
+                raise ValidationError(
+                    _("Unsupported condition type found: %(condition_type)s"),
+                    condition_type=json.dumps(condition_type)
+                )
 
         return expected_attribute_conditions
 
@@ -560,15 +578,15 @@ class Parser():
         if condition_type == Values.BETWEEN:
             if actual_args_count != 2:
                 raise ValidationError(
-                    "%(type)s condition type requires exactly 2 arguments, "
-                    "but %(actual_args_count)s given",
+                    _("%(type)s condition type requires exactly 2 arguments, "
+                      "but %(actual_args_count)s given"),
                     type=condition_type,
                     actual_args_count=actual_args_count
                 )
             if condition_args[0].attr_type != condition_args[1].attr_type:
                 raise ValidationError(
-                    "%(type)s condition type requires arguments of the "
-                    "same type, but different types given",
+                    _("%(type)s condition type requires arguments of the "
+                      "same type, but different types given"),
                     type=condition_type,
                 )
 
@@ -599,26 +617,35 @@ class Parser():
     @classmethod
     def parse_attribute_conditions(cls, attribute_conditions_json,
                                    condition_class=IndexedCondition):
-        attribute_conditions_json = attribute_conditions_json or {}
-
         attribute_conditions = {}
 
         for (attr_name, condition_json) in (
                 attribute_conditions_json.iteritems()):
+            validation.validate_attr_name(attr_name)
+            validation.validate_object(condition_json, attr_name)
+
             condition_type_json = (
-                condition_json[Props.COMPARISON_OPERATOR]
+                condition_json.pop(Props.COMPARISON_OPERATOR, None)
             )
 
-            condition_args = map(
-                cls.parse_typed_attr_value,
-                condition_json.get(Props.ATTRIBUTE_VALUE_LIST, {})
-            )
+            attribute_list = condition_json.pop(Props.ATTRIBUTE_VALUE_LIST,
+                                                None)
+            condition_args = []
+            if attribute_list:
+                validation.validate_list_of_objects(
+                    attribute_list, Props.ATTRIBUTE_VALUE_LIST
+                )
+                for typed_attribute_value in attribute_list:
+                    condition_args.append(
+                        cls.parse_typed_attr_value(typed_attribute_value)
+                    )
 
             attribute_conditions[attr_name] = (
                 cls.parse_attribute_condition(
                     condition_type_json, condition_args, condition_class
                 )
             )
+            validation.validate_unexpected_props(condition_json, attr_name)
 
         return attribute_conditions
 
@@ -648,42 +675,81 @@ class Parser():
         return attribute_updates
 
     @classmethod
-    def parse_request_items(cls, request_items_json):
-        for table_name, request_list in request_items_json.iteritems():
-            for request in request_list:
-                for request_type, request_body in request.iteritems():
+    def parse_batch_write_request_items(cls, request_items_json):
+        request_list = []
+        for table_name, request_list_json in request_items_json.iteritems():
+            validation.validate_table_name(table_name)
+            validation.validate_list_of_objects(request_list_json, table_name)
+
+            for request_json in request_list_json:
+                for request_type, request_body in request_json.iteritems():
                     if request_type == Props.REQUEST_PUT:
-                        yield PutItemRequest(
-                            table_name,
-                            cls.parse_item_attributes(
-                                request_body[Props.ITEM]))
+                        validation.validate_object(request_body, request_type)
+                        item = request_body.pop(Props.ITEM, None)
+                        validation.validate_object(item, Props.ITEM)
+                        validation.validate_unexpected_props(request_body,
+                                                             request_type)
+                        request_list.append(
+                            PutItemRequest(
+                                table_name, cls.parse_item_attributes(item)
+                            )
+                        )
                     elif request_type == Props.REQUEST_DELETE:
-                        yield DeleteItemRequest(
-                            table_name,
-                            cls.parse_item_attributes(
-                                request_body[Props.KEY]))
+                        validation.validate_object(request_body, request_type)
+                        key = request_body.pop(Props.KEY, None)
+                        validation.validate_object(key, Props.KEY)
+                        validation.validate_unexpected_props(request_body,
+                                                             request_type)
+                        request_list.append(
+                            DeleteItemRequest(
+                                table_name, cls.parse_item_attributes(key)
+                            )
+                        )
+                    else:
+                        raise ValidationError(
+                            _("Unsupported request type found: "
+                              "%(request_type)s"),
+                            request_type=json.dumps(request_type)
+                        )
+        return request_list
 
     @classmethod
     def parse_batch_get_request_items(cls, request_items_json):
+        request_list = []
         for table_name, request_body in request_items_json.iteritems():
-            attributes_to_get = request_body.get(Props.ATTRIBUTES_TO_GET)
-            consistent = request_body.get(Props.CONSISTENT_READ, False)
-            select_type = (
-                SelectType.all()
-                if attributes_to_get is None else
-                SelectType.specific_attributes(attributes_to_get)
+            validation.validate_table_name(table_name)
+            validation.validate_object(request_body, table_name)
+
+            consistent = request_body.pop(Props.CONSISTENT_READ, False)
+
+            validation.validate_boolean(consistent, Props.CONSISTENT_READ)
+
+            attributes_to_get = request_body.pop(
+                Props.ATTRIBUTES_TO_GET, None
             )
-            for key in request_body[Props.KEYS]:
-                key_attr = cls.parse_item_attributes(key)
-                indexed_condition_map = {
-                    name: [IndexedCondition.eq(value)]
-                    for name, value in key_attr.iteritems()
-                }
-                yield GetItemRequest(
-                    table_name,
-                    indexed_condition_map,
-                    select_type=select_type,
-                    consistent=consistent)
+
+            if attributes_to_get is not None:
+                attributes_to_get = validation.validate_set(
+                    attributes_to_get, Props.ATTRIBUTES_TO_GET
+                )
+                for attr_name in attributes_to_get:
+                    validation.validate_attr_name(attr_name)
+
+            keys = request_body.pop(Props.KEYS, None)
+
+            validation.validate_list(keys, Props.KEYS)
+
+            validation.validate_unexpected_props(request_body, table_name)
+
+            for key in keys:
+                key_attribute_map = cls.parse_item_attributes(key)
+                request_list.append(
+                    GetItemRequest(
+                        table_name, key_attribute_map, attributes_to_get,
+                        consistent=consistent
+                    )
+                )
+        return request_list
 
     @classmethod
     def format_request_items(cls, request_items):
@@ -693,7 +759,6 @@ class Parser():
             if table_requests is None:
                 table_requests = []
                 res[request.table_name] = table_requests
-
             if isinstance(request, PutItemRequest):
                 request_json = {
                     Props.REQUEST_PUT: {
@@ -729,10 +794,9 @@ class Parser():
             if table_res is None:
                 table_res = {Props.KEYS: []}
                 res[tname] = table_res
-            attr_map = {}
-            for key, value in request.indexed_condition_map.iteritems():
-                attr_map[key] = value[0].arg
-            table_res[Props.KEYS].append(cls.format_item_attributes(attr_map))
+            table_res[Props.KEYS].append(
+                cls.format_item_attributes(request.key_attribute_map)
+            )
             attr_to_get = request_items[tname].get(Props.ATTRIBUTES_TO_GET)
             consistent = request_items[tname].get(Props.CONSISTENT_READ)
             if attr_to_get:
