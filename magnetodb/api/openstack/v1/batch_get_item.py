@@ -13,10 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import collections
-import jsonschema
-
 from magnetodb import storage
+from magnetodb.api import validation
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
@@ -27,55 +25,22 @@ class BatchGetItemController(object):
     of one or more items from one or more tables.
     """
 
-    REQUEST_GET_SCHEMA = {
-        "type": "object",
-        "required": [parser.Props.KEYS],
-        "properties": {
-            parser.Props.ATTRIBUTES_TO_GET: {
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "pattern": parser.ATTRIBUTE_NAME_PATTERN
-                }
-            },
-            parser.Props.CONSISTENT_READ: {
-                "type": "boolean"
-            },
-            parser.Props.KEYS: {
-                "type": "array",
-                "items": parser.Types.ATTRIBUTE
-            }
-        }
-    }
-
-    schema = {
-        "required": [parser.Props.REQUEST_ITEMS],
-        "properties": {
-            parser.Props.REQUEST_ITEMS: {
-                "type": "object",
-                "patternProperties": {
-                    parser.TABLE_NAME_PATTERN: {
-                        "type": "object",
-                        "items": REQUEST_GET_SCHEMA
-                    }
-                }
-            }
-        }
-    }
-
     def process_request(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
-
-        # parse request_items
-        request_items = parser.Parser.parse_batch_get_request_items(
-            body[parser.Props.REQUEST_ITEMS])
-
         req.context.tenant = project_id
 
-        request_list = collections.deque()
-        for rq_item in request_items:
-            request_list.append(rq_item)
+        validation.validate_object(body, "body")
+
+        request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
+        validation.validate_object(request_items_json,
+                                   parser.Props.REQUEST_ITEMS)
+
+        validation.validate_unexpected_props(body, "body")
+
+        # parse request_items
+        request_list = parser.Parser.parse_batch_get_request_items(
+            request_items_json
+        )
 
         result, unprocessed = storage.execute_get_batch(
             req.context, request_list)
@@ -84,7 +49,8 @@ class BatchGetItemController(object):
         for tname, res in result:
             if not res.items:
                 continue
-            if tname not in responses:
+            table_items = responses.get(tname, None)
+            if table_items is None:
                 table_items = []
                 responses[tname] = table_items
             item = parser.Parser.format_item_attributes(res.items[0])
@@ -93,5 +59,5 @@ class BatchGetItemController(object):
         return {
             'responses': responses,
             'unprocessed_keys': parser.Parser.format_batch_get_unprocessed(
-                unprocessed, body[parser.Props.REQUEST_ITEMS])
+                unprocessed, request_items_json)
         }

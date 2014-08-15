@@ -33,7 +33,7 @@ DECIMAL_CONTEXT = decimal.Context(
 class ModelBase(object):
 
     def __repr__(self):
-        return self.to_json()
+        return self.to_json(add_model_meta_info=False)
 
     def __init__(self, **kwargs):
         self.__dict__["_data"] = kwargs
@@ -69,7 +69,7 @@ class ModelBase(object):
     def _get_model_data(self):
         return self._data
 
-    def to_json(self):
+    def to_json(self, add_model_meta_info=True):
         def encode_model(obj):
             if isinstance(obj, ModelBase):
                 data = obj._get_model_data().copy()
@@ -270,7 +270,9 @@ class AttributeValue(ModelBase):
         if decoded_value is None:
             raise ValidationError(
                 "Can't recognize attribute value '%(value)s'"
-                "of type '%(type)s'", type=attr_type, value=encoded_value)
+                "of type %(type)s",
+                type=attr_type, value=json.dumps(encoded_value)
+            )
 
         return decoded_value
 
@@ -537,9 +539,20 @@ class SelectType(ModelBase):
                           SELECT_TYPE_SPECIFIC, SELECT_TYPE_COUNT])
 
     def __init__(self, select_type, attributes=None):
-        assert select_type in self._allowed_types, (
-            "Select type '%s' isn't allowed" % select_type
-        )
+        if select_type not in self._allowed_types:
+            raise ValidationError(
+                "Select type '%(select_type)s' isn't allowed",
+                select_type=select_type
+            )
+
+        if attributes is not None:
+            if select_type != self.SELECT_TYPE_SPECIFIC:
+                raise ValidationError(
+                    "Attribute list is only expected with select_type "
+                    "'%(select_type)s'",
+                    select_type=self.SELECT_TYPE_SPECIFIC
+                )
+
         super(SelectType, self).__init__(type=select_type,
                                          attributes=attributes)
 
@@ -557,7 +570,7 @@ class SelectType(ModelBase):
 
     @classmethod
     def specific_attributes(cls, attributes):
-        return cls(cls.SELECT_TYPE_SPECIFIC, frozenset(attributes))
+        return cls(cls.SELECT_TYPE_SPECIFIC, attributes)
 
     @property
     def is_count(self):
@@ -615,7 +628,7 @@ class PutItemRequest(WriteItemBatchableRequest):
 
 
 class GetItemRequest(ModelBase):
-    def __init__(self, table_name, indexed_condition_map, select_type,
+    def __init__(self, table_name, key_attributes, attributes_to_get,
                  consistent):
         """
         :param table_name: String, name of table to get item from
@@ -623,8 +636,8 @@ class GetItemRequest(ModelBase):
         """
         super(GetItemRequest, self).__init__(
             table_name=table_name,
-            indexed_condition_map=indexed_condition_map,
-            select_type=select_type,
+            key_attributes=key_attributes,
+            attributes_to_get=attributes_to_get,
             consistent=consistent
         )
 

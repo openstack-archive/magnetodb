@@ -27,10 +27,13 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
     """The test for simple storage manager implementation."""
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'delete_item_async')
+                '_validate_table_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'put_item_async')
-    def test_execute_write_batch(self, mock_put_item, mock_delete_item):
+                '_delete_item_async')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_put_item_async')
+    def test_execute_write_batch(self, mock_put_item, mock_delete_item,
+                                 mock_validate_table_schema):
         future = Future()
         future.set_result(True)
         mock_put_item.return_value = future
@@ -83,8 +86,11 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         self.assertEqual(unprocessed_items, [])
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                'select_item_async')
-    def test_execute_get_batch(self, mock_select_item):
+                '_validate_table_schema')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_select_item_async')
+    def test_execute_get_batch(self, mock_select_item,
+                               mock_validate_table_schema):
         future = Future()
         future.set_result(True)
         mock_select_item.return_value = future
@@ -93,7 +99,6 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         table_name = 'fake_table'
 
-        select_type = models.SelectType.all()
         request_list = [
             models.GetItemRequest(
                 table_name,
@@ -101,7 +106,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                     'id': models.AttributeValue('N', 1),
                     'str': models.AttributeValue('S', 'str1'),
                 },
-                select_type,
+                None,
                 True
             ),
             models.GetItemRequest(
@@ -110,14 +115,14 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                     'id': models.AttributeValue('N', 1),
                     'str': models.AttributeValue('S', 'str2'),
                 },
-                select_type,
+                None,
                 True
             )
         ]
 
         expected_select = [mock.call(context, req.table_name,
-                                     req.indexed_condition_map,
-                                     req.select_type, req.consistent)
+                                     req.key_attributes,
+                                     req.attributes_to_get, req.consistent)
                            for req in request_list]
 
         storage_manager = SimpleStorageManager(None, None)
