@@ -430,12 +430,14 @@ class Parser():
     @classmethod
     def parse_local_secondary_indexes(cls, local_secondary_index_list_json):
         res = {}
-
         for index_json in local_secondary_index_list_json:
             index_name, index_def = (
                 cls.parse_local_secondary_index(index_json)
             )
             res[index_name] = index_def
+
+        if len(res) < len(local_secondary_index_list_json):
+            raise ValidationError(_("Two or more indexes with the same name"))
 
         return res
 
