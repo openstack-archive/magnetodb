@@ -19,6 +19,7 @@ from magnetodb import storage
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.api import validation
+from magnetodb.common import probe
 
 
 class BatchWriteItemController(object):
@@ -26,22 +27,24 @@ class BatchWriteItemController(object):
     multiple items in one or more tables.
     """
 
+    @probe.Probe(__name__)
     def process_request(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        validation.validate_object(body, "body")
+        with probe.Probe(__name__ + '.validation'):
+            validation.validate_object(body, "body")
 
-        request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
-        validation.validate_object(request_items_json,
-                                   parser.Props.REQUEST_ITEMS)
+            request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
+            validation.validate_object(request_items_json,
+                                       parser.Props.REQUEST_ITEMS)
 
-        validation.validate_unexpected_props(body, "body")
+            validation.validate_unexpected_props(body, "body")
 
-        # parse request_items
-        request_map = parser.Parser.parse_batch_write_request_items(
-            request_items_json
-        )
+            # parse request_items
+            request_map = parser.Parser.parse_batch_write_request_items(
+                request_items_json
+            )
 
         unprocessed_items = storage.execute_write_batch(
             req.context, request_map)
