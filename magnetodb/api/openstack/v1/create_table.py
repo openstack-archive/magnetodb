@@ -24,6 +24,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import probe
 
 LOG = logging.getLogger(__name__)
 
@@ -64,9 +65,11 @@ class CreateTableController():
         }
     }
 
+    @probe.probe(__name__)
     def create_table(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
+        with probe.Probe(__name__ + '.jsonschema.validate'):
+            jsonschema.validate(body, self.schema)
 
         table_name = body.get(parser.Props.TABLE_NAME)
 

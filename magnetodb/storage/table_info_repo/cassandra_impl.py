@@ -20,6 +20,7 @@ from copy import copy
 from threading import Lock
 
 from magnetodb.common import exception
+from magnetodb.common import probe
 from magnetodb.storage import models
 from magnetodb.storage.table_info_repo import TableInfo
 from magnetodb.storage.table_info_repo import TableInfoRepository
@@ -82,6 +83,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
 
         return table_info
 
+    @probe.probe(__name__ + '.get_tenant_table_names')
     def get_tenant_table_names(self, context, exclusive_start_table_name=None,
                                limit=None):
         query_builder = collections.deque()
