@@ -35,7 +35,8 @@ class DeleteTableTest(test_base_testcase.APITestCase):
         key_attrs = ['ForumName', 'Subject']
 
         index_map = {
-            'LastPostIndex': models.IndexDefinition('LastPostDateTime')
+            'LastPostIndex': models.IndexDefinition('LastPostDateTime',
+                                                    'ForumName')
         }
 
         table_meta = models.TableMeta(
