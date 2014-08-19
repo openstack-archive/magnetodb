@@ -22,6 +22,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import probe
 from magnetodb.storage.models import ScanCondition
 
 LOG = logging.getLogger(__name__)
@@ -79,9 +80,11 @@ class ScanController(object):
         }
     }
 
+    @probe.Probe(__name__)
     def scan(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
+        with probe.Probe(__name__ + '.jsonschema.validate'):
+            jsonschema.validate(body, self.schema)
 
         req.context.tenant = project_id
 
