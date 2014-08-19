@@ -24,6 +24,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import exception
 
 LOG = logging.getLogger(__name__)
 
@@ -81,14 +82,19 @@ class CreateTableController():
         )
 
         # parse table indexed field list
-        indexed_attr_names = parser.Parser.parse_local_secondary_indexes(
+        index_def_map = parser.Parser.parse_local_secondary_indexes(
             body.get(
                 parser.Props.LOCAL_SECONDARY_INDEXES, [])
         )
+        for index_name, index_def in index_def_map.iteritems():
+            if index_def.alt_hash_key_attr != key_attrs[0]:
+                msg = _("Error. Hash key of index '%(index_name)s' must "
+                        "be the same as primary key's hash key.")
+                raise exception.ValidationError(msg, index_name=index_name)
 
         # prepare table_schema structure
         table_schema = models.TableSchema(
-            attribute_definitions, key_attrs, indexed_attr_names)
+            attribute_definitions, key_attrs, index_def_map)
 
         # creating table
         req.context.tenant = project_id

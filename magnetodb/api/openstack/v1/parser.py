@@ -382,6 +382,7 @@ class Parser():
         key_attrs_for_projection = cls.parse_key_schema(
             local_secondary_index_json.get(Props.KEY_SCHEMA, {})
         )
+        hash_key = key_attrs_for_projection[0]
 
         try:
             range_key = key_attrs_for_projection[1]
@@ -403,7 +404,11 @@ class Parser():
                 Props.NON_KEY_ATTRIBUTES, None
             )
 
-        return index_name, IndexDefinition(range_key, projected_attrs)
+        return index_name, IndexDefinition(
+            hash_key,
+            range_key,
+            projected_attrs
+        )
 
     @classmethod
     def format_local_secondary_index(cls, index_name, hash_key,
@@ -427,7 +432,8 @@ class Parser():
         return {
             Props.INDEX_NAME: index_name,
             Props.KEY_SCHEMA: cls.format_key_schema(
-                (hash_key, local_secondary_index.attribute_to_index)
+                (local_secondary_index.alt_hash_key_attr,
+                 local_secondary_index.alt_range_key_attr)
             ),
             Props.PROJECTION: projection,
             Props.ITEM_COUNT: 0,

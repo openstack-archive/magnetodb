@@ -98,7 +98,7 @@ class BotoIntegrationTest(unittest.TestCase):
                         'name': models.AttributeType('S')
                     },
                     ['id', 'name'],
-                    {'index_name': models.IndexDefinition('city1')}
+                    {'index_name': models.IndexDefinition('id', 'city1')}
                 ),
                 models.TableMeta.TABLE_STATUS_ACTIVE
             )
@@ -167,7 +167,7 @@ class BotoIntegrationTest(unittest.TestCase):
                         'name': models.AttributeType('S')
                     },
                     ['id', 'name'],
-                    {'index_name': models.IndexDefinition('city1')}
+                    {'index_name': models.IndexDefinition('id', 'city1')}
                 ),
                 models.TableMeta.TABLE_STATUS_ACTIVE
             )
@@ -193,7 +193,8 @@ class BotoIntegrationTest(unittest.TestCase):
                     },
                     ['hash', 'range'],
                     {
-                        "index_name": models.IndexDefinition('indexed_field')
+                        "index_name": models.IndexDefinition('hash',
+                                                             'indexed_field')
                     }
                 ),
                 models.TableMeta.TABLE_STATUS_ACTIVE
@@ -238,7 +239,8 @@ class BotoIntegrationTest(unittest.TestCase):
                     },
                     ['hash', 'range'],
                     {
-                        "index_name": models.IndexDefinition('indexed_field')
+                        "index_name": models.IndexDefinition('hash',
+                                                             'indexed_field')
                     }
                 ),
                 models.TableMeta.TABLE_STATUS_ACTIVE
@@ -315,7 +317,8 @@ class BotoIntegrationTest(unittest.TestCase):
                     },
                     ['hash'],
                     {
-                        "index_name": models.IndexDefinition('indexed_field')
+                        "index_name": models.IndexDefinition('hash',
+                                                             'indexed_field')
                     }
                 ),
                 models.TableMeta.TABLE_STATUS_ACTIVE

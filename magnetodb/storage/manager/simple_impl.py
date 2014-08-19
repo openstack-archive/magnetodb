@@ -158,7 +158,7 @@ class SimpleStorageManager(StorageManager):
         else:
             required_key_attribute_names = schema_key_attributes[:]
             required_key_attribute_names.append(
-                table_info.schema.index_def_map[index_name].attribute_to_index
+                table_info.schema.index_def_map[index_name].alt_range_key_attr
             )
 
         table_schema_is_valid = True
@@ -511,7 +511,7 @@ class SimpleStorageManager(StorageManager):
                     _("Index '%(index_name)s' doesn't exist for table "
                       "'%(table_name)s'"),
                     index_name=index_name, table_name=table_name)
-            range_key_name_to_query = index_def.attribute_to_index
+            range_key_name_to_query = index_def.alt_range_key_attr
         else:
             range_key_name_to_query = range_key_name
 

@@ -702,10 +702,11 @@ class UpdateReturnValuesType(InsertReturnValuesType):
 
 
 class IndexDefinition(ModelBase):
-    def __init__(self, attribute_to_index, projected_attributes=None):
+    def __init__(self, alt_hash_key_attr, alt_range_key_attr,
+                 projected_attributes=None):
         """
-        :param index_name: name of index
-        :param attribute_to_index: attribute name to be indexed
+        :param alt_hash_key_attr: name of index hash key
+        :param alt_range_key_attr: name of index range key
         :param projected_attributes: set of non key attribute names to be
                     projected. If 'None' - all attributes will be projected
         """
@@ -715,7 +716,8 @@ class IndexDefinition(ModelBase):
         )
 
         super(IndexDefinition, self).__init__(
-            attribute_to_index=attribute_to_index,
+            alt_hash_key_attr=alt_hash_key_attr,
+            alt_range_key_attr=alt_range_key_attr,
             projected_attributes=projected_attributes
         )
 

@@ -134,7 +134,7 @@ class TestCassandraBase(unittest.TestCase):
         test_table_schema.attribute_type_map,
         test_table_schema.key_attributes,
         {
-            "index": models.IndexDefinition("indexed")
+            "index": models.IndexDefinition("id", "indexed")
         }
     )
 
@@ -554,10 +554,10 @@ class TestCassandraBase(unittest.TestCase):
                 params = list(default_index_cond_params)
                 params[1] = '{}'.format(index_name)
                 index_type = schema.attribute_type_map[
-                    index_def.attribute_to_index]
+                    index_def.alt_range_key_attr]
 
                 index_value = predefined_fields[
-                    index_def.attribute_to_index
+                    index_def.alt_range_key_attr
                 ][1]
                 if index_type == models.AttributeType('B'):
                     params[3] = index_value
@@ -599,7 +599,7 @@ class TestCassandraTableCrud(TestCassandraBase):
             attrs[name] = models.AttributeType(typ)
 
         index_def_map = {
-            'index_name': models.IndexDefinition('indexed')
+            'index_name': models.IndexDefinition('id', 'indexed')
         }
 
         schema = models.TableSchema(attrs, ['id', 'range'],
@@ -632,7 +632,7 @@ class TestCassandraTableCrud(TestCassandraBase):
             attrs[name] = models.AttributeType(typ)
 
         index_def_map = {
-            'index': models.IndexDefinition('indexed')
+            'index': models.IndexDefinition('id', 'indexed')
         }
 
         schema = models.TableSchema(attrs, ['id', 'range'],

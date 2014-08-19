@@ -573,10 +573,10 @@ class CassandraStorageDriver(StorageDriver):
         for index_name, index_def in (
                 table_info.schema.index_def_map.iteritems()):
             new_index_value = attribute_map.get(
-                index_def.attribute_to_index, None
+                index_def.alt_range_key_attr, None
             )
             old_index_value = old_attribute_map.get(
-                index_def.attribute_to_index, None
+                index_def.alt_range_key_attr, None
             )
             if new_index_value:
                 base_update_query = (
@@ -689,12 +689,12 @@ class CassandraStorageDriver(StorageDriver):
                 for index_name, index_def in (
                         table_info.schema.index_def_map.iteritems()):
                     old_index_value = old_indexes.get(
-                        index_def.attribute_to_index, None
+                        index_def.alt_range_key_attr, None
                     )
 
                     query_builder += (
                         if_prefix, '"', USER_PREFIX,
-                        index_def.attribute_to_index, '"=',
+                        index_def.alt_range_key_attr, '"=',
                         _encode_predefined_attr_value(old_index_value)
                         if old_index_value else "null"
                     )
@@ -781,7 +781,7 @@ class CassandraStorageDriver(StorageDriver):
         prefix = ""
         for index_def in table_info.schema.index_def_map.itervalues():
             query_builder += (
-                prefix, '"', USER_PREFIX, index_def.attribute_to_index, '"'
+                prefix, '"', USER_PREFIX, index_def.alt_range_key_attr, '"'
             )
             prefix = ","
 
@@ -858,11 +858,11 @@ class CassandraStorageDriver(StorageDriver):
                 for index_name, index_def in (
                         table_info.schema.index_def_map.iteritems()):
                     index_value = old_indexes.get(
-                        index_def.attribute_to_index, None
+                        index_def.alt_range_key_attr, None
                     )
                     query_builder += (
                         if_prefix, '"', USER_PREFIX,
-                        index_def.attribute_to_index, '"=',
+                        index_def.alt_range_key_attr, '"=',
                         _encode_predefined_attr_value(index_value)
                         if index_value
                         else "null"
@@ -1328,7 +1328,7 @@ class CassandraStorageDriver(StorageDriver):
 
         indexed_attr_name = table_info.schema.index_def_map[
             index_name
-        ].attribute_to_index if index_name else None
+        ].alt_range_key_attr if index_name else None
 
         hash_key_cond_list = []
         index_attr_cond_list = []
@@ -1558,7 +1558,7 @@ class CassandraStorageDriver(StorageDriver):
             if index_name:
                 indexed_attr_name = table_info.schema.index_def_map[
                     index_name
-                ].attribute_to_index
+                ].alt_range_key_attr
                 last_evaluated_key[indexed_attr_name] = result[-1][
                     indexed_attr_name
                 ]

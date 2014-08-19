@@ -44,7 +44,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 },
                 key_attributes=["ForumName", "Subject"],
                 index_def_map={
-                    "LastPostIndex": models.IndexDefinition("LastPostDateTime")
+                    "LastPostIndex": models.IndexDefinition("ForumName",
+                                                            "LastPostDateTime")
                 }
             ),
             models.TableMeta.TABLE_STATUS_ACTIVE
@@ -254,7 +255,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 },
                 key_attributes=["ForumName"],
                 index_def_map={
-                    "LastPostIndex": models.IndexDefinition("LastPostDateTime")
+                    "LastPostIndex": models.IndexDefinition("ForumName",
+                                                            "LastPostDateTime")
                 }
             ),
             models.TableMeta.TABLE_STATUS_ACTIVE
