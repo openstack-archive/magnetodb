@@ -18,6 +18,7 @@ from magnetodb.api import validation
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import timer
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -25,11 +26,13 @@ from magnetodb.storage import models
 class GetItemController(object):
     """The Getitem operation returns an item with the given primary key. """
 
+    @timer.timer('api.get_itdescribe_tableem')
     def process_request(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+        with timer.Timer('get_item.jsonschema.validate'):
+            validation.validate_object(body, "body")
 
-        validation.validate_object(body, "body")
+        req.context.tenant = project_id
 
         # get attributes_to_get
         attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
@@ -65,9 +68,10 @@ class GetItemController(object):
         }
 
         # get item
-        result = storage.select_item(
-            req.context, table_name, indexed_condition_map,
-            select_type=select_type, limit=2, consistent=consistent_read)
+        with timer.Timer('api.get_item.storage.select_item'):
+            result = storage.select_item(
+                req.context, table_name, indexed_condition_map,
+                select_type=select_type, limit=2, consistent=consistent_read)
 
         # format response
         if result.count == 0:

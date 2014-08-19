@@ -24,6 +24,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import timer
 
 LOG = logging.getLogger(__name__)
 
@@ -64,9 +65,11 @@ class CreateTableController():
         }
     }
 
+    @timer.timer('api.create_table')
     def create_table(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
+        with timer.Timer('create_table.jsonschema.validate'):
+            jsonschema.validate(body, self.schema)
 
         table_name = body.get(parser.Props.TABLE_NAME)
 
@@ -92,8 +95,9 @@ class CreateTableController():
 
         # creating table
         req.context.tenant = project_id
-        table_meta = storage.create_table(
-            req.context, table_name, table_schema)
+        with timer.Timer('storage.create_table'):
+            table_meta = storage.create_table(
+                req.context, table_name, table_schema)
 
         url = req.path_url + "/" + table_name
         bookmark = req.path_url + "/" + table_name

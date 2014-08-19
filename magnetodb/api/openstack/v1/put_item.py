@@ -20,6 +20,7 @@ from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import timer
 
 from magnetodb.openstack.common.gettextutils import _
 from magnetodb.storage.models import InsertReturnValuesType
@@ -28,11 +29,13 @@ from magnetodb.storage.models import InsertReturnValuesType
 class PutItemController(object):
     """ Creates a new item, or replaces an old item. """
 
+    @timer.timer('api.put_item')
     def process_request(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        validation.validate_object(body, "body")
+        with timer.Timer('put_item.validation'):
+            validation.validate_object(body, "body")
 
         expected = body.pop(parser.Props.EXPECTED, {})
         validation.validate_object(expected, parser.Props.EXPECTED)
@@ -74,11 +77,13 @@ class PutItemController(object):
                 m % InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD
             )
 
-        storage.put_item(
-            req.context,
-            models.PutItemRequest(table_name, item_attributes),
-            if_not_exist=False,
-            expected_condition_map=expected_item_conditions)
+        # put item
+        with timer.Timer('api.put_item.storage.put_item'):
+            storage.put_item(
+                req.context,
+                models.PutItemRequest(table_name, item_attributes),
+                if_not_exist=False,
+                expected_condition_map=expected_item_conditions)
 
         # format response
         response = {}

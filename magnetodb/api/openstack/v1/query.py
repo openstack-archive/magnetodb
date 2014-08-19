@@ -21,6 +21,7 @@ from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import timer
 from magnetodb.storage.models import IndexedCondition
 
 LOG = logging.getLogger(__name__)
@@ -29,11 +30,14 @@ LOG = logging.getLogger(__name__)
 class QueryController(object):
     """ Query for an items by primary or index key. """
 
+    @timer.timer('api.query')
     def query(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
+        with timer.Timer('query.jsonschema.validate'):
+            validation.validate_object(body, "body")
+
         req.context.tenant = project_id
 
-        validation.validate_object(body, "body")
 
         # get attributes_to_get
         attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
@@ -107,12 +111,13 @@ class QueryController(object):
         validation.validate_unexpected_props(body, "body")
 
         # select item
-        result = storage.select_item(
-            req.context, table_name, indexed_condition_map,
-            select_type=select_type, index_name=index_name, limit=limit,
-            consistent=consistent_read, order_type=order_type,
-            exclusive_start_key=exclusive_start_key_attributes
-        )
+        with timer.Timer('api.query.storage.select_item'):
+            result = storage.select_item(
+                req.context, table_name, indexed_condition_map,
+                select_type=select_type, index_name=index_name, limit=limit,
+                consistent=consistent_read, order_type=order_type,
+                exclusive_start_key=exclusive_start_key_attributes
+            )
 
         # format response
         if select_type.type == models.SelectType.SELECT_TYPE_COUNT:

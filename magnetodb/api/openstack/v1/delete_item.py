@@ -19,6 +19,7 @@ from magnetodb import storage
 from magnetodb.storage import models
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import timer
 
 
 class DeleteItemController(object):
@@ -65,8 +66,10 @@ class DeleteItemController(object):
         }
     }
 
+    @timer.timer('api.delete_item')
     def process_request(self, req, body, project_id, table_name):
-        jsonschema.validate(body, self.schema)
+        with timer.Timer('delete_item.jsonschema.validate'):
+            jsonschema.validate(body, self.schema)
         utils.check_project_id(req.context, project_id)
 
         # parse expected item conditions
@@ -88,10 +91,11 @@ class DeleteItemController(object):
 
         # delete item
         req.context.tenant = project_id
-        storage.delete_item(
-            req.context,
-            models.DeleteItemRequest(table_name, key_attributes),
-            expected_condition_map=expected_item_conditions)
+        with timer.Timer('storage.delete_item'):
+            storage.delete_item(
+                req.context,
+                models.DeleteItemRequest(table_name, key_attributes),
+                expected_condition_map=expected_item_conditions)
 
         # format response
         response = {}

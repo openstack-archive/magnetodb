@@ -18,6 +18,7 @@ from magnetodb.api import validation
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import timer
 
 
 class BatchGetItemController(object):
@@ -25,11 +26,13 @@ class BatchGetItemController(object):
     of one or more items from one or more tables.
     """
 
+    @timer.timer('api.batch_get_item')
     def process_request(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        validation.validate_object(body, "body")
+        with timer.Timer('batch_get_item.jsonschema.validate'):
+            validation.validate_object(body, "body")
 
         request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
         validation.validate_object(request_items_json,
@@ -42,8 +45,9 @@ class BatchGetItemController(object):
             request_items_json
         )
 
-        result, unprocessed = storage.execute_get_batch(
-            req.context, request_list)
+        with timer.Timer('storage.execute_get_batch'):
+            result, unprocessed = storage.execute_get_batch(
+                req.context, request_list)
 
         responses = {}
         for tname, res in result:

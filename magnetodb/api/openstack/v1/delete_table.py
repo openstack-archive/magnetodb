@@ -18,6 +18,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import timer
 
 
 LOG = logging.getLogger(__name__)
@@ -26,11 +27,13 @@ LOG = logging.getLogger(__name__)
 class DeleteTableController(object):
     """The DeleteTable operation deletes a table and all of its items."""
 
+    @timer.timer('api.delete_table')
     def delete_table(self, req, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        table_schema = storage.delete_table(req.context, table_name)
+        with timer.Timer('storage.delete_table'):
+            table_schema = storage.delete_table(req.context, table_name)
 
         url = req.path_url
         bookmark = req.path_url

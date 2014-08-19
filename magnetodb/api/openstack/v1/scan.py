@@ -22,6 +22,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import timer
 from magnetodb.storage.models import ScanCondition
 
 LOG = logging.getLogger(__name__)
@@ -79,9 +80,11 @@ class ScanController(object):
         }
     }
 
+    @timer.timer('api.scan')
     def scan(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
+        with timer.Timer('scan.jsonschema.validate'):
+            jsonschema.validate(body, self.schema)
 
         req.context.tenant = project_id
 
@@ -111,10 +114,11 @@ class ScanController(object):
 
         assert segment < total_segments
 
-        result = storage.scan(
-            req.context, table_name, condition_map,
-            attributes_to_get=attrs_to_get, limit=limit,
-            exclusive_start_key=exclusive_start_key)
+        with timer.Timer('api.scan.storage.scan'):
+            result = storage.scan(
+                req.context, table_name, condition_map,
+                attributes_to_get=attrs_to_get, limit=limit,
+                exclusive_start_key=exclusive_start_key)
 
         response = {
             parser.Props.COUNT: result.count,

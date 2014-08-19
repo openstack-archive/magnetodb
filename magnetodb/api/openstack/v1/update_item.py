@@ -19,6 +19,7 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb import storage
 from magnetodb.common import exception
+from magnetodb.common import timer
 
 
 class UpdateItemController(object):
@@ -73,9 +74,11 @@ class UpdateItemController(object):
         }
     }
 
+    @timer.timer('api.update_item')
     def process_request(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
-        jsonschema.validate(body, self.schema)
+        with timer.Timer('update_item.jsonschema.validate'):
+            jsonschema.validate(body, self.schema)
         req.context.tenant = project_id
 
         # parse expected item conditions
@@ -96,12 +99,13 @@ class UpdateItemController(object):
                                  parser.Values.RETURN_VALUES_NONE)
 
         # update item
-        result, old_item = storage.update_item(
-            req.context,
-            table_name,
-            key_attribute_map=key_attribute_map,
-            attribute_action_map=attribute_updates,
-            expected_condition_map=expected_item_conditions)
+        with timer.Timer('api.update_item.storage.update_item'):
+            result, old_item = storage.update_item(
+                req.context,
+                table_name,
+                key_attribute_map=key_attribute_map,
+                attribute_action_map=attribute_updates,
+                expected_condition_map=expected_item_conditions)
 
         if not result:
             raise exception.BackendInteractionException()
