@@ -18,6 +18,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import probe
 
 
 LOG = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ LOG = logging.getLogger(__name__)
 class DeleteTableController(object):
     """The DeleteTable operation deletes a table and all of its items."""
 
+    @probe.Probe(__name__)
     def delete_table(self, req, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id

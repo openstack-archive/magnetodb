@@ -19,6 +19,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import probe
 
 
 LOG = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class ListTablesController():
     with the current user in given tenant.
     """
 
+    @probe.Probe(__name__)
     def list_tables(self, req, project_id):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
