@@ -21,6 +21,7 @@ import webob
 from oslo.config import cfg
 
 from magnetodb.common import exception
+from magnetodb.common import probe
 from magnetodb.common import wsgi
 
 from magnetodb.openstack.common import jsonutils as json
@@ -129,6 +130,7 @@ class EC2Token(wsgi.Middleware):
     def _is_v3_token(self, token_body):
         return 'token' in token_body
 
+    @probe.probe(__name__ + '._authorize')
     def _authorize(self, req, auth_uri):
         # Read request signature and access id.
         # If we find X-Auth-User in the headers we ignore a key error
