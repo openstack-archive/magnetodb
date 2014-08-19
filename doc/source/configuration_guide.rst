@@ -88,6 +88,13 @@ The magnetodb-api.conf configuration file is organized into the following sectio
  - logging_exception_prefix: format exception prefix <string value>
 
 
+[PROBE]
+`````````
+
+ - enabled: enables additional diagnostic log output
+ - suppress_args: suppresses args output
+
+
 [RPC Configuration Options]
 ```````````````````````````
 
