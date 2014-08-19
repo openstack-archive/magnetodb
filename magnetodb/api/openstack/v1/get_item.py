@@ -18,6 +18,7 @@ from magnetodb.api import validation
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import probe
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -25,44 +26,46 @@ from magnetodb.storage import models
 class GetItemController(object):
     """The Getitem operation returns an item with the given primary key. """
 
+    @probe.probe(__name__)
     def process_request(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+        with probe.Probe(__name__ + '.validate'):
+            validation.validate_object(body, "body")
 
-        validation.validate_object(body, "body")
+            req.context.tenant = project_id
 
-        # get attributes_to_get
-        attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
-        if attributes_to_get:
-            attributes_to_get = validation.validate_set(
-                attributes_to_get, parser.Props.ATTRIBUTES_TO_GET
-            )
-            for attr_name in attributes_to_get:
-                validation.validate_attr_name(attr_name)
-            select_type = models.SelectType.specific_attributes(
-                attributes_to_get
-            )
-        else:
-            select_type = models.SelectType.all()
+            # get attributes_to_get
+            attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
+            if attributes_to_get:
+                attributes_to_get = validation.validate_set(
+                    attributes_to_get, parser.Props.ATTRIBUTES_TO_GET
+                )
+                for attr_name in attributes_to_get:
+                    validation.validate_attr_name(attr_name)
+                select_type = models.SelectType.specific_attributes(
+                    attributes_to_get
+                )
+            else:
+                select_type = models.SelectType.all()
 
-        key = body.pop(parser.Props.KEY, None)
-        validation.validate_object(key, parser.Props.KEY)
+            key = body.pop(parser.Props.KEY, None)
+            validation.validate_object(key, parser.Props.KEY)
 
-        # parse consistent_read
-        consistent_read = body.pop(parser.Props.CONSISTENT_READ, False)
-        validation.validate_boolean(consistent_read,
-                                    parser.Props.CONSISTENT_READ)
+            # parse consistent_read
+            consistent_read = body.pop(parser.Props.CONSISTENT_READ, False)
+            validation.validate_boolean(consistent_read,
+                                        parser.Props.CONSISTENT_READ)
 
-        validation.validate_unexpected_props(body, "body")
+            validation.validate_unexpected_props(body, "body")
 
-        # parse key_attributes
-        key_attributes = parser.Parser.parse_item_attributes(key)
+            # parse key_attributes
+            key_attributes = parser.Parser.parse_item_attributes(key)
 
-        # format conditions to get item
-        indexed_condition_map = {
-            name: [models.IndexedCondition.eq(value)]
-            for name, value in key_attributes.iteritems()
-        }
+            # format conditions to get item
+            indexed_condition_map = {
+                name: [models.IndexedCondition.eq(value)]
+                for name, value in key_attributes.iteritems()
+            }
 
         # get item
         result = storage.select_item(
