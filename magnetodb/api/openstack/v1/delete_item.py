@@ -18,6 +18,7 @@ import jsonschema
 from magnetodb import storage
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.common import probe
 
 
 class DeleteItemController(object):
@@ -64,8 +65,10 @@ class DeleteItemController(object):
         }
     }
 
+    @probe.probe(__name__)
     def process_request(self, req, body, project_id, table_name):
-        jsonschema.validate(body, self.schema)
+        with probe.Probe(__name__ + '.jsonschema.validate'):
+            jsonschema.validate(body, self.schema)
         utils.check_project_id(req.context, project_id)
 
         # parse expected item conditions

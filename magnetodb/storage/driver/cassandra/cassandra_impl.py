@@ -20,6 +20,7 @@ from collections import deque
 from magnetodb.common import exception
 from magnetodb.common.exception import ConditionalCheckFailedException
 from magnetodb.common.exception import InvalidQueryParameter
+from magnetodb.common import probe
 
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
@@ -129,6 +130,7 @@ class CassandraStorageDriver(StorageDriver):
         self.__cluster_handler = cluster_handler
         self.__default_keyspace_opts = default_keyspace_opts
 
+    @probe.probe(__name__)
     def create_table(self, context, table_info):
         """
         Create table at the backend side
@@ -213,6 +215,7 @@ class CassandraStorageDriver(StorageDriver):
 
         return '"{}"."{}"'.format(cas_keyspace, cas_table_name)
 
+    @probe.probe(__name__)
     def delete_table(self, context, table_info):
         """
         Delete table from the backend side
@@ -567,6 +570,7 @@ class CassandraStorageDriver(StorageDriver):
 
         return result[0]['[applied]']
 
+    @probe.probe(__name__)
     def put_item(self, context, table_info, attribute_map, if_not_exist=False,
                  expected_condition_map=None):
         """
@@ -797,6 +801,7 @@ class CassandraStorageDriver(StorageDriver):
                 )
         return index_values
 
+    @probe.probe(__name__)
     def delete_item(self, context, table_info, key_attribute_map,
                     expected_condition_map=None):
         """
@@ -1091,6 +1096,7 @@ class CassandraStorageDriver(StorageDriver):
     def _get_batch_apply_clause():
         return ' APPLY BATCH'
 
+    @probe.probe(__name__)
     def update_item(self, context, table_info, key_attribute_map,
                     attribute_action_map, expected_condition_map={}):
         """
@@ -1269,6 +1275,7 @@ class CassandraStorageDriver(StorageDriver):
             conditions[attr_name] = [models.ExpectedCondition.eq(attr_value)]
         return conditions
 
+    @probe.probe(__name__)
     def select_item(self, context, table_info, hash_key_condition_list,
                     range_key_to_query_condition_list, select_type,
                     index_name=None, limit=None, exclusive_start_key=None,
@@ -1563,6 +1570,7 @@ class CassandraStorageDriver(StorageDriver):
                                    last_evaluated_key=last_evaluated_key,
                                    count=count)
 
+    @probe.probe(__name__)
     def scan(self, context, table_info, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None, consistent=False):
         """
