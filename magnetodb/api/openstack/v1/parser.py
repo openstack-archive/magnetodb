@@ -375,6 +375,7 @@ class Parser():
         key_attrs_for_projection = cls.parse_key_schema(
             local_secondary_index_json.get(Props.KEY_SCHEMA, {})
         )
+        hash_key = key_attrs_for_projection[0]
 
         try:
             range_key = key_attrs_for_projection[1]
@@ -396,7 +397,8 @@ class Parser():
                 Props.NON_KEY_ATTRIBUTES, None
             )
 
-        return index_name, IndexDefinition(range_key, projected_attrs)
+        return (index_name, hash_key,
+                IndexDefinition(range_key, projected_attrs))
 
     @classmethod
     def format_local_secondary_index(cls, index_name, hash_key,
@@ -430,16 +432,18 @@ class Parser():
     @classmethod
     def parse_local_secondary_indexes(cls, local_secondary_index_list_json):
         res = {}
+        index_hash_keys = set()
         for index_json in local_secondary_index_list_json:
-            index_name, index_def = (
+            index_name, hash_key, index_def = (
                 cls.parse_local_secondary_index(index_json)
             )
             res[index_name] = index_def
+            index_hash_keys.add(hash_key)
 
         if len(res) < len(local_secondary_index_list_json):
             raise ValidationError(_("Two or more indexes with the same name"))
 
-        return res
+        return res, index_hash_keys
 
     @classmethod
     def format_local_secondary_indexes(cls, hash_key,
