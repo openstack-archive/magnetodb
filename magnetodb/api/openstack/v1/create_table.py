@@ -25,6 +25,8 @@ from magnetodb.openstack.common.log import logging
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 
+from magnetodb.common import exception
+
 LOG = logging.getLogger(__name__)
 
 
@@ -81,10 +83,16 @@ class CreateTableController():
         )
 
         # parse table indexed field list
-        indexed_attr_names = parser.Parser.parse_local_secondary_indexes(
-            body.get(
-                parser.Props.LOCAL_SECONDARY_INDEXES, [])
+        indexed_attr_names, index_hash_keys = (
+            parser.Parser.parse_local_secondary_indexes(
+                body.get(parser.Props.LOCAL_SECONDARY_INDEXES, [])
+            )
         )
+        if indexed_attr_names:
+            if len(index_hash_keys) > 1 or key_attrs[0] not in index_hash_keys:
+                msg = _("Error. Index hash key must coinside with "
+                        "primary hash key.")
+                raise exception.ValidationError(msg)
 
         # prepare table_schema structure
         table_schema = models.TableSchema(
