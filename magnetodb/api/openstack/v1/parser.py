@@ -375,7 +375,7 @@ class Parser():
         key_attrs_for_projection = cls.parse_key_schema(
             local_secondary_index_json.get(Props.KEY_SCHEMA, {})
         )
-
+        hash_key = key_attrs_for_projection[0]
         try:
             range_key = key_attrs_for_projection[1]
         except IndexError:
@@ -396,7 +396,11 @@ class Parser():
                 Props.NON_KEY_ATTRIBUTES, None
             )
 
-        return index_name, IndexDefinition(range_key, projected_attrs)
+        return index_name, IndexDefinition(
+            range_key,
+            hash_key,
+            projected_attrs
+        )
 
     @classmethod
     def format_local_secondary_index(cls, index_name, hash_key,
