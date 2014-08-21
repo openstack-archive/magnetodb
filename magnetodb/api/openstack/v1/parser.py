@@ -601,21 +601,31 @@ class Parser():
             ]
 
         if condition_type == Values.BEGINS_WITH:
-            first = condition_class(
+            first_condition = condition_class(
                 condition_class.CONDITION_TYPE_GREATER_OR_EQUAL,
                 condition_args
             )
-            condition_arg = first.arg
-            second = condition_class.le(
+            condition_arg = first_condition.arg
+
+            if condition_arg.is_number:
+                raise ValidationError(
+                    _("%(condition_type)s condition type is not allowed for"
+                      "argument of the %(argument_type)s type"),
+                    condition_type=condition_type,
+                    argument_type=condition_arg.attr_type.type
+                )
+
+            first_value = condition_arg.decoded_value
+            chr_fun = unichr if first_value is isinstance(unicode) else chr
+            second_value = first_value[:-1] + chr_fun(ord(first_value[-1]) + 1)
+
+            second_condition = condition_class.le(
                 AttributeValue(
-                    condition_arg.attr_type, decoded_value=(
-                        condition_arg.decoded_value[:-1] +
-                        chr(ord(condition_arg.decoded_value[-1]) + 1)
-                    )
+                    condition_arg.attr_type, decoded_value=second_value
                 )
             )
 
-            return [first, second]
+            return [first_condition, second_condition]
 
         return [condition_class(condition_type, condition_args)]
 
