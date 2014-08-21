@@ -238,7 +238,7 @@ class AttributeValue(ModelBase):
                 return value
         elif value_type == AttributeType.PRIMITIVE_TYPE_BLOB:
             if isinstance(value, basestring):
-                return base64.b64decode(value)
+                return bytearray(base64.b64decode(value))
 
         return None
 
