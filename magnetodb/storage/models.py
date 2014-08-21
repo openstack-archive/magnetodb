@@ -238,7 +238,7 @@ class AttributeValue(ModelBase):
                 return value
         elif value_type == AttributeType.PRIMITIVE_TYPE_BLOB:
             if isinstance(value, basestring):
-                return base64.b64decode(value)
+                return buffer(base64.b64decode(value))
 
         return None
 
@@ -298,8 +298,7 @@ class AttributeValue(ModelBase):
         elif value_type == AttributeType.PRIMITIVE_TYPE_NUMBER:
             return str(value)
         elif value_type == AttributeType.PRIMITIVE_TYPE_BLOB:
-            if isinstance(value, basestring):
-                return base64.b64encode(value)
+            return base64.b64encode(value)
 
         return None
 
