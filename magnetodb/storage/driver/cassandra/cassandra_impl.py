@@ -25,6 +25,9 @@ from magnetodb.storage import models
 from magnetodb.storage.driver import StorageDriver
 from magnetodb.storage.models import ExpectedCondition
 
+from cassandra import encoder as cql_encoder
+
+
 LOG = logging.getLogger(__name__)
 
 CONDITION_TO_OP = {
@@ -35,14 +38,14 @@ CONDITION_TO_OP = {
     models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL: '>=',
 }
 
-USER_PREFIX = 'user_'
+USER_PREFIX = 'u_'
 USER_PREFIX_LENGTH = len(USER_PREFIX)
 
 SYSTEM_KEYSPACE = 'magnetodb'
-SYSTEM_COLUMN_INDEX_NAME = 'index_name'
-SYSTEM_COLUMN_INDEX_VALUE_STRING = 'index_value_string'
-SYSTEM_COLUMN_INDEX_VALUE_NUMBER = 'index_value_number'
-SYSTEM_COLUMN_INDEX_VALUE_BLOB = 'index_value_blob'
+SYSTEM_COLUMN_INDEX_NAME = 'iname'
+SYSTEM_COLUMN_INDEX_VALUE_STRING = 'ival_str'
+SYSTEM_COLUMN_INDEX_VALUE_NUMBER = 'ival_num'
+SYSTEM_COLUMN_INDEX_VALUE_BLOB = 'ival_blb'
 
 LOCAL_INDEX_FIELD_LIST = [
     SYSTEM_COLUMN_INDEX_NAME,
@@ -57,8 +60,8 @@ INDEX_TYPE_TO_INDEX_POS_MAP = {
     models.AttributeType('B'): 3
 }
 
-SYSTEM_COLUMN_EXTRA_ATTR_DATA = 'extra_attr_data'
-SYSTEM_COLUMN_EXTRA_ATTR_TYPES = 'extra_attr_types'
+SYSTEM_COLUMN_EXTRA_ATTR_DATA = 'dyn_attr_dat'
+SYSTEM_COLUMN_EXTRA_ATTR_TYPES = 'dyn_attr_typ'
 SYSTEM_COLUMN_ATTR_EXIST = 'attr_exist'
 
 DEFAULT_STRING_VALUE = models.AttributeValue('S', decoded_value='')
@@ -105,11 +108,11 @@ def _encode_predefined_attr_value(attr_value):
 
 def _encode_single_value_as_predefined_attr(value, element_type):
     if element_type == models.AttributeType.PRIMITIVE_TYPE_STRING:
-        return "'{}'".format(value)
+        return cql_encoder.cql_quote(value)
     elif element_type == models.AttributeType.PRIMITIVE_TYPE_NUMBER:
         return str(value)
     elif element_type == models.AttributeType.PRIMITIVE_TYPE_BLOB:
-        return "0x{}".format(binascii.hexlify(value))
+        return "0x" + binascii.hexlify(value)
     else:
         assert False, "Value wasn't formatted for cql query"
 
@@ -118,8 +121,8 @@ def _encode_dynamic_attr_value(attr_value):
     if attr_value is None:
         return 'null'
 
-    return "0x{}".format(
-        binascii.hexlify(json.dumps(attr_value.encoded_value, sort_keys=True))
+    return "0x" + binascii.hexlify(
+        json.dumps(attr_value.encoded_value, sort_keys=True)
     )
 
 
