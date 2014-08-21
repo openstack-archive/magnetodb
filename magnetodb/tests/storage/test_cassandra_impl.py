@@ -674,7 +674,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual('2', all[0]['user_range'])
+        self.assertEqual('2', all[0]['u_range'])
 
     def test_delete_item_where_negative(self):
         self._create_table(indexed=True)
@@ -691,7 +691,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0]['user_id'])
+        self.assertEqual(1, all[0]['u_id'])
 
     def test_delete_item_if_exists(self):
         self._create_table(indexed=True)
@@ -700,7 +700,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0]["user_id"])
+        self.assertEqual(1, all[0]["u_id"])
 
         expected = {'str': [models.ExpectedCondition.not_null()]}
 
@@ -725,7 +725,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0]["user_id"])
+        self.assertEqual(1, all[0]["u_id"])
 
         expected = {
             'not_existed_attr_name': [models.ExpectedCondition.not_null()]
@@ -743,7 +743,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0]["user_id"])
+        self.assertEqual(1, all[0]["u_id"])
 
     # @unittest.skip("Skipped due to Cassandra 2.0.6 bug"
     #                "(https://issues.apache.org/jira/browse/CASSANDRA-6914)")
@@ -755,7 +755,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0]["user_id"])
+        self.assertEqual(1, all[0]["u_id"])
 
         expected = {
             'not_existed_attr_name': [models.ExpectedCondition.null()]
@@ -782,7 +782,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0]["user_id"])
+        self.assertEqual(1, all[0]["u_id"])
 
         expected = {'str': [models.ExpectedCondition.null()]}
 
@@ -798,7 +798,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         all = self._select_all()
 
         self.assertEqual(1, len(all))
-        self.assertEqual(1, all[0]["user_id"])
+        self.assertEqual(1, all[0]["u_id"])
 
 
 class TestCassandraSelectItem(TestCassandraBase):
