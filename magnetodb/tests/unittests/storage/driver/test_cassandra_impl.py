@@ -49,7 +49,7 @@ class CassandraDriverTestCase(unittest.TestCase):
         context = mock.Mock(tenant='fake_tenant')
         table_info = mock.Mock(
             schema=mock_table_schema,
-            internal_name='"user_fake_tenant"."user_fake_table"'
+            internal_name='"u_fake_tenant"."u_fake_table"'
         )
 
         key_attrs = {
@@ -66,10 +66,10 @@ class CassandraDriverTestCase(unittest.TestCase):
         driver.update_item(context, table_info, key_attrs, attr_actions)
 
         expected_calls = [
-            mock.call('UPDATE "user_fake_tenant"."user_fake_table" SET '
-                      '"user_Tags"=null WHERE "user_hash_key"=1 AND '
-                      '"user_range_key"=\'two\' '
-                      'IF "user_Tags"={\'Help\',\'Update\'}', consistent=True)
+            mock.call('UPDATE "u_fake_tenant"."u_fake_table" SET '
+                      '"u_Tags"=null WHERE "u_hash_key"=1 AND '
+                      '"u_range_key"=\'two\' '
+                      'IF "u_Tags"={\'Help\',\'Update\'}', consistent=True)
         ]
 
         self.assertEqual(expected_calls, mock_execute_query.mock_calls)
@@ -93,7 +93,7 @@ class CassandraDriverTestCase(unittest.TestCase):
         context = mock.Mock(tenant='fake_tenant')
         table_info = mock.Mock(
             schema=mock_table_schema,
-            internal_name='"user_fake_tenant"."user_fake_table"'
+            internal_name='"u_fake_tenant"."u_fake_table"'
         )
 
         key_attrs = {
@@ -110,10 +110,10 @@ class CassandraDriverTestCase(unittest.TestCase):
         driver.update_item(context, table_info, key_attrs, attr_actions)
 
         expected_calls = [
-            mock.call('UPDATE "user_fake_tenant"."user_fake_table" SET '
-                      '"user_Tags"={\'Help\'} WHERE "user_hash_key"=1 AND '
-                      '"user_range_key"=\'two\' '
-                      'IF "user_Tags"={\'Help\',\'Update\'}', consistent=True)
+            mock.call('UPDATE "u_fake_tenant"."u_fake_table" SET '
+                      '"u_Tags"={\'Help\'} WHERE "u_hash_key"=1 AND '
+                      '"u_range_key"=\'two\' '
+                      'IF "u_Tags"={\'Help\',\'Update\'}', consistent=True)
         ]
 
         self.assertEqual(expected_calls, mock_execute_query.mock_calls)
@@ -141,7 +141,7 @@ class CassandraDriverTestCase(unittest.TestCase):
         context = mock.Mock(tenant='fake_tenant')
         table_info = mock.Mock(
             schema=mock_table_schema,
-            internal_name='"user_fake_tenant"."user_fake_table"'
+            internal_name='"u_fake_tenant"."u_fake_table"'
         )
 
         key_attrs = {
@@ -159,10 +159,10 @@ class CassandraDriverTestCase(unittest.TestCase):
             driver.update_item(context, table_info, key_attrs, attr_actions)
 
         expected_calls = [
-            mock.call('UPDATE "user_fake_tenant"."user_fake_table" SET '
-                      '"user_ViewsCount"=%d WHERE "user_hash_key"=1 AND '
-                      '"user_range_key"=\'two\' '
-                      'IF "user_ViewsCount"=%d' % (i, i - 1),
+            mock.call('UPDATE "u_fake_tenant"."u_fake_table" SET '
+                      '"u_ViewsCount"=%d WHERE "u_hash_key"=1 AND '
+                      '"u_range_key"=\'two\' '
+                      'IF "u_ViewsCount"=%d' % (i, i - 1),
                       consistent=True) for i in range(1, 11)
         ]
 
