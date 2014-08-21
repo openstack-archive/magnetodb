@@ -16,45 +16,38 @@
 
 class StorageDriver(object):
 
-    def create_table(self, context, table_name):
+    def create_table(self, context, table_info):
         """
-        Creates table
+        Create table at the backend side
 
         :param context: current request context
-        :param table_name: String, name of the table to create
-        :param table_schema: TableSchema instance which define table to create
+        :param table_info: TableInfo instance with table's meta information
 
-        :returns: TableMeta instance with metadata of created table
+        :returns: internal_table_name created
 
         :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
-    def delete_table(self, context, table_name):
+    def delete_table(self, context, table_info):
         """
-        Creates table
+        Delete table from the backend side
 
         :param context: current request context
-        :param table_name: String, name of table to delete
+        :param table_info: TableInfo instance with table's meta information
 
         :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
-    def get_table_info_repo(self):
-        """
-        :returns: TableInfoRepository instance
-
-        :raises: BackendInteractionException
-        """
-        raise NotImplementedError()
-
-    def put_item(self, context, put_request, if_not_exist=False,
+    def put_item(self, context, table_info, attribute_map, if_not_exist=False,
                  expected_condition_map=None):
         """
         :param context: current request context
-        :param put_request: contains PutItemRequest items to perform
-                    put item operation
+        :param table_info: TableInfo instance with table's meta information
+        :param attribute_map: attribute name to AttributeValue mapping.
+                    It defines row key and additional attributes to put
+                    item
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
@@ -69,12 +62,13 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def delete_item(self, context, delete_request,
+    def delete_item(self, context, table_info, key_attribute_map,
                     expected_condition_map=None):
         """
         :param context: current request context
-        :param delete_request: contains DeleteItemRequest items to perform
-                    delete item operation
+        :param table_info: TableInfo instance with table's meta information
+        :param key_attribute_map: key attribute name to
+                    AttributeValue mapping. It defines row to be deleted
         :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
                     preconditions to make decision about should item be
@@ -88,11 +82,11 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def update_item(self, context, table_name, key_attribute_map,
+    def update_item(self, context, table_info, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
         """
         :param context: current request context
-        :param table_name: String, name of table to delete item from
+        :param table_info: TableInfo instance with table's meta information
         :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row it to update item
         :param attribute_action_map: attribute name to UpdateItemAction
@@ -108,16 +102,18 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def select_item(self, context, table_name, indexed_condition_map,
-                    select_type=None, index_name=None, limit=None,
-                    exclusive_start_key=None, consistent=True,
-                    order_type=None):
+    def select_item(self, context, table_info, hash_key_condition_list,
+                    range_key_to_query_condition_list, select_type,
+                    index_name=None, limit=None, exclusive_start_key=None,
+                    consistent=True, order_type=None):
         """
         :param context: current request context
-        :param table_name: String, name of table to get item from
-        :param indexed_condition_map: indexed attribute name to
-                    IndexedCondition instance mapping. It defines rows
-                    set to be selected
+        :param table_info: TableInfo instance with table's meta information
+        :param hash_key_condition_list: list of IndexedCondition instances.
+                    Defines conditions for hash key to perform query on
+        :param range_key_to_query_condition_list: list of IndexedCondition
+                    instances. Defines conditions for range key or indexed
+                    attribute to perform query on
         :param select_type: SelectType instance. It defines with attributes
                     will be returned. If not specified, default will be used:
                     SelectType.all() for query on table and
@@ -137,15 +133,14 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def scan(self, context, table_name, condition_map, attributes_to_get=None,
+    def scan(self, context, table_info, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None,
              consistent=False):
         """
         :param context: current request context
-        :param table_name: String, name of table to get item from
-        :param condition_map: attribute name to
-                    IndexedCondition instance mapping. It defines rows
-                    set to be selected
+        :param table_info: TableInfo instance with table's meta information
+        :param condition_map: attribute name to list of ScanCondition
+                    instances mapping. It defines rows set to be selected
         :param attributes_to_get: list of attribute names to be included in
                     result. If None, all attributes will be included
         :param limit: maximum count of returned values

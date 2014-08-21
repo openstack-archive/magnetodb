@@ -49,17 +49,14 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
             raise
 
         future = self._execute_async(self._storage_driver.create_table,
-                                     context=context,
-                                     table_name=table_name)
+                                     context, table_info)
 
         def callback(future):
             if not future.exception():
-                latest_table_info = (
-                    TableInfo(table_name,
-                              table_schema,
-                              models.TableMeta.TABLE_STATUS_ACTIVE))
+                table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
+                table_info.internal_name = future.result()
                 self._table_info_repo.update(
-                    context, latest_table_info, ["status"]
+                    context, table_info, ["status", "internal_name"]
                 )
                 notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_END,
                                 table_schema)
@@ -103,8 +100,7 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
         self._table_info_repo.update(context, table_info, ["status"])
 
         future = self._execute_async(self._storage_driver.delete_table,
-                                     context=context,
-                                     table_name=table_name)
+                                     context, table_info)
 
         def callback(future):
             if not future.exception():
