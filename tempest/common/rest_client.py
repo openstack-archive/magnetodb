@@ -41,13 +41,14 @@ class RestClient(object):
     LOG = logging.getLogger(__name__)
 
     def __init__(self, config, user, password, auth_url, tenant_name=None,
-                 auth_version='v2'):
+                 auth_version='v2', auth_strategy='keystone'):
         self.config = config
         self.user = user
         self.password = password
         self.auth_url = auth_url
         self.tenant_name = tenant_name
         self.auth_version = auth_version
+        self.auth_strategy = auth_strategy
 
         self.service = CONF.magnetodb.service_type
         self.token = None
@@ -122,9 +123,13 @@ class RestClient(object):
         """Returns the token of the current request or sets the token if
         none.
         """
-
-        if not self.token:
-            self._set_auth()
+        if self.auth_strategy == 'keystone':
+            if not self.token:
+                self._set_auth()
+        elif self.auth_strategy == 'noauth':
+            return
+        else:
+            raise exception.RestClientException("Unknown auth strategy.")
 
         return self.token
 

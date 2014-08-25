@@ -59,10 +59,12 @@ class Manager(object):
             raise exceptions.InvalidConfiguration(msg)
 
         self.auth_url = self.config.identity.uri_v3
-        self.auth_version = 'v3'
+        self.auth_version = self.config.identity.auth_version
+        self.auth_strategy = self.config.identity.auth_strategy
 
         client_args = (self.config, self.username, self.password,
-                       self.auth_url, self.tenant_name, self.auth_version)
+                       self.auth_url, self.tenant_name, self.auth_version,
+                       self.auth_strategy)
 
         # common clients
         self.dynamodb_client = botoclients.APIClientDynamoDB(*client_args)

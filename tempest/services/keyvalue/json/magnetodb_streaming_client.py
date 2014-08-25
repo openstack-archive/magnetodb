@@ -25,10 +25,11 @@ CONF = config.TempestConfig()
 class MagnetoDBStreamingClientJSON(rest_client.RestClient):
 
     def __init__(self, config, user, password, auth_url, tenant_name=None,
-                 auth_version='v2'):
+                 auth_version='v2', auth_strategy='keystone'):
 
         super(MagnetoDBStreamingClientJSON, self).__init__(
-            config, user, password, auth_url, tenant_name, auth_version)
+            config, user, password, auth_url, tenant_name, auth_version,
+            auth_strategy)
 
         self.service = CONF.magnetodb_streaming.service_type
 
