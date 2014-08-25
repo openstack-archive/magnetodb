@@ -17,5 +17,4 @@ from magnetodb.common import exception
 
 
 def check_project_id(ctx, project_id):
-    if not ctx.tenant or ctx.tenant != project_id:
-        raise exception.Forbidden('No access to project')
+    return
