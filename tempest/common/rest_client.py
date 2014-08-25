@@ -41,17 +41,20 @@ class RestClient(object):
     LOG = logging.getLogger(__name__)
 
     def __init__(self, config, user, password, auth_url, tenant_name=None,
-                 auth_version='v2'):
+                 auth_version='v2', auth_strategy='keystone',
+                 service_url=None):
         self.config = config
         self.user = user
         self.password = password
         self.auth_url = auth_url
         self.tenant_name = tenant_name
         self.auth_version = auth_version
+        self.auth_strategy = auth_strategy
 
         self.service = CONF.magnetodb.service_type
         self.token = None
         self.base_url = None
+        self.service_url = service_url
         self.region = {}
         for cfgname in dir(self.config):
             # Find all config.FOO.catalog_type and assume FOO is a service.
@@ -100,14 +103,23 @@ class RestClient(object):
         Sets the token and base_url used in requests based on the strategy type
         """
 
-        if self.auth_version == 'v3':
-            auth_func = self.identity_auth_v3
+        if self.auth_strategy == 'keystone':
+            if self.auth_version == 'v3':
+                auth_func = self.identity_auth_v3
+            else:
+                auth_func = self.keystone_auth
+        elif self.auth_strategy == 'noauth':
+            auth_func = self.noauth_auth
         else:
-            auth_func = self.keystone_auth
+            raise exception.RestClientException("Unknown auth strategy.")
 
         self.token, self.base_url = (
             auth_func(self.user, self.password, self.auth_url,
                       self.service, self.tenant_name))
+
+    def noauth_auth(self, user, password, auth_url, service, tenant_name):
+        base_url = '/'.join([self.service_url, 'v1', tenant_name])
+        return 'notoken', base_url
 
     def clear_auth(self):
         """
@@ -122,7 +134,6 @@ class RestClient(object):
         """Returns the token of the current request or sets the token if
         none.
         """
-
         if not self.token:
             self._set_auth()
 
@@ -396,8 +407,7 @@ class RestClient(object):
         if not resp_body and resp.status >= 400:
             self.LOG.warning("status >= 400 response with empty body")
 
-    def _request(self, method, url,
-                 headers=None, body=None):
+    def _request(self, method, url, headers=None, body=None):
         """A simple HTTP request interface."""
 
         req_url = "%s/%s" % (self.base_url, url)
@@ -409,8 +419,7 @@ class RestClient(object):
 
         return resp, resp_body
 
-    def request(self, method, url,
-                headers=None, body=None):
+    def request(self, method, url, headers=None, body=None):
         retry = 0
         if (self.token is None) or (self.base_url is None):
             self._set_auth()
