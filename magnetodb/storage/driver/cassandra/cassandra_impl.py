@@ -607,10 +607,10 @@ class CassandraStorageDriver(StorageDriver):
                 query_builder.insert(0, self._get_batch_begin_clause())
                 query_builder.append(self._get_batch_apply_clause())
 
-            result = self.__cluster_handler.execute_query(
-                "".join(query_builder), consistent=True)
+        result = self.__cluster_handler.execute_query(
+            "".join(query_builder), consistent=True)
 
-            return result[0]['[applied]']
+        return result[0]['[applied]']
 
     def put_item(self, context, table_info, attribute_map, if_not_exist=False,
                  expected_condition_map=None):
@@ -633,11 +633,30 @@ class CassandraStorageDriver(StorageDriver):
         :raises: BackendInteractionException
         """
 
+        hash_name = table_info.schema.hash_key_name
+
+        if expected_condition_map and hash_name in expected_condition_map:
+            hash_conditions = expected_condition_map[hash_name]
+
+            hash_cond_new = [
+                cond for cond in hash_conditions
+                if cond.type != models.ScanCondition.CONDITION_TYPE_NULL
+            ]
+
+            if len(hash_conditions) != len(hash_cond_new):
+                if_not_exist = True
+                LOG.debug('if_not_exist parameter set to True')
+
+                if hash_cond_new:
+                    expected_condition_map[hash_name] = hash_cond_new
+                else:
+                    del expected_condition_map[hash_name]
+
         if if_not_exist:
             if expected_condition_map:
                 raise exception.BackendInteractionException(
-                    "Specifying expected_condition_map and"
-                    "if_not_exist is not allowed both"
+                    "Both expected_condition_map and "
+                    "if_not_exist specified"
                 )
             if self._put_item_if_not_exists(table_info, attribute_map):
                 return True
