@@ -22,6 +22,7 @@ from threading import Event
 import weakref
 
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future
 
 from magnetodb.common.exception import TableAlreadyExistsException
 from magnetodb.common.exception import BackendInteractionException
@@ -32,8 +33,6 @@ from magnetodb.openstack.common.gettextutils import _
 
 from magnetodb.storage.models import SelectType
 from magnetodb.storage.models import IndexedCondition
-from magnetodb.storage.models import PutItemRequest
-from magnetodb.storage.models import DeleteItemRequest
 from magnetodb.storage.models import TableMeta
 
 from magnetodb.storage.manager import StorageManager
@@ -196,22 +195,23 @@ class SimpleStorageManager(StorageManager):
                 table_schema=str(table_info.schema)
             )
 
-    def put_item(self, context, put_request, if_not_exist=False,
+    def put_item(self, context, table_name, attribute_map, if_not_exist=False,
                  expected_condition_map=None):
-        table_info = self._table_info_repo.get(context, put_request.table_name)
+        table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, put_request.attribute_map,
+        self._validate_key_schema(table_info, attribute_map,
                                   keys_only=False)
 
         with self.__task_semaphore:
             result = self._storage_driver.put_item(
-                context, table_info, put_request.attribute_map, if_not_exist,
+                context, table_info, attribute_map, if_not_exist,
                 expected_condition_map
             )
         notifier.notify(
             context, notifier.EVENT_TYPE_DATA_PUTITEM,
             dict(
-                put_request=put_request,
+                table_name=table_name,
+                attribute_map=attribute_map,
                 if_not_exist=if_not_exist,
                 expected_condition_map=expected_condition_map
             ),
@@ -253,34 +253,32 @@ class SimpleStorageManager(StorageManager):
         put_future.add_done_callback(callback)
         return put_future
 
-    def put_item_async(self, context, put_request, if_not_exist=False,
-                       expected_condition_map=None):
-        table_info = self._table_info_repo.get(context, put_request.table_name)
+    def put_item_async(self, context, table_name, attribute_map,
+                       if_not_exist=False, expected_condition_map=None):
+        table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, put_request.attribute_map,
-                                  keys_only=False)
+        self._validate_key_schema(table_info, attribute_map, keys_only=False)
 
         return self._put_item_async(
-            context, table_info, put_request.attribute_map, if_not_exist,
+            context, table_info, attribute_map, if_not_exist,
             expected_condition_map
         )
 
-    def delete_item(self, context, delete_request,
+    def delete_item(self, context, table_name, key_attribute_map,
                     expected_condition_map=None):
-        table_info = self._table_info_repo.get(context,
-                                               delete_request.table_name)
+        table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, delete_request.key_attribute_map)
+        self._validate_key_schema(table_info, key_attribute_map)
 
         with self.__task_semaphore:
             result = self._storage_driver.delete_item(
-                context, table_info, delete_request.key_attribute_map,
-                expected_condition_map
+                context, table_info, key_attribute_map, expected_condition_map
             )
         notifier.notify(
             context, notifier.EVENT_TYPE_DATA_DELETEITEM,
             dict(
-                delete_request=delete_request,
+                table_name=table_name,
+                key_attribute_map=key_attribute_map,
                 expected_condition_map=expected_condition_map
             ),
             priority=notifier.PRIORITY_DEBUG
@@ -318,85 +316,131 @@ class SimpleStorageManager(StorageManager):
         del_future.add_done_callback(callback)
         return del_future
 
-    def delete_item_async(self, context, delete_request,
+    def delete_item_async(self, context, table_name, key_attribute_map,
                           expected_condition_map=None):
-        table_info = self._table_info_repo.get(context,
-                                               delete_request.table_name)
+        table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, delete_request.key_attribute_map)
+        self._validate_key_schema(table_info, key_attribute_map)
 
-        return self._delete_item_async(context, table_info,
-                                       delete_request.key_attribute_map,
+        return self._delete_item_async(context, table_info, key_attribute_map,
                                        expected_condition_map)
 
-    def execute_write_batch(self, context, write_request_list):
-        assert write_request_list
+    def execute_write_batch(self, context, write_request_map):
+        notifier.notify(context, notifier.EVENT_TYPE_DATA_BATCHWRITE_START,
+                        write_request_map)
+        write_request_list_to_send = []
+        for table_name, write_request_list in write_request_map.iteritems():
+            table_info = self._table_info_repo.get(context, table_name)
+            for req in write_request_list:
+                self._validate_table_is_active(table_info)
 
-        unprocessed_items = []
+                if req.is_put:
+                    self._validate_key_schema(table_info, req.attribute_map,
+                                              keys_only=False)
+                else:
+                    self._validate_key_schema(table_info, req.attribute_map)
 
+                write_request_list_to_send.append(
+                    (table_info, req)
+                )
+
+        batch_size = 25
+
+        i = 0
+
+        future_result_list = []
+        for i in xrange(0, len(write_request_list_to_send), batch_size):
+            req_list = (
+                write_request_list_to_send[i:i+batch_size]
+            )
+
+            future_result_list.append(
+                self._batch_write_async(context, req_list)
+            )
+
+        unprocessed_items = {}
+        for future_result in future_result_list:
+            unprocessed_request_list = future_result.result()
+            for (table_info, write_request) in unprocessed_request_list:
+                table_name = table_info.name
+                tables_unprocessed_items = (
+                    unprocessed_items.get(table_name, None)
+                )
+                if tables_unprocessed_items is None:
+                    tables_unprocessed_items = []
+                    unprocessed_items[
+                        table_name
+                    ] = tables_unprocessed_items
+
+                tables_unprocessed_items.append(write_request)
+
+        notifier.notify(
+            context, notifier.EVENT_TYPE_DATA_BATCHWRITE_END,
+            dict(
+                write_request_map=write_request_map,
+                unprocessed_items=unprocessed_items
+            )
+        )
+
+        return unprocessed_items
+
+    def _batch_write_async(self, context, write_request_list):
+        future_result = Future()
+
+        batch_future = self._execute_async(
+            self._storage_driver.batch_write,
+            context, write_request_list
+        )
+
+        def callback(res):
+            try:
+                res.result()
+                unprocessed_items = ()
+            except NotImplementedError:
+                unprocessed_items = self._batch_write_in_emulation_mode(
+                    context, write_request_list
+                )
+            except Exception:
+                LOG.exception("Can't process batch write request")
+                unprocessed_items = write_request_list
+            future_result.set_result(unprocessed_items)
+
+        batch_future.add_done_callback(callback)
+
+        return future_result
+
+    def _batch_write_in_emulation_mode(self, context, write_request_list):
         request_count = len(write_request_list)
         done_count = [0]
-
         done_event = Event()
+        unprocessed_items = []
+        for write_request in write_request_list:
+            table_info, req = write_request
+            if req.is_put:
+                future_result = self._put_item_async(
+                    context, table_info, req.attribute_map)
+            elif req.is_delete:
+                future_result = self._delete_item_async(
+                    context, table_info, req.attribute_map
+                )
 
-        notifier.notify(context, notifier.EVENT_TYPE_DATA_BATCHWRITE_START,
-                        write_request_list)
-        prepared_batch = []
-        for req in write_request_list:
-            def make_request_executor():
-                _req = req
-
-                _table_info = self._table_info_repo.get(context,
-                                                        _req.table_name)
-                self._validate_table_is_active(_table_info)
-
-                _request_function = None
-                _request_param = None
-                if isinstance(_req, PutItemRequest):
-                    _request_param = _req.attribute_map
-                    self._validate_key_schema(_table_info, _request_param,
-                                              keys_only=False)
-                    _request_function = self._put_item_async
-                elif isinstance(_req, DeleteItemRequest):
-                    _request_param = _req.key_attribute_map
-                    self._validate_key_schema(_table_info, _request_param)
-                    _request_function = self._delete_item_async
-                else:
-                    assert False, (
-                        'Wrong WriteItemRequest.Should never happen!!!'
-                    )
+            def make_callback():
+                _write_request = write_request
 
                 def callback(res):
                     try:
                         res.result()
                     except Exception:
-                        unprocessed_items.append(_req)
+                        unprocessed_items.append(_write_request)
                         LOG.exception("Can't process WriteItemRequest")
                     done_count[0] += 1
                     if done_count[0] >= request_count:
                         done_event.set()
+                return callback
 
-                def executor():
-                    future_result = _request_function(context, _table_info,
-                                                      _request_param)
-                    future_result.add_done_callback(callback)
-                return executor
-
-            prepared_batch.append(make_request_executor())
-
-        for request_executor in prepared_batch:
-            request_executor()
+            future_result.add_done_callback(make_callback())
 
         done_event.wait()
-
-        notifier.notify(
-            context, notifier.EVENT_TYPE_DATA_BATCHWRITE_END,
-            dict(
-                write_request_list=write_request_list,
-                unprocessed_items=unprocessed_items
-            )
-        )
-
         return unprocessed_items
 
     def execute_get_batch(self, context, read_request_list):

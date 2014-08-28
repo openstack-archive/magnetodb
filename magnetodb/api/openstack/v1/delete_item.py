@@ -16,7 +16,6 @@
 import jsonschema
 
 from magnetodb import storage
-from magnetodb.storage import models
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 
@@ -88,10 +87,8 @@ class DeleteItemController(object):
 
         # delete item
         req.context.tenant = project_id
-        storage.delete_item(
-            req.context,
-            models.DeleteItemRequest(table_name, key_attributes),
-            expected_condition_map=expected_item_conditions)
+        storage.delete_item(req.context, table_name, key_attributes,
+                            expected_condition_map=expected_item_conditions)
 
         # format response
         response = {}

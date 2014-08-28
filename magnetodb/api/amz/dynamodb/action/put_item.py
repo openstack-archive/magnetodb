@@ -109,9 +109,11 @@ class PutItemDynamoDBAction(DynamoDBAction):
             # put item
             result = storage.put_item(
                 self.context,
-                models.PutItemRequest(table_name, item_attributes),
+                table_name,
+                item_attributes,
                 if_not_exist=False,
-                expected_condition_map=expected_item_conditions)
+                expected_condition_map=expected_item_conditions
+            )
 
             if not result:
                 raise exception.AWSErrorResponseException()
