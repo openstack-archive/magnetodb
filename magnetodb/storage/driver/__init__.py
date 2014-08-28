@@ -15,7 +15,6 @@
 
 
 class StorageDriver(object):
-
     def create_table(self, context, table_info):
         """
         Create table at the backend side
@@ -35,6 +34,18 @@ class StorageDriver(object):
 
         :param context: current request context
         :param table_info: TableInfo instance with table's meta information
+
+        :raises: BackendInteractionException
+        """
+        raise NotImplementedError()
+
+    def batch_write(self, context, write_request_list):
+        """
+        Execute batch on storage backend side
+
+        :param context: current request context
+        :param write_request_list: (TableInfo, WriteItemRequest) list,
+                    represents write requests set to be perform
 
         :raises: BackendInteractionException
         """
