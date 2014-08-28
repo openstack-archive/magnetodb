@@ -39,12 +39,12 @@ class BatchWriteItemController(object):
         validation.validate_unexpected_props(body, "body")
 
         # parse request_items
-        request_list = parser.Parser.parse_batch_write_request_items(
+        request_map = parser.Parser.parse_batch_write_request_items(
             request_items_json
         )
 
         unprocessed_items = storage.execute_write_batch(
-            req.context, request_list)
+            req.context, request_map)
 
         return {
             'unprocessed_items': parser.Parser.format_request_items(

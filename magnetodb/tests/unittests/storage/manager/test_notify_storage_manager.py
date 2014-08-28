@@ -14,6 +14,8 @@
 #    under the License.
 
 import datetime
+from magnetodb.storage.driver import StorageDriver
+from magnetodb.storage.models import WriteItemRequest
 from magnetodb.storage.table_info_repo import TableInfoRepository
 import mock
 import time
@@ -146,6 +148,7 @@ class TestNotifyStorageManager(TestNotify):
         self.assertTrue(time_start < time_end,
                         "start event is later than end event")
 
+    @mock.patch('magnetodb.storage.driver.StorageDriver.batch_write')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_key_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
@@ -157,7 +160,7 @@ class TestNotifyStorageManager(TestNotify):
                 '_put_item_async')
     def test_notify_batch_write(self, mock_put_item, mock_delete_item,
                                 mock_repo_get, mock_validate_table_is_active,
-                                mock_validate_key_schema):
+                                mock_validate_key_schema, mock_batch_write):
         TestNotify.cleanup_test_notifier()
 
         future = Future()
@@ -165,30 +168,41 @@ class TestNotifyStorageManager(TestNotify):
         mock_put_item.return_value = future
         mock_delete_item.return_value = future
 
+        mock_batch_write.side_effect = NotImplementedError()
+
         context = mock.Mock(tenant='fake_tenant')
 
         table_name = 'fake_table'
 
-        request_list = [
-            models.PutItemRequest(table_name, {
-                'id': models.AttributeValue('N', 1),
-                'range': models.AttributeValue('S', '1'),
-                'str': models.AttributeValue('S', 'str1'), }),
-            models.PutItemRequest(table_name, {
-                'id': models.AttributeValue('N', 2),
-                'range': models.AttributeValue('S', '1'),
-                'str': models.AttributeValue('S', 'str1'), }),
-            models.DeleteItemRequest(
-                table_name,
-                {
-                    'id': models.AttributeValue('N', 3),
-                    'range': models.AttributeValue('S', '3')
-                }
-            )
-        ]
+        request_map = {
+            table_name: [
+                WriteItemRequest.put(
+                    {
+                        'id': models.AttributeValue('N', 1),
+                        'range': models.AttributeValue('S', '1'),
+                        'str': models.AttributeValue('S', 'str1'),
+                    }
+                ),
+                WriteItemRequest.put(
+                    {
+                        'id': models.AttributeValue('N', 2),
+                        'range': models.AttributeValue('S', '1'),
+                        'str': models.AttributeValue('S', 'str1')
+                    }
+                ),
+                WriteItemRequest.delete(
+                    {
+                        'id': models.AttributeValue('N', 3),
+                        'range': models.AttributeValue('S', '3')
+                    }
+                )
+            ]
+        }
 
-        storage_manager = SimpleStorageManager(None, TableInfoRepository())
-        storage_manager.execute_write_batch(context, request_list)
+        storage_manager = SimpleStorageManager(
+            StorageDriver(), TableInfoRepository()
+        )
+        storage_manager.execute_write_batch(context, request_map)
 
         # check notification queue
         self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
@@ -200,14 +214,14 @@ class TestNotifyStorageManager(TestNotify):
                          cfg.CONF.default_notification_level)
         self.assertEqual(start_event['event_type'],
                          notifier.EVENT_TYPE_DATA_BATCHWRITE_START)
-        self.assertEqual(len(start_event['payload']), len(request_list))
+        self.assertEqual(len(start_event['payload']), len(request_map))
 
         self.assertEqual(end_event['priority'],
                          cfg.CONF.default_notification_level)
         self.assertEqual(end_event['event_type'],
                          notifier.EVENT_TYPE_DATA_BATCHWRITE_END)
-        self.assertEqual(len(end_event['payload']['write_request_list']),
-                         len(request_list))
+        self.assertEqual(len(end_event['payload']['write_request_map']),
+                         len(request_map))
         self.assertEqual(len(end_event['payload']['unprocessed_items']), 0)
 
         time_start = datetime.datetime.strptime(
