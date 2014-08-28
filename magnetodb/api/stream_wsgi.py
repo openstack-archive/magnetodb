@@ -25,7 +25,6 @@ from magnetodb import common
 from magnetodb.openstack.common import log as logging
 from magnetodb import notifier
 from magnetodb import storage
-from magnetodb.storage import models
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 
@@ -56,13 +55,9 @@ def make_callback(queue, event, done_count, chunk):
     return callback
 
 
-def make_put_item(table_name, item):
+def make_put_item(item):
     data = json.loads(item)
-
-    attribute_map = parser.Parser.parse_item_attributes(data)
-
-    return models.PutItemRequest(
-        table_name, attribute_map)
+    return parser.Parser.parse_item_attributes(data)
 
 
 def bulk_load_app(environ, start_response):
@@ -120,9 +115,9 @@ def bulk_load_app(environ, start_response):
         last_read = chunk
 
         try:
-            put_request = make_put_item(table_name, chunk)
-
-            future = storage.put_item_async(context, put_request)
+            future = storage.put_item_async(
+                context, table_name, make_put_item(chunk)
+            )
 
             put_count += 1
 

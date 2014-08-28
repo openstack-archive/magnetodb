@@ -16,7 +16,6 @@
 
 from magnetodb import storage
 from magnetodb.api import validation
-from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
@@ -75,10 +74,9 @@ class PutItemController(object):
             )
 
         storage.put_item(
-            req.context,
-            models.PutItemRequest(table_name, item_attributes),
-            if_not_exist=False,
-            expected_condition_map=expected_item_conditions)
+            req.context, table_name, item_attributes, if_not_exist=False,
+            expected_condition_map=expected_item_conditions
+        )
 
         # format response
         response = {}

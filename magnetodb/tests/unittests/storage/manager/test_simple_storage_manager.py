@@ -13,6 +13,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from magnetodb.storage.driver import StorageDriver
+from magnetodb.storage.models import WriteItemRequest
 from magnetodb.storage.table_info_repo import TableInfoRepository
 
 import mock
@@ -27,6 +29,7 @@ from magnetodb.storage.manager.simple_impl import SimpleStorageManager
 class SimpleStorageManagerTestCase(unittest.TestCase):
     """The test for simple storage manager implementation."""
 
+    @mock.patch('magnetodb.storage.driver.StorageDriver.batch_write')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_key_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
@@ -38,11 +41,12 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                 '_put_item_async')
     def test_execute_write_batch(self, mock_put_item, mock_delete_item,
                                  mock_repo_get, mock_validate_table_is_active,
-                                 mock_validate_key_schema):
+                                 mock_validate_key_schema, mock_batch_write):
         future = Future()
         future.set_result(True)
         mock_put_item.return_value = future
         mock_delete_item.return_value = future
+        mock_batch_write.side_effect = NotImplementedError()
 
         table_info = mock.Mock()
         mock_repo_get.return_value = table_info
@@ -51,31 +55,30 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         table_name = 'fake_table'
 
-        request_list = [
-            models.PutItemRequest(
-                table_name,
-                {
-                    'id': models.AttributeValue('N', 1),
-                    'range': models.AttributeValue('S', '1'),
-                    'str': models.AttributeValue('S', 'str1'),
-                }
-            ),
-            models.PutItemRequest(
-                table_name,
-                {
-                    'id': models.AttributeValue('N', 2),
-                    'range': models.AttributeValue('S', '1'),
-                    'str': models.AttributeValue('S', 'str1')
-                }
-            ),
-            models.DeleteItemRequest(
-                table_name,
-                {
-                    'id': models.AttributeValue('N', 3),
-                    'range': models.AttributeValue('S', '3')
-                }
-            )
-        ]
+        request_map = {
+            table_name: [
+                WriteItemRequest.put(
+                    {
+                        'id': models.AttributeValue('N', 1),
+                        'range': models.AttributeValue('S', '1'),
+                        'str': models.AttributeValue('S', 'str1'),
+                    }
+                ),
+                WriteItemRequest.put(
+                    {
+                        'id': models.AttributeValue('N', 2),
+                        'range': models.AttributeValue('S', '1'),
+                        'str': models.AttributeValue('S', 'str1')
+                    }
+                ),
+                WriteItemRequest.delete(
+                    {
+                        'id': models.AttributeValue('N', 3),
+                        'range': models.AttributeValue('S', '3')
+                    }
+                )
+            ]
+        }
 
         expected_put = [
             mock.call(
@@ -105,17 +108,18 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
             )
         ]
 
-        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+        storage_manager = SimpleStorageManager(StorageDriver(),
+                                               TableInfoRepository())
 
         unprocessed_items = storage_manager.execute_write_batch(
-            context, request_list
+            context, request_map
         )
 
         self.assertEqual(expected_put, mock_put_item.call_args_list)
         self.assertEqual(expected_delete,
                          mock_delete_item.call_args_list)
 
-        self.assertEqual(unprocessed_items, [])
+        self.assertEqual(unprocessed_items, {})
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_key_schema')
