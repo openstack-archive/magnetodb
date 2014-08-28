@@ -654,6 +654,12 @@ MagnetoDBGroup = [
     cfg.StrOpt('service_type',
                default="kv-storage",
                help="The name of the MagnetoDB service type"),
+    cfg.BoolOpt('allow_tenant_isolation',
+                default=False,
+                help="Allows test cases to create/destroy tenants and "
+                     "users. This option enables isolated test cases and "
+                     "better parallel execution, but also requires that "
+                     "OpenStack Identity API admin credentials are known."),
 ]
 
 magnetodb_streaming_group = cfg.OptGroup(

@@ -230,7 +230,9 @@ class BaseTestCase(testtools.TestCase,
         Returns an Openstack client manager
         """
         force_tenant_isolation = getattr(cls, 'force_tenant_isolation', None)
-        if (cls.config.compute.allow_tenant_isolation or
+        alt_tenant = getattr(cls, 'alt_tenant', None)
+        os_alt = None
+        if (cls.config.magnetodb.allow_tenant_isolation and
                 force_tenant_isolation):
             cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__,
                                                               False)
@@ -239,16 +241,24 @@ class BaseTestCase(testtools.TestCase,
             os = clients.Manager(username=username,
                                  password=password,
                                  tenant_name=tenant_name)
+            if alt_tenant:
+                creds = cls.isolated_creds.get_alt_creds()
+                username, tenant_name, password = creds
+                os_alt = clients.Manager(username=username,
+                                         password=password,
+                                         tenant_name=tenant_name)
         else:
             os = clients.Manager()
-        return os
+            if alt_tenant:
+                os_alt = clients.AltManager()
+        return os, os_alt
 
     @classmethod
     def clear_isolated_creds(cls):
         """
         Clears isolated creds if set
         """
-        if getattr(cls, 'isolated_creds'):
+        if getattr(cls, 'isolated_creds', None):
             cls.isolated_creds.clear_isolated_creds()
 
     @classmethod
