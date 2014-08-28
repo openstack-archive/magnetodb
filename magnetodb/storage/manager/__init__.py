@@ -68,11 +68,13 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def put_item(self, context, put_request, if_not_exist=False,
+    def put_item(self, context, table_name, attribute_map, if_not_exist=False,
                  expected_condition_map=None):
         """
         :param context: current request context
-        :param put_request: PutItemRequest instance which specifies item to put
+        :param table_name: name of the table
+        :param attribute_map: attribute name to AttributeValue instance map,
+                which represents item to put
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
@@ -87,11 +89,13 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def put_item_async(self, context, put_request, if_not_exist=False,
-                       expected_condition_map=None):
+    def put_item_async(self, context, table_name, attribute_map,
+                       if_not_exist=False, expected_condition_map=None):
         """
         :param context: current request context
-        :param put_request: PutItemRequest instance which specifies item to put
+        :param table_name: name of the table
+        :param attribute_map: attribute name to AttributeValue instance map,
+                which represents item to put
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
@@ -106,11 +110,13 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def delete_item(self, context, delete_request,
+    def delete_item(self, context, table_name, key_attribute_map,
                     expected_condition_map=None):
         """
         :param context: current request context
-        :param delete_request: DeleteItemRequest instance which identifies item
+        :param table_name: name of the table
+        :param key_attribute_map: attribute name to AttributeValue
+                    instance map, which represents key to identify item
                     to delete
         :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
@@ -125,11 +131,13 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def delete_item_async(self, context, delete_request,
+    def delete_item_async(self, context, table_name, key_attribute_map,
                           expected_condition_map=None):
         """
         :param context: current request context
-        :param delete_request: DeleteItemRequest instance which identifies item
+        :param table_name: name of the table
+        :param key_attribute_map: attribute name to AttributeValue
+                    instance map, which represents key to identify item
                     to delete
         :param expected_condition_map: expected attribute name to
                     ExpectedCondition instance mapping. It provides
@@ -142,11 +150,11 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def execute_write_batch(self, context, write_request_list):
+    def execute_write_batch(self, context, write_request_map):
         """
         :param context: current request context
-        :param write_request_list: contains PutItemRequest or DeleteItemRequest
-                    instances to execute batch operation
+        :param write_request_map: table name to WriteItemRequest
+                instance list map to execute batch operation
 
         :returns: Unprocessed request list
         """

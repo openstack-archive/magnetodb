@@ -590,39 +590,44 @@ class SelectType(ModelBase):
         return self.type == self.SELECT_TYPE_SPECIFIED
 
 
-class WriteItemBatchableRequest(ModelBase):
-    def __init__(self, table_name, **kwargs):
-        """
-        :param table_name: String, name of table to delete item from
-        :param timestamp: timestamp of operation. Operation will be skipped
-                    if another one already performed with greater or equal
-                    timestamp
-        """
-        super(WriteItemBatchableRequest, self).__init__(table_name=table_name,
-                                                        **kwargs)
+class WriteItemRequest(ModelBase):
+    WRITE_REQUEST_TYPE_PUT = "PUT"
+    WRITE_REQUEST_TYPE_DELETE = "DELETE"
 
+    _allowed_types = set([WRITE_REQUEST_TYPE_PUT, WRITE_REQUEST_TYPE_DELETE])
 
-class DeleteItemRequest(WriteItemBatchableRequest):
-    def __init__(self, table_name, key_attribute_map):
+    def __init__(self, type, attribute_map):
         """
-        :param table_name: String, name of table to delete item from
-        :param key_attribute_map: key attribute name to
-                    AttributeValue mapping. It defines row to be deleted
+        :param type: one of available type names
+        :param attribute_map: map of attribute name to AttributeValue instance,
+                represents item to put or key to delete
         """
-        super(DeleteItemRequest, self).__init__(
-            table_name, key_attribute_map=key_attribute_map)
 
+        if type not in self._allowed_types:
+            raise ValidationError(
+                _("Write request_type '%(type)s' isn't allowed"),
+                type=type
+            )
 
-class PutItemRequest(WriteItemBatchableRequest):
-    def __init__(self, table_name, attribute_map):
-        """
-        :param table_name: String, name of table to delete item from
-        :param attribute_map: attribute name to AttributeValue mapping.
-                    It defines row key and additional attributes to put
-                    item
-        """
-        super(PutItemRequest, self).__init__(
-            table_name, attribute_map=attribute_map)
+        super(WriteItemRequest, self).__init__(
+            type=type, attribute_map=attribute_map
+        )
+
+    @ classmethod
+    def put(cls, attribute_map):
+        return cls(cls.WRITE_REQUEST_TYPE_PUT, attribute_map)
+
+    @ classmethod
+    def delete(cls, attribute_map):
+        return cls(cls.WRITE_REQUEST_TYPE_DELETE, attribute_map)
+
+    @property
+    def is_put(self):
+        return self.type == self.WRITE_REQUEST_TYPE_PUT
+
+    @property
+    def is_delete(self):
+        return self.type == self.WRITE_REQUEST_TYPE_DELETE
 
 
 class GetItemRequest(ModelBase):
