@@ -15,12 +15,18 @@
 
 
 class TableInfo(object):
-
     def __init__(self, name, schema, status, internal_name=None):
-        self.name = name
+        self.__name = name
         self.schema = schema
         self.status = status
         self.internal_name = internal_name
+
+    @property
+    def name(self):
+        return self.__name
+
+    def __hash__(self):
+        return hash(self.__name)
 
 
 class TableInfoRepository(object):

@@ -744,6 +744,34 @@ class CassandraStorageDriver(StorageDriver):
                                                  consistent=True)
             return True
 
+    def batch_write(self, context, write_request_list):
+        for table_info, _ in write_request_list:
+            if table_info.schema.index_def_map:
+                raise NotImplementedError(
+                    "Batch isn't supported for tables with indices"
+                )
+
+        query_builder = []
+
+        for table_info, write_request in write_request_list:
+            if write_request.is_put:
+                self._append_insert_query(
+                    table_info, write_request.attribute_map,
+                    query_builder=query_builder
+                )
+            elif write_request.is_delete:
+                self._append_delete_query(
+                    table_info, write_request.attribute_map,
+                    query_builder=query_builder
+                )
+            query_builder.append(" ")
+
+        if len(write_request_list) > 1:
+            query_builder.insert(0, self._get_batch_begin_clause())
+            query_builder.append(self._get_batch_apply_clause())
+
+        self.__cluster_handler.execute_query("".join(query_builder), True)
+
     @classmethod
     def _append_delete_query_with_basic_pk(
             cls, table_info, attribute_map, query_builder=None):

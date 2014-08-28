@@ -16,7 +16,9 @@
 import json
 from magnetodb.api import validation
 from magnetodb.openstack.common.gettextutils import _
-from magnetodb.storage.models import IndexDefinition, UpdateReturnValuesType
+from magnetodb.storage.models import IndexDefinition
+from magnetodb.storage.models import UpdateReturnValuesType
+from magnetodb.storage.models import WriteItemRequest
 from magnetodb.storage.models import UpdateItemAction
 from magnetodb.storage.models import TableMeta
 from magnetodb.storage.models import Condition
@@ -26,8 +28,6 @@ from magnetodb.storage.models import ExpectedCondition
 from magnetodb.storage.models import SelectType
 from magnetodb.storage.models import AttributeType
 from magnetodb.storage.models import AttributeValue
-from magnetodb.storage.models import PutItemRequest
-from magnetodb.storage.models import DeleteItemRequest
 from magnetodb.storage.models import GetItemRequest
 from magnetodb.storage.models import InsertReturnValuesType
 
@@ -697,11 +697,12 @@ class Parser():
 
     @classmethod
     def parse_batch_write_request_items(cls, request_items_json):
-        request_list = []
+        request_map = {}
         for table_name, request_list_json in request_items_json.iteritems():
             validation.validate_table_name(table_name)
             validation.validate_list_of_objects(request_list_json, table_name)
 
+            request_list_for_table = []
             for request_json in request_list_json:
                 for request_type, request_body in request_json.iteritems():
                     if request_type == Props.REQUEST_PUT:
@@ -710,9 +711,9 @@ class Parser():
                         validation.validate_object(item, Props.ITEM)
                         validation.validate_unexpected_props(request_body,
                                                              request_type)
-                        request_list.append(
-                            PutItemRequest(
-                                table_name, cls.parse_item_attributes(item)
+                        request_list_for_table.append(
+                            WriteItemRequest.put(
+                                cls.parse_item_attributes(item)
                             )
                         )
                     elif request_type == Props.REQUEST_DELETE:
@@ -721,9 +722,9 @@ class Parser():
                         validation.validate_object(key, Props.KEY)
                         validation.validate_unexpected_props(request_body,
                                                              request_type)
-                        request_list.append(
-                            DeleteItemRequest(
-                                table_name, cls.parse_item_attributes(key)
+                        request_list_for_table.append(
+                            WriteItemRequest.delete(
+                                cls.parse_item_attributes(key)
                             )
                         )
                     else:
@@ -732,7 +733,8 @@ class Parser():
                               "%(request_type)s"),
                             request_type=json.dumps(request_type)
                         )
-        return request_list
+            request_map[table_name] = request_list_for_table
+        return request_map
 
     @classmethod
     def parse_batch_get_request_items(cls, request_items_json):
@@ -775,34 +777,33 @@ class Parser():
     @classmethod
     def format_request_items(cls, request_items):
         res = {}
-        for request in request_items:
-            table_requests = res.get(request.table_name, None)
-            if table_requests is None:
-                table_requests = []
-                res[request.table_name] = table_requests
-            if isinstance(request, PutItemRequest):
-                request_json = {
-                    Props.REQUEST_PUT: {
-                        Props.ITEM: cls.format_item_attributes(
-                            request.attribute_map)
-                    }
+        for table_name, request_list in request_items.iteritems():
+            table_requests = []
+            for request in request_list:
+                if request.is_put:
+                    request_json = {
+                        Props.REQUEST_PUT: {
+                            Props.ITEM: cls.format_item_attributes(
+                                request.attribute_map)
+                        }
 
-                }
-            elif isinstance(request, DeleteItemRequest):
-                request_json = {
-                    Props.REQUEST_DELETE: {
-                        Props.KEY: cls.format_item_attributes(
-                            request.key_attribute_map)
                     }
-                }
-            else:
-                assert False, (
-                    "Unknown request type '{}'".format(
-                        request.__class__.__name__
+                elif request.is_delete:
+                    request_json = {
+                        Props.REQUEST_DELETE: {
+                            Props.KEY: cls.format_item_attributes(
+                                request.attribute_map)
+                        }
+                    }
+                else:
+                    assert False, (
+                        "Unknown request type '{}'".format(
+                            request.type
+                        )
                     )
-                )
 
-            table_requests.append(request_json)
+                table_requests.append(request_json)
+            res[table_name] = table_requests
 
         return res
 
@@ -828,13 +829,4 @@ class Parser():
 
     @classmethod
     def format_table_status(cls, table_status):
-        if table_status == TableMeta.TABLE_STATUS_ACTIVE:
-            return Values.TABLE_STATUS_ACTIVE
-        elif table_status == TableMeta.TABLE_STATUS_CREATING:
-            return Values.TABLE_STATUS_CREATING
-        elif table_status == TableMeta.TABLE_STATUS_DELETING:
-            return Values.TABLE_STATUS_DELETING
-        else:
-            assert False, (
-                "Table status '{}' is not allowed".format(table_status)
-            )
+        return table_status

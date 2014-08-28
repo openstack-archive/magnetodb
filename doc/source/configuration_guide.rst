@@ -263,33 +263,33 @@ cluster_handler:
  - args: <position arguments for object initialization >
  - kwargs: <keyword arguments map for object initialization>
     - cluster - Cluster object
-    - query_timeout
-    - concurrent_queries
+    - query_timeout - Seconds count to wait for CQL query completion
+    - concurrent_queries - max number of started but not completed CLQ queries
 
 table_info_repo:
 
  - type: <factory method or class object name>
  - args: <position arguments for object initialization >
  - kwargs: <keyword arguments map for object initialization>
-    - cluster_handler
+    - cluster_handler - ClusterHandler object
 
 storage_driver:
 
  - type: <factory method or class object name>
  - args: <position arguments for object initialization >
  - kwargs: <keyword arguments map for object initialization>
-    - cluster_handler
-    - table_info_repo
-    - default_keyspace_opts
+    - cluster_handler - ClusterHandler object
+    - default_keyspace_opts - map of Cassandra keyspace properties, which will be used for tenant's keyspace creation if it doesn't exist
 
 storage_manager:
 
  - type: <factory method or class object name>
  - args: <position arguments for object initialization >
  - kwargs: <keyword arguments map for object initialization>
-    - storage_driver
-    - table_info_repo
-    - concurrent_tasks
+    - storage_driver - StorageDriver object
+    - table_info_repo - TableInfoRepo object
+    - concurrent_tasks - max number of started but not completed storage_driver methods invocations
+    - batch_chunk_size - size of internal chunks to which original batch will be split. It is needed because large batches may impact Cassandra latency for another concurrent queries
 
 
 
@@ -427,7 +427,8 @@ Default storage manager config
                 "kwargs": {
                     "storage_driver": "@storage_driver",
                     "table_info_repo": "@table_info_repo",
-                    "concurrent_tasks": 1000
+                    "concurrent_tasks": 1000,
+                    "batch_chunk_size": 25
                 }
             }
         }

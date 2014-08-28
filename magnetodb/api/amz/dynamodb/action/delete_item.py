@@ -109,8 +109,10 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
             # put item
             result = storage.delete_item(
                 self.context,
-                models.DeleteItemRequest(table_name, key_attributes),
-                expected_condition_map=expected_item_conditions)
+                table_name,
+                key_attributes,
+                expected_condition_map=expected_item_conditions
+            )
         except exception.AWSErrorResponseException as e:
             raise e
         except Exception:
