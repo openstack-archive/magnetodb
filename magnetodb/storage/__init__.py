@@ -153,11 +153,13 @@ def list_tables(context, exclusive_start_table_name=None, limit=None):
     )
 
 
-def put_item(context, put_request, if_not_exist=False,
+def put_item(context, table_name, attribute_map, if_not_exist=False,
              expected_condition_map=None):
     """
     :param context: current request context
-    :param put_request: PutItemRequest instance which specifies item to put
+    :param table_name: name of the table
+    :param attribute_map: attribute name to AttributeValue instance map,
+                which represents item to put
     :param if_not_exist: put item only is row is new record (It is possible
                 to use only one of if_not_exist and expected_condition_map
                 parameter)
@@ -171,15 +173,18 @@ def put_item(context, put_request, if_not_exist=False,
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.put_item(
-        context, put_request, if_not_exist, expected_condition_map
+        context, table_name, attribute_map, if_not_exist,
+        expected_condition_map
     )
 
 
-def put_item_async(context, put_request, if_not_exist=False,
+def put_item_async(context, table_name, attribute_map, if_not_exist=False,
                    expected_condition_map=None):
     """
     :param context: current request context
-    :param put_request: PutItemRequest instance which specifies item to put
+    :param table_name: name of the table
+    :param attribute_map: attribute name to AttributeValue instance map,
+                which represents item to put
     :param if_not_exist: put item only is row is new record (It is possible
                 to use only one of if_not_exist and expected_condition_map
                 parameter)
@@ -193,14 +198,18 @@ def put_item_async(context, put_request, if_not_exist=False,
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.put_item_async(
-        context, put_request, if_not_exist, expected_condition_map
+        context, table_name, attribute_map, if_not_exist,
+        expected_condition_map
     )
 
 
-def delete_item(context, delete_request, expected_condition_map=None):
+def delete_item(context, table_name, key_attribute_map,
+                expected_condition_map=None):
     """
     :param context: current request context
-    :param delete_request: DeleteItemRequest instance which identifies item
+    :param table_name: name of the table
+    :param key_attribute_map: attribute name to AttributeValue instance map,
+                which represents key to identify item
                 to delete
     :param expected_condition_map: expected attribute name to
                 ExpectedCondition instance mapping. It provides
@@ -214,15 +223,17 @@ def delete_item(context, delete_request, expected_condition_map=None):
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.delete_item(
-        context, delete_request, expected_condition_map
+        context, table_name, key_attribute_map, expected_condition_map
     )
 
 
-def delete_item_async(context, delete_request,
+def delete_item_async(context, table_name, key_attribute_map,
                       expected_condition_map=None):
     """
     :param context: current request context
-    :param delete_request: DeleteItemRequest instance which identifies item
+    :param table_name: name of the table
+    :param key_attribute_map: attribute name to AttributeValue instance map,
+                which represents key to identify item
                 to delete
     :param expected_condition_map: expected attribute name to
                 ExpectedCondition instance mapping. It provides
@@ -234,20 +245,20 @@ def delete_item_async(context, delete_request,
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.delete_item_async(
-        context, delete_request, expected_condition_map
+        context, table_name, key_attribute_map, expected_condition_map
     )
 
 
-def execute_write_batch(context, write_request_list):
+def execute_write_batch(context, write_request_map):
     """
     :param context: current request context
-    :param write_request_list: contains PutItemRequest or DeleteItemRequest
-                instances to execute batch operation
+    :param write_request_map: table name to WriteItemRequest
+                instance list map to execute batch operation
 
     :returns: Unprocessed request list
     """
     return __STORAGE_MANAGER_IMPL.execute_write_batch(context,
-                                                      write_request_list)
+                                                      write_request_map)
 
 
 def execute_get_batch(context, get_request_list):
