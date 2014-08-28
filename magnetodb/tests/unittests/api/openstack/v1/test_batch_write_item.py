@@ -23,7 +23,7 @@ from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 class BatchWriteItemTestCase(test_base_testcase.APITestCase):
     """The test for batch_write_item method for v1 ReST API."""
 
-    @mock.patch('magnetodb.storage.execute_write_batch', return_value=[])
+    @mock.patch('magnetodb.storage.execute_write_batch', return_value={})
     def test_batch_write_item(self, mock_execute_write_batch):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}

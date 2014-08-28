@@ -30,10 +30,9 @@ LOG = logging.getLogger(__name__)
 class AsyncSimpleStorageManager(SimpleStorageManager):
     def __init__(self, storage_driver,
                  table_info_repo,
-                 concurrent_tasks=1000):
-        SimpleStorageManager.__init__(self, storage_driver,
-                                      table_info_repo,
-                                      concurrent_tasks)
+                 concurrent_tasks=1000, batch_chunk_size=25):
+        SimpleStorageManager.__init__(self, storage_driver, table_info_repo,
+                                      concurrent_tasks, batch_chunk_size)
 
     def create_table(self, context, table_name, table_schema):
         notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_START,
