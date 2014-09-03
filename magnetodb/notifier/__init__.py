@@ -35,6 +35,7 @@ EVENT_TYPE_TABLE_DELETE_END = 'magnetodb.table.delete.end'
 EVENT_TYPE_TABLE_DELETE_ERROR = 'magnetodb.table.delete.error'
 EVENT_TYPE_TABLE_DESCRIBE = 'magnetodb.table.describe'
 EVENT_TYPE_TABLE_LIST = 'magnetodb.table.list'
+EVENT_TYPE_TABLE_ITEM_COUNT = 'magnetodb.table.countitem'
 EVENT_TYPE_DATA_PUTITEM = 'magnetodb.data.putitem'
 EVENT_TYPE_DATA_PUTITEM_START = 'magnetodb.data.putitem.start'
 EVENT_TYPE_DATA_PUTITEM_END = 'magnetodb.data.putitem.end'
@@ -74,6 +75,7 @@ __ALLOWED_EVENT_TYPES = (
     EVENT_TYPE_TABLE_DELETE_ERROR,
     EVENT_TYPE_TABLE_DESCRIBE,
     EVENT_TYPE_TABLE_LIST,
+    EVENT_TYPE_TABLE_ITEM_COUNT,
     EVENT_TYPE_DATA_PUTITEM,
     EVENT_TYPE_DATA_PUTITEM_START,
     EVENT_TYPE_DATA_PUTITEM_END,
