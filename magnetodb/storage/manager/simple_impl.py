@@ -699,3 +699,19 @@ class SimpleStorageManager(StorageManager):
                         payload)
 
         return result
+
+    def table_item_count(self, context, table_name):
+        table_info = self._table_info_repo.get(context, table_name)
+        self._validate_table_is_active(table_info)
+
+        with self.__task_semaphore:
+            result = self._storage_driver.table_item_count(
+                context, table_info
+            )
+        notifier.notify(
+            context, notifier.EVENT_TYPE_TABLE_ITEM_COUNT,
+            dict(table_name=table_name),
+            priority=notifier.PRIORITY_DEBUG
+        )
+
+        return result

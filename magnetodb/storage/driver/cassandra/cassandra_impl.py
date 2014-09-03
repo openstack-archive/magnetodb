@@ -1752,3 +1752,18 @@ class CassandraStorageDriver(StorageDriver):
             return attr_val in cond_args
 
         return False
+
+    def table_item_count(self, context, table_info):
+        """
+        :param context: current request context
+        :param table_info: TableInfo instance with table's meta information
+
+        :returns: count of items in table
+
+        :raises: BackendInteractionException
+        """
+        query = 'SELECT COUNT(*) FROM ' + table_info.internal_name
+        result = self.__cluster_handler.execute_query(query)
+        LOG.debug("Count item in Table CQL request executed.")
+
+        return result[0]
