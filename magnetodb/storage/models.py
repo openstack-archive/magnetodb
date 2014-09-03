@@ -2,7 +2,7 @@
 # Copyright 2014 Symantec Corporation
 # All Rights Reserved.
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
 #
@@ -32,7 +32,6 @@ DECIMAL_CONTEXT = decimal.Context(
 
 
 class ModelBase(object):
-
     def __repr__(self):
         return self.to_json(add_model_meta_info=False)
 
@@ -139,7 +138,7 @@ class AttributeType(ModelBase):
             key_type = attr_type[0]
             value_type = attr_type[1]
             if (key_type not in self._allowed_primitive_types or
-                    value_type not in self._allowed_primitive_types):
+                        value_type not in self._allowed_primitive_types):
                 raise ValidationError(self.VALIDATION_ERROR_PATTERN,
                                       type=attr_type)
             return
@@ -375,7 +374,7 @@ class Condition(ModelBase):
         actual_arg_count = len(args) if args is not None else 0
 
         if (actual_arg_count < allowed_arg_count[0] or
-                actual_arg_count > allowed_arg_count[1]):
+                    actual_arg_count > allowed_arg_count[1]):
             if allowed_arg_count[0] == allowed_arg_count[1]:
                 raise ValidationError(
                     _("%(condition_class)s of type['%(type)s'] requires "
@@ -466,7 +465,6 @@ class IndexedCondition(Condition):
 
 
 class ScanCondition(IndexedCondition):
-
     CONDITION_TYPE_IN = "IN"
     CONDITION_TYPE_CONTAINS = "CONTAINS"
     CONDITION_TYPE_NOT_CONTAINS = "NOT_CONTAINS"
@@ -705,7 +703,7 @@ class UpdateReturnValuesType(InsertReturnValuesType):
 class IndexDefinition(ModelBase):
     def __init__(self, attribute_to_index, projected_attributes=None):
         """
-        :param index_name: name of index
+
         :param attribute_to_index: attribute name to be indexed
         :param projected_attributes: set of non key attribute names to be
                     projected. If 'None' - all attributes will be projected
@@ -722,7 +720,6 @@ class IndexDefinition(ModelBase):
 
 
 class SelectResult(ModelBase):
-
     def __init__(self, items=None, last_evaluated_key=None, count=None,
                  **kwargs):
         """
@@ -743,20 +740,17 @@ class SelectResult(ModelBase):
 
 
 class ScanResult(SelectResult):
-
     def __init__(self, items=None, last_evaluated_key=None,
                  count=None, scanned_count=None):
-
         super(ScanResult, self).__init__(items, last_evaluated_key, count,
                                          scanned_count=scanned_count)
 
 
 class TableSchema(ModelBase):
-
     def __init__(self, attribute_type_map, key_attributes, index_def_map=None):
         """
         :param attribute_type_map: attribute name to AttributeType mapping
-        :param key_attrs: list of key attribute names, contains partition key
+        :param key_attributes: list of key attribute names, contains partition key
                     (the first in list, required) attribute name and extra key
                     attribute names (the second and other list items, not
                     required)
@@ -793,7 +787,7 @@ class TableMeta(ModelBase):
 
     def __init__(self, schema, status):
         """
-        :param table_schema: TableSchema instance
+        :param schema: TableSchema instance
         :param status: table status
         """
 
@@ -802,3 +796,11 @@ class TableMeta(ModelBase):
         )
 
         super(TableMeta, self).__init__(schema=schema, status=status)
+
+
+class TableItemCountRequest(ModelBase):
+    def __init__(self, count):
+        """
+        TBD
+        """
+        super(TableItemCountRequest, self).__init__(count=count)

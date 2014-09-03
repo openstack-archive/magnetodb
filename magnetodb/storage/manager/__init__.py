@@ -232,3 +232,12 @@ class StorageManager(object):
         :raises: BackendInteractionException
         """
         raise NotImplementedError()
+
+    def table_item_count(self, context, table_name):
+        """
+        :param context: current request context
+        :param table_name: String, name of table to get item from
+
+        :raises: BackendInteractionException
+        """
+        raise NotImplementedError()

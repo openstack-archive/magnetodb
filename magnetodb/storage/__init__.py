@@ -342,3 +342,15 @@ def scan(context, table_name, condition_map, attributes_to_get=None,
         context, table_name, condition_map, attributes_to_get, limit,
         exclusive_start_key, consistent=False
     )
+
+
+def table_item_count(context, table_name):
+    """
+    :param context: current request context
+    :param table_name: String, name of table to get item from
+
+    :returns: count of items in table
+
+    :raises: BackendInteractionException
+    """
+    return __STORAGE_MANAGER_IMPL.table_item_count(context, table_name)

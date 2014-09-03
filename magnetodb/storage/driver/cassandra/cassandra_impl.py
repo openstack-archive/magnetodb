@@ -2,7 +2,7 @@
 # Copyright 2014 Symantec Corporation
 # All Rights Reserved.
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
 #
@@ -222,7 +222,6 @@ class CassandraStorageDriver(StorageDriver):
 
         for attr_name, attr_type in (
                 table_schema.attribute_type_map.iteritems()):
-
             query_builder += (
                 '"', USER_PREFIX, attr_name, '" ',
                 _storage_to_cassandra_type(attr_type), ","
@@ -232,7 +231,7 @@ class CassandraStorageDriver(StorageDriver):
             SYSTEM_COLUMN_EXTRA_ATTR_DATA, " map<text, blob>,",
             SYSTEM_COLUMN_EXTRA_ATTR_TYPES, " map<text, text>,",
             SYSTEM_COLUMN_ATTR_EXIST, " map<text, int>,"
-            'PRIMARY KEY ("',
+                                      'PRIMARY KEY ("',
             USER_PREFIX, hash_key_name, '"'
         )
 
@@ -310,7 +309,7 @@ class CassandraStorageDriver(StorageDriver):
         query_builder.append("{")
         for attr, val in attribute_map.iteritems():
             if (val is not None) and (
-                    attr not in table_schema.attribute_type_map):
+                        attr not in table_schema.attribute_type_map):
                 query_builder += (
                     prefix, "'", attr, "':'", val.attr_type.type, "'"
                 )
@@ -891,8 +890,8 @@ class CassandraStorageDriver(StorageDriver):
         for condition in cond_list:
             if condition.type == models.IndexedCondition.CONDITION_TYPE_EQUAL:
                 if (exact_condition is not None and
-                        condition.arg.decoded_value !=
-                        exact_condition.arg.decoded_value):
+                            condition.arg.decoded_value !=
+                            exact_condition.arg.decoded_value):
                     return None
                 exact_condition = condition
             elif condition.is_left_border():
@@ -1116,7 +1115,7 @@ class CassandraStorageDriver(StorageDriver):
                         models.UpdateItemAction.UPDATE_ACTION_PUT):
                     attribute_map[attr_name] = attr_action.value
                 elif (attr_action.action ==
-                        models.UpdateItemAction.UPDATE_ACTION_ADD):
+                          models.UpdateItemAction.UPDATE_ACTION_ADD):
                     attribute_map[attr_name] = self._get_add_attr_value(
                         attr_name, attr_action.value, old_item
                     )
@@ -1198,8 +1197,8 @@ class CassandraStorageDriver(StorageDriver):
 
         if old_attr_value.is_map:
             if (not attr_value.is_set or
-                    attr_value.attr_type.element_type !=
-                    old_attr_value.attr_type.key_type):
+                        attr_value.attr_type.element_type !=
+                        old_attr_value.attr_type.key_type):
                 raise InvalidQueryParameter("Wrong type for %s" % attr_name)
             res = old_attr_value.decoded_value.copy()
             for key in attr_value.decoded_value:
@@ -1436,13 +1435,13 @@ class CassandraStorageDriver(StorageDriver):
                         )
             elif range_condition_list:
                 for i in xrange(1, len(LOCAL_INDEX_FIELD_LIST)):
-                        local_indexes_conditions[
-                            LOCAL_INDEX_FIELD_LIST[i]
-                        ].append(
-                            models.IndexedCondition.eq(
-                                default_index_values[i - 1]
-                            )
+                    local_indexes_conditions[
+                        LOCAL_INDEX_FIELD_LIST[i]
+                    ].append(
+                        models.IndexedCondition.eq(
+                            default_index_values[i - 1]
                         )
+                    )
 
             if local_indexes_conditions:
                 for cas_field_name, cond_list in (
@@ -1482,8 +1481,8 @@ class CassandraStorageDriver(StorageDriver):
             query_builder += (" LIMIT ", str(limit))
 
         if not hash_key_cond_list or (
-                hash_key_cond_list[0].type !=
-                models.IndexedCondition.CONDITION_TYPE_EQUAL):
+                    hash_key_cond_list[0].type !=
+                    models.IndexedCondition.CONDITION_TYPE_EQUAL):
             query_builder.append(" ALLOW FILTERING")
 
         rows = self.__cluster_handler.execute_query(
@@ -1597,7 +1596,7 @@ class CassandraStorageDriver(StorageDriver):
         )
 
         if ((not limit or limit > selected.count) and
-                exclusive_start_key is not None):
+                    exclusive_start_key is not None):
             if hash_key_condition_list is None:
                 hash_key_condition_list = []
             hash_key_condition_list.append(
@@ -1693,7 +1692,7 @@ class CassandraStorageDriver(StorageDriver):
             if collection_type is None:
                 val_type = attr_val.attr_type.type
                 if (val_type != arg_type or val_type ==
-                        models.AttributeType.PRIMITIVE_TYPE_NUMBER):
+                    models.AttributeType.PRIMITIVE_TYPE_NUMBER):
                     return False
                 return cond.arg.decoded_value in attr_val.decoded_value
             elif collection_type == models.AttributeType.COLLECTION_TYPE_SET:
@@ -1715,7 +1714,7 @@ class CassandraStorageDriver(StorageDriver):
             if collection_type is None:
                 val_type = attr_val.attr_type.type
                 if (val_type != arg_type or val_type ==
-                        models.AttributeType.PRIMITIVE_TYPE_NUMBER):
+                    models.AttributeType.PRIMITIVE_TYPE_NUMBER):
                     return False
                 return cond.arg.decoded_value not in attr_val.decoded_value
             elif collection_type == models.AttributeType.COLLECTION_TYPE_SET:
@@ -1736,3 +1735,21 @@ class CassandraStorageDriver(StorageDriver):
             return attr_val in cond_args
 
         return False
+
+    def table_item_count(self, context, table_info):
+        """
+        :param context: current request context
+        :param table_info: TableInfo instance with table's meta information
+
+        :returns: count of items in table
+
+        :raises: BackendInteractionException
+        """
+
+        query = 'SELECT COUNT(*) FROM ' + table_info.name
+
+        result = self.__cluster_handler.execute_query(query)
+
+        LOG.debug("Count item in Table CQL request executed.")
+
+        return result[0]["count"]
