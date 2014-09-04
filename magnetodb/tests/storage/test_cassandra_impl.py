@@ -293,7 +293,7 @@ class TestCassandraBase(unittest.TestCase):
         }
 
         storage_driver = cassandra_impl.CassandraStorageDriver(
-            cluster_hadler, table_info_repo, default_keyspace_opts
+            cluster_hadler, default_keyspace_opts
         )
         cls.CASANDRA_STORAGE_IMPL = SimpleStorageManager(storage_driver,
                                                          table_info_repo)
@@ -372,10 +372,10 @@ class TestCassandraBase(unittest.TestCase):
         tenant = tenant or self.tenant
         table_name = table_name or self.table_name
 
-        internal_table_name = (
-            cassandra_impl.USER_PREFIX + self._get_unique_name()
+        internal_table_name = '"{}{}"."{}{}"'.format(
+            cassandra_impl.USER_PREFIX, tenant, cassandra_impl.USER_PREFIX,
+            self._get_unique_name()
         )
-        keyspace = cassandra_impl.USER_PREFIX + tenant
 
         query = (
             "INSERT INTO magnetodb.table_info (tenant, name, exists, "
@@ -390,7 +390,7 @@ class TestCassandraBase(unittest.TestCase):
         result = self.SESSION.execute(query)
         self.assertTrue(result[0]['[applied]'])
 
-        query = "CREATE TABLE {}.{} (".format(keyspace, internal_table_name)
+        query = "CREATE TABLE {} (".format(internal_table_name)
 
         for name, field in self.test_data_keys.iteritems():
             typ, _, _, _ = field
@@ -434,9 +434,7 @@ class TestCassandraBase(unittest.TestCase):
         )
         result = self.SESSION.execute(query)
         internal_table_name = result[0]["internal_name"]
-        query = "DROP TABLE IF EXISTS {}{}.{}".format(
-            cassandra_impl.USER_PREFIX, tenant, internal_table_name
-        )
+        query = "DROP TABLE IF EXISTS {}".format(internal_table_name)
         self.SESSION.execute(query)
         query = (
             "DELETE FROM magnetodb.table_info "
@@ -459,8 +457,7 @@ class TestCassandraBase(unittest.TestCase):
         internal_table_name = result[0]["internal_name"]
         schema = models.ModelBase.from_json(result[0]["schema"])
 
-        query = "SELECT * FROM {}{}.{}".format(
-            cassandra_impl.USER_PREFIX, tenant, internal_table_name)
+        query = "SELECT * FROM {}".format(internal_table_name)
 
         if schema.index_def_map:
             query += " WHERE {}={}".format(
@@ -485,9 +482,7 @@ class TestCassandraBase(unittest.TestCase):
         internal_table_name = result[0]["internal_name"]
         schema = models.ModelBase.from_json(result[0]["schema"])
 
-        query = "UPDATE {}{}.{} SET ".format(
-            cassandra_impl.USER_PREFIX, self.tenant, internal_table_name
-        )
+        query = "UPDATE {} SET ".format(internal_table_name)
 
         predefined_fields = (
             predefined_fields or self.test_data_predefined_fields
@@ -814,18 +809,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
-
-        self.assertEqual(1, result.count)
-        self._validate_data(result.items[0])
-
-    def test_select_item_no_condition(self):
-        self._create_table(indexed=True)
-
-        self._insert_data()
-
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -861,7 +847,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(0, result.count)
 
@@ -878,7 +866,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -896,7 +886,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(0, result.count)
 
@@ -913,7 +905,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -931,7 +925,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(0, result.count)
 
@@ -948,7 +944,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -966,7 +964,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(0, result.count)
 
@@ -983,7 +983,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -1001,7 +1003,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(0, result.count)
 
@@ -1018,7 +1022,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond, index_name="index")
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all(), index_name="index"
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -1036,7 +1042,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond, index_name="index")
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all(), index_name="index"
+        )
 
         self.assertEqual(0, result.count)
 
@@ -1056,7 +1064,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -1077,7 +1087,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -1097,7 +1109,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(0, result.count)
 
@@ -1121,7 +1135,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -1146,7 +1162,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(1, result.count)
         self.assertIn('11', result.items[0]['range'].decoded_value)
@@ -1170,7 +1188,9 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(0, result.count)
 
@@ -1189,12 +1209,16 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all()
+        )
 
         self.assertEqual(2, result.count)
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, indexed_cond, limit=1)
+            self.context, self.table_name, indexed_cond,
+            models.SelectType.all(), limit=1
+        )
 
         self.assertEqual(1, result.count)
 
@@ -1218,14 +1242,20 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._create_table(indexed=True)
         self._insert_data()
 
+        key_conditions = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+        }
+
         exclusive_start_key = {
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '0')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name,
-            exclusive_start_key=exclusive_start_key)
+            self.context, self.table_name, key_conditions,
+            models.SelectType.all(),
+            exclusive_start_key=exclusive_start_key
+        )
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -1236,14 +1266,20 @@ class TestCassandraSelectItem(TestCassandraBase):
         self._insert_data()
         self._insert_data(id_value=2)
 
+        key_conditions = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+        }
+
         exclusive_start_key = {
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '0')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, limit=1,
-            exclusive_start_key=exclusive_start_key)
+            self.context, self.table_name, key_conditions,
+            models.SelectType.all(), limit=1,
+            exclusive_start_key=exclusive_start_key
+        )
 
         exclusive_start_key2 = {
             'id': models.AttributeValue('N', 2),
@@ -1251,8 +1287,10 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result2 = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, limit=1,
-            exclusive_start_key=exclusive_start_key2)
+            self.context, self.table_name, key_conditions,
+            models.SelectType.all(), limit=1,
+            exclusive_start_key=exclusive_start_key2
+        )
 
         self.assertTrue(result.count == 1 or result2.count == 1)
 
@@ -1261,14 +1299,19 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self._insert_data()
 
+        key_conditions = {
+            'id': [models.Condition.eq(models.AttributeValue('N', 1))],
+        }
+
         exclusive_start_key = {
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1')
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name,
-            exclusive_start_key=exclusive_start_key)
+            self.context, self.table_name, key_conditions,
+            models.SelectType.all(), exclusive_start_key=exclusive_start_key
+        )
 
         self.assertEqual(0, result.count)
 
@@ -1290,7 +1333,9 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond,
-            limit=2)
+            models.SelectType.all(),
+            limit=2
+        )
 
         self.assertEqual(2, result.count)
         self.assertEqual('2', result.items[0]['range'].decoded_value)
@@ -1302,7 +1347,8 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         result2 = self.CASANDRA_STORAGE_IMPL.select_item(
             self.context, self.table_name, indexed_cond,
-            exclusive_start_key=last_eval_key)
+            models.SelectType.all(), exclusive_start_key=last_eval_key
+        )
 
         self.assertEqual(2, result2.count)
         self.assertEqual('4', result2.items[0]['range'].decoded_value)
@@ -1337,7 +1383,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1369,7 +1417,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1401,7 +1451,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1433,7 +1485,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1465,7 +1519,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1500,7 +1556,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1534,7 +1592,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1568,7 +1628,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1602,7 +1664,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1636,7 +1700,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1670,7 +1736,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1707,7 +1775,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1741,7 +1811,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1777,7 +1849,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1814,7 +1888,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1846,7 +1922,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1878,7 +1956,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1910,7 +1990,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1944,7 +2026,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -1976,7 +2060,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2013,7 +2099,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2047,7 +2135,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2081,7 +2171,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2115,7 +2207,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2149,7 +2243,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2183,7 +2279,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2220,7 +2318,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2254,7 +2354,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2290,7 +2392,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2327,7 +2431,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2361,7 +2467,9 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, keys_condition)
+            self.context, self.table_name, keys_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([expected], result.items)
 
@@ -2386,7 +2494,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2409,7 +2519,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2432,7 +2544,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2455,7 +2569,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2478,7 +2594,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2503,7 +2621,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2528,7 +2648,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2553,7 +2675,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2578,7 +2702,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2603,7 +2729,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2628,7 +2756,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2653,7 +2783,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2678,7 +2810,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2703,7 +2837,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2728,7 +2864,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2751,7 +2889,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2774,7 +2914,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2797,7 +2939,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2820,7 +2964,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2843,7 +2989,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2868,7 +3016,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2893,7 +3043,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2918,7 +3070,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2943,7 +3097,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2968,7 +3124,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -2993,7 +3151,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3018,7 +3178,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3043,7 +3205,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3068,7 +3232,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3093,7 +3259,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3126,7 +3294,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3159,7 +3329,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3198,7 +3370,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3233,7 +3407,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3268,7 +3444,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3311,7 +3489,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3344,7 +3524,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3381,7 +3563,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3415,7 +3599,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3450,7 +3636,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3484,7 +3672,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3523,7 +3713,9 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.select_item(
-            self.context, self.table_name, key_condition)
+            self.context, self.table_name, key_condition,
+            models.SelectType.all()
+        )
 
         self.assertEqual([put], result.items)
 
@@ -3762,6 +3954,6 @@ class TestCassandraBatch(TestCassandraBase):
 
         for key, item in zip(key_conditions, put_items):
             result = self.CASANDRA_STORAGE_IMPL.select_item(
-                self.context, self.table_name, key)
+                self.context, self.table_name, key, models.SelectType.all())
 
             self.assertEqual([item], result.items)
