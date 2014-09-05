@@ -309,6 +309,12 @@ class CassandraStorageDriver(StorageDriver):
                 dynamic_attr_values.append(
                     _encode_dynamic_attr_value(val)
                 )
+        for name in table_info.schema.attribute_type_map.keys():
+            if name not in attribute_map.keys():
+                query_builder += (
+                    '"', USER_PREFIX, name, '",'
+                )
+                attr_values.append(_encode_predefined_attr_value(None))
 
         if table_info.schema.index_def_map:
             query_builder += (
