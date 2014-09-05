@@ -14,7 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import json
-import binascii
+
+from collections import deque
 
 from magnetodb.common import exception
 from magnetodb.common.exception import ConditionalCheckFailedException
@@ -23,9 +24,13 @@ from magnetodb.common.exception import InvalidQueryParameter
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
 from magnetodb.storage.driver import StorageDriver
+from magnetodb.storage.driver.cassandra.encoder import (
+    encode_predefined_attr_value, encode_dynamic_attr_value
+)
+
 from magnetodb.storage.models import ExpectedCondition
 
-from cassandra import encoder as cql_encoder
+from cassandra.encoder import cql_quote
 
 
 LOG = logging.getLogger(__name__)
@@ -69,63 +74,6 @@ DEFAULT_NUMBER_VALUE = models.AttributeValue('N', decoded_value=0)
 DEFAULT_BLOB_VALUE = models.AttributeValue('B', decoded_value='')
 
 
-def _encode_predefined_attr_value(attr_value):
-    if attr_value is None:
-        return 'null'
-    collection_type = attr_value.attr_type.collection_type
-    if collection_type is None:
-        return _encode_single_value_as_predefined_attr(
-            attr_value.decoded_value, attr_value.attr_type.type
-        )
-    if collection_type == models.AttributeType.COLLECTION_TYPE_SET:
-        element_type = attr_value.attr_type.element_type
-        values = ','.join(
-            [
-                _encode_single_value_as_predefined_attr(
-                    single_value, element_type
-                ) for single_value in attr_value.decoded_value
-            ]
-        )
-        return '{{{}}}'.format(values)
-    if collection_type == models.AttributeType.COLLECTION_TYPE_MAP:
-        key_type = attr_value.attr_type.key_type
-        value_type = attr_value.attr_type.value_type
-        values = ','.join(
-            [
-                '{}:{}'.format(
-                    _encode_single_value_as_predefined_attr(
-                        key, key_type
-                    ),
-                    _encode_single_value_as_predefined_attr(
-                        value, value_type
-                    )
-                )
-                for key, value in attr_value.decoded_value.iteritems()
-            ]
-        )
-        return '{{{}}}'.format(values)
-
-
-def _encode_single_value_as_predefined_attr(value, element_type):
-    if element_type == models.AttributeType.PRIMITIVE_TYPE_STRING:
-        return cql_encoder.cql_quote(value)
-    elif element_type == models.AttributeType.PRIMITIVE_TYPE_NUMBER:
-        return str(value)
-    elif element_type == models.AttributeType.PRIMITIVE_TYPE_BLOB:
-        return "0x" + binascii.hexlify(value)
-    else:
-        assert False, "Value wasn't formatted for cql query"
-
-
-def _encode_dynamic_attr_value(attr_value):
-    if attr_value is None:
-        return 'null'
-
-    return "0x" + binascii.hexlify(
-        json.dumps(attr_value.encoded_value, sort_keys=True)
-    )
-
-
 def _decode_predefined_attr(table_info, cas_name, cas_val, prefix=USER_PREFIX):
     assert cas_name.startswith(prefix) and cas_val
 
@@ -140,13 +88,13 @@ def _decode_dynamic_attr_value(value, storage_type):
     return models.AttributeValue(storage_type, encoded_value=value)
 
 
-ENCODED_DEFAULT_STRING_VALUE = _encode_predefined_attr_value(
+ENCODED_DEFAULT_STRING_VALUE = encode_predefined_attr_value(
     DEFAULT_STRING_VALUE
 )
-ENCODED_DEFAULT_NUMBER_VALUE = _encode_predefined_attr_value(
+ENCODED_DEFAULT_NUMBER_VALUE = encode_predefined_attr_value(
     DEFAULT_NUMBER_VALUE
 )
-ENCODED_DEFAULT_BLOB_VALUE = _encode_predefined_attr_value(
+ENCODED_DEFAULT_BLOB_VALUE = encode_predefined_attr_value(
     DEFAULT_BLOB_VALUE
 )
 
@@ -307,7 +255,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_types_system_attr_value(table_schema, attribute_map,
                                         query_builder=None, prefix=""):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
         query_builder.append(prefix)
         prefix = ""
         query_builder.append("{")
@@ -325,7 +273,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_exists_system_attr_value(attribute_map, query_builder=None,
                                          prefix=""):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
         query_builder.append(prefix)
         prefix = ""
         query_builder.append("{")
@@ -339,7 +287,10 @@ class CassandraStorageDriver(StorageDriver):
             self, table_info, attribute_map, query_builder=None,
             index_name=None, index_value=None, if_not_exists=False):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
+
+        _encode_predefined_attr_value = encode_predefined_attr_value
+        _encode_dynamic_attr_value = encode_dynamic_attr_value
 
         query_builder += (
             'INSERT INTO ', table_info.internal_name, ' ('
@@ -388,9 +339,7 @@ class CassandraStorageDriver(StorageDriver):
             ]
 
             if index_name:
-                res_index_values[0] = _encode_single_value_as_predefined_attr(
-                    index_name, models.AttributeType.PRIMITIVE_TYPE_STRING
-                )
+                res_index_values[0] = cql_quote(index_name)
 
                 res_index_values[INDEX_TYPE_TO_INDEX_POS_MAP[
                     index_value.type]
@@ -425,7 +374,10 @@ class CassandraStorageDriver(StorageDriver):
     def _append_update_query_with_basic_pk(self, table_info, attribute_map,
                                            query_builder=None, rewrite=False):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
+
+        _encode_predefined_attr_value = encode_predefined_attr_value
+        _encode_dynamic_attr_value = encode_dynamic_attr_value
 
         key_attr_names = table_info.schema.key_attributes
 
@@ -550,7 +502,7 @@ class CassandraStorageDriver(StorageDriver):
                                        attribute_map, query_builder=None,
                                        separator=" ", rewrite=False):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
         base_update_query = None
         base_delete_query = None
 
@@ -607,7 +559,7 @@ class CassandraStorageDriver(StorageDriver):
                 table_info, {}, attribute_map, query_builder, rewrite=True
             )
             if len(query_builder) > qb_len:
-                query_builder.insert(0, self._get_batch_begin_clause())
+                query_builder.appendleft(self._get_batch_begin_clause())
                 query_builder.append(self._get_batch_apply_clause())
 
         result = self.__cluster_handler.execute_query(
@@ -665,6 +617,8 @@ class CassandraStorageDriver(StorageDriver):
                 return True
             raise ConditionalCheckFailedException()
         elif table_info.schema.index_def_map:
+            _encode_predefined_attr_value = encode_predefined_attr_value
+
             while True:
                 old_indexes = self._select_current_index_values(
                     table_info, attribute_map
@@ -707,7 +661,7 @@ class CassandraStorageDriver(StorageDriver):
                     query_builder, rewrite=True
                 )
                 if len(query_builder) > qb_len:
-                    query_builder.insert(0, self._get_batch_begin_clause())
+                    query_builder.appendleft(self._get_batch_begin_clause())
                     query_builder.append(self._get_batch_apply_clause())
                 result = self.__cluster_handler.execute_query(
                     "".join(query_builder), consistent=True
@@ -776,7 +730,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_delete_query_with_basic_pk(
             cls, table_info, attribute_map, query_builder=None):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
         query_builder += (
             'DELETE FROM ', table_info.internal_name
         )
@@ -870,6 +824,8 @@ class CassandraStorageDriver(StorageDriver):
         )
 
         if table_info.schema.index_def_map:
+            _encode_predefined_attr_value = encode_predefined_attr_value
+
             while True:
                 old_indexes = self._select_current_index_values(
                     table_info, key_attribute_map
@@ -881,7 +837,7 @@ class CassandraStorageDriver(StorageDriver):
                         raise ConditionalCheckFailedException()
                     return True
 
-                query_builder = [delete_query]
+                query_builder = deque((delete_query,))
                 if_prefix = " AND " if expected_condition_map else " IF "
                 for index_name, index_def in (
                         table_info.schema.index_def_map.iteritems()):
@@ -904,7 +860,7 @@ class CassandraStorageDriver(StorageDriver):
                     query_builder
                 )
                 if len(query_builder) > qb_len:
-                    query_builder.insert(0, self._get_batch_begin_clause())
+                    query_builder.appendleft(self._get_batch_begin_clause())
                     query_builder.append(self._get_batch_apply_clause())
                 result = self.__cluster_handler.execute_query(
                     "".join(query_builder), consistent=True
@@ -1010,11 +966,11 @@ class CassandraStorageDriver(StorageDriver):
     def _append_indexed_condition(self, attr_name, condition, query_builder,
                                   column_prefix=USER_PREFIX):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
         op = CONDITION_TO_OP[condition.type]
         query_builder += (
             '"', column_prefix, attr_name, '"', op,
-            _encode_predefined_attr_value(condition.arg)
+            encode_predefined_attr_value(condition.arg)
         )
         return query_builder
 
@@ -1028,10 +984,10 @@ class CassandraStorageDriver(StorageDriver):
         else:
             op = CONDITION_TO_OP[condition.type]
             if query_builder is None:
-                query_builder = []
+                query_builder = deque()
             query_builder += (
                 'token("', column_prefix, attr_name, '")', op, "token(",
-                _encode_predefined_attr_value(condition.arg), ")"
+                encode_predefined_attr_value(condition.arg), ")"
             )
             return query_builder
 
@@ -1039,7 +995,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_expected_conditions(cls, expected_condition_map, schema,
                                     query_builder, prefix=" IF "):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
         for attr_name, cond_list in expected_condition_map.iteritems():
             for condition in cond_list:
                 query_builder.append(prefix)
@@ -1054,7 +1010,8 @@ class CassandraStorageDriver(StorageDriver):
     def _append_expected_condition(attr, condition, query_builder,
                                    is_predefined):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
+
         if condition.type == models.ExpectedCondition.CONDITION_TYPE_NOT_NULL:
             query_builder += (
                 SYSTEM_COLUMN_ATTR_EXIST, "['", attr, "']=1"
@@ -1067,12 +1024,12 @@ class CassandraStorageDriver(StorageDriver):
             if is_predefined:
                 query_builder += (
                     '"', USER_PREFIX, attr, '"=',
-                    _encode_predefined_attr_value(condition.arg)
+                    encode_predefined_attr_value(condition.arg)
                 )
             else:
                 query_builder += (
                     SYSTEM_COLUMN_EXTRA_ATTR_DATA, "['", attr, "']=",
-                    _encode_dynamic_attr_value(condition.arg)
+                    encode_dynamic_attr_value(condition.arg)
                 )
         else:
             assert False
@@ -1082,7 +1039,10 @@ class CassandraStorageDriver(StorageDriver):
     def _append_primary_key(table_schema, attribute_map, query_builder,
                             prefix=" WHERE "):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
+
+        _encode_predefined_attr_value = encode_predefined_attr_value
+
         for key_attr in table_schema.key_attributes:
             if key_attr:
                 query_builder += (
@@ -1097,7 +1057,7 @@ class CassandraStorageDriver(StorageDriver):
                                         index_name=None, index_value=None,
                                         prefix=" AND "):
         if query_builder is None:
-            query_builder = []
+            query_builder = deque()
 
         res_index_values = [
             ENCODED_DEFAULT_STRING_VALUE,
@@ -1107,13 +1067,11 @@ class CassandraStorageDriver(StorageDriver):
         ]
 
         if index_name:
-            res_index_values[0] = _encode_single_value_as_predefined_attr(
-                index_name, models.AttributeType.PRIMITIVE_TYPE_STRING
-            )
+            res_index_values[0] = cql_quote(index_name)
 
             res_index_values[
                 INDEX_TYPE_TO_INDEX_POS_MAP[index_value.attr_type]
-            ] = _encode_predefined_attr_value(index_value)
+            ] = encode_predefined_attr_value(index_value)
 
         for i in xrange(len(LOCAL_INDEX_FIELD_LIST)):
             query_builder += (
@@ -1196,7 +1154,7 @@ class CassandraStorageDriver(StorageDriver):
                 )
 
                 if len(query_builder) > qb_len:
-                    query_builder.insert(0, self._get_batch_begin_clause())
+                    query_builder.appendleft(self._get_batch_begin_clause())
                     query_builder.append(self._get_batch_apply_clause())
 
             result = self.__cluster_handler.execute_query(
@@ -1341,10 +1299,12 @@ class CassandraStorageDriver(StorageDriver):
         :raises: BackendInteractionException
         """
 
-        query_builder = [
-            "SELECT ", 'COUNT(*)' if select_type.is_count else '*', ' FROM ',
-            table_info.internal_name
-        ]
+        query_builder = deque(
+            (
+                "SELECT ", 'COUNT(*)' if select_type.is_count else '*',
+                ' FROM ', table_info.internal_name
+            )
+        )
 
         hash_name = table_info.schema.key_attributes[0]
 
@@ -1405,87 +1365,63 @@ class CassandraStorageDriver(StorageDriver):
                 )
             assert not exclusive_start_key_copy
 
-        prefix = " WHERE "
-
+        request_needed = True
         if hash_key_cond_list:
             hash_key_cond_list = self._compact_indexed_condition(
                 hash_key_cond_list
             )
             if not hash_key_cond_list:
-                return models.SelectResult()
-        if range_condition_list:
+                request_needed = False
+        if request_needed and range_condition_list:
             range_condition_list = self._compact_indexed_condition(
                 range_condition_list
             )
             if not range_condition_list:
-                return models.SelectResult()
-        if index_attr_cond_list:
+                request_needed = False
+        if request_needed and index_attr_cond_list:
             index_attr_cond_list = self._compact_indexed_condition(
                 index_attr_cond_list
             )
             if not index_attr_cond_list:
-                return models.SelectResult()
+                request_needed = False
 
-        if hash_key_cond_list:
-            for cond in hash_key_cond_list:
-                query_builder.append(prefix)
-                self._append_hash_key_indexed_condition(
-                    hash_name, cond, query_builder
-                )
-                prefix = " AND "
+        if request_needed:
+            prefix = " WHERE "
 
-        if table_info.schema.index_def_map:
-            # append local secondary index related attrs
-            local_indexes_conditions = {
-                SYSTEM_COLUMN_INDEX_NAME: [
-                    models.IndexedCondition.eq(
-                        models.AttributeValue('S', decoded_value=index_name)
-                        if index_name else DEFAULT_STRING_VALUE
+            if hash_key_cond_list:
+                for cond in hash_key_cond_list:
+                    query_builder.append(prefix)
+                    self._append_hash_key_indexed_condition(
+                        hash_name, cond, query_builder
                     )
-                ],
-                SYSTEM_COLUMN_INDEX_VALUE_STRING: [],
-                SYSTEM_COLUMN_INDEX_VALUE_NUMBER: [],
-                SYSTEM_COLUMN_INDEX_VALUE_BLOB: []
-            }
+                    prefix = " AND "
 
-            default_index_values = [
-                DEFAULT_STRING_VALUE,
-                DEFAULT_NUMBER_VALUE,
-                DEFAULT_BLOB_VALUE
-            ]
-            if index_attr_cond_list:
-                indexed_attr_type = table_info.schema.attribute_type_map[
-                    indexed_attr_name
-                ]
-                n = INDEX_TYPE_TO_INDEX_POS_MAP[indexed_attr_type]
-                for i in xrange(1, n):
-                    local_indexes_conditions[
-                        LOCAL_INDEX_FIELD_LIST[i]
-                    ].append(
+            if table_info.schema.index_def_map:
+                # append local secondary index related attrs
+                local_indexes_conditions = {
+                    SYSTEM_COLUMN_INDEX_NAME: [
                         models.IndexedCondition.eq(
-                            default_index_values[i - 1]
+                            models.AttributeValue(
+                                'S', decoded_value=index_name
+                            ) if index_name else DEFAULT_STRING_VALUE
                         )
-                    )
-                for index_attr_cond in index_attr_cond_list:
-                    local_indexes_conditions[
-                        LOCAL_INDEX_FIELD_LIST[n]
-                    ].append(index_attr_cond)
+                    ],
+                    SYSTEM_COLUMN_INDEX_VALUE_STRING: [],
+                    SYSTEM_COLUMN_INDEX_VALUE_NUMBER: [],
+                    SYSTEM_COLUMN_INDEX_VALUE_BLOB: []
+                }
 
-                if range_condition_list:
-                    for i in xrange(n + 1, len(LOCAL_INDEX_FIELD_LIST)):
-                        local_indexes_conditions[
-                            LOCAL_INDEX_FIELD_LIST[i]
-                        ].append(
-                            models.IndexedCondition.lt(
-                                default_index_values[i - 1]
-                            )
-                            if order_type == models.ORDER_TYPE_DESC else
-                            models.IndexedCondition.gt(
-                                default_index_values[i - 1]
-                            )
-                        )
-            elif range_condition_list:
-                for i in xrange(1, len(LOCAL_INDEX_FIELD_LIST)):
+                default_index_values = [
+                    DEFAULT_STRING_VALUE,
+                    DEFAULT_NUMBER_VALUE,
+                    DEFAULT_BLOB_VALUE
+                ]
+                if index_attr_cond_list:
+                    indexed_attr_type = table_info.schema.attribute_type_map[
+                        indexed_attr_name
+                    ]
+                    n = INDEX_TYPE_TO_INDEX_POS_MAP[indexed_attr_type]
+                    for i in xrange(1, n):
                         local_indexes_conditions[
                             LOCAL_INDEX_FIELD_LIST[i]
                         ].append(
@@ -1493,55 +1429,85 @@ class CassandraStorageDriver(StorageDriver):
                                 default_index_values[i - 1]
                             )
                         )
+                    for index_attr_cond in index_attr_cond_list:
+                        local_indexes_conditions[
+                            LOCAL_INDEX_FIELD_LIST[n]
+                        ].append(index_attr_cond)
 
-            if local_indexes_conditions:
-                for cas_field_name, cond_list in (
-                        local_indexes_conditions.iteritems()):
-                    for cond in cond_list:
-                        query_builder.append(prefix)
-                        self._append_indexed_condition(
-                            cas_field_name, cond, query_builder,
-                            column_prefix=""
-                        )
-                        prefix = " AND "
+                    if range_condition_list:
+                        for i in xrange(n + 1, len(LOCAL_INDEX_FIELD_LIST)):
+                            local_indexes_conditions[
+                                LOCAL_INDEX_FIELD_LIST[i]
+                            ].append(
+                                models.IndexedCondition.lt(
+                                    default_index_values[i - 1]
+                                )
+                                if order_type == models.ORDER_TYPE_DESC else
+                                models.IndexedCondition.gt(
+                                    default_index_values[i - 1]
+                                )
+                            )
+                elif range_condition_list:
+                    for i in xrange(1, len(LOCAL_INDEX_FIELD_LIST)):
+                            local_indexes_conditions[
+                                LOCAL_INDEX_FIELD_LIST[i]
+                            ].append(
+                                models.IndexedCondition.eq(
+                                    default_index_values[i - 1]
+                                )
+                            )
 
-        if range_condition_list:
-            for cond in range_condition_list:
-                query_builder.append(prefix)
-                self._append_indexed_condition(
-                    range_name, cond, query_builder
-                )
-                prefix = " AND "
+                if local_indexes_conditions:
+                    for cas_field_name, cond_list in (
+                            local_indexes_conditions.iteritems()):
+                        for cond in cond_list:
+                            query_builder.append(prefix)
+                            self._append_indexed_condition(
+                                cas_field_name, cond, query_builder,
+                                column_prefix=""
+                            )
+                            prefix = " AND "
 
-        # add ordering
-        if order_type:
-            query_builder.append(' ORDER BY ')
-            if table_info.schema.index_def_map:
-                query_builder += (
-                    SYSTEM_COLUMN_INDEX_NAME, " ", order_type
-                )
-            elif range_name:
-                query_builder += (
-                    '"', USER_PREFIX, range_name, '" ', order_type
-                )
-            else:
-                assert False
+            if range_condition_list:
+                for cond in range_condition_list:
+                    query_builder.append(prefix)
+                    self._append_indexed_condition(
+                        range_name, cond, query_builder
+                    )
+                    prefix = " AND "
 
-        # add limit
-        if limit:
-            query_builder += (" LIMIT ", str(limit))
+            # add ordering
+            if order_type:
+                query_builder.append(' ORDER BY ')
+                if table_info.schema.index_def_map:
+                    query_builder += (
+                        SYSTEM_COLUMN_INDEX_NAME, " ", order_type
+                    )
+                elif range_name:
+                    query_builder += (
+                        '"', USER_PREFIX, range_name, '" ', order_type
+                    )
+                else:
+                    assert False
 
-        if not hash_key_cond_list or (
-                hash_key_cond_list[0].type !=
-                models.IndexedCondition.CONDITION_TYPE_EQUAL):
-            query_builder.append(" ALLOW FILTERING")
+            # add limit
+            if limit:
+                query_builder += (" LIMIT ", str(limit))
 
-        rows = self.__cluster_handler.execute_query(
-            "".join(query_builder), consistent
-        )
+            if not hash_key_cond_list or (
+                    hash_key_cond_list[0].type !=
+                    models.IndexedCondition.CONDITION_TYPE_EQUAL):
+                query_builder.append(" ALLOW FILTERING")
+
+            rows = self.__cluster_handler.execute_query(
+                "".join(query_builder), consistent
+            )
+        else:
+            rows = []
 
         if select_type.is_count:
-            return models.SelectResult(count=rows[0]['count'])
+            count = rows[0]['count'] if rows else 0
+            return models.SelectResult(count=count)
 
         # process results
 
