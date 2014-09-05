@@ -29,7 +29,7 @@ MAGNETODB_BRANCH=${MAGNETODB_BRANCH:-master}
 CCM_REPO=${CCM_REPO:-'https://github.com/pcmanus/ccm.git'}
 CCM_BRANCH=${CCM_BRANCH:-master}
 CCM_DIR=${CCM_DIR:-$DEST/ccm}
-CASSANDRA_VER=${CASSANDRA_VER:-2.0.8}
+CASSANDRA_VER=${CASSANDRA_VER:-2.0.11}
 CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-test}
 # By default CASSANDRA_AMOUNT_NODES = 3
 # If you need more, then you need to change the number of loopback network interface aliases below
