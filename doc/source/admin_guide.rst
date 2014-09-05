@@ -107,9 +107,9 @@ Installing Cassandra Cluster Manager::
     cd /opt/ccm
     sudo ./setup.py install
 
-Creating a cluster named ''Storage'' of three nodes of Cassandra 2.0.8::
+Creating a cluster named ''Storage'' of three nodes of Cassandra 2.0.10::
 
-    ccm create Storage -v 2.0.8
+    ccm create Storage -v 2.0.10
     ccm populate -n 3
 
 Starting Cassandra Cluster::
