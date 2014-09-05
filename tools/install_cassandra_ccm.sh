@@ -1,8 +1,16 @@
-#!/bin/bash
+#!/bin/bash -x
+
+echo "NODE_NAME - $NODE_NAME"
+system_memory_in_mb=`free -m | awk '/:/ {print $2;exit}'`
+system_cpu_cores=`egrep -c 'processor([[:space:]]+):.*' /proc/cpuinfo`
+
+
+echo "CPU cores - $system_cpu_cores"
+echo "Memory - $system_memory_in_mb"
 
 if [ -z $1 ]
 then
-    CASSANDRA_AMOUNT_NODES=1
+    CASSANDRA_AMOUNT_NODES=3
 else
     CASSANDRA_AMOUNT_NODES=$1
 fi
@@ -12,7 +20,7 @@ CCM_BRANCH=${CCM_BRANCH:-master}
 CCM_DIR=${CCM_DIR:-$HOME/ccm}
 CASSANDRA_VER=${CASSANDRA_VER:-2.0.8}
 CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-test}
-CASSANDRA_REPL_FACTOR=${CASSANDRA_REPL_FACTOR:-1}
+CASSANDRA_REPL_FACTOR=${CASSANDRA_REPL_FACTOR:-3}
 
 function fix_etc_hosts {
     # HPcloud stopped adding the hostname to /etc/hosts with their
@@ -67,6 +75,8 @@ sudo pip install -e $CCM_DIR
 
 # srart cassandra
 configure_cassandra
+java -version
+sudo pip freeze
 ccm start
 
 # create keyspace and table
@@ -74,5 +84,6 @@ create_keyspace_cassandra magnetodb
 create_keyspace_cassandra user_default_tenant
 echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, PRIMARY KEY(tenant,name));' >> ~/.ccm/cql.txt
 
+cat ~/.ccm/cql.txt
 timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
 ccm node1 cqlsh -f ~/.ccm/cql.txt
