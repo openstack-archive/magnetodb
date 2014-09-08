@@ -5,6 +5,7 @@ gunicorn
 iso8601>=0.1.9
 jsonschema>=2.0.0,<3.0.0
 oslo.config>=1.2.1
+oslo.messaging
 pbr>=0.6,!=0.7,<1.0
 keystonemiddleware>=1.0.0
 Babel>=1.3
