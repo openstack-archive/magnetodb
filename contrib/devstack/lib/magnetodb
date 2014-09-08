@@ -293,6 +293,8 @@ function screen_run {
 }
 
 function start_cassandra() {
+    echo "=== Memory info ==="
+    cat /proc/meminfo
     echo "===  Starting Cassandra Cluster  ==="
     ccm start
     screen_rc 'cassandra' "n=1; addr=2; while [ \\\$n -lt $CASSANDRA_AMOUNT_NODES ]; do sudo ip addr add 127.0.0.\\\${addr}/8 dev lo || [ \\\$? -eq 2 ] && true; let addr=\\\$addr+1; let n=\\\$n+1; done; ccm start"
