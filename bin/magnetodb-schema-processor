@@ -1,0 +1,195 @@
+#!/usr/bin/env python
+
+# Copyright 2013 Mirantis Inc.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import json
+import os
+import sys
+
+from oslo.config import cfg
+from oslo import messaging
+
+import eventlet
+eventlet.patcher.monkey_patch(all=True)
+
+from magnetodb import notifier
+from magnetodb.openstack.common.context import RequestContext
+from magnetodb.openstack.common import log
+from magnetodb.openstack.common.log import logging
+from magnetodb.common.exception import ResourceInUseException
+from magnetodb.common.exception import TableNotExistsException
+from magnetodb.storage import models
+from magnetodb.storage import process_object_spec
+
+# If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
+# it will override what happens to be installed in /usr/(local/)lib/python...
+possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
+                                                os.pardir,
+                                                os.pardir))
+if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
+    sys.path.insert(0, possible_topdir)
+
+
+CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
+
+
+class SchemaEndpoint(object):
+    def __init__(self):
+        LOG.debug('Creating endpoint...')
+
+        storage_driver_config = CONF.storage_manager_config
+        object_spec_map = json.loads(storage_driver_config)
+
+        print object_spec_map
+
+        context = {}
+
+        for object_name in object_spec_map.keys():
+            process_object_spec(object_name, object_spec_map, context)
+
+        self._storage_driver = context["storage_driver"]
+        self._table_info_repo = context["table_info_repo"]
+
+        LOG.debug('Endpoint created')
+
+    def create(self, ctx, table_name):
+        LOG.debug("Start creating table '%s'", table_name)
+
+        context = RequestContext(**ctx)
+
+        try:
+            table_info = self._table_info_repo.get(context, table_name)
+        except TableNotExistsException as e:
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                            e.message, priority=notifier.PRIORITY_ERROR)
+            LOG.error("Create table failed."
+                      " Table info for table '%s' does not exist in repo",
+                      table_name)
+            return
+
+        if table_info.status != models.TableMeta.TABLE_STATUS_CREATING:
+            e = ResourceInUseException()
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                            table_name + ' ' + e.message,
+                            priority=notifier.PRIORITY_ERROR)
+
+            LOG.error("Create table failed."
+                      " Table '%s' is in %s state but %s is expexcted",
+                      table_name,
+                      table_info.status,
+                      models.TableMeta.TABLE_STATUS_CREATING)
+            return
+
+        try:
+            internal_name = self._storage_driver.create_table(
+                context, table_info)
+
+            table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
+
+            table_info.internal_name = internal_name
+            self._table_info_repo.update(
+                context, table_info, ["status", "internal_name"])
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_END,
+                            table_name)
+
+            LOG.debug("Table '%s' created", table_name)
+        except Exception as e:
+            notifier.notify(
+                context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR, e,
+                priority=notifier.PRIORITY_ERROR
+            )
+            table_info.status = models.TableMeta.TABLE_STATUS_ERROR
+            self._table_info_repo.update(context, table_info, ["status"])
+
+            LOG.error("Create table '%s' failed. %s",
+                      table_name,
+                      str(e))
+
+    def delete(self, ctx, table_name):
+        LOG.debug("Start deleting table '%s'", table_name)
+
+        context = RequestContext(**ctx)
+
+        try:
+            table_info = self._table_info_repo.get(context, table_name)
+        except TableNotExistsException as e:
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                            e.message, priority=notifier.PRIORITY_ERROR)
+
+            LOG.error("Delete table failed."
+                      " Table info for table '%s' does not exist in repo",
+                      table_name)
+
+            return
+
+        if table_info.status != models.TableMeta.TABLE_STATUS_DELETING:
+            e = ResourceInUseException()
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                            table_name + ' ' + e.message,
+                            priority=notifier.PRIORITY_ERROR)
+
+            LOG.error("Delete table failed."
+                      " Table '%s' is in %s state but %s is expected",
+                      table_name,
+                      table_info.status,
+                      models.TableMeta.TABLE_STATUS_DELETING)
+
+            return
+
+        try:
+            self._storage_driver.delete_table(context, table_info)
+            self._table_info_repo.delete(context, table_name)
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
+                            table_name)
+            LOG.debug("Table '%s' deleted", table_name)
+        except Exception as e:
+            notifier.notify(
+                context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR, e,
+                priority=notifier.PRIORITY_ERROR
+            )
+            table_info.status = models.TableMeta.TABLE_STATUS_ERROR
+            self._table_info_repo.update(context, table_info, ["status"])
+
+            LOG.error("Delete table '%s' failed. %s",
+                      table_name,
+                      str(e))
+
+
+if __name__ == '__main__':
+    from magnetodb.common import PROJECT_NAME
+    prog_name = os.path.basename(sys.argv[0])
+    CONF(project=PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
+
+    log.setup(PROJECT_NAME)
+    notifier.setup()
+
+    LOG.debug('Magnetodb schema processor started')
+
+    transport = messaging.get_transport(cfg.CONF)
+    target = messaging.Target(topic='schema',
+                              server='magnetodb-schema-processor')
+    endpoints = [
+        SchemaEndpoint(),
+    ]
+    LOG.debug('Creating PRC server..')
+    server = messaging.get_rpc_server(transport, target, endpoints,
+                                      executor='blocking')
+    LOG.debug('Starting...')
+    server.start()
+    LOG.debug('Waiting...')
+    server.wait()
+    LOG.debug('Stopped')
