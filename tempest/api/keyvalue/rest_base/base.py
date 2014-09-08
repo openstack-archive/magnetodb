@@ -116,7 +116,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         del cls._resource_trash_bin[key]
 
     @classmethod
-    def wait_for_table_active(cls, table_name, timeout=60, interval=3,
+    def wait_for_table_active(cls, table_name, timeout=120, interval=3,
                               alt=False):
         def check():
             client = cls.client if not alt else cls.client_alt
@@ -126,7 +126,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
 
         return tempest.test.call_until_true(check, timeout, interval)
 
-    def wait_for_table_deleted(self, table_name, timeout=60, interval=3,
+    def wait_for_table_deleted(self, table_name, timeout=120, interval=3,
                                alt=False):
         def check():
             client = self.client if not alt else self.client_alt
@@ -205,7 +205,8 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         if cleanup:
             self.addResourceCleanUp(self.client.delete_table, table_name)
         if wait_for_active:
-            self.wait_for_table_active(table_name)
+            if not self.wait_for_table_active(table_name):
+                self.fail('Table creation timed out')
 
         return headers, body
 

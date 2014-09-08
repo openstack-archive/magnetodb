@@ -79,18 +79,20 @@ def process_object_spec(obj_name, obj_spec_map, context):
     return obj
 
 
+def load_context(config):
+    storage_manager_config = config.storage_manager_config
+    object_spec_map = json.loads(storage_manager_config)
+    context = {}
+    for object_name in object_spec_map.keys():
+        process_object_spec(object_name, object_spec_map, context)
+    return context
+
+
 def setup():
     global __STORAGE_MANAGER_IMPL
     assert __STORAGE_MANAGER_IMPL is None
 
-    storage_manager_config = config.CONF.storage_manager_config
-
-    object_spec_map = json.loads(storage_manager_config)
-
-    context = {}
-
-    for object_name in object_spec_map.keys():
-        process_object_spec(object_name, object_spec_map, context)
+    context = load_context(config.CONF)
 
     __STORAGE_MANAGER_IMPL = context["storage_manager"]
 
