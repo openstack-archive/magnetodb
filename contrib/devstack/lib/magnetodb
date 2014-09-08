@@ -240,6 +240,7 @@ function configure_magnetodb() {
     sudo chown $MAGNETODB_RUN_USER $MAGNETODB_CONF_DIR
     sudo touch $MAGNETODB_LOG_DIR/magnetodb.log
     sudo touch $MAGNETODB_LOG_DIR/magnetodb-streaming.log
+    sudo touch $MAGNETODB_LOG_DIR/magnetodb-async-task-executor.log
     sudo chown -R $MAGNETODB_RUN_USER $MAGNETODB_LOG_DIR
     cp -r $MAGNETODB_DIR/etc/* $MAGNETODB_CONF_DIR
 
@@ -323,6 +324,19 @@ function start_magnetodb_streaming() {
     screen_run magnetodb-streaming "$cmd"
 }
 
+function start_magnetodb_async_task_executor() {
+    if is_ubuntu; then
+        use_Python="python"
+    elif is_fedora; then
+        use_Python="python2.7"
+    fi
+
+    cmd="timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-async-task-executor \
+        --config-file $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf"
+
+    screen_run magnetodb-async-task-executor "$cmd"
+}
+
 # start_magnetodb() - Start running processes, including screen
 function start_magnetodb() {
 
@@ -337,6 +351,7 @@ function start_magnetodb() {
     fi
     screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-file $MAGNETODB_CONF_DIR/magnetodb-api-server.conf"
     start_magnetodb_streaming
+    start_magnetodb_async_task_executor
 }
 
 function stop_cassandra(){
@@ -357,6 +372,9 @@ function stop_magnetodb() {
 
     # Kill the magnetodb-streaming screen windows
     screen -S $SCREEN_NAME -p magnetodb-streaming -X kill
+
+    # Kill the magnetodb-async-task-executor screen windows
+    screen -S $SCREEN_NAME -p magnetodb-async-task-executor -X kill
 }
 
 function clean_magnetodb() {
