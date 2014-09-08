@@ -793,9 +793,10 @@ class TableMeta(ModelBase):
     TABLE_STATUS_CREATING = "CREATING"
     TABLE_STATUS_DELETING = "DELETING"
     TABLE_STATUS_ACTIVE = "ACTIVE"
+    TABLE_STATUS_ERROR = "ERROR"
 
     _allowed_statuses = set([TABLE_STATUS_CREATING, TABLE_STATUS_DELETING,
-                             TABLE_STATUS_ACTIVE])
+                             TABLE_STATUS_ACTIVE, TABLE_STATUS_ERROR])
 
     def __init__(self, schema, status):
         """
