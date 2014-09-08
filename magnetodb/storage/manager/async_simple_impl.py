@@ -34,6 +34,31 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
         SimpleStorageManager.__init__(self, storage_driver, table_info_repo,
                                       concurrent_tasks, batch_chunk_size)
 
+    def _async_create(self, context, table_info):
+        future = self._execute_async(self._storage_driver.create_table,
+                                     context, table_info)
+
+        def callback(future):
+            if not future.exception():
+                table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
+                table_info.internal_name = future.result()
+                self._table_info_repo.update(
+                    context, table_info, ["status", "internal_name"]
+                )
+                notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_END,
+                                table_info.schema)
+            else:
+                table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
+                self._table_info_repo.update(
+                    context, table_info, ["status"]
+                )
+                notifier.notify(
+                    context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                    future.exception(), priority=notifier.PRIORITY_ERROR
+                )
+
+        future.add_done_callback(callback)
+
     def create_table(self, context, table_name, table_schema):
         notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_START,
                         table_schema)
@@ -47,27 +72,32 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
                             e.message, priority=notifier.PRIORITY_ERROR)
             raise
 
-        future = self._execute_async(self._storage_driver.create_table,
+        self._async_create(context, table_info)
+
+        return models.TableMeta(table_info.schema, table_info.status)
+
+    def _async_delete(self, context, table_info):
+        future = self._execute_async(self._storage_driver.delete_table,
                                      context, table_info)
 
         def callback(future):
             if not future.exception():
-                table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
-                table_info.internal_name = future.result()
-                self._table_info_repo.update(
-                    context, table_info, ["status", "internal_name"]
+                self._table_info_repo.delete(
+                    context, table_info.name
                 )
-                notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_END,
-                                table_schema)
+                notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
+                                table_info.name)
             else:
+                table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
+                self._table_info_repo.update(
+                    context, table_info, ["status"]
+                )
                 notifier.notify(
-                    context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                    context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                     future.exception(), priority=notifier.PRIORITY_ERROR
                 )
 
         future.add_done_callback(callback)
-
-        return models.TableMeta(table_info.schema, table_info.status)
 
     def delete_table(self, context, table_name):
         notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_START,
@@ -81,38 +111,22 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
                             e.message, priority=notifier.PRIORITY_ERROR)
             raise
 
-        # table has to be in active status to be deleted
-        if table_info.status == models.TableMeta.TABLE_STATUS_CREATING:
+        if table_info.status == models.TableMeta.TABLE_STATUS_DELETING:
+            # table is already being deleted, just return immediately
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
+                            table_name)
+            return models.TableMeta(table_info.schema, table_info.status)
+        elif table_info.status != models.TableMeta.TABLE_STATUS_ACTIVE:
             e = ResourceInUseException()
             notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                             table_name + ' ' + e.message,
                             priority=notifier.PRIORITY_ERROR)
             raise e
-        elif table_info.status == models.TableMeta.TABLE_STATUS_DELETING:
-            # table is already being deleted, just return immediately
-            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
-                            table_name)
-            return models.TableMeta(table_info.schema, table_info.status)
 
         table_info.status = models.TableMeta.TABLE_STATUS_DELETING
 
         self._table_info_repo.update(context, table_info, ["status"])
 
-        future = self._execute_async(self._storage_driver.delete_table,
-                                     context, table_info)
+        self._async_delete(context, table_info)
 
-        def callback(future):
-            if not future.exception():
-                self._table_info_repo.delete(
-                    context, table_name
-                )
-                notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
-                                table_name)
-            else:
-                notifier.notify(
-                    context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                    future.exception(), priority=notifier.PRIORITY_ERROR
-                )
-
-        future.add_done_callback(callback)
         return models.TableMeta(table_info.schema, table_info.status)
