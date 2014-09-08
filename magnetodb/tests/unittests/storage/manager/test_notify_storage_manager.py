@@ -105,6 +105,14 @@ class TestNotifyStorageManager(TestNotify):
         mock_storage_driver = mock.Mock()
         mock_storage_driver.delete_table.return_value = True
 
+        class FakeTableInfo:
+            status = models.TableMeta.TABLE_STATUS_ACTIVE
+            name = table_name
+            schema = None
+
+        mock_table_info_repo = mock.Mock()
+        mock_table_info_repo.get.return_value = FakeTableInfo()
+
         storage_manager = AsyncSimpleStorageManager(mock_storage_driver,
                                                     mock_table_info_repo)
         storage_manager.delete_table(context, table_name)
