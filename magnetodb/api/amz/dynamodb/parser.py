@@ -719,9 +719,11 @@ class Parser():
     def format_table_status(cls, table_status):
         if table_status == models.TableMeta.TABLE_STATUS_ACTIVE:
             return Values.TABLE_STATUS_ACTIVE
-        elif table_status == models.TableMeta.TABLE_STATUS_CREATING:
+        elif table_status in (models.TableMeta.TABLE_STATUS_CREATING,
+                              models.TableMeta.TABLE_STATUS_CREATE_FAILED):
             return Values.TABLE_STATUS_CREATING
-        elif table_status == models.TableMeta.TABLE_STATUS_DELETING:
+        elif table_status in (models.TableMeta.TABLE_STATUS_DELETING,
+                              models.TableMeta.TABLE_STATUS_DELETE_FAILED):
             return Values.TABLE_STATUS_DELETING
         else:
             assert False, (
