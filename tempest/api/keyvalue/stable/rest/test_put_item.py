@@ -1077,3 +1077,78 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         exception = raises_cm.exception
         self.assertIn(("Both expected_condition_map and "
                        "if_not_exist specified"), str(exception))
+
+    def test_put_item_predefined_attr_replace(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [
+                {'attribute_name': 'hash_attr', 'attribute_type': 'S'},
+                {'attribute_name': 'range_attr', 'attribute_type': 'S'},
+                {'attribute_name': 'extra_attr1', 'attribute_type': 'S'},
+                {'attribute_name': 'extra_attr2', 'attribute_type': 'S'},
+            ],
+            self.table_name,
+            [
+                {'attribute_name': 'hash_attr', 'key_type': 'HASH'},
+                {'attribute_name': 'range_attr', 'key_type': 'RANGE'},
+            ],
+            wait_for_active=True)
+        item1 = {
+            "hash_attr": {"S": "hash_value"},
+            "range_attr": {"S": "range_value"},
+            "extra_attr1": {"S": "extra_value1"},
+            "extra_attr2": {"S": "extra_value2"},
+        }
+
+        put_resp = self.client.put_item(self.table_name, item1)
+        self.assertEqual(put_resp[1], {})
+
+        get_resp = self.client.get_item(self.table_name,
+                                        {"hash_attr": {"S": "hash_value"},
+                                         "range_attr": {"S": "range_value"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item'], item1)
+
+        item2 = {
+            "hash_attr": {"S": "hash_value"},
+            "range_attr": {"S": "range_value"},
+            "extra_attr1": {"S": "extra_value1"},
+        }
+
+        put_resp = self.client.put_item(self.table_name, item2)
+        self.assertEqual(put_resp[1], {})
+
+        get_resp = self.client.get_item(self.table_name,
+                                        {"hash_attr": {"S": "hash_value"},
+                                         "range_attr": {"S": "range_value"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item'], item2)
+
+        item3 = {
+            "hash_attr": {"S": "hash_value"},
+            "range_attr": {"S": "range_value"},
+            "extra_attr2": {"S": "extra_value2"},
+        }
+
+        put_resp = self.client.put_item(self.table_name, item3)
+        self.assertEqual(put_resp[1], {})
+
+        get_resp = self.client.get_item(self.table_name,
+                                        {"hash_attr": {"S": "hash_value"},
+                                         "range_attr": {"S": "range_value"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item'], item3)
+
+        item4 = {
+            "hash_attr": {"S": "hash_value"},
+            "range_attr": {"S": "range_value"},
+        }
+
+        put_resp = self.client.put_item(self.table_name, item4)
+        self.assertEqual(put_resp[1], {})
+
+        get_resp = self.client.get_item(self.table_name,
+                                        {"hash_attr": {"S": "hash_value"},
+                                         "range_attr": {"S": "range_value"}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item'], item4)

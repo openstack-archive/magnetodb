@@ -295,6 +295,11 @@ class CassandraStorageDriver(StorageDriver):
         query_builder += (
             'INSERT INTO ', table_info.internal_name, ' ('
         )
+
+        not_processed_predefined_attr_names = set(
+            table_info.schema.attribute_type_map.keys()
+        )
+
         attr_values = []
         dynamic_attr_names = []
         dynamic_attr_values = []
@@ -304,11 +309,17 @@ class CassandraStorageDriver(StorageDriver):
                     '"', USER_PREFIX, name, '",'
                 )
                 attr_values.append(_encode_predefined_attr_value(val))
+                not_processed_predefined_attr_names.remove(name)
             else:
                 dynamic_attr_names.append(name)
                 dynamic_attr_values.append(
                     _encode_dynamic_attr_value(val)
                 )
+        for name in not_processed_predefined_attr_names:
+            query_builder += (
+                '"', USER_PREFIX, name, '",'
+            )
+            attr_values.append(_encode_predefined_attr_value(None))
 
         if table_info.schema.index_def_map:
             query_builder += (
