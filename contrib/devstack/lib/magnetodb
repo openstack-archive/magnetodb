@@ -36,6 +36,9 @@ CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-test}
 CASSANDRA_AMOUNT_NODES=${CASSANDRA_AMOUNT_NODES:-3}
 CASSANDRA_REPL_FACTOR=${CASSANDRA_REPL_FACTOR:-3}
 
+CASSANDRA_MAX_HEAP_SIZE=${CASSANDRA_MAX_HEAP_SIZE:-300M}
+CASSANDRA_HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-100M}
+
 # Set up default directories
 MAGNETODB_CONF_DIR=${MAGNETODB_CONF_DIR:-/etc/magnetodb}
 MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
@@ -208,6 +211,10 @@ function configure_cassandra() {
     done
 
     ccm status $CASSANDRA_CLUSTER_NAME || ccm create $CASSANDRA_CLUSTER_NAME -v $CASSANDRA_VER
+
+    sed -i -e 's/^#MAX_HEAP_SIZE="4G"$/MAX_HEAP_SIZE="'${CASSANDRA_MAX_HEAP_SIZE}'"/' ~/.ccm/repository/${CASSANDRA_VER}/conf/cassandra-env.sh
+    sed -i -e 's/^#HEAP_NEWSIZE="800M"$/HEAP_NEWSIZE="'${CASSANDRA_HEAP_NEWSIZE}'"/' ~/.ccm/repository/${CASSANDRA_VER}/conf/cassandra-env.sh
+
     ccm populate -n $CASSANDRA_AMOUNT_NODES || true
 
     create_keyspace_cassandra magnetodb
