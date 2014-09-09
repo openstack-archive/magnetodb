@@ -655,16 +655,14 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self._insert_data()
         self._insert_data(range_value=2)
 
-        del_req = models.DeleteItemRequest(
-            self.table_name,
-            {
-                'id': models.AttributeValue('N', 1),
-                'range': models.AttributeValue('S', '1')
-            }
-        )
+        del_item_key = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, del_req)
+            self.context, self.table_name, del_item_key
+        )
 
         all = self._select_all()
 
@@ -675,13 +673,13 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self._create_table(indexed=True)
         self._insert_data()
 
-        del_req = models.DeleteItemRequest(
-            self.table_name,
-            {'id': models.AttributeValue('N', 1),
-             'range': models.AttributeValue('S', '2')})
+        del_item_key = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '2')
+        }
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, del_req)
+            self.context, self.table_name, del_item_key)
 
         all = self._select_all()
 
@@ -699,13 +697,13 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         expected = {'str': [models.ExpectedCondition.not_null()]}
 
-        del_req = models.DeleteItemRequest(
-            self.table_name,
-            {'id': models.AttributeValue('N', 1),
-             'range': models.AttributeValue('S', '1')})
+        del_item_key = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, del_req, expected
+            self.context, self.table_name, del_item_key, expected
         )
 
         all = self._select_all()
@@ -726,14 +724,16 @@ class TestCassandraDeleteItem(TestCassandraBase):
             'not_existed_attr_name': [models.ExpectedCondition.not_null()]
         }
 
-        del_req = models.DeleteItemRequest(
-            self.table_name,
-            {'id': models.AttributeValue('N', 1),
-             'range': models.AttributeValue('S', '1')})
+        del_item_key = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
 
-        self.assertRaises(exception.ConditionalCheckFailedException,
-                          self.CASANDRA_STORAGE_IMPL.delete_item,
-                          self.context, del_req, expected)
+        self.assertRaises(
+            exception.ConditionalCheckFailedException,
+            self.CASANDRA_STORAGE_IMPL.delete_item,
+            self.context, self.table_name, del_item_key, expected
+        )
 
         all = self._select_all()
 
@@ -756,13 +756,13 @@ class TestCassandraDeleteItem(TestCassandraBase):
             'not_existed_attr_name': [models.ExpectedCondition.null()]
         }
 
-        del_req = models.DeleteItemRequest(
-            self.table_name,
-            {'id': models.AttributeValue('N', 1),
-             'range': models.AttributeValue('S', '1')})
+        del_item_key = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
 
         result = self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, del_req, expected)
+            self.context, self.table_name, del_item_key, expected)
 
         self.assertTrue(result)
 
@@ -781,14 +781,16 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
         expected = {'str': [models.ExpectedCondition.null()]}
 
-        del_req = models.DeleteItemRequest(
-            self.table_name,
-            {'id': models.AttributeValue('N', 1),
-             'range': models.AttributeValue('S', '1')})
+        del_item_key = {
+            'id': models.AttributeValue('N', 1),
+            'range': models.AttributeValue('S', '1')
+        }
 
-        self.assertRaises(exception.ConditionalCheckFailedException,
-                          self.CASANDRA_STORAGE_IMPL.delete_item,
-                          self.context, del_req, expected)
+        self.assertRaises(
+            exception.ConditionalCheckFailedException,
+            self.CASANDRA_STORAGE_IMPL.delete_item,
+            self.context, self.table_name, del_item_key, expected
+        )
 
         all = self._select_all()
 
@@ -2484,9 +2486,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'str': models.AttributeValue('S', 'str'),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2509,9 +2509,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'number': models.AttributeValue('N', 42),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2534,9 +2532,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'blb': models.AttributeValue('B', decoded_value='blob'),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2559,9 +2555,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'set_string': models.AttributeValue('SS', {'str1', 'str2'})
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2584,9 +2578,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'set_number': models.AttributeValue('NS', {42, 43})
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2611,9 +2603,7 @@ class TestCassandraPutItem(TestCassandraBase):
             ),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2638,9 +2628,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2665,9 +2653,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2692,9 +2678,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2719,9 +2703,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2746,9 +2728,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2773,9 +2753,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2800,9 +2778,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2827,9 +2803,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2854,9 +2828,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2879,9 +2851,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'fstr': models.AttributeValue('S', 'str')
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2904,9 +2874,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'fnum': models.AttributeValue('N', 42),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2929,9 +2897,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'fblb': models.AttributeValue('B', decoded_value='blob'),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2954,9 +2920,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'fsstr': models.AttributeValue('SS', {'str1', 'str2'}),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2979,9 +2943,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'fsnum': models.AttributeValue('NS', {42, 43})
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3006,9 +2968,7 @@ class TestCassandraPutItem(TestCassandraBase):
             ),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3033,9 +2993,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3060,9 +3018,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3087,9 +3043,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3114,9 +3068,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3141,9 +3093,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3168,9 +3118,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3195,9 +3143,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3222,9 +3168,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3249,9 +3193,7 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, put_request)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3275,8 +3217,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'str': models.AttributeValue('S', 'str'),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'str': [
                 models.ExpectedCondition.eq(models.AttributeValue('S', 'str'))
@@ -3284,7 +3224,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3310,8 +3250,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'numbr': models.AttributeValue('N', 42),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'numbr': [
                 models.ExpectedCondition.eq(models.AttributeValue('N', 1))
@@ -3319,7 +3257,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3345,8 +3283,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'blb': models.AttributeValue('B', decoded_value='blob'),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'blb': [
                 models.ExpectedCondition.eq(
@@ -3356,7 +3292,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3386,8 +3322,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'set_string': models.AttributeValue('SS', {'str1', 'str2'})
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'set_string': [
                 models.ExpectedCondition.eq(
@@ -3397,7 +3331,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3423,8 +3357,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'set_number': models.AttributeValue('NS', {42, 43}),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'set_number': [
                 models.ExpectedCondition.eq(
@@ -3434,7 +3366,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3462,8 +3394,6 @@ class TestCassandraPutItem(TestCassandraBase):
             ),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'set_blob': [
                 models.ExpectedCondition.eq(
@@ -3475,7 +3405,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3505,8 +3435,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'fstr': models.AttributeValue('S', 'str'),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'fstr': [
                 models.ExpectedCondition.eq(models.AttributeValue('S', 'fstr'))
@@ -3514,7 +3442,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3540,8 +3468,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'fnum': models.AttributeValue('N', 42),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'fnum': [
                 models.ExpectedCondition.eq(models.AttributeValue('N', 1))
@@ -3549,7 +3475,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3579,8 +3505,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'fblb': models.AttributeValue('B', decoded_value='blob'),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'fblb': [
                 models.ExpectedCondition.eq(
@@ -3589,7 +3513,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3615,8 +3539,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'fsstr': models.AttributeValue('SS', {'str1', 'str2'})
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'fsstr': [
                 models.ExpectedCondition.eq(
@@ -3626,7 +3548,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3652,8 +3574,6 @@ class TestCassandraPutItem(TestCassandraBase):
             'fsnum': models.AttributeValue('NS', {42, 43}),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'fsnum': [
                 models.ExpectedCondition.eq(
@@ -3662,7 +3582,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3690,8 +3610,6 @@ class TestCassandraPutItem(TestCassandraBase):
             ),
         }
 
-        put_request = models.PutItemRequest(self.table_name, put)
-
         expected = {
             'fsblob': [
                 models.ExpectedCondition.eq(
@@ -3703,7 +3621,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, put_request, expected_condition_map=expected
+            self.context, self.table_name, put, expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3935,8 +3853,11 @@ class TestCassandraBatch(TestCassandraBase):
             'blb': models.AttributeValue('B', decoded_value='blob'),
         }]
 
-        put_requests = [models.PutItemRequest(self.table_name, i)
-                        for i in put_items]
+        put_requests = {
+            self.table_name: [
+                models.WriteItemRequest.put(item) for item in put_items
+            ]
+        }
 
         self.CASANDRA_STORAGE_IMPL.execute_write_batch(self.context,
                                                        put_requests)
