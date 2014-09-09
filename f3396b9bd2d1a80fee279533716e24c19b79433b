@@ -1,0 +1,11 @@
+Verified+2: Jenkins
+Code-Review+2: Ilya Sviridov <isviridov@mirantis.com>
+Code-Review+2: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Workflow+1: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Code-Review+1: Charles Wang <charles_wang@symantec.com>
+Code-Review+1: Ajaya Agrawal <ajku.agr@gmail.com>
+Submitted-by: Jenkins
+Submitted-at: Tue, 09 Sep 2014 12:48:57 +0000
+Reviewed-on: https://review.openstack.org/119462
+Project: stackforge/magnetodb
+Branch: refs/heads/master
