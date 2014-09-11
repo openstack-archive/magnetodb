@@ -126,7 +126,7 @@ class CreateTableDynamoDBAction(DynamoDBAction):
 
             return result
         except exception.TableAlreadyExistsException:
-            raise exception.ResourceInUseException()
+            raise exception.DuplicateTableError(table_name)
         except exception.AWSErrorResponseException as e:
             raise e
         except Exception:

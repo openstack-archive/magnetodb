@@ -300,6 +300,7 @@ class BotoIntegrationTest(unittest.TestCase):
             self.fail()
         except JSONResponseError as e:
             self.assertEqual('ResourceInUseException', e.error_code)
+            self.assertEqual('Table already exists: test', e.body['message'])
             self.storage_mocker.VerifyAll()
         except Exception as e:
             self.fail()
