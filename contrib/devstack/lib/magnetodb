@@ -259,23 +259,27 @@ function configure_magnetodb() {
     iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_password $SERVICE_PASSWORD
 }
 
-# function screen_run - This function is a modification of function screen_it and allows you to run processes are not declared as service
+
+# function run_extra_process - This function is a modification of function run_process and allows you to run processes are not declared as service
 # Helper to launch a service in a named screen
-# screen_run service "command-line"
-function screen_run {
-    SCREEN_NAME=${SCREEN_NAME:-stack}
-    SERVICE_DIR=${SERVICE_DIR:-${DEST}/status}
+# run_extra_process service "command-line"
+function run_extra_process {
+    local service=$1
+    local command="$2"
+
     USE_SCREEN=$(trueorfalse True $USE_SCREEN)
 
-    # Append the service to the screen rc file
-    screen_rc "$1" "$2"
-
     if [[ "$USE_SCREEN" = "True" ]]; then
-        screen -S $SCREEN_NAME -X screen -t $1
+        SCREEN_NAME=${SCREEN_NAME:-stack}
+        SERVICE_DIR=${SERVICE_DIR:-${DEST}/status}
+
+        # Append the service to the screen rc file
+        screen_rc "$service" "$command"
+        screen -S $SCREEN_NAME -X screen -t $service
         if [[ -n ${SCREEN_LOGDIR} ]]; then
-            screen -S $SCREEN_NAME -p $1 -X logfile ${SCREEN_LOGDIR}/screen-${1}.${CURRENT_LOG_TIME}.log
-            screen -S $SCREEN_NAME -p $1 -X log on
-            ln -sf ${SCREEN_LOGDIR}/screen-${1}.${CURRENT_LOG_TIME}.log ${SCREEN_LOGDIR}/screen-${1}.log
+            screen -S $SCREEN_NAME -p $service -X logfile ${SCREEN_LOGDIR}/screen-${service}.${CURRENT_LOG_TIME}.log
+            screen -S $SCREEN_NAME -p $service -X log on
+            ln -sf ${SCREEN_LOGDIR}/screen-${service}.${CURRENT_LOG_TIME}.log ${SCREEN_LOGDIR}/screen-${service}.log
         fi
 
         # sleep to allow bash to be ready to be send the command - we are
@@ -289,13 +293,31 @@ function screen_run {
         # - the pid of the background process is saved in the usual place
         # - the server process is brought back to the foreground
         # - if the server process exits prematurely the fg command errors
-        #   and a message is written to stdout and the service failure file
+        # and a message is written to stdout and the service failure file
         # The pid saved can be used in screen_stop() as a process group
         # id to kill off all child processes
-        screen -S $SCREEN_NAME -p $1 -X stuff "$2 & echo \$! >$SERVICE_DIR/$SCREEN_NAME/$1.pid; fg || echo \"$1 failed to start\" | tee \"$SERVICE_DIR/$SCREEN_NAME/$1.failure\"$NL"
+        screen -S $SCREEN_NAME -p $service -X stuff "$command & echo \$! >$SERVICE_DIR/$SCREEN_NAME/${service}.pid; fg || echo \"$service failed to start\" | tee \"$SERVICE_DIR/$SCREEN_NAME/${service}.failure\"$NL"
     else
         # Spawn directly without screen
-        run_process "$1" "$2" >$SERVICE_DIR/$SCREEN_NAME/$1.pid
+        _run_process "$service" "$command" &
+    fi
+}
+
+function stop_extra_process {
+    local service=$1
+
+    SERVICE_DIR=${SERVICE_DIR:-${DEST}/status}
+    USE_SCREEN=$(trueorfalse True $USE_SCREEN)
+
+    # Kill via pid if we have one available
+    if [[ -r $SERVICE_DIR/$SCREEN_NAME/$service.pid ]]; then
+        pkill -g $(cat $SERVICE_DIR/$SCREEN_NAME/$service.pid)
+        rm $SERVICE_DIR/$SCREEN_NAME/$service.pid
+    fi
+    if [[ "$USE_SCREEN" = "True" ]]; then
+        # Clean up the screen window
+        SCREEN_NAME=${SCREEN_NAME:-stack}
+        screen -S $SCREEN_NAME -p $service -X kill
     fi
 }
 
@@ -317,10 +339,7 @@ function start_magnetodb_streaming() {
         use_Python="python2.7"
     fi
 
-    cmd="timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-streaming-api-server \
-        --config-file $MAGNETODB_CONF_DIR/magnetodb-streaming-api-server.conf"
-
-    screen_run magnetodb-streaming "$cmd"
+    run_extra_process magnetodb-streaming "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-streaming-api-server --config-file $MAGNETODB_CONF_DIR/magnetodb-streaming-api-server.conf"
 }
 
 # start_magnetodb() - Start running processes, including screen
@@ -335,7 +354,7 @@ function start_magnetodb() {
     elif is_fedora; then
         use_Python="python2.7"
     fi
-    screen_it magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-file $MAGNETODB_CONF_DIR/magnetodb-api-server.conf"
+    run_process magnetodb "timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160' && cd $MAGNETODB_DIR && $use_Python $MAGNETODB_DIR/bin/magnetodb-api-server --config-file $MAGNETODB_CONF_DIR/magnetodb-api-server.conf"
     start_magnetodb_streaming
 }
 
@@ -352,11 +371,8 @@ function stop_magnetodb() {
         stop_cassandra
     fi
 
-    # Kill the magnetodb screen windows
-    screen -S $SCREEN_NAME -p magnetodb -X kill
-
-    # Kill the magnetodb-streaming screen windows
-    screen -S $SCREEN_NAME -p magnetodb-streaming -X kill
+    stop_process magnetodb
+    stop_extra_process magnetodb-streaming
 }
 
 function clean_magnetodb() {

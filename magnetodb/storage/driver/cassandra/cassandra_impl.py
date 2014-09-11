@@ -573,8 +573,8 @@ class CassandraStorageDriver(StorageDriver):
                 table_info, {}, attribute_map, query_builder, rewrite=True
             )
             if len(query_builder) > qb_len:
-                query_builder.appendleft(self._get_batch_begin_clause())
-                query_builder.append(self._get_batch_apply_clause())
+                query_builder.appendleft('BEGIN UNLOGGED BATCH ')
+                query_builder.append(' APPLY BATCH')
 
         result = self.__cluster_handler.execute_query(
             "".join(query_builder), consistent=True)
@@ -676,8 +676,8 @@ class CassandraStorageDriver(StorageDriver):
                     query_builder, rewrite=True
                 )
                 if len(query_builder) > qb_len:
-                    query_builder.appendleft(self._get_batch_begin_clause())
-                    query_builder.append(self._get_batch_apply_clause())
+                    query_builder.appendleft('BEGIN UNLOGGED BATCH ')
+                    query_builder.append(' APPLY BATCH')
                 result = self.__cluster_handler.execute_query(
                     "".join(query_builder), consistent=True
                 )
@@ -736,8 +736,8 @@ class CassandraStorageDriver(StorageDriver):
             query_builder.append(" ")
 
         if len(write_request_list) > 1:
-            query_builder.insert(0, self._get_batch_begin_clause())
-            query_builder.append(self._get_batch_apply_clause())
+            query_builder.insert(0, 'BEGIN UNLOGGED BATCH ')
+            query_builder.append(' APPLY BATCH')
 
         self.__cluster_handler.execute_query("".join(query_builder), True)
 
@@ -876,8 +876,8 @@ class CassandraStorageDriver(StorageDriver):
                     query_builder
                 )
                 if len(query_builder) > qb_len:
-                    query_builder.appendleft(self._get_batch_begin_clause())
-                    query_builder.append(self._get_batch_apply_clause())
+                    query_builder.appendleft('BEGIN UNLOGGED BATCH ')
+                    query_builder.append(' APPLY BATCH')
                 result = self.__cluster_handler.execute_query(
                     "".join(query_builder), consistent=True
                 )
@@ -1097,16 +1097,6 @@ class CassandraStorageDriver(StorageDriver):
 
         return query_builder
 
-    @staticmethod
-    def _get_batch_begin_clause(durable=True):
-        if durable:
-            return 'BEGIN BATCH '
-        return 'BEGIN UNLOGGED BATCH '
-
-    @staticmethod
-    def _get_batch_apply_clause():
-        return ' APPLY BATCH'
-
     @probe.Probe(__name__)
     def update_item(self, context, table_info, key_attribute_map,
                     attribute_action_map, expected_condition_map={}):
@@ -1171,8 +1161,8 @@ class CassandraStorageDriver(StorageDriver):
                 )
 
                 if len(query_builder) > qb_len:
-                    query_builder.appendleft(self._get_batch_begin_clause())
-                    query_builder.append(self._get_batch_apply_clause())
+                    query_builder.appendleft('BEGIN UNLOGGED BATCH ')
+                    query_builder.append(' APPLY BATCH')
 
             result = self.__cluster_handler.execute_query(
                 "".join(query_builder), consistent=True
