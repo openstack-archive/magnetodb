@@ -188,6 +188,14 @@ class ResourceInUseException(BadRequestException):
     error_code = 'ResourceInUseException'
 
 
+class DuplicateTableError(BadRequestException):
+    def __init__(self, table_name):
+        self.response_message = (
+            "Table already exists: %s" % table_name
+        )
+    error_code = 'ResourceInUseException'
+
+
 class IncompleteSignatureError(BadRequestException):
     response_message = (
         'The request signature does not conform to AWS standards.'
