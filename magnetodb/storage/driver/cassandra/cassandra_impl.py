@@ -583,13 +583,14 @@ class CassandraStorageDriver(StorageDriver):
 
     @probe.Probe(__name__)
     def put_item(self, context, table_info, attribute_map, if_not_exist=False,
-                 expected_condition_map=None):
+                 expected_condition_map=None, return_old=False):
         """
         :param context: current request context
         :param table_info: TableInfo instance with table's meta information
         :param attribute_map: attribute name to AttributeValue mapping.
                     It defines row key and additional attributes to put
                     item
+        :param return_old: return replaced value if True
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
@@ -604,6 +605,22 @@ class CassandraStorageDriver(StorageDriver):
         """
 
         hash_name = table_info.schema.hash_key_name
+        range_name = table_info.schema.range_key_name
+        return_old = True
+
+        if return_old:
+            old_item = self._get_item_to_update(context, table_info,
+                                                attribute_map)
+            if old_item:
+                if not self._conditions_satisfied(old_item,
+                                                  expected_condition_map):
+                    raise ConditionalCheckFailedException()
+                key_attributes = [hash_name]
+                if range_name:
+                    key_attributes.append(range_name)
+                expected_condition_map = self._get_update_conditions(
+                    (hash_name, range_name), old_item
+                )
 
         if expected_condition_map and hash_name in expected_condition_map:
             hash_conditions = expected_condition_map[hash_name]
