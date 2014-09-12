@@ -583,13 +583,14 @@ class CassandraStorageDriver(StorageDriver):
 
     @probe.Probe(__name__)
     def put_item(self, context, table_info, attribute_map, if_not_exist=False,
-                 expected_condition_map=None):
+                 expected_condition_map=None, return_old=True):
         """
         :param context: current request context
         :param table_info: TableInfo instance with table's meta information
         :param attribute_map: attribute name to AttributeValue mapping.
                     It defines row key and additional attributes to put
                     item
+        :param return_old: return replaced value if True
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
@@ -631,53 +632,85 @@ class CassandraStorageDriver(StorageDriver):
             if self._put_item_if_not_exists(table_info, attribute_map):
                 return True
             raise ConditionalCheckFailedException()
-        elif table_info.schema.index_def_map:
+        elif table_info.schema.index_def_map or return_old:
             _encode_predefined_attr_value = encode_predefined_attr_value
+            range_name = table_info.schema.range_key_name
 
             while True:
-                old_indexes = self._select_current_index_values(
-                    table_info, attribute_map
-                )
+                put_conditions = None
+                if return_old:
+                    old_item = self._get_item_to_update(context, table_info,
+                                                        attribute_map)
+                    if old_item:
+                        if not self._conditions_satisfied(
+                                old_item, expected_condition_map):
+                            raise ConditionalCheckFailedException()
+                        key_attributes = [hash_name]
+                        if range_name:
+                            key_attributes.append(range_name)
+                        put_conditions = self._get_update_conditions(
+                            key_attributes, old_item
+                        )
+                    else:
+                        if self._put_item_if_not_exists(table_info,
+                                                        attribute_map):
+                            return True
+                        continue
 
-                if old_indexes is None:
-                    if expected_condition_map:
-                        for attr, cond in expected_condition_map.iteritems():
-                            if (cond.type !=
-                                    ExpectedCondition.CONDITION_TYPE_NULL):
-                                raise ConditionalCheckFailedException()
-                    if self._put_item_if_not_exists(table_info, attribute_map):
-                        return True
-                    continue
+                elif table_info.schema.index_def_map:
+                    old_indexes = self._select_current_index_values(
+                        table_info, attribute_map
+                    )
+
+                    if old_indexes is None:
+                        if expected_condition_map:
+                            for attr, cond in (
+                                    expected_condition_map.iteritems()):
+                                if (cond.type !=
+                                        ExpectedCondition.CONDITION_TYPE_NULL):
+                                    raise ConditionalCheckFailedException()
+                        if self._put_item_if_not_exists(table_info,
+                                                        attribute_map):
+                            return True
+                        continue
+
+                conditions = put_conditions
+                if not conditions:
+                    conditions = expected_condition_map
 
                 query_builder = self._append_update_query(
                     table_info, attribute_map,
-                    expected_condition_map=expected_condition_map, rewrite=True
+                    expected_condition_map=conditions, rewrite=True
                 )
 
-                if_prefix = " AND " if expected_condition_map else " IF "
-                for index_name, index_def in (
-                        table_info.schema.index_def_map.iteritems()):
-                    old_index_value = old_indexes.get(
-                        index_def.alt_range_key_attr, None
+                if table_info.schema.index_def_map:
+                    if return_old:
+                        old_indexes = old_item
+                    if_prefix = " AND " if conditions else " IF "
+                    for index_name, index_def in (
+                            table_info.schema.index_def_map.iteritems()):
+                        old_index_value = old_indexes.get(
+                            index_def.alt_range_key_attr, None
+                        )
+
+                        query_builder += (
+                            if_prefix, '"', USER_PREFIX,
+                            index_def.alt_range_key_attr, '"=',
+                            _encode_predefined_attr_value(old_index_value)
+                            if old_index_value else "null"
+                        )
+                        if_prefix = " AND "
+
+                    qb_len = len(query_builder)
+
+                    self._append_update_indexes_queries(
+                        table_info, old_indexes, attribute_map,
+                        query_builder, rewrite=True
                     )
+                    if len(query_builder) > qb_len:
+                        query_builder.appendleft('BEGIN UNLOGGED BATCH ')
+                        query_builder.append(' APPLY BATCH')
 
-                    query_builder += (
-                        if_prefix, '"', USER_PREFIX,
-                        index_def.alt_range_key_attr, '"=',
-                        _encode_predefined_attr_value(old_index_value)
-                        if old_index_value else "null"
-                    )
-                    if_prefix = " AND "
-
-                qb_len = len(query_builder)
-
-                self._append_update_indexes_queries(
-                    table_info, old_indexes, attribute_map,
-                    query_builder, rewrite=True
-                )
-                if len(query_builder) > qb_len:
-                    query_builder.appendleft('BEGIN UNLOGGED BATCH ')
-                    query_builder.append(' APPLY BATCH')
                 result = self.__cluster_handler.execute_query(
                     "".join(query_builder), consistent=True
                 )
@@ -685,15 +718,16 @@ class CassandraStorageDriver(StorageDriver):
                 if result[0]['[applied]']:
                     return True
 
-                for attr_name, attr_value in old_indexes.iteritems():
-                    cas_name = USER_PREFIX + attr_name
-                    (_, current_value) = _decode_predefined_attr(
-                        table_info, cas_name, result[0][cas_name])
-                    if current_value != attr_value:
-                        # index consistency condition wasn't passed
-                        break
-                else:
-                    raise ConditionalCheckFailedException()
+                if table_info.schema.index_def_map:
+                    for attr_name, attr_value in old_indexes.iteritems():
+                        cas_name = USER_PREFIX + attr_name
+                        (_, current_value) = _decode_predefined_attr(
+                            table_info, cas_name, result[0][cas_name])
+                        if current_value != attr_value:
+                            # index consistency condition wasn't passed
+                            break
+                    else:
+                        raise ConditionalCheckFailedException()
         elif expected_condition_map:
             query_builder = self._append_update_query(
                 table_info, attribute_map,
@@ -1685,6 +1719,9 @@ class CassandraStorageDriver(StorageDriver):
 
         if cond.type == models.ExpectedCondition.CONDITION_TYPE_NOT_NULL:
             return attr_val is not None
+
+        if attr_val is None:
+            return False
 
         if cond.type == models.Condition.CONDITION_TYPE_EQUAL:
             return (attr_val.attr_type == cond.arg.attr_type and
