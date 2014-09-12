@@ -154,7 +154,7 @@ def list_tables(context, exclusive_start_table_name=None, limit=None):
 
 
 def put_item(context, table_name, attribute_map, if_not_exist=False,
-             expected_condition_map=None):
+             expected_condition_map=None, return_old=False):
     """
     :param context: current request context
     :param table_name: name of the table
@@ -174,7 +174,8 @@ def put_item(context, table_name, attribute_map, if_not_exist=False,
     """
     return __STORAGE_MANAGER_IMPL.put_item(
         context, table_name, attribute_map, if_not_exist,
-        expected_condition_map
+        expected_condition_map,
+        return_old
     )
 
 
