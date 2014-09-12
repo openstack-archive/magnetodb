@@ -29,10 +29,10 @@ class GetItemController(object):
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
+        req.context.tenant = project_id
+
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
-
-            req.context.tenant = project_id
 
             # get attributes_to_get
             attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
