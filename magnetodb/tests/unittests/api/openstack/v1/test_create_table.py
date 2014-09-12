@@ -237,7 +237,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
         response_payload = json.loads(json_response)
 
         expected_error = {
-            'message': "'attribute_definitions' is a required property",
+            'message': "Required property 'attribute_definitions' wasn't"
+                       " found or it's value is null",
             'traceback': None,
             'type': 'ValidationError',
         }
