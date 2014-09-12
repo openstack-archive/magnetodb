@@ -74,18 +74,19 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
     @attr(type=['CreT-2', 'Cret-93', 'Cret-94', 'Cret-95', 'Cret-97'])
     def test_create_table_all_params(self):
         tname = rand_name().replace('-', '')
+        request_lsi = copy.deepcopy(self.smoke_lsi)
         headers, body = self._create_test_table(
             self.smoke_attrs + self.index_attrs,
             tname,
             self.smoke_schema,
-            self.smoke_lsi)
+            request_lsi)
         self.assertEqual(dict, type(body))
         self._verify_table_response('create_table',
                                     body,
                                     self.smoke_attrs + self.index_attrs,
                                     tname,
                                     self.smoke_schema,
-                                    self.smoke_lsi)
+                                    request_lsi)
         self.assertTrue(self.wait_for_table_active(tname))
 
     @attr(type=['CreT-17_1'])

@@ -772,6 +772,29 @@ class TableSchema(ModelBase):
         if index_def_map is None:
             index_def_map = {}
 
+        for key_attr in key_attributes:
+            if key_attr not in attribute_type_map:
+                raise ValidationError(
+                    "Definition for attribute['%(attr_name)s'] wasn't found",
+                    attr_name=key_attr
+                )
+
+        if len(key_attr) < 2 and index_def_map:
+            raise ValidationError("Local secondary indexes are not allowed "
+                                  "for tables with hash key only")
+
+        for index_name, index_def in index_def_map.iteritems():
+            if index_def.alt_hash_key_attr != key_attributes[0]:
+                msg = _("Hash key of index '%(index_name)s' must "
+                        "be the same as primary key's hash key.")
+                raise ValidationError(msg, index_name=index_name)
+
+            if index_def.alt_range_key_attr not in attribute_type_map:
+                raise ValidationError(
+                    "Definition for attribute['%(attr_name)s'] wasn't found",
+                    attr_name=index_def.alt_range_key_attr
+                )
+
         super(TableSchema, self).__init__(
             attribute_type_map=attribute_type_map,
             key_attributes=key_attributes,
