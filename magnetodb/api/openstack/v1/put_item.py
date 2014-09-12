@@ -69,16 +69,10 @@ class PutItemController(object):
 
             validation.validate_unexpected_props(body, "body")
 
-            if (return_values.type ==
-                    InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD):
-                m = _("return_values %s is not supported for now")
-                raise NotImplementedError(
-                    m % InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD
-                )
-
         # put item
-        storage.put_item(
-            req.context, table_name, item_attributes, if_not_exist=False,
+        old_item = storage.put_item(
+            req.context, table_name, item_attributes,
+            if_not_exist=False,
             expected_condition_map=expected_item_conditions
         )
 
