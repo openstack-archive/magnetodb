@@ -52,7 +52,7 @@ class StorageDriver(object):
         raise NotImplementedError()
 
     def put_item(self, context, table_info, attribute_map, if_not_exist=False,
-                 expected_condition_map=None):
+                 expected_condition_map=None, return_old=False):
         """
         :param context: current request context
         :param table_info: TableInfo instance with table's meta information

@@ -33,42 +33,6 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         return ''.join(random.choice(string.lowercase + string.digits)
                        for i in range(length))
 
-    @attr(type='PI-81')
-    def test_put_item_with_returned_all_old(self):
-        self.table_name = rand_name().replace('-', '')
-        self._create_test_table(
-            [{'attribute_name': 'message', 'attribute_type': 'S'}],
-            self.table_name,
-            [{'attribute_name': 'message', 'key_type': 'HASH'}],
-            wait_for_active=True)
-        item = {
-            "message": {"S": 'message_text'},
-            "authors": {"SS": ["Alice", "Bob"]},
-            "others": {"SS": ["qqqq", "wwww"]}
-        }
-        new_item = {
-            "message": {"S": "message_text"},
-            "authors": {"SS": ["Kris", "Rob"]},
-            "others": {"SS": ["zzzz", "xxxx"]}
-        }
-        put_resp = self.client.put_item(self.table_name,
-                                        item,
-                                        None,
-                                        0,
-                                        "ALL_OLD")
-        self.assertEqual(put_resp[1], {})
-        put_resp = self.client.put_item(self.table_name,
-                                        new_item,
-                                        None,
-                                        0,
-                                        "ALL_OLD")
-        self.assertEqual(put_resp[1]["attributes"]["message"]["S"],
-                         "message_text")
-        self.assertEqual(set(put_resp[1]["attributes"]["authors"]["SS"]),
-                         {"Alice", "Bob"})
-        self.assertEqual(set(put_resp[1]["attributes"]["others"]["SS"]),
-                         {"qqqq", "wwww"})
-
     @attr(type=['PI-102', 'negative'])
     def test_put_item_in_table_with_wrong_name(self):
         item = {
