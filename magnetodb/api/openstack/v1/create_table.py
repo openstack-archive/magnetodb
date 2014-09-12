@@ -14,10 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import jsonschema
-
-
 from magnetodb import storage
+from magnetodb.api import validation
 from magnetodb.storage import models
 
 from magnetodb.openstack.common.log import logging
@@ -36,71 +34,57 @@ class CreateTableController():
     Table names must be unique within each tenant.
     """
 
-    schema = {
-        "required": [parser.Props.ATTRIBUTE_DEFINITIONS,
-                     parser.Props.KEY_SCHEMA,
-                     parser.Props.TABLE_NAME],
-        "properties": {
-            parser.Props.ATTRIBUTE_DEFINITIONS: {
-                "type": "array",
-                "items": parser.Types.ATTRIBUTE_DEFINITION
-            },
-            parser.Props.KEY_SCHEMA: parser.Types.KEY_SCHEMA,
-
-            parser.Props.LOCAL_SECONDARY_INDEXES: {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "required": [parser.Props.INDEX_NAME,
-                                 parser.Props.KEY_SCHEMA,
-                                 parser.Props.PROJECTION],
-                    "properties": {
-                        parser.Props.INDEX_NAME: parser.Types.INDEX_NAME,
-                        parser.Props.KEY_SCHEMA: parser.Types.KEY_SCHEMA,
-                        parser.Props.PROJECTION: parser.Types.PROJECTION
-                    }
-                }
-            },
-
-            parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
-        }
-    }
-
     @probe.Probe(__name__)
     def create_table(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
-        with probe.Probe(__name__ + '.jsonschema.validate'):
-            jsonschema.validate(body, self.schema)
+        req.context.tenant = project_id
 
-        table_name = body.get(parser.Props.TABLE_NAME)
+        with probe.Probe(__name__ + '.validate'):
+            validation.validate_object(body, "body")
 
-        # parse table attributes
-        attribute_definitions = parser.Parser.parse_attribute_definitions(
-            body.get(parser.Props.ATTRIBUTE_DEFINITIONS, {})
-        )
+            table_name = body.pop(parser.Props.TABLE_NAME, None)
+            validation.validate_table_name(table_name)
 
-        # parse table key schema
-        key_attrs = parser.Parser.parse_key_schema(
-            body.get(parser.Props.KEY_SCHEMA, [])
-        )
+            # parse table attributes
+            attribute_definitions_json = body.pop(
+                parser.Props.ATTRIBUTE_DEFINITIONS, None
+            )
+            validation.validate_list_of_objects(
+                attribute_definitions_json, parser.Props.ATTRIBUTE_DEFINITIONS
+            )
 
-        # parse table indexed field list
-        index_def_map = parser.Parser.parse_local_secondary_indexes(
-            body.get(
-                parser.Props.LOCAL_SECONDARY_INDEXES, [])
-        )
-        for index_name, index_def in index_def_map.iteritems():
-            if index_def.alt_hash_key_attr != key_attrs[0]:
-                msg = _("Error. Hash key of index '%(index_name)s' must "
-                        "be the same as primary key's hash key.")
-                raise exception.ValidationError(msg, index_name=index_name)
+            attribute_definitions = parser.Parser.parse_attribute_definitions(
+                attribute_definitions_json
+            )
+
+            # parse table key schema
+            key_attrs_json = body.pop(parser.Props.KEY_SCHEMA, None)
+            validation.validate_list(key_attrs_json, parser.Props.KEY_SCHEMA)
+
+            key_attrs = parser.Parser.parse_key_schema(key_attrs_json)
+
+            # parse table indexed field list
+            lsi_defs_json = body.pop(
+                parser.Props.LOCAL_SECONDARY_INDEXES, None
+            )
+
+            if lsi_defs_json:
+                validation.validate_list_of_objects(
+                    lsi_defs_json, parser.Props.LOCAL_SECONDARY_INDEXES
+                )
+
+                index_def_map = parser.Parser.parse_local_secondary_indexes(
+                    lsi_defs_json
+                )
+            else:
+                index_def_map = {}
+
+            validation.validate_unexpected_props(body, "body")
 
         # prepare table_schema structure
         table_schema = models.TableSchema(
             attribute_definitions, key_attrs, index_def_map)
 
-        # creating table
-        req.context.tenant = project_id
         table_meta = storage.create_table(
             req.context, table_name, table_schema)
 
