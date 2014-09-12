@@ -22,9 +22,11 @@ Virtual environments
 The easiest way to build a fully functional development environment is with
 DevStack. Create a machine (such as a VM or Vagrant box) running a distribution
 supported by DevStack and install DevStack there. For example, there is a
-Vagrant script for DevStack here_.
+Vagrant script for DevStack here_. You can also use this documentation_.
 
 .. _here: https://github.com/jogo/DevstackUp
+
+.. _documentation: https://github.com/stackforge/magnetodb/blob/master/contrib/devstack/README.rst
 
 **NOTE:** If you prefer not to use devstack, you can still check out source
 code on your local machine and develop from there.
