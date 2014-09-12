@@ -290,10 +290,15 @@ class Types():
 class Parser():
     @classmethod
     def parse_attribute_definition(cls, attr_def_json):
-        attr_name_json = attr_def_json.get(Props.ATTRIBUTE_NAME, None)
-        attr_type_json = attr_def_json.get(Props.ATTRIBUTE_TYPE, "")
+        attr_name_json = attr_def_json.pop(Props.ATTRIBUTE_NAME, None)
+        attr_type_json = attr_def_json.pop(Props.ATTRIBUTE_TYPE, None)
 
+        validation.validate_attr_name(attr_name_json)
         storage_type = AttributeType(attr_type_json)
+
+        validation.validate_unexpected_props(
+            attr_def_json, "attribute_definition"
+        )
 
         return attr_name_json, storage_type
 
@@ -331,8 +336,10 @@ class Parser():
         range_key_attr_name = None
 
         for key_def in key_def_list_json:
-            key_attr_name_json = key_def.get(Props.ATTRIBUTE_NAME, None)
-            key_type_json = key_def.get(Props.KEY_TYPE, None)
+            key_attr_name_json = key_def.pop(Props.ATTRIBUTE_NAME, None)
+            validation.validate_attr_name(key_attr_name_json)
+
+            key_type_json = key_def.pop(Props.KEY_TYPE, None)
 
             if key_type_json == Values.KEY_TYPE_HASH:
                 if hash_key_attr_name is not None:
@@ -346,6 +353,8 @@ class Parser():
                 raise ValidationError(
                     _("Only 'RANGE' or 'HASH' key types are allowed, but "
                       "'%(key_type)s' is found"), key_type=key_type_json)
+
+            validation.validate_unexpected_props(key_def, "key_definition")
         if hash_key_attr_name is None:
             raise ValidationError(_("HASH key is missing"))
         if range_key_attr_name:
@@ -379,8 +388,10 @@ class Parser():
 
     @classmethod
     def parse_local_secondary_index(cls, local_secondary_index_json):
+        key_attrs_json = local_secondary_index_json.pop(Props.KEY_SCHEMA, None)
+        validation.validate_list(key_attrs_json, Props.KEY_SCHEMA)
         key_attrs_for_projection = cls.parse_key_schema(
-            local_secondary_index_json.get(Props.KEY_SCHEMA, {})
+            key_attrs_json, Props.KEY_SCHEMA
         )
         hash_key = key_attrs_for_projection[0]
 
@@ -389,9 +400,10 @@ class Parser():
         except IndexError:
             raise ValidationError(_("Range key in index wasn't specified"))
 
-        index_name = local_secondary_index_json[Props.INDEX_NAME]
+        index_name = local_secondary_index_json.pop(Props.INDEX_NAME, None)
+        validation.validate_index_name(index_name)
 
-        projection_type = local_secondary_index_json.get(
+        projection_type = local_secondary_index_json.pop(
             Props.PROJECTION_TYPE, Values.PROJECTION_TYPE_INCLUDE
         )
 
@@ -399,10 +411,22 @@ class Parser():
             projected_attrs = None
         elif projection_type == Values.PROJECTION_TYPE_KEYS_ONLY:
             projected_attrs = tuple()
-        else:
-            projected_attrs = local_secondary_index_json.get(
+        elif projection_type == Values.PROJECTION_TYPE_INCLUDE:
+            projected_attrs = local_secondary_index_json.pop(
                 Props.NON_KEY_ATTRIBUTES, None
             )
+        else:
+            raise ValidationError(
+                _("Only '%(pt_all)', '%(pt_ko)' of '%(pt_incl)' projection "
+                  "types are allowed, but '%(projection_type)s' is found"),
+                Values.PROJECTION_TYPE_ALL,
+                Values.PROJECTION_TYPE_KEYS_ONLY,
+                Values.PROJECTION_TYPE_INCLUDE,
+                projection_type=projection_type
+            )
+        validation.validate_unexpected_props(
+            local_secondary_index_json, "local_secondary_index"
+        )
 
         return index_name, IndexDefinition(
             hash_key,
