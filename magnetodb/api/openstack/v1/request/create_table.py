@@ -21,9 +21,8 @@ from magnetodb.storage import models
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
-
+from magnetodb import policy
 LOG = logging.getLogger(__name__)
 
 
@@ -35,9 +34,8 @@ class CreateTableController():
 
     @probe.Probe(__name__)
     def create_table(self, req, body, project_id):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
-
+        policy.enforce(req.context, "mdb:create_table",
+                       {'tenant_id': project_id})
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
 
@@ -79,7 +77,6 @@ class CreateTableController():
                 index_def_map = {}
 
             validation.validate_unexpected_props(body, "body")
-
         # prepare table_schema structure
         table_schema = models.TableSchema(
             attribute_definitions, key_attrs, index_def_map)

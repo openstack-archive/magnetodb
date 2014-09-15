@@ -19,19 +19,11 @@ import json
 import mock
 import unittest
 
-from magnetodb.tests.fake import magnetodb_api_fake
+from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
-class PutitemTestCase(unittest.TestCase):
+class PutitemTestCase(test_base_testcase.APITestCase):
     """The test for v1 ReST API."""
-
-    @classmethod
-    def setUpClass(cls):
-        magnetodb_api_fake.run_fake_magnetodb_api()
-
-    @classmethod
-    def tearDownClass(cls):
-        magnetodb_api_fake.stop_fake_magnetodb_api()
 
     @mock.patch('magnetodb.storage.put_item')
     def test_put_item(self, mock_put_item):
