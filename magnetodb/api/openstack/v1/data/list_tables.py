@@ -16,10 +16,10 @@
 
 from magnetodb import storage
 from magnetodb.api import validation
+from magnetodb.api import enforce_policy
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 
 
@@ -30,12 +30,9 @@ class ListTablesController():
     """Returns an array of table describing info associated
     with the current user in given tenant.
     """
-
+    @enforce_policy("mdb:list_tables")
     @probe.Probe(__name__)
     def list_tables(self, req, project_id):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
-
         params = req.params.copy()
 
         exclusive_start_table_name = params.pop(

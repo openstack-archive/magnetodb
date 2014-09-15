@@ -14,8 +14,8 @@
 #    under the License.
 from magnetodb.api import validation
 
+from magnetodb.api import enforce_policy
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb import storage
 from magnetodb.common import exception
 from magnetodb.common import probe
@@ -27,11 +27,9 @@ class UpdateItemController(object):
     Edits(or inserts if item does not already exist) an item's attributes.
     """
 
+    @enforce_policy("mdb:update_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
-
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
 
