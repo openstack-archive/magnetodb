@@ -20,9 +20,9 @@ from magnetodb.openstack.common.log import logging
 from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 from magnetodb.storage.models import IndexedCondition
+from magnetodb import policy
 
 LOG = logging.getLogger(__name__)
 
@@ -32,8 +32,8 @@ class QueryController(object):
 
     @probe.Probe(__name__)
     def query(self, req, body, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+        policy.enforce(req.context, "mdb:query",
+                       {'tenant_id': project_id})
 
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
