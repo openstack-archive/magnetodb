@@ -27,7 +27,6 @@ class ContextMiddleware(wsgi.Middleware):
         """
         Create a context with the given arguments.
         """
-
         tenant_id = kwargs.get('tenant_id', None)
         tenant_id = tenant_id or self.options.get('tenant_id', None)
         tenant_name = self.tenant_id_to_keyspace_name(tenant_id)
@@ -36,11 +35,15 @@ class ContextMiddleware(wsgi.Middleware):
         user_id = user_id or self.options.get('user_id', None)
 
         is_admin = self.options.get('is_admin', False)
+        roles = kwargs.get('roles', None)
+        if roles:
+            roles = roles.split(',')
 
         return context.RequestContext(auth_token=auth_token,
                                       user=user_id,
                                       tenant=tenant_name,
-                                      is_admin=is_admin)
+                                      is_admin=is_admin,
+                                      roles=roles)
 
     def process_request(self, req):
         """
@@ -51,9 +54,11 @@ class ContextMiddleware(wsgi.Middleware):
         # backwards compatibility
         user_id = req.headers.get('X-Auth-User', None)
         tenant_id = req.headers.get('X-Tenant-Id', None)
+        roles = req.headers.get('X-Roles', None)
         req.context = self.make_context(is_admin=True,
                                         user_id=user_id,
-                                        tenant_id=tenant_id)
+                                        tenant_id=tenant_id,
+                                        roles=roles)
 
     @classmethod
     def factory_method(cls, global_config, **local_config):
