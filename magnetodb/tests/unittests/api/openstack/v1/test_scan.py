@@ -19,6 +19,7 @@ import json
 import mock
 from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
+from magnetodb import policy
 
 
 class ScanTest(test_base_testcase.APITestCase):
@@ -52,6 +53,8 @@ class ScanTest(test_base_testcase.APITestCase):
 
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
+
+        policy.enforce = mock.MagicMock(return_value=1)
 
         conn = httplib.HTTPConnection('localhost:8080')
         url = '/v1/default_tenant/data/tables/Threads/scan'

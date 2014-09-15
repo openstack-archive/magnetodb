@@ -18,12 +18,15 @@ import json
 from magnetodb.common.exception import ResourceInUseException
 
 import mock
+from magnetodb import policy
 from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class DeleteTableTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API DeleteTableController."""
+    def setUp(self):
+        policy.enforce = mock.MagicMock(return_value=1)
 
     @mock.patch('magnetodb.storage.delete_table')
     @mock.patch('magnetodb.storage.describe_table')

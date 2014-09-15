@@ -16,6 +16,7 @@
 import httplib
 import json
 from magnetodb.storage import models
+from magnetodb import policy
 
 import mock
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
@@ -32,6 +33,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
 
         self.table_url = ('http://localhost:8080/v1/default_tenant/data'
                           '/tables/Thread')
+        policy.enforce = mock.MagicMock(return_value=1)
 
     @mock.patch('magnetodb.storage.create_table')
     def test_create_table(self, mock_create_table):
@@ -207,7 +209,6 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 {'href': self.table_url, 'rel': 'self'},
                 {'href': self.table_url, 'rel': 'bookmark'}
             ]}}
-
         conn.request("POST", self.url, headers=self.headers, body=body)
 
         response = conn.getresponse()

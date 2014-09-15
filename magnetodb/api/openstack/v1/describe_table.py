@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb import policy
 from magnetodb import storage
 from magnetodb.api import validation
 from magnetodb.openstack.common.log import logging
@@ -31,8 +32,8 @@ class DescribeTableController(object):
 
     @probe.Probe(__name__)
     def describe_table(self, req, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+        policy.enforce(req.context, "mdb:describe_table",
+                       {'tenant_id': project_id})
 
         validation.validate_table_name(table_name)
 

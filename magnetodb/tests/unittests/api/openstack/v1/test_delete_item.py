@@ -18,11 +18,15 @@ import json
 
 import mock
 
+from magnetodb import policy
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class DeleteItemTestCase(test_base_testcase.APITestCase):
     """The test for delete_item method of openstack v1 ReST API."""
+
+    def setUp(self):
+        policy.enforce = mock.MagicMock(return_value=1)
 
     @mock.patch('magnetodb.storage.delete_item')
     def test_delete_item(self, mock_delete_item):

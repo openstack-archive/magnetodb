@@ -19,6 +19,7 @@ import json
 import mock
 import unittest
 
+from magnetodb import policy
 from magnetodb.tests.fake import magnetodb_api_fake
 
 
@@ -28,6 +29,7 @@ class PutitemTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         magnetodb_api_fake.run_fake_magnetodb_api()
+        policy.enforce = mock.MagicMock(return_value=1)
 
     @classmethod
     def tearDownClass(cls):

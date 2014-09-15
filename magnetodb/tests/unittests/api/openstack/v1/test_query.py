@@ -19,10 +19,13 @@ import json
 import mock
 from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
+from magnetodb import policy
 
 
 class QueryTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API ScanController."""
+    def setUp(self):
+        policy.enforce = mock.MagicMock(return_value=1)
 
     @mock.patch('magnetodb.storage.select_item')
     def test_query(self, mock_query):

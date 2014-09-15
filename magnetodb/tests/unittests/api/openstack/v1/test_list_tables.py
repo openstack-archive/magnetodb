@@ -16,6 +16,7 @@
 import httplib
 import json
 
+from magnetodb import policy
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 import mock
 
@@ -26,6 +27,8 @@ class ListTablesTest(test_base_testcase.APITestCase):
     def test_list_tables(self, mock_list_tables):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
+
+        policy.enforce = mock.MagicMock(return_value=1)
 
         conn = httplib.HTTPConnection('localhost:8080')
         url = '/v1/default_tenant/data/tables'

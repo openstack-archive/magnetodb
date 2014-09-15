@@ -20,10 +20,13 @@ import mock
 
 from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
+from magnetodb import policy
 
 
 class UpdateItemTestCase(test_base_testcase.APITestCase):
     """The test for update_method of openstack v1 ReST API."""
+    def setUp(self):
+        policy.enforce = mock.MagicMock(return_value=1)
 
     @mock.patch('magnetodb.storage.select_item')
     @mock.patch('magnetodb.storage.update_item')
