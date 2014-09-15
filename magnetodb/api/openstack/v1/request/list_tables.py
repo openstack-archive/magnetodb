@@ -14,12 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb import policy
 from magnetodb import storage
 from magnetodb.api import validation
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 
 
@@ -33,8 +33,8 @@ class ListTablesController():
 
     @probe.Probe(__name__)
     def list_tables(self, req, project_id):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+        policy.enforce(req.context, "mdb:list_table",
+                       {'tenant_id': project_id})
 
         params = req.params.copy()
 

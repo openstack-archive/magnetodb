@@ -15,11 +15,11 @@
 from magnetodb.api import validation
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb import storage
 from magnetodb.common import exception
 from magnetodb.common import probe
 from magnetodb.storage.models import UpdateReturnValuesType
+from magnetodb import policy
 
 
 class UpdateItemController(object):
@@ -29,8 +29,8 @@ class UpdateItemController(object):
 
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+        policy.enforce(req.context, "mdb:update_item",
+                       {'tenant_id': project_id})
 
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")

@@ -29,6 +29,11 @@ class MagnetoError(openstack_exception.OpenstackException):
         super(MagnetoError, self).__init__(**kwargs)
 
 
+class PolicyNotAuthorized(MagnetoError):
+    def __init__(self, message=None, action=None, **kwargs):
+        super(PolicyNotAuthorized, self).__init__(message, **kwargs)
+
+
 class BackendInteractionException(MagnetoError):
     pass
 
