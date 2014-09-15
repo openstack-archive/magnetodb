@@ -25,6 +25,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API CreateTableController."""
 
     def setUp(self):
+        super(CreateTableTest, self).setUp()
         self.headers = {'Content-Type': 'application/json',
                         'Accept': 'application/json'}
 

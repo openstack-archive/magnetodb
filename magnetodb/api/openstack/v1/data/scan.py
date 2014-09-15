@@ -16,11 +16,11 @@
 
 from magnetodb import storage
 from magnetodb.api import validation
+from magnetodb.api import enforce_policy
 
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 from magnetodb.storage import models
 from magnetodb.storage.models import ScanCondition
@@ -33,11 +33,9 @@ class ScanController(object):
     and item attributes by accessing every item in the table.
     """
 
+    @enforce_policy("mdb:scan")
     @probe.Probe(__name__)
     def scan(self, req, body, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
-
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
 

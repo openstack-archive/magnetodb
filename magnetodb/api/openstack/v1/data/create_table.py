@@ -16,14 +16,13 @@
 
 from magnetodb import storage
 from magnetodb.api import validation
+from magnetodb.api import enforce_policy
 from magnetodb.storage import models
 
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
-
 LOG = logging.getLogger(__name__)
 
 
@@ -33,11 +32,9 @@ class CreateTableController():
     Table names must be unique within each tenant.
     """
 
+    @enforce_policy("mdb:create_table")
     @probe.Probe(__name__)
     def create_table(self, req, body, project_id):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
-
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
 
@@ -79,7 +76,6 @@ class CreateTableController():
                 index_def_map = {}
 
             validation.validate_unexpected_props(body, "body")
-
         # prepare table_schema structure
         table_schema = models.TableSchema(
             attribute_definitions, key_attrs, index_def_map)
