@@ -19,9 +19,13 @@ function fix_etc_hosts {
     # precise images.
 
     HOSTNAME=`/bin/hostname`
-    if ! grep $HOSTNAME /etc/hosts >/dev/null; then
-        echo "Need to add hostname to /etc/hosts"
-        sudo bash -c 'echo "127.0.1.1 $HOSTNAME" >>/etc/hosts'
+    if ! egrep "[[:space:]]$HOSTNAME$" /etc/hosts > /dev/null; then
+        echo "Need to add (or fix) hostname to /etc/hosts"
+        if egrep "127.0.1.1[[:space:]]$HOSTNAME" /etc/hosts; then
+            sudo sed -i "s/^127\.0\.1\.1.*$/127\.0\.1\.1 $HOSTNAME/" /etc/hosts
+        else
+            sudo bash -c 'echo "127.0.1.1 $HOSTNAME" >> /etc/hosts'
+        fi
     fi
 }
 
@@ -65,7 +69,7 @@ sudo update-alternatives --set java /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/ja
 git clone $CCM_REPO $CCM_DIR -b $CCM_BRANCH
 sudo pip install -e $CCM_DIR
 
-# srart cassandra
+# start cassandra
 configure_cassandra
 ccm start
 
