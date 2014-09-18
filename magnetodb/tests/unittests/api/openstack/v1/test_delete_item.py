@@ -89,7 +89,7 @@ class DeleteItemTestCase(test_base_testcase.APITestCase):
                         "exists": false
                     }
                 },
-                "returnValues": ""
+                "return_values": "NONE"
             }
         """
 
@@ -116,7 +116,9 @@ class DeleteItemTestCase(test_base_testcase.APITestCase):
         self.assertEqual(400, response.status)
         response_payload = json.loads(json_response)
 
-        expected_message = "'key' is a required property"
+        expected_message = (
+            "Required property 'key' wasn't found or it's value is null"
+        )
         expected_type = 'ValidationError'
 
         self.assertEqual(expected_message,

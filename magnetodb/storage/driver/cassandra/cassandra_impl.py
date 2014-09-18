@@ -641,10 +641,12 @@ class CassandraStorageDriver(StorageDriver):
 
                 if old_indexes is None:
                     if expected_condition_map:
-                        for attr, cond in expected_condition_map.iteritems():
-                            if (cond.type !=
-                                    ExpectedCondition.CONDITION_TYPE_NULL):
-                                raise ConditionalCheckFailedException()
+                        for attr, cond_list in (
+                                expected_condition_map.iteritems()):
+                            for cond in cond_list:
+                                if (cond.type !=
+                                        ExpectedCondition.CONDITION_TYPE_NULL):
+                                    raise ConditionalCheckFailedException()
                     if self._put_item_if_not_exists(table_info, attribute_map):
                         return True
                     continue
