@@ -148,61 +148,55 @@ class SimpleStorageManager(StorageManager):
             )
 
     @staticmethod
-    def _validate_key_schema(table_info, attribute_map,
-                             property_name="key attributes", keys_only=True,
-                             index_name=None):
+    def _validate_table_schema(table_info, attribute_map, keys_only=True,
+                               index_name=None):
         schema_key_attributes = table_info.schema.key_attributes
         schema_attribute_type_map = table_info.schema.attribute_type_map
 
-        if index_name is None:
-            required_key_attribute_names = schema_key_attributes
-        else:
-            required_key_attribute_names = schema_key_attributes[:]
-            required_key_attribute_names.append(
+        key_attribute_names_to_find = set(schema_key_attributes)
+        if index_name is not None:
+            key_attribute_names_to_find.add(
                 table_info.schema.index_def_map[index_name].alt_range_key_attr
             )
 
-        table_schema_is_valid = True
-        if keys_only:
-            key_attribute_map = attribute_map
-            if len(required_key_attribute_names) != len(key_attribute_map):
-                table_schema_is_valid = False
-            else:
-                for schema_key_attr_name in required_key_attribute_names:
-                    key_attribute = key_attribute_map.get(schema_key_attr_name,
-                                                          None)
-                    if (key_attribute is None or
-                            schema_attribute_type_map[schema_key_attr_name] !=
-                            key_attribute.attr_type):
-                        table_schema_is_valid = False
-                        break
-        else:
-            key_attribute_map = {}
-            for schema_key_attr_name in required_key_attribute_names:
-                key_attribute = attribute_map.get(schema_key_attr_name, None)
-                if key_attribute is None:
-                    table_schema_is_valid = False
-                else:
-                    key_attribute_map[schema_key_attr_name] = key_attribute
-                    if (schema_attribute_type_map[schema_key_attr_name] !=
-                            key_attribute.attr_type):
-                        table_schema_is_valid = False
-
-        if not table_schema_is_valid:
+        if keys_only and (
+                len(key_attribute_names_to_find) != len(attribute_map)):
             raise ValidationError(
-                _("Specified %(property_name)s: %(property_value)s "
-                  "doesn't match table schema: %(table_schema)s"),
-                property_name=property_name,
-                property_value=str(key_attribute_map),
-                table_schema=str(table_info.schema)
+                _("Specified key: %(key_attributes)s doesn't match expected "
+                  "key attributes set: %(expected_key_attributes)s"),
+                key_attributes=attribute_map,
+                expected_key_attributes=key_attribute_names_to_find
+            )
+
+        for attr_name, typed_attr_value in attribute_map.iteritems():
+            schema_attr_type = schema_attribute_type_map.get(attr_name, None)
+            if schema_attr_type is None:
+                continue
+            key_attribute_names_to_find.discard(attr_name)
+
+            if schema_attr_type != typed_attr_value.attr_type:
+                raise ValidationError(
+                    _("Attribute: '%(attr_name)s' of type: '%(attr_type)s' "
+                      "doesn't match table schema expected attribute type: "
+                      "'%(expected_attr_type)s'"),
+                    attr_name=attr_name,
+                    attr_type=typed_attr_value.attr_type.type,
+                    expected_attr_type=schema_attr_type.type
+                )
+
+        if key_attribute_names_to_find:
+            raise ValidationError(
+                _("Couldn't find expected key attributes: "
+                  "'%(expected_key_attributes)s'"),
+                expected_key_attributes=key_attribute_names_to_find
             )
 
     def put_item(self, context, table_name, attribute_map, return_values=None,
                  if_not_exist=False, expected_condition_map=None):
         table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, attribute_map,
-                                  keys_only=False)
+        self._validate_table_schema(table_info, attribute_map,
+                                    keys_only=False)
 
         with self.__task_semaphore:
             result = self._storage_driver.put_item(
@@ -262,7 +256,7 @@ class SimpleStorageManager(StorageManager):
                        if_not_exist=False, expected_condition_map=None):
         table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, attribute_map, keys_only=False)
+        self._validate_table_schema(table_info, attribute_map, keys_only=False)
 
         return self._put_item_async(
             context, table_info, attribute_map, return_values,
@@ -273,7 +267,7 @@ class SimpleStorageManager(StorageManager):
                     expected_condition_map=None):
         table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, key_attribute_map)
+        self._validate_table_schema(table_info, key_attribute_map)
 
         with self.__task_semaphore:
             result = self._storage_driver.delete_item(
@@ -325,7 +319,7 @@ class SimpleStorageManager(StorageManager):
                           expected_condition_map=None):
         table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, key_attribute_map)
+        self._validate_table_schema(table_info, key_attribute_map)
 
         return self._delete_item_async(context, table_info, key_attribute_map,
                                        expected_condition_map)
@@ -340,10 +334,10 @@ class SimpleStorageManager(StorageManager):
                 self._validate_table_is_active(table_info)
 
                 if req.is_put:
-                    self._validate_key_schema(table_info, req.attribute_map,
-                                              keys_only=False)
+                    self._validate_table_schema(table_info, req.attribute_map,
+                                                keys_only=False)
                 else:
-                    self._validate_key_schema(table_info, req.attribute_map)
+                    self._validate_table_schema(table_info, req.attribute_map)
 
                 write_request_list_to_send.append(
                     (table_info, req)
@@ -467,7 +461,7 @@ class SimpleStorageManager(StorageManager):
 
                 _table_info = self._table_info_repo.get(context, _table_name)
                 self._validate_table_is_active(_table_info)
-                self._validate_key_schema(_table_info, _key_attribute_map)
+                self._validate_table_schema(_table_info, _key_attribute_map)
 
                 _attributes_to_get = req.attributes_to_get
 
@@ -518,7 +512,7 @@ class SimpleStorageManager(StorageManager):
                     attribute_action_map, expected_condition_map=None):
         table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
-        self._validate_key_schema(table_info, key_attribute_map)
+        self._validate_table_schema(table_info, key_attribute_map)
 
         with self.__task_semaphore:
             result = self._storage_driver.update_item(
@@ -562,9 +556,8 @@ class SimpleStorageManager(StorageManager):
             range_key_name_to_query = range_key_name
 
         if exclusive_start_key is not None:
-            self._validate_key_schema(
-                table_info, exclusive_start_key,
-                property_name="exclusive_start_key", index_name=index_name
+            self._validate_table_schema(
+                table_info, exclusive_start_key, index_name=index_name
             )
 
         indexed_condition_map_copy = indexed_condition_map.copy()
@@ -609,8 +602,8 @@ class SimpleStorageManager(StorageManager):
             raise ValidationError(
                 _("Specified query conditions %(indexed_condition_map)s "
                   "doesn't match table schema: %(table_schema)s"),
-                indexed_condition_map=str(indexed_condition_map),
-                table_schema=str(table_info.schema)
+                indexed_condition_map=indexed_condition_map,
+                table_schema=table_info.schema
             )
 
         if (len(hash_key_condition_list) != 1 or
@@ -679,10 +672,7 @@ class SimpleStorageManager(StorageManager):
         self._validate_table_is_active(table_info)
 
         if exclusive_start_key is not None:
-            self._validate_key_schema(
-                table_info, exclusive_start_key,
-                property_name="exclusive_start_key"
-            )
+            self._validate_table_schema(table_info, exclusive_start_key)
 
         payload = dict(table_name=table_name,
                        condition_map=condition_map,
