@@ -1599,21 +1599,19 @@ class CassandraStorageDriver(StorageDriver):
         hash_key_condition_list = condition_map.get(hash_name, None)
         range_key_condition_list = None
         if hash_key_condition_list:
-            iterator = iter(hash_key_condition_list)
-            while iterator.has_next():
-                condition = iterator.next()
-                if not isinstance(condition, models.IndexedCondition):
-                    iterator.remove()
-        if hash_key_condition_list:
+            hash_key_condition_list = [
+                cond for cond in hash_key_condition_list
+                if isinstance(cond, models.IndexedCondition)
+            ]
             range_key_condition_list = (
                 condition_map.get(range_name, None) if range_name else None
             )
+        if hash_key_condition_list:
             if range_key_condition_list:
-                iterator = iter(range_key_condition_list)
-                while iterator.has_next():
-                    condition = iterator.next()
-                    if not isinstance(condition, models.IndexedCondition):
-                        iterator.remove()
+                range_key_condition_list = [
+                    cond for cond in range_key_condition_list
+                    if isinstance(cond, models.IndexedCondition)
+                ]
 
         selected = self.select_item(
             context, table_info, hash_key_condition_list,
