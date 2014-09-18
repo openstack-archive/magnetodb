@@ -31,7 +31,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
     @mock.patch('magnetodb.storage.driver.StorageDriver.batch_write')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                '_validate_key_schema')
+                '_validate_table_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_table_is_active')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
@@ -41,7 +41,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                 '_put_item_async')
     def test_execute_write_batch(self, mock_put_item, mock_delete_item,
                                  mock_repo_get, mock_validate_table_is_active,
-                                 mock_validate_key_schema, mock_batch_write):
+                                 mock_validate_table_schema, mock_batch_write):
         future = Future()
         future.set_result(True)
         mock_put_item.return_value = future
@@ -122,7 +122,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         self.assertEqual(unprocessed_items, {})
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                '_validate_key_schema')
+                '_validate_table_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_table_is_active')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
@@ -130,7 +130,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                 '_get_item_async')
     def test_execute_get_batch(self, mock_get_item, mock_repo_get,
                                mock_validate_table_is_active,
-                               mock_validate_key_schema):
+                               mock_validate_table_schema):
         future = Future()
         future.set_result(True)
         mock_get_item.return_value = future
