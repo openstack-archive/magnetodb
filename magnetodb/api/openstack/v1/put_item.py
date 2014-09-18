@@ -64,8 +64,9 @@ class PutItemController(object):
             )
 
             if time_to_live is not None:
-                validation.validate_integer(time_to_live,
-                                            parser.Props.TIME_TO_LIVE)
+                time_to_live = validation.validate_integer(
+                    time_to_live, parser.Props.TIME_TO_LIVE, min_val=0
+                )
 
             validation.validate_unexpected_props(body, "body")
 
