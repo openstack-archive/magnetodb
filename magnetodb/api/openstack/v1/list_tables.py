@@ -15,6 +15,7 @@
 #    under the License.
 
 from magnetodb import storage
+from magnetodb.api import validation
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
@@ -35,10 +36,19 @@ class ListTablesController():
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        exclusive_start_table_name = req.params.get(
-            parser.Props.EXCLUSIVE_START_TABLE_NAME)
+        params = req.params.copy()
 
-        limit = req.params.get(parser.Props.LIMIT)
+        exclusive_start_table_name = params.pop(
+            parser.Props.EXCLUSIVE_START_TABLE_NAME, None)
+        if exclusive_start_table_name:
+            validation.validate_table_name(exclusive_start_table_name)
+
+        limit = params.pop(parser.Props.LIMIT, None)
+        if limit:
+            limit = validation.validate_integer(limit, parser.Props.LIMIT,
+                                                min_val=0)
+
+        validation.validate_unexpected_props(params, "params")
 
         table_names = (
             storage.list_tables(

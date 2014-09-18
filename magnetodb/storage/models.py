@@ -668,16 +668,11 @@ class UpdateItemAction(ModelBase):
         super(UpdateItemAction, self).__init__(action=action, value=value)
 
 
-class InsertReturnValuesType(ModelBase):
+class DeleteReturnValuesType(ModelBase):
     RETURN_VALUES_TYPE_NONE = "NONE"
     RETURN_VALUES_TYPE_ALL_OLD = "ALL_OLD"
-    RETURN_VALUES_TYPE_UPDATED_OLD = "UPDATED_OLD"
-    RETURN_VALUES_TYPE_ALL_NEW = "ALL_NEW"
-    RETURN_VALUES_TYPE_UPDATED_NEW = "UPDATED_NEW"
-
     _allowed_types = set(
-        [RETURN_VALUES_TYPE_NONE, RETURN_VALUES_TYPE_ALL_OLD,
-         RETURN_VALUES_TYPE_ALL_NEW]
+        [RETURN_VALUES_TYPE_NONE, RETURN_VALUES_TYPE_ALL_OLD]
     )
 
     def __init__(self, type):
@@ -690,7 +685,17 @@ class InsertReturnValuesType(ModelBase):
                 type=type
             )
 
-        super(InsertReturnValuesType, self).__init__(type=type)
+        super(DeleteReturnValuesType, self).__init__(type=type)
+
+
+class InsertReturnValuesType(DeleteReturnValuesType):
+    RETURN_VALUES_TYPE_ALL_NEW = "ALL_NEW"
+
+    _allowed_types = set(
+        [DeleteReturnValuesType.RETURN_VALUES_TYPE_NONE,
+         DeleteReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD,
+         RETURN_VALUES_TYPE_ALL_NEW]
+    )
 
 
 class UpdateReturnValuesType(InsertReturnValuesType):
@@ -698,8 +703,8 @@ class UpdateReturnValuesType(InsertReturnValuesType):
     RETURN_VALUES_TYPE_UPDATED_NEW = "UPDATED_NEW"
 
     _allowed_types = set(
-        [InsertReturnValuesType.RETURN_VALUES_TYPE_NONE,
-         InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD,
+        [DeleteReturnValuesType.RETURN_VALUES_TYPE_NONE,
+         DeleteReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD,
          InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_NEW,
          RETURN_VALUES_TYPE_UPDATED_OLD,
          RETURN_VALUES_TYPE_UPDATED_NEW]

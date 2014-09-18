@@ -611,13 +611,14 @@ class TestCassandraTableCrud(TestCassandraBase):
         self.assertEqual([], self._get_table_names())
 
         attrs = {}
-        for name, (typ, _, _) in self.test_data_keys.iteritems():
-            attrs[name] = self.C2S_TYPES[typ]
-        for name, (typ, _, _) in self.test_data_predefined_fields.iteritems():
-            attrs[name] = self.C2S_TYPES[typ]
+        for name, (_, _, typ, _) in self.test_data_keys.iteritems():
+            attrs[name] = models.AttributeType(typ)
+        for name, (_, _, typ, _) in (
+                self.test_data_predefined_fields.iteritems()):
+            attrs[name] = models.AttributeType(typ)
 
         index_def_map = {
-            'index_name': models.IndexDefinition('indexed')
+            'index_name': models.IndexDefinition('id', 'indexed')
         }
 
         schema = models.TableSchema(attrs, ['id', 'range'],
