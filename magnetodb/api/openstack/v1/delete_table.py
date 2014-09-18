@@ -14,6 +14,7 @@
 #    under the License.
 
 from magnetodb import storage
+from magnetodb.api import validation
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
@@ -31,6 +32,8 @@ class DeleteTableController(object):
     def delete_table(self, req, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
+
+        validation.validate_table_name(table_name)
 
         table_schema = storage.delete_table(req.context, table_name)
 
