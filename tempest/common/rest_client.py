@@ -106,8 +106,8 @@ class RestClient(object):
             auth_func = self.keystone_auth
 
         self.token, self.base_url = (
-            auth_func(self.user, self.password, self.auth_url,
-                      self.service, self.tenant_name))
+            "asd", "http://localhost:8480/v1/default_tenant"
+        )
 
     def clear_auth(self):
         """
