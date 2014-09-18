@@ -33,6 +33,7 @@ from magnetodb.storage.models import ExpectedCondition
 
 from cassandra.encoder import cql_quote
 
+from magnetodb.storage.utils.monitoring import Monitoring
 
 LOG = logging.getLogger(__name__)
 
@@ -1771,3 +1772,25 @@ class CassandraStorageDriver(StorageDriver):
             return attr_val in cond_args
 
         return False
+
+    def table_usage_details(self, context, table_info):
+        """
+        :param context: current request context
+        :param table_info: TableInfo instance with table's meta information
+
+        :returns: count of items in table
+
+        :raises: BackendInteractionException
+        """
+
+        monitoring = Monitoring('http://127.0.0.1:8778/jolokia/')
+
+        size = monitoring.request(type='read',
+                                  mbean='org.apache.cassandra.metrics:'
+                                        'type=ColumnFamily,' +
+                                        'keyspace=' + 'u_' + context.tenant +
+                                        ',' + 'scope=' + 'u_' +
+                                        table_info.name + ',' +
+                                        'name=TotalDiskSpaceUsed')
+
+        return size['value']

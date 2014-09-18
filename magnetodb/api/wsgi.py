@@ -31,6 +31,7 @@ from magnetodb.api.openstack.v1 import describe_table
 from magnetodb.api.openstack.v1 import scan
 from magnetodb.api.openstack.v1 import query
 from magnetodb.api.openstack.v1 import delete_table
+from magnetodb.api.openstack.v1 import table_usage_details
 
 from magnetodb.api.amz import controller as amz_api_controller
 from magnetodb.api.amz import wsgi as amazon_wsgi
@@ -89,6 +90,12 @@ class MagnetoDBApplication(wsgi.Router):
                            delete_table.DeleteTableController()),
                        conditions={'method': 'DELETE'},
                        action="delete_table")
+
+        mapper.connect("/v1/monitoring/{project_id}/table/{table_name}",
+                       controller=create_resource(
+                           table_usage_details.TableUsageController()),
+                       conditions={'method': 'GET'},
+                       action="table_usage_details")
 
     @classmethod
     def factory_method(cls, global_conf, **local_conf):

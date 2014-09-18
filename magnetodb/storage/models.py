@@ -762,9 +762,9 @@ class TableSchema(ModelBase):
     def __init__(self, attribute_type_map, key_attributes, index_def_map=None):
         """
         :param attribute_type_map: attribute name to AttributeType mapping
-        :param key_attrs: list of key attribute names, contains partition key
-                    (the first in list, required) attribute name and extra key
-                    attribute names (the second and other list items, not
+        :param key_attributes: list of key attribute names, contains partition
+                    key (the first in list, required) attribute name and extra
+                    key attribute names (the second and other list items, not
                     required)
         :param index_def_map: index name to IndexDefinition mapping
         """
@@ -799,7 +799,7 @@ class TableMeta(ModelBase):
 
     def __init__(self, schema, status):
         """
-        :param table_schema: TableSchema instance
+        :param schema: TableSchema instance
         :param status: table status
         """
 
@@ -808,3 +808,13 @@ class TableMeta(ModelBase):
         )
 
         super(TableMeta, self).__init__(schema=schema, status=status)
+
+
+class TableUsageDetailsRequest(ModelBase):
+
+    def __init__(self, count):
+        """
+        :param count: count of items in table
+        """
+        # TODO fix Count to count
+        super(TableUsageDetailsRequest, self).__init__(Count=count)
