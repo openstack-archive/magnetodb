@@ -14,15 +14,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import jsonschema
-
 from magnetodb import storage
+from magnetodb.api import validation
 
 from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
+from magnetodb.storage import models
 from magnetodb.storage.models import ScanCondition
 
 LOG = logging.getLogger(__name__)
@@ -33,91 +33,81 @@ class ScanController(object):
     and item attributes by accessing every item in the table.
     """
 
-    schema = {
-        "properties": {
-            parser.Props.ATTRIBUTES_TO_GET: {
-                "type": "array",
-                "items": parser.Types.ATTRIBUTE_NAME
-            },
-
-            parser.Props.EXCLUSIVE_START_KEY: parser.Types.ITEM,
-
-            parser.Props.LIMIT: {
-                "type": "integer",
-                "minimum": 0,
-            },
-
-            parser.Props.SCAN_FILTER: {
-                "type": "object",
-                "patternProperties": {
-                    parser.ATTRIBUTE_NAME_PATTERN: {
-                        "type": "object",
-                        "properties": {
-                            parser.Props.ATTRIBUTE_VALUE_LIST: {
-                                "type": "array",
-                                "items": parser.Types.TYPED_ATTRIBUTE_VALUE
-                            },
-                            parser.Props.COMPARISON_OPERATOR: (
-                                parser.Types.SCAN_OPERATOR
-                            )
-                        }
-                    }
-                }
-            },
-
-            parser.Props.SEGMENT: {
-                "type": "integer",
-                "minimum": 0,
-            },
-
-            parser.Props.SELECT: parser.Types.SELECT,
-
-            parser.Props.TOTAL_SEGMENTS: {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 4096,
-            }
-        }
-    }
-
     @probe.Probe(__name__)
     def scan(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
-        with probe.Probe(__name__ + '.jsonschema.validate'):
-            jsonschema.validate(body, self.schema)
-
         req.context.tenant = project_id
 
-        # TODO ikhudoshyn: table_name may be index name
+        with probe.Probe(__name__ + '.validation'):
+            validation.validate_object(body, "body")
 
-        attrs_to_get = body.get(parser.Props.ATTRIBUTES_TO_GET)
+            # get attributes_to_get
+            attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
+            if attributes_to_get:
+                validation.validate_list(attributes_to_get,
+                                         parser.Props.ATTRIBUTES_TO_GET)
+                for attr_name in attributes_to_get:
+                    validation.validate_attr_name(attr_name)
 
-        select = body.get(parser.Props.SELECT)
+            select = body.pop(parser.Props.SELECT, None)
 
-        select_type = parser.Parser.parse_select_type(select, attrs_to_get)
+            if select is None:
+                if attributes_to_get:
+                    select = models.SelectType.SELECT_TYPE_SPECIFIC
+                else:
+                    select = models.SelectType.SELECT_TYPE_ALL
+            else:
+                validation.validate_string(select, parser.Props.SELECT)
+            select_type = models.SelectType(select, attributes_to_get)
 
-        limit = body.get(parser.Props.LIMIT)
+            limit = body.pop(parser.Props.LIMIT, None)
+            if limit is not None:
+                validation.validate_integer(limit, parser.Props.LIMIT,
+                                            min_val=0)
 
-        exclusive_start_key = body.get(parser.Props.EXCLUSIVE_START_KEY)
+            # parse exclusive_start_key_attributes
+            exclusive_start_key_attributes_json = body.pop(
+                parser.Props.EXCLUSIVE_START_KEY, None)
+            if exclusive_start_key_attributes_json is not None:
+                validation.validate_object(exclusive_start_key_attributes_json,
+                                           parser.Props.EXCLUSIVE_START_KEY)
+                exclusive_start_key_attributes = (
+                    parser.Parser.parse_item_attributes(
+                        exclusive_start_key_attributes_json
+                    )
+                )
+            else:
+                exclusive_start_key_attributes = None
 
-        exclusive_start_key = parser.Parser.parse_item_attributes(
-            exclusive_start_key) if exclusive_start_key else None
+            scan_filter_json = body.pop(parser.Props.SCAN_FILTER, None)
+            if scan_filter_json:
+                validation.validate_object(scan_filter_json,
+                                           parser.Props.SCAN_FILTER)
 
-        scan_filter = body.get(parser.Props.SCAN_FILTER, {})
+                condition_map = parser.Parser.parse_attribute_conditions(
+                    scan_filter_json, condition_class=ScanCondition
+                )
+            else:
+                condition_map = None
 
-        condition_map = parser.Parser.parse_attribute_conditions(
-            scan_filter, condition_class=ScanCondition
-        )
+            total_segments = body.pop(parser.Props.TOTAL_SEGMENTS, 1)
+            validation.validate_integer(
+                total_segments, parser.Props.TOTAL_SEGMENTS, min_val=1,
+                max_val=4096
+            )
 
-        segment = body.get(parser.Props.SEGMENT, 0)
-        total_segments = body.get(parser.Props.TOTAL_SEGMENTS, 1)
+            segment = body.pop(parser.Props.SEGMENT, 0)
+            validation.validate_integer(
+                segment, parser.Props.SEGMENT, min_val=0,
+                max_val=total_segments
+            )
 
-        assert segment < total_segments
+            validation.validate_unexpected_props(body, "body")
 
         result = storage.scan(
             req.context, table_name, condition_map,
-            attributes_to_get=attrs_to_get, limit=limit,
-            exclusive_start_key=exclusive_start_key)
+            attributes_to_get=attributes_to_get, limit=limit,
+            exclusive_start_key=exclusive_start_key_attributes)
 
         response = {
             parser.Props.COUNT: result.count,

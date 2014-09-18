@@ -58,8 +58,25 @@ def validate_boolean(value, property_name):
     return __validate_type(value, property_name, bool, "Boolean")
 
 
-def validate_integer(value, property_name):
-    return __validate_type(value, property_name, (int, long), "Integer")
+def validate_integer(value, property_name, min_val=None, max_val=None):
+    value = __validate_type(value, property_name, (int, long), "Integer")
+
+    if min_val is not None and value < min_val:
+        raise ValidationError(
+            _("'%(property_name)s' property value[%(property_value)s] is less "
+              "then min_value[%(min_value)s]."),
+            property_name=property_name,
+            property_value=value,
+            min_value=min_val
+        )
+    if max_val is not None and value > max_val:
+        raise ValidationError(
+            _("'%(property_name)s' property value[%(property_value)s] is more "
+              "then max_value[%(max_value)s]."),
+            property_name=property_name,
+            property_value=value,
+            max_value=max_val
+        )
 
 
 def validate_object(value, property_name):

@@ -33,10 +33,10 @@ class QueryController(object):
     @probe.Probe(__name__)
     def query(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
+        req.context.tenant = project_id
+
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
-
-            req.context.tenant = project_id
 
             # get attributes_to_get
             attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
@@ -60,21 +60,25 @@ class QueryController(object):
                         select = models.SelectType.SELECT_TYPE_ALL_PROJECTED
                     else:
                         select = models.SelectType.SELECT_TYPE_ALL
+            else:
+                validation.validate_string(select, parser.Props.SELECT)
 
             select_type = models.SelectType(select, attributes_to_get)
 
             # parse exclusive_start_key_attributes
-            exclusive_start_key_attributes = body.pop(
+            exclusive_start_key_attributes_json = body.pop(
                 parser.Props.EXCLUSIVE_START_KEY, None)
 
-            if exclusive_start_key_attributes is not None:
-                validation.validate_object(exclusive_start_key_attributes,
+            if exclusive_start_key_attributes_json is not None:
+                validation.validate_object(exclusive_start_key_attributes_json,
                                            parser.Props.EXCLUSIVE_START_KEY)
                 exclusive_start_key_attributes = (
                     parser.Parser.parse_item_attributes(
-                        exclusive_start_key_attributes
+                        exclusive_start_key_attributes_json
                     )
                 )
+            else:
+                exclusive_start_key_attributes = None
 
             # parse indexed_condition_map
             key_conditions = body.pop(parser.Props.KEY_CONDITIONS, None)
@@ -94,7 +98,8 @@ class QueryController(object):
                                         parser.Props.CONSISTENT_READ)
             limit = body.pop(parser.Props.LIMIT, None)
             if limit is not None:
-                validation.validate_integer(limit, parser.Props.LIMIT)
+                validation.validate_integer(limit, parser.Props.LIMIT,
+                                            min_val=0)
 
             scan_forward = body.pop(parser.Props.SCAN_INDEX_FORWARD, None)
 
