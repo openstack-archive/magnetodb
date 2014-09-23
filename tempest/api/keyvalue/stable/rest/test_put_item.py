@@ -1152,3 +1152,137 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                                          "range_attr": {"S": "range_value"}},
                                         consistent_read=True)
         self.assertEqual(get_resp[1]['item'], item4)
+
+    @attr(type='PI-81')
+    def test_put_item_with_returned_all_old(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        item = {
+            "message": {"S": 'message_text'},
+            "authors": {"SS": ["Alice", "Bob"]},
+            "others": {"SS": ["qqqq", "wwww"]}
+        }
+        new_item = {
+            "message": {"S": "message_text"},
+            "authors": {"SS": ["Kris", "Rob"]},
+            "others": {"SS": ["zzzz", "xxxx"]}
+        }
+        put_resp = self.client.put_item(self.table_name,
+                                        item,
+                                        None,
+                                        0,
+                                        "ALL_OLD")
+        self.assertEqual(put_resp[1], {})
+        put_resp = self.client.put_item(self.table_name,
+                                        new_item,
+                                        None,
+                                        0,
+                                        "ALL_OLD")
+        self.assertIn('attributes', put_resp[1])
+        self.assertEqual(item, put_resp[1]["attributes"])
+
+    def test_put_item_with_returned_all_old_with_indexes_01(self):
+        self.table_name = rand_name().replace('-', '')
+        lsi_definition = [
+            {
+                'index_name': 'time_index',
+                'key_schema': [
+                    {'attribute_name': 'message', 'key_type': 'HASH'},
+                    {'attribute_name': 'time', 'key_type': 'RANGE'}
+                ],
+                'projection': {'projection_type': 'ALL'}
+            }
+        ]
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'},
+             {'attribute_name': 'thread', 'attribute_type': 'S'},
+             {'attribute_name': 'time', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'},
+             {'attribute_name': 'thread', 'key_type': 'RANGE'}],
+            lsi_definition,
+            wait_for_active=True)
+        item = {
+            "message": {"S": 'message_text'},
+            "thread": {"S": 'thread_name'},
+            "time": {"S": '200901010000'},
+            "authors": {"SS": ["Alice", "Bob"]},
+            "others": {"SS": ["qqqq", "wwww"]}
+        }
+        new_item = {
+            "message": {"S": 'message_text'},
+            "thread": {"S": 'thread_name'},
+            "time": {"S": '201001010000'},
+            "authors": {"SS": ["Kris", "Rob"]},
+            "others": {"SS": ["zzzz", "xxxx"]}
+        }
+        put_resp = self.client.put_item(self.table_name,
+                                        item,
+                                        None,
+                                        0,
+                                        "ALL_OLD")
+        self.assertEqual(put_resp[1], {})
+        put_resp = self.client.put_item(self.table_name,
+                                        new_item,
+                                        None,
+                                        0,
+                                        "ALL_OLD")
+        self.assertIn('attributes', put_resp[1])
+        self.assertEqual(item, put_resp[1]["attributes"])
+
+    def test_put_item_with_returned_all_old_with_indexes_02(self):
+        self.table_name = rand_name().replace('-', '')
+        lsi_definition = [
+            {
+                'index_name': 'time_index',
+                'key_schema': [
+                    {'attribute_name': 'message', 'key_type': 'HASH'},
+                    {'attribute_name': 'time', 'key_type': 'RANGE'}
+                ],
+                'projection': {'projection_type': 'ALL'}
+            }
+        ]
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'},
+             {'attribute_name': 'thread', 'attribute_type': 'S'},
+             {'attribute_name': 'time', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'},
+             {'attribute_name': 'thread', 'key_type': 'RANGE'}],
+            lsi_definition,
+            wait_for_active=True)
+        item = {
+            "message": {"S": 'message_text'},
+            "thread": {"S": 'thread_name'},
+            "time": {"S": '200901010000'},
+            "authors": {"SS": ["Alice", "Bob"]},
+            "others": {"SS": ["qqqq", "wwww"]}
+        }
+        new_item = {
+            "message": {"S": 'message_text'},
+            "thread": {"S": 'thread_name'},
+            "time": {"S": '201001010000'},
+            "authors": {"SS": ["Kris", "Rob"]},
+            "others": {"SS": ["xxxx", "zzzz"]}
+        }
+        put_resp = self.client.put_item(self.table_name,
+                                        item,
+                                        None,
+                                        0)
+        self.assertEqual(put_resp[1], {})
+        put_resp = self.client.put_item(self.table_name,
+                                        new_item,
+                                        None,
+                                        0)
+        self.assertEqual(put_resp[1], {})
+        put_resp = self.client.put_item(self.table_name,
+                                        item,
+                                        None,
+                                        0,
+                                        "ALL_OLD")
+        self.assertIn('attributes', put_resp[1])
+        self.assertEqual(new_item, put_resp[1]["attributes"])
