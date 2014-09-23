@@ -16,8 +16,8 @@
 import re
 
 from magnetodb.api.amz import dynamodb
-
-from magnetodb.common import exception
+from magnetodb.api.amz.dynamodb.exception import AWSValidationException
+from magnetodb.api.amz.dynamodb.exception import AWSBadRequestException
 
 
 class AmzDynamoDBApiController():
@@ -34,14 +34,14 @@ class AmzDynamoDBApiController():
         service_capabilities = self.capabilities.get(service_name, None)
 
         if service_capabilities is None:
-            raise exception.BadRequestException(
+            raise AWSBadRequestException(
                 "Service '%s' isn't supported" % service_name)
 
         target_capabilities = service_capabilities.get(api_version, None)
 
         if target_capabilities is None:
             raise (
-                exception.BadRequestException(
+                AWSBadRequestException(
                     "Service '%s' doesn't support API version '%s'" %
                     (service_name, api_version))
             )
@@ -50,7 +50,7 @@ class AmzDynamoDBApiController():
 
         if action is None:
             raise (
-                exception.ValidationException(
+                AWSValidationException(
                     "Service '%s', API version '%s' "
                     "doesn't support action '%s'" %
                     (service_name, api_version, action_name))
@@ -63,7 +63,7 @@ class AmzDynamoDBApiController():
 
         if not target:
             raise (
-                exception.ValidationException(
+                AWSValidationException(
                     "'x-amz-target' header wasn't found")
             )
 
@@ -71,7 +71,7 @@ class AmzDynamoDBApiController():
 
         if not matcher:
             raise (
-                exception.ValidationException(
+                AWSValidationException(
                     "'x-amz-target' header wasn't recognized (actual: %s, "
                     "expected format: <<serviceName>>_<<API version>>."
                     "<<operationName>>")

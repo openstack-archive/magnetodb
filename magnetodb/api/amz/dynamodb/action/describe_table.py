@@ -16,8 +16,11 @@
 
 from magnetodb import storage
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
+from magnetodb.api.amz.dynamodb.exception import AWSValidationException
+from magnetodb.api.amz.dynamodb.exception import AWSResourceNotFoundException
+from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
 from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
-from magnetodb.common import exception
+from magnetodb.common.exception import TableNotExistsException
 
 
 class DescribeTableDynamoDBAction(DynamoDBAction):
@@ -33,8 +36,7 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
         table_name = self.action_params.get(Props.TABLE_NAME, None)
 
         if not table_name:
-            raise exception.ValidationException(
-                message='Table name is not defined')
+            raise AWSValidationException(message='Table name is not defined')
 
         try:
             table_meta = storage.describe_table(self.context, table_name)
@@ -74,9 +76,9 @@ class DescribeTableDynamoDBAction(DynamoDBAction):
                 )
             return result
 
-        except exception.TableNotExistsException:
-            raise exception.ResourceNotFoundException()
-        except exception.AWSErrorResponseException as e:
+        except TableNotExistsException:
+            raise AWSResourceNotFoundException()
+        except AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise AWSErrorResponseException()
