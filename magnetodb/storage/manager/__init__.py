@@ -68,13 +68,14 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def put_item(self, context, table_name, attribute_map, if_not_exist=False,
-                 expected_condition_map=None):
+    def put_item(self, context, table_name, attribute_map, return_values,
+                 if_not_exist=False, expected_condition_map=None):
         """
         :param context: current request context
         :param table_name: name of the table
         :param attribute_map: attribute name to AttributeValue instance map,
                 which represents item to put
+        :param return_values: model that defines what values should be returned
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
@@ -89,13 +90,14 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def put_item_async(self, context, table_name, attribute_map,
+    def put_item_async(self, context, table_name, attribute_map, return_values,
                        if_not_exist=False, expected_condition_map=None):
         """
         :param context: current request context
         :param table_name: name of the table
         :param attribute_map: attribute name to AttributeValue instance map,
                 which represents item to put
+        :param return_values: model that defines what values should be returned
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)

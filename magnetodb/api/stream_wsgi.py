@@ -27,6 +27,7 @@ from magnetodb import notifier
 from magnetodb import storage
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
+from magnetodb.storage import models
 
 
 LOG = logging.getLogger(__name__)
@@ -92,6 +93,9 @@ def bulk_load_app(environ, start_response):
     done_count = [0]
     last_read = None
     failed_items = {}
+    return_values = models.InsertReturnValuesType(
+        models.InsertReturnValuesType.RETURN_VALUES_TYPE_NONE
+    )
 
     dont_process = False
 
@@ -116,7 +120,8 @@ def bulk_load_app(environ, start_response):
 
         try:
             future = storage.put_item_async(
-                context, table_name, make_put_item(chunk)
+                context, table_name, make_put_item(chunk),
+                return_values
             )
 
             put_count += 1
