@@ -37,6 +37,7 @@ class PutitemTestCase(unittest.TestCase):
     def test_put_item(self, mock_put_item):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
+        mock_put_item.return_value = (True, None)
 
         conn = httplib.HTTPConnection('localhost:8080')
         url = '/v1/default_tenant/data/tables/the_table/put_item'

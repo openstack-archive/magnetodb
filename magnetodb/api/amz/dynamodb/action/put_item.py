@@ -88,9 +88,11 @@ class PutItemDynamoDBAction(DynamoDBAction):
             )
 
             # parse return_values param
-            return_values = self.action_params.get(
+            return_values_json = self.action_params.get(
                 parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
             )
+
+            return_values = models.InsertReturnValuesType(return_values_json)
 
             # parse return_item_collection_metrics
             return_item_collection_metrics = self.action_params.get(
@@ -111,6 +113,7 @@ class PutItemDynamoDBAction(DynamoDBAction):
                 self.context,
                 table_name,
                 item_attributes,
+                return_values,
                 if_not_exist=False,
                 expected_condition_map=expected_item_conditions
             )

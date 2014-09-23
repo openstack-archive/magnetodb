@@ -52,13 +52,14 @@ class StorageDriver(object):
         raise NotImplementedError()
 
     def put_item(self, context, table_info, attribute_map, if_not_exist=False,
-                 expected_condition_map=None):
+                 expected_condition_map=None, return_old=False):
         """
         :param context: current request context
         :param table_info: TableInfo instance with table's meta information
         :param attribute_map: attribute name to AttributeValue mapping.
                     It defines row key and additional attributes to put
                     item
+        :param return_values: model that defines what values should be returned
         :param if_not_exist: put item only is row is new record (It is possible
                     to use only one of if_not_exist and expected_condition_map
                     parameter)
