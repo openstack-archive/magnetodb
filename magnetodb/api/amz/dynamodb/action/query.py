@@ -17,7 +17,9 @@ from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
-from magnetodb.common import exception
+from magnetodb.api.amz.dynamodb.exception import AWSValidationException
+from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
+
 from magnetodb.storage import models
 
 
@@ -139,7 +141,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                 models.ORDER_TYPE_DESC
             )
         except Exception:
-            raise exception.ValidationException()
+            raise AWSValidationException()
 
         try:
             # select item
@@ -178,7 +180,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                         result.last_evaluated_key)
                 )
             return response
-        except exception.AWSErrorResponseException as e:
+        except AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise AWSErrorResponseException()
