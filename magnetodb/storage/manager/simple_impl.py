@@ -197,8 +197,8 @@ class SimpleStorageManager(StorageManager):
                 table_schema=str(table_info.schema)
             )
 
-    def put_item(self, context, table_name, attribute_map, if_not_exist=False,
-                 expected_condition_map=None):
+    def put_item(self, context, table_name, attribute_map, return_values,
+                 if_not_exist=False, expected_condition_map=None):
         table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
         self._validate_key_schema(table_info, attribute_map,
@@ -206,14 +206,15 @@ class SimpleStorageManager(StorageManager):
 
         with self.__task_semaphore:
             result = self._storage_driver.put_item(
-                context, table_info, attribute_map, if_not_exist,
-                expected_condition_map
+                context, table_info, attribute_map, return_values,
+                if_not_exist, expected_condition_map
             )
         notifier.notify(
             context, notifier.EVENT_TYPE_DATA_PUTITEM,
             dict(
                 table_name=table_name,
                 attribute_map=attribute_map,
+                return_values=return_values,
                 if_not_exist=if_not_exist,
                 expected_condition_map=expected_condition_map
             ),
