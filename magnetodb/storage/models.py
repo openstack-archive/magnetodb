@@ -676,8 +676,7 @@ class InsertReturnValuesType(ModelBase):
     RETURN_VALUES_TYPE_UPDATED_NEW = "UPDATED_NEW"
 
     _allowed_types = set(
-        [RETURN_VALUES_TYPE_NONE, RETURN_VALUES_TYPE_ALL_OLD,
-         RETURN_VALUES_TYPE_ALL_NEW]
+        [RETURN_VALUES_TYPE_NONE, RETURN_VALUES_TYPE_ALL_OLD]
     )
 
     def __init__(self, type):
