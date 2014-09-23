@@ -17,20 +17,19 @@ import logging
 from magnetodb import notifier
 
 from magnetodb.storage import models
-from magnetodb.storage.manager.base_async_storage_manager import (
-    BaseAsyncStorageManager)
+from magnetodb.storage.manager.simple_impl import SimpleStorageManager
 
 LOG = logging.getLogger(__name__)
 
 
-class AsyncSimpleStorageManager(BaseAsyncStorageManager):
+class AsyncSimpleStorageManager(SimpleStorageManager):
     def __init__(self, storage_driver,
                  table_info_repo,
                  concurrent_tasks=1000, batch_chunk_size=25):
-        BaseAsyncStorageManager.__init__(self, storage_driver, table_info_repo,
-                                         concurrent_tasks, batch_chunk_size)
+        SimpleStorageManager.__init__(self, storage_driver, table_info_repo,
+                                      concurrent_tasks, batch_chunk_size)
 
-    def _async_create(self, context, table_info):
+    def _do_create_table(self, context, table_info):
         future = self._execute_async(self._storage_driver.create_table,
                                      context, table_info)
 
@@ -55,7 +54,7 @@ class AsyncSimpleStorageManager(BaseAsyncStorageManager):
 
         future.add_done_callback(callback)
 
-    def _async_delete(self, context, table_info):
+    def _do_delete_table(self, context, table_info):
         future = self._execute_async(self._storage_driver.delete_table,
                                      context, table_info)
 

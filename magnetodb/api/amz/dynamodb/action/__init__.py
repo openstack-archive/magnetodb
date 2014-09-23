@@ -15,7 +15,8 @@
 
 import jsonschema
 
-from magnetodb.common import exception
+from magnetodb.api.amz.dynamodb.exception import AWSValidationException
+
 from magnetodb.openstack.common.log import logging
 
 LOG = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ class DynamoDBAction():
                                 key=lambda e: e.path)
                 error_msg = cls.format_validation_msg(errors)
                 LOG.info(error_msg)
-                raise exception.ValidationException(error_msg)
+                raise AWSValidationException(error_msg)
 
     @classmethod
     def perform(cls, context, action_params):

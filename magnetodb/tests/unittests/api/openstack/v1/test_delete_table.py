@@ -15,6 +15,7 @@
 
 import httplib
 import json
+from magnetodb.common.exception import ResourceInUseException
 
 import mock
 from magnetodb.storage import models
@@ -95,3 +96,35 @@ class DeleteTableTest(test_base_testcase.APITestCase):
         response_payload = json.loads(json_response)
 
         self.assertEqual(expected_response, response_payload)
+
+    @mock.patch('magnetodb.storage.delete_table')
+    def test_delete_table_when_table_in_use(self, mock_delete_table):
+
+        mock_delete_table.side_effect = ResourceInUseException()
+
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/default_tenant/data/tables/Thread'
+
+        conn.request("DELETE", url, headers=headers)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_delete_table.called)
+
+        json_response = response.read()
+        expected_response = (
+            '{"explanation": "The server could not comply with the request '
+            'since it is either malformed or otherwise incorrect.", '
+
+            '"code": 400, '
+
+            '"error": '
+            '{"message": "An unknown exception occurred", "traceback": null, '
+            '"type": "ResourceInUseException"}, '
+
+            '"title": "Bad Request"}'
+        )
+        self.assertEqual(expected_response, json_response)

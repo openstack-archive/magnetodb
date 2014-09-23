@@ -21,7 +21,7 @@ UpdateItem
    **attribute_updates**
       | The names of attributes to be modified, the action to perform on each, and the new value for each. If you are updating an attribute that is an index key attribute for any indexes on that table, the attribute type must match the index key type defined in the attribute_definition of the table description. You can use UpdateItem to update any non-key attributes.
 
-      | Attribute values cannot be null. String and binary type attributes must have lengths greater than zero. Set type attributes must not be empty. Requests with empty values will be rejected with a ValidationException.
+      | Attribute values cannot be null. String and binary type attributes must have lengths greater than zero. Set type attributes must not be empty. Requests with empty values will be rejected with a ValidationError exception.
 
       | Each attribute_updates element consists of an attribute name to modify, along with the following:
 

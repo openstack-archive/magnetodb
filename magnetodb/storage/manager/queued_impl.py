@@ -12,23 +12,23 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import logging
+
 from oslo import messaging
 
 from magnetodb.common import config
-from magnetodb.storage.manager.base_async_storage_manager import (
-    BaseAsyncStorageManager)
-
+from magnetodb.storage.manager.simple_impl import SimpleStorageManager
 
 LOG = logging.getLogger(__name__)
 CONF = config.CONF
 
 
-class QueuedStorageManager(BaseAsyncStorageManager):
+class QueuedStorageManager(SimpleStorageManager):
     def __init__(self, storage_driver,
                  table_info_repo,
                  concurrent_tasks=1000, batch_chunk_size=25):
-        BaseAsyncStorageManager.__init__(
+        SimpleStorageManager.__init__(
             self, storage_driver, table_info_repo,
             concurrent_tasks, batch_chunk_size)
 
@@ -37,10 +37,10 @@ class QueuedStorageManager(BaseAsyncStorageManager):
 
         self._rpc_client = messaging.RPCClient(transport, target)
 
-    def _async_create(self, context, table_info):
+    def _do_create_table(self, context, table_info):
         self._rpc_client.cast(
             context.to_dict(), 'create', table_name=table_info.name)
 
-    def _async_delete(self, context, table_info):
+    def _do_delete_table(self, context, table_info):
         self._rpc_client.cast(
             context.to_dict(), 'delete', table_name=table_info.name)
