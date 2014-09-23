@@ -50,18 +50,12 @@ class FaultWrapper(wsgi.Middleware):
 
     error_map = {
         # Common errors
-        'InternalFailure': webob.exc.HTTPInternalServerError,
         'RequestQuotaExceeded': webob.exc.HTTPTooManyRequests,
-        'OverLimit': webob.exc.HTTPRequestEntityTooLarge,
-        'InvalidClientToken': webob.exc.HTTPUnauthorized,
-        'Forbidden': webob.exc.HTTPForbidden,
-        'MalformedQueryString': webob.exc.HTTPNotFound,
         'ServiceUnavailable': webob.exc.HTTPServiceUnavailable,
-        'InvalidParameterCombination': webob.exc.HTTPBadRequest,
-        'InvalidParameterValue': webob.exc.HTTPBadRequest,
         'InvalidQueryParameter': webob.exc.HTTPBadRequest,
         'ValidationError': webob.exc.HTTPBadRequest,
-        'MissingParameter': webob.exc.HTTPBadRequest,
+
+        'ResourceInUseException': webob.exc.HTTPBadRequest,
 
         # Table errors
         'TableAlreadyExistsException': webob.exc.HTTPBadRequest,

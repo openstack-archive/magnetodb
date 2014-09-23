@@ -17,7 +17,10 @@ from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
-from magnetodb.common import exception
+from magnetodb.api.amz.dynamodb.exception import AWSDuplicateTableError, \
+    AWSValidationException
+from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
+from magnetodb.common.exception import TableAlreadyExistsException
 from magnetodb.storage import models
 
 
@@ -82,7 +85,7 @@ class CreateTableDynamoDBAction(DynamoDBAction):
             )
 
         except Exception:
-            raise exception.ValidationException()
+            raise AWSValidationException()
 
         try:
             # creating table
@@ -125,9 +128,9 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                 )
 
             return result
-        except exception.TableAlreadyExistsException:
-            raise exception.DuplicateTableError(table_name)
-        except exception.AWSErrorResponseException as e:
+        except TableAlreadyExistsException:
+            raise AWSDuplicateTableError(table_name)
+        except AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise AWSErrorResponseException()
