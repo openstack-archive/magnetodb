@@ -18,7 +18,9 @@ from magnetodb.api.amz.dynamodb import parser
 from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 
 from magnetodb import storage
-from magnetodb.common import exception
+from magnetodb.api.amz.dynamodb.exception import AWSValidationException
+from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
+
 from magnetodb.storage import models
 
 
@@ -84,7 +86,7 @@ class GetItemDynamoDBAction(DynamoDBAction):
                 for name, value in key_attributes.iteritems()
             }
         except Exception:
-            raise exception.ValidationException()
+            raise AWSValidationException()
 
         try:
             # get item
@@ -112,7 +114,7 @@ class GetItemDynamoDBAction(DynamoDBAction):
                 )
 
             return response
-        except exception.AWSErrorResponseException as e:
+        except AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise AWSErrorResponseException()

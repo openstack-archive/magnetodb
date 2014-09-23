@@ -17,6 +17,8 @@ from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
+from magnetodb.api.amz.dynamodb.exception import AWSValidationException
+from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
 from magnetodb.storage import models
 
 from magnetodb.common import exception
@@ -103,7 +105,7 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
         except Exception:
-            raise exception.ValidationException()
+            raise AWSValidationException()
 
         try:
             # put item
@@ -113,13 +115,13 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
                 key_attributes,
                 expected_condition_map=expected_item_conditions
             )
-        except exception.AWSErrorResponseException as e:
+        except AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise AWSErrorResponseException()
 
         if not result:
-            raise exception.AWSErrorResponseException()
+            raise AWSErrorResponseException()
 
         # format response
         response = {}
