@@ -354,9 +354,9 @@ class BotoIntegrationTest(unittest.TestCase):
     def test_put_item(self):
         self.storage_mocker.StubOutWithMock(storage, 'put_item')
         storage.put_item(
-            IgnoreArg(), IgnoreArg(), IgnoreArg(),
+            IgnoreArg(), IgnoreArg(), IgnoreArg(), IgnoreArg(),
             if_not_exist=IgnoreArg(),
-            expected_condition_map=IgnoreArg()).AndReturn(True)
+            expected_condition_map=IgnoreArg()).AndReturn((True, None))
         self.storage_mocker.ReplayAll()
 
         table = Table('test_table', connection=self.DYNAMODB_CON)
