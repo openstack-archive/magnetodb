@@ -120,7 +120,7 @@ $ magnetodb item-put <table-name> --request-file <FILE>
 
 Sample::
 
-$ magnetodb item-put Tread --request-file ~/item-put-request.json
+$ magnetodb item-put Thread --request-file ~/item-put-request.json
 
 ~/item-put-request.json contains:
 
@@ -144,7 +144,7 @@ $ magnetodb item-update <table-name> --request-file <FILE>
 
 Sample::
 
-$ magnetodb item-update Tread --request-file ~/item-update-request.json
+$ magnetodb item-update Thread --request-file ~/item-update-request.json
 
 ~/item-put-request.json contains:
 
@@ -168,7 +168,7 @@ $ magnetodb item-delete <table-name> --request-file <FILE>
 
 Sample::
 
-$ magnetodb item-delete Tread --request-file ~/item-delete-request.json
+$ magnetodb item-delete Thread --request-file ~/item-delete-request.json
 
 ~/item-delete-request.json contains:
 
@@ -192,7 +192,7 @@ $ magnetodb item-get <table-name> --request-file <FILE>
 
 Sample::
 
-$ magnetodb item-get Tread --request-file ~/item-get-request.json
+$ magnetodb item-get Thread --request-file ~/item-get-request.json
 
 ~/item-get-request.json contains:
 
@@ -216,7 +216,7 @@ $ magnetodb query <table-name> --request-file <FILE>
 
 Sample::
 
-$ magnetodb query Tread --request-file ~/query-request.json
+$ magnetodb query Thread --request-file ~/query-request.json
 
 ~/query-request.json contains:
 
@@ -240,7 +240,7 @@ $ magnetodb scan <table-name> --request-file <FILE>
 
 Sample::
 
-$ magnetodb scan Tread --request-file ~/scan-request.json
+$ magnetodb scan Thread --request-file ~/scan-request.json
 
 ~/scan-request.json contains:
 
