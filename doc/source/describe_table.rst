@@ -21,6 +21,16 @@ DescribeTable
       | Represents the properties of a table.
       | Type: table_description object
 
+
+**Table Statuses**
+
+- ACTIVE
+- CREATING
+- CREATE_FAILURE
+- DELETING
+- DELETE_FAILURE
+
+
 **Errors**
    TBW
 
