@@ -125,7 +125,7 @@ Creating keyspaces in cassandra::
     # Replication factor is 1
     echo "CREATE KEYSPACE magnetodb WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };" > ~/.ccm/cql.txt
     echo "CREATE KEYSPACE user_default_tenant WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };" >> ~/.ccm/cql.txt
-    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, PRIMARY KEY(tenant, name));' >> ~/.ccm/cql.txt
+    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, last_updated float, PRIMARY KEY(tenant, name));' >> ~/.ccm/cql.txt
 
     ccm node1 cqlsh -f ~/.ccm/cql.txt
 
