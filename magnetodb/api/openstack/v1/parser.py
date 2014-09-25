@@ -29,7 +29,6 @@ from magnetodb.storage.models import SelectType
 from magnetodb.storage.models import AttributeType
 from magnetodb.storage.models import AttributeValue
 from magnetodb.storage.models import GetItemRequest
-from magnetodb.storage.models import InsertReturnValuesType
 
 from magnetodb.common.exception import ValidationError
 
@@ -121,12 +120,12 @@ class Values():
     TABLE_STATUS_CREATING = TableMeta.TABLE_STATUS_CREATING
     TABLE_STATUS_DELETING = TableMeta.TABLE_STATUS_DELETING
 
-    RETURN_VALUES_NONE = InsertReturnValuesType.RETURN_VALUES_TYPE_NONE
-    RETURN_VALUES_ALL_OLD = InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD
+    RETURN_VALUES_NONE = UpdateReturnValuesType.RETURN_VALUES_TYPE_NONE
+    RETURN_VALUES_ALL_OLD = UpdateReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD
     RETURN_VALUES_UPDATED_OLD = (
         UpdateReturnValuesType.RETURN_VALUES_TYPE_UPDATED_OLD
     )
-    RETURN_VALUES_ALL_NEW = InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_NEW
+    RETURN_VALUES_ALL_NEW = UpdateReturnValuesType.RETURN_VALUES_TYPE_ALL_NEW
     RETURN_VALUES_UPDATED_NEW = (
         UpdateReturnValuesType.RETURN_VALUES_TYPE_UPDATED_NEW
     )
@@ -160,131 +159,6 @@ class Values():
 ATTRIBUTE_NAME_PATTERN = "^\w+"
 TABLE_NAME_PATTERN = "^\w+"
 INDEX_NAME_PATTERN = "^\w+"
-
-
-class Types():
-    ATTRIBUTE_NAME = {
-        "type": "string",
-        "pattern": ATTRIBUTE_NAME_PATTERN
-    }
-
-    TYPED_ATTRIBUTE_VALUE = {
-        "type": "object"
-    }
-
-    ATTRIBUTE = {
-        "type": "object",
-        "maxProperties": 1,
-        "patternProperties": {
-            ATTRIBUTE_NAME_PATTERN: TYPED_ATTRIBUTE_VALUE
-        }
-    }
-
-    ITEM = {
-        "type": "object",
-        "patternProperties": {
-            ATTRIBUTE_NAME_PATTERN: TYPED_ATTRIBUTE_VALUE
-        }
-    }
-
-    ATTRIBUTE_DEFINITION = {
-        "type": "object",
-        "required": [Props.ATTRIBUTE_NAME, Props.ATTRIBUTE_TYPE],
-        "properties": {
-            Props.ATTRIBUTE_NAME: ATTRIBUTE_NAME,
-            Props.ATTRIBUTE_TYPE: {
-                "type": "string"
-            }
-        }
-    }
-
-    ACTION_TYPE = {
-        "type": "string",
-        "enum": [Values.ACTION_TYPE_PUT,
-                 Values.ACTION_TYPE_ADD,
-                 Values.ACTION_TYPE_DELETE]
-    }
-
-    INDEX_NAME = {
-        "type": "string",
-        "pattern": INDEX_NAME_PATTERN
-    }
-
-    TABLE_NAME = {
-        "type": "string",
-        "pattern": TABLE_NAME_PATTERN,
-    }
-
-    KEY_SCHEMA = {
-        "type": "array",
-        "items": {
-            "type": "object",
-            "required": [Props.ATTRIBUTE_NAME, Props.KEY_TYPE],
-            "properties": {
-                Props.ATTRIBUTE_NAME: ATTRIBUTE_NAME,
-                Props.KEY_TYPE: {
-                    "type": "string"
-                }
-            }
-        }
-    }
-
-    PROJECTION_TYPE = {
-        "type": "string",
-        "enum": [Values.PROJECTION_TYPE_KEYS_ONLY,
-                 Values.PROJECTION_TYPE_INCLUDE,
-                 Values.PROJECTION_TYPE_ALL]
-    }
-
-    PROJECTION = {
-        "type": "object",
-        "properties": {
-            Props.NON_KEY_ATTRIBUTES: {
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "pattern": ATTRIBUTE_NAME_PATTERN
-                }
-            },
-            Props.PROJECTION_TYPE: PROJECTION_TYPE
-        }
-    }
-
-    SELECT = {
-        "type": "string",
-        "enum": [Values.ALL_ATTRIBUTES,
-                 Values.ALL_PROJECTED_ATTRIBUTES,
-                 Values.SPECIFIC_ATTRIBUTES,
-                 Values.COUNT]
-    }
-
-    SCAN_OPERATOR = {
-        "type": "string",
-        "enum": [Values.EQ,
-                 Values.NE,
-                 Values.LE,
-                 Values.LT,
-                 Values.GE,
-                 Values.GT,
-                 Values.NOT_NULL,
-                 Values.NULL,
-                 Values.CONTAINS,
-                 Values.NOT_CONTAINS,
-                 Values.BEGINS_WITH,
-                 Values.IN,
-                 Values.BETWEEN]
-    }
-
-    QUERY_OPERATOR = {
-        "type": "string",
-        "enum": [Values.EQ,
-                 Values.LE,
-                 Values.LT,
-                 Values.GE,
-                 Values.GT,
-                 Values.BEGINS_WITH,
-                 Values.BETWEEN]
-    }
 
 
 class Parser():
@@ -549,6 +423,8 @@ class Parser():
 
             (condition_type, condition_value) = condition_json.popitem()
 
+            validation.validate_string(condition_type, "condition type")
+
             if condition_type == Props.VALUE:
                 validation.validate_object(condition_value, Props.VALUE)
                 expected_attribute_conditions[attr_name_json] = [
@@ -565,7 +441,7 @@ class Parser():
             else:
                 raise ValidationError(
                     _("Unsupported condition type found: %(condition_type)s"),
-                    condition_type=json.dumps(condition_type)
+                    condition_type=condition_type
                 )
 
         return expected_attribute_conditions
@@ -701,23 +577,25 @@ class Parser():
     @classmethod
     def parse_attribute_updates(cls, attribute_updates_json):
         attribute_updates = {}
-        attribute_updates_json = attribute_updates_json or {}
 
         for attr, attr_update_json in attribute_updates_json.iteritems():
-            action_type_json = attr_update_json[Props.ACTION]
+            validation.validate_attr_name(attr)
+            validation.validate_object(attr_update_json, attr)
 
-            value_json = attr_update_json.get(Props.VALUE)
+            action_type_json = attr_update_json.pop(Props.ACTION, None)
+            validation.validate_string(action_type_json, Props.ACTION)
 
-            value = None
+            value_json = attr_update_json.pop(Props.VALUE, None)
+
             if value_json:
-                assert len(value_json) == 1
-                (attr_type_json, attr_value_json) = (
-                    value_json.items()[0]
-                )
-
-                value = AttributeValue(attr_type_json, attr_value_json)
+                validation.validate_object(value_json, Props.VALUE)
+                value = cls.parse_typed_attr_value(value_json)
+            else:
+                value = None
 
             update_action = UpdateItemAction(action_type_json, value)
+
+            validation.validate_unexpected_props(attr_update_json, attr)
 
             attribute_updates[attr] = update_action
 
@@ -733,6 +611,7 @@ class Parser():
             request_list_for_table = []
             for request_json in request_list_json:
                 for request_type, request_body in request_json.iteritems():
+                    validation.validate_string(request_type, "request_type")
                     if request_type == Props.REQUEST_PUT:
                         validation.validate_object(request_body, request_type)
                         item = request_body.pop(Props.ITEM, None)
@@ -759,7 +638,7 @@ class Parser():
                         raise ValidationError(
                             _("Unsupported request type found: "
                               "%(request_type)s"),
-                            request_type=json.dumps(request_type)
+                            request_type=request_type
                         )
             request_map[table_name] = request_list_for_table
         return request_map

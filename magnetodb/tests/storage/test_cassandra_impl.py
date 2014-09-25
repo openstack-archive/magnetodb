@@ -585,7 +585,7 @@ class TestCassandraBase(unittest.TestCase):
 class TestCassandraTableCrud(TestCassandraBase):
 
     def test_create_table(self):
-        self.assertEqual([], self._get_table_names())
+        self.assertNotIn(self.table_name, self._get_table_names())
 
         attrs = {}
         for name, (_, _, typ, _) in self.test_data_keys.iteritems():
@@ -605,19 +605,20 @@ class TestCassandraTableCrud(TestCassandraBase):
             self.context, self.table_name, schema
         )
 
-        self.assertEqual([self.table_name], self._get_table_names())
+        self.assertIn(self.table_name, self._get_table_names())
 
     def test_create_duplicate_table(self):
         self.assertEqual([], self._get_table_names())
 
         attrs = {}
-        for name, (typ, _, _) in self.test_data_keys.iteritems():
-            attrs[name] = self.C2S_TYPES[typ]
-        for name, (typ, _, _) in self.test_data_predefined_fields.iteritems():
-            attrs[name] = self.C2S_TYPES[typ]
+        for name, (_, _, typ, _) in self.test_data_keys.iteritems():
+            attrs[name] = models.AttributeType(typ)
+        for name, (_, _, typ, _) in (
+                self.test_data_predefined_fields.iteritems()):
+            attrs[name] = models.AttributeType(typ)
 
         index_def_map = {
-            'index_name': models.IndexDefinition('indexed')
+            'index_name': models.IndexDefinition('id', 'indexed')
         }
 
         schema = models.TableSchema(attrs, ['id', 'range'],

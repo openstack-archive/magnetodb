@@ -29,8 +29,6 @@ from magnetodb.storage.driver.cassandra.encoder import (
     encode_predefined_attr_value, encode_dynamic_attr_value
 )
 
-from magnetodb.storage.models import ExpectedCondition
-
 from cassandra.encoder import cql_quote
 
 
@@ -606,12 +604,10 @@ class CassandraStorageDriver(StorageDriver):
 
         old_item = {}
         hash_name = table_info.schema.hash_key_name
-        return_old = False
-        if return_values:
-            return_old = (
-                return_values.type ==
-                models.InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD
-            )
+        return_old = (
+            return_values is not None and return_values.type ==
+            models.InsertReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD
+        )
 
         if expected_condition_map and hash_name in expected_condition_map:
             hash_conditions = expected_condition_map[hash_name]
@@ -637,7 +633,7 @@ class CassandraStorageDriver(StorageDriver):
                     "if_not_exist specified"
                 )
             if self._put_item_if_not_exists(table_info, attribute_map):
-                return (True, old_item)
+                return True, old_item
             raise ConditionalCheckFailedException()
         elif table_info.schema.index_def_map or return_old:
             _encode_predefined_attr_value = encode_predefined_attr_value
@@ -661,7 +657,7 @@ class CassandraStorageDriver(StorageDriver):
                     else:
                         if self._put_item_if_not_exists(table_info,
                                                         attribute_map):
-                            return (True, old_item)
+                            return True, old_item
                         continue
 
                 elif table_info.schema.index_def_map:
@@ -670,15 +666,12 @@ class CassandraStorageDriver(StorageDriver):
                     )
 
                     if old_indexes is None:
-                        if expected_condition_map:
-                            for attr, cond in (
-                                    expected_condition_map.iteritems()):
-                                if (cond.type !=
-                                        ExpectedCondition.CONDITION_TYPE_NULL):
-                                    raise ConditionalCheckFailedException()
+                        if not self._conditions_satisfied(
+                                old_indexes, expected_condition_map):
+                            raise ConditionalCheckFailedException()
                         if self._put_item_if_not_exists(table_info,
                                                         attribute_map):
-                            return (True, old_item)
+                            return True, old_item
                         continue
 
                 conditions = put_conditions
@@ -724,7 +717,7 @@ class CassandraStorageDriver(StorageDriver):
                 )
 
                 if result[0]['[applied]']:
-                    return (True, old_item)
+                    return True, old_item
 
                 if return_old:
                     continue
@@ -747,7 +740,7 @@ class CassandraStorageDriver(StorageDriver):
                 "".join(query_builder), consistent=True
             )
             if result[0]['[applied]']:
-                return (True, old_item)
+                return True, old_item
             raise ConditionalCheckFailedException()
         else:
             query_builder = self._append_insert_query(
@@ -755,7 +748,7 @@ class CassandraStorageDriver(StorageDriver):
             )
             self.__cluster_handler.execute_query("".join(query_builder),
                                                  consistent=True)
-            return (True, old_item)
+            return True, old_item
 
     def batch_write(self, context, write_request_list):
         for table_info, _ in write_request_list:
@@ -893,7 +886,8 @@ class CassandraStorageDriver(StorageDriver):
 
                 if old_indexes is None:
                     # Nothing to delete
-                    if expected_condition_map:
+                    if not self._conditions_satisfied(
+                            old_indexes, expected_condition_map):
                         raise ConditionalCheckFailedException()
                     return True
 

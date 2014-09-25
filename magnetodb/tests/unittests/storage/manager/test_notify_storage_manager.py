@@ -158,7 +158,7 @@ class TestNotifyStorageManager(TestNotify):
 
     @mock.patch('magnetodb.storage.driver.StorageDriver.batch_write')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
-                '_validate_key_schema')
+                '_validate_table_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_table_is_active')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
@@ -168,7 +168,7 @@ class TestNotifyStorageManager(TestNotify):
                 '_put_item_async')
     def test_notify_batch_write(self, mock_put_item, mock_delete_item,
                                 mock_repo_get, mock_validate_table_is_active,
-                                mock_validate_key_schema, mock_batch_write):
+                                mock_validate_table_schema, mock_batch_write):
         TestNotify.cleanup_test_notifier()
 
         future = Future()
