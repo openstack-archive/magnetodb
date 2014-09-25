@@ -1163,7 +1163,7 @@ class CassandraStorageDriver(StorageDriver):
 
         while True:
             old_item = self._get_item_to_update(context, table_info,
-                                                key_attribute_map)
+                                                key_attribute_map) or {}
             if not self._conditions_satisfied(old_item,
                                               expected_condition_map):
                 raise ConditionalCheckFailedException()
@@ -1314,10 +1314,12 @@ class CassandraStorageDriver(StorageDriver):
 
     def _get_update_conditions(self, key_attribute_map, old_item):
         conditions = {}
-        for attr_name, attr_value in old_item.iteritems():
-            if attr_name in key_attribute_map:
-                continue
-            conditions[attr_name] = [models.ExpectedCondition.eq(attr_value)]
+        if old_item:
+            for attr_name, attr_value in old_item.iteritems():
+                if attr_name in key_attribute_map:
+                    continue
+                conditions[attr_name] = [
+                    models.ExpectedCondition.eq(attr_value)]
         return conditions
 
     @probe.Probe(__name__)
