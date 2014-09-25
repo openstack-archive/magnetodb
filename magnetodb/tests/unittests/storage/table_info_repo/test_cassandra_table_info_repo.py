@@ -14,10 +14,13 @@
 #    under the License.
 
 import mock
+import time
 import unittest
 
 from magnetodb.common import exception
 
+from magnetodb.storage.models import TableMeta
+from magnetodb.storage.table_info_repo import TableInfo
 from magnetodb.storage.table_info_repo.cassandra_impl import (
     CassandraTableInfoRepository
 )
@@ -38,3 +41,33 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
 
         ex = raises_cm.exception
         self.assertIn("Table 'nonexistenttable' does not exist", ex.message)
+
+    def test_set_last_updated_on_save(self):
+        cluster_handler_mock = mock.Mock()
+        cluster_handler_mock.execute_query.return_value = [{'[applied]': True}]
+        table_repo = CassandraTableInfoRepository(cluster_handler_mock)
+        context = mock.Mock(tenant='fake_tenant')
+
+        table_schema = mock.Mock()
+        table_schema.to_json.return_value = ''
+
+        table_info = TableInfo('fake_table', table_schema, TableMeta.TABLE_STATUS_CREATING)
+        table_info.last_updated = 0
+        table_repo.save(context, table_info)
+
+        self.assertLess(time.time() - table_info.last_updated, 30)
+
+    def test_set_last_updated_on_update(self):
+        cluster_handler_mock = mock.Mock()
+        cluster_handler_mock.execute_query.return_value = [{'[applied]': True}]
+        table_repo = CassandraTableInfoRepository(cluster_handler_mock)
+        context = mock.Mock(tenant='fake_tenant')
+
+        table_schema = mock.Mock()
+        table_schema.to_json.return_value = ''
+
+        table_info = TableInfo('fake_table', table_schema, TableMeta.TABLE_STATUS_CREATING)
+        table_info.last_updated = 0
+        table_repo.update(context, table_info)
+
+        self.assertLess(time.time() - table_info.last_updated, 30)

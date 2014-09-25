@@ -24,11 +24,12 @@ LOG = logging.getLogger(__name__)
 
 
 class AsyncSimpleStorageManager(BaseAsyncStorageManager):
-    def __init__(self, storage_driver,
-                 table_info_repo,
-                 concurrent_tasks=1000, batch_chunk_size=25):
+    def __init__(self, storage_driver, table_info_repo,
+                 concurrent_tasks=1000, batch_chunk_size=25,
+                 schema_operation_timeout=300):
         BaseAsyncStorageManager.__init__(self, storage_driver, table_info_repo,
-                                         concurrent_tasks, batch_chunk_size)
+                                         concurrent_tasks, batch_chunk_size,
+                                         schema_operation_timeout)
 
     def _async_create(self, context, table_info):
         future = self._execute_async(self._storage_driver.create_table,
