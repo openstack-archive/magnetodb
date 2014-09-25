@@ -14,10 +14,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from magnetodb.storage.driver import StorageDriver
-from magnetodb.storage.models import WriteItemRequest
-from magnetodb.storage.table_info_repo import TableInfoRepository
+from magnetodb.storage.models import WriteItemRequest, TableMeta
+from magnetodb.storage.table_info_repo import TableInfoRepository, TableInfo
 
 import mock
+import time
 import unittest
 
 from concurrent.futures import Future
@@ -172,3 +173,87 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         )
         mock_get_item.has_calls(expected_get)
         self.assertEqual(unprocessed_items, [])
+
+    @mock.patch('magnetodb.notifier.notify')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
+    def test_update_status_on_describe_for_creating_table(
+            self, mock_repo_get, mock_repo_update, mock_notify):
+
+        context = mock.Mock(tenant='fake_tenant')
+        table_name = 'fake_table'
+        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+
+        table_info = TableInfo(
+            table_name, None, TableMeta.TABLE_STATUS_CREATING)
+        table_info.last_updated = 0
+
+        mock_repo_get.return_value = table_info
+
+        table_meta = storage_manager.describe_table(context, table_name)
+
+        self.assertEqual(
+            table_meta.status, TableMeta.TABLE_STATUS_CREATE_FAILED)
+
+    @mock.patch('magnetodb.notifier.notify')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
+    def test_update_status_on_describe_for_creating_table_negative(
+            self, mock_repo_get, mock_repo_update, mock_notify):
+
+        context = mock.Mock(tenant='fake_tenant')
+        table_name = 'fake_table'
+        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+
+        table_info = TableInfo(
+            table_name, None, TableMeta.TABLE_STATUS_CREATING)
+        table_info.last_updated = time.time()
+
+        mock_repo_get.return_value = table_info
+
+        table_meta = storage_manager.describe_table(context, table_name)
+
+        self.assertEqual(
+            table_meta.status, TableMeta.TABLE_STATUS_CREATING)
+
+    @mock.patch('magnetodb.notifier.notify')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
+    def test_update_status_on_describe_for_deleting_table(
+            self, mock_repo_get, mock_repo_update, mock_notify):
+
+        context = mock.Mock(tenant='fake_tenant')
+        table_name = 'fake_table'
+        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+
+        table_info = TableInfo(
+            table_name, None, TableMeta.TABLE_STATUS_DELETING)
+        table_info.last_updated = 0
+
+        mock_repo_get.return_value = table_info
+
+        table_meta = storage_manager.describe_table(context, table_name)
+
+        self.assertEqual(
+            table_meta.status, TableMeta.TABLE_STATUS_DELETE_FAILED)
+
+    @mock.patch('magnetodb.notifier.notify')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
+    def test_update_status_on_describe_for_deleting_table_negative(
+            self, mock_repo_get, mock_repo_update, mock_notify):
+
+        context = mock.Mock(tenant='fake_tenant')
+        table_name = 'fake_table'
+        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+
+        table_info = TableInfo(
+            table_name, None, TableMeta.TABLE_STATUS_DELETING)
+        table_info.last_updated = time.time()
+
+        mock_repo_get.return_value = table_info
+
+        table_meta = storage_manager.describe_table(context, table_name)
+
+        self.assertEqual(
+            table_meta.status, TableMeta.TABLE_STATUS_DELETING)
