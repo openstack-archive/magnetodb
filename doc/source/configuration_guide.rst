@@ -297,6 +297,7 @@ storage_manager:
     - table_info_repo - TableInfoRepo object
     - concurrent_tasks - max number of started but not completed storage_driver methods invocations
     - batch_chunk_size - size of internal chunks to which original batch will be split. It is needed because large batches may impact Cassandra latency for another concurrent queries
+    - schema_operation_timeout - timeout in seconds, after which CREATING or DELETING table state will be changed to CREATE_FAILURE or DELETE_FAILURE respectively
 
 
 
@@ -430,12 +431,29 @@ Default storage manager config
                 }
             },
             "storage_manager": {
-                "type": "magnetodb.storage.manager.async_simple_impl.AsyncSimpleStorageManager",
+                "type": "magnetodb.storage.manager.queued_impl.QueuedStorageManager",
                 "kwargs": {
                     "storage_driver": "@storage_driver",
                     "table_info_repo": "@table_info_repo",
                     "concurrent_tasks": 1000,
-                    "batch_chunk_size": 25
+                    "batch_chunk_size": 25,
+                    "schema_operation_timeout": 300
                 }
             }
         }
+
+
+-----------------------------------------
+Configuring MagnetoDB Async Task Executor
+-----------------------------------------
+
+Along with MagnetoDB package comes MagnetoDB Async Task Executor which is required for the service to operate properly
+if MagnetoDB configured to use QueuedStorageManager (default). Usually only one instance of MagnetoDB Async Task Executor
+is required per MagnetoDB cluster.
+
+It is started using the following command::
+
+$ magnetodb-async-task-executor --config-file /etc/magnetodb/magnetodb-async-task-executor.conf
+
+It is configured via configuration file `etc/magnetodb/magnetodb-async-task-executor.conf`.
+It's structure mostly coincides with the structure of `magnetodb-api.conf.`
