@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
 
 class TableInfo(object):
     def __init__(self, name, schema, status, internal_name=None):
