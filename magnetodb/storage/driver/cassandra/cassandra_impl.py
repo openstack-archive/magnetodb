@@ -1162,53 +1162,73 @@ class CassandraStorageDriver(StorageDriver):
                                               expected_condition_map):
                 raise ConditionalCheckFailedException()
 
-            attribute_map = key_attribute_map.copy()
-            for attr_name, attr_action in (
-                    attribute_action_map.iteritems()):
-                if (attr_action.action ==
-                        models.UpdateItemAction.UPDATE_ACTION_PUT):
-                    attribute_map[attr_name] = attr_action.value
-                elif (attr_action.action ==
-                        models.UpdateItemAction.UPDATE_ACTION_ADD):
-                    attribute_map[attr_name] = self._get_add_attr_value(
-                        attr_name, attr_action.value, old_item
-                    )
-                else:
-                    attribute_map[attr_name] = self._get_del_attr_value(
-                        attr_name, attr_action.value, old_item
-                    )
+            if not old_item:
+                # updating non-existent item
+                attribute_map = key_attribute_map.copy()
+                delete_action_only = True
+                for attr_name, attr_action in (
+                        attribute_action_map.iteritems()):
+                    if (attr_action.action ==
+                            models.UpdateItemAction.UPDATE_ACTION_PUT or
+                        attr_action.action ==
+                            models.UpdateItemAction.UPDATE_ACTION_ADD):
+                        delete_action_only = False
+                        attribute_map[attr_name] = attr_action.value
+                if delete_action_only:
+                    # ignore DELETE action only update_item request for
+                    # non-existent item
+                    return True, old_item
+                if self._put_item_if_not_exists(table_info,
+                                                attribute_map):
+                    return True, old_item
+            else:
+                attribute_map = key_attribute_map.copy()
+                for attr_name, attr_action in (
+                        attribute_action_map.iteritems()):
+                    if (attr_action.action ==
+                            models.UpdateItemAction.UPDATE_ACTION_PUT):
+                        attribute_map[attr_name] = attr_action.value
+                    elif (attr_action.action ==
+                            models.UpdateItemAction.UPDATE_ACTION_ADD):
+                        attribute_map[attr_name] = self._get_add_attr_value(
+                            attr_name, attr_action.value, old_item
+                        )
+                    else:
+                        attribute_map[attr_name] = self._get_del_attr_value(
+                            attr_name, attr_action.value, old_item
+                        )
 
-            update_conditions = self._get_update_conditions(
-                key_attribute_map, old_item
-            )
-
-            query_builder = self._append_update_query(
-                table_info, attribute_map,
-                expected_condition_map=update_conditions
-            )
-
-            if table_info.schema.index_def_map:
-                qb_len = len(query_builder)
-
-                index_attribute_map = old_item.copy()
-                index_attribute_map.update(attribute_map)
-
-                self._append_update_indexes_queries(
-                    table_info, old_item, index_attribute_map,
-                    query_builder
+                update_conditions = self._get_update_conditions(
+                    key_attribute_map, old_item
                 )
 
-                if len(query_builder) > qb_len:
-                    query_builder.appendleft('BEGIN UNLOGGED BATCH ')
-                    query_builder.append(' APPLY BATCH')
+                query_builder = self._append_update_query(
+                    table_info, attribute_map,
+                    expected_condition_map=update_conditions
+                )
 
-            result = self.__cluster_handler.execute_query(
-                "".join(query_builder), consistent=True
-            )
+                if table_info.schema.index_def_map:
+                    qb_len = len(query_builder)
 
-            if result and not result[0]['[applied]']:
-                raise ConditionalCheckFailedException()
-            return (True, old_item)
+                    index_attribute_map = old_item.copy()
+                    index_attribute_map.update(attribute_map)
+
+                    self._append_update_indexes_queries(
+                        table_info, old_item, index_attribute_map,
+                        query_builder
+                    )
+
+                    if len(query_builder) > qb_len:
+                        query_builder.appendleft('BEGIN UNLOGGED BATCH ')
+                        query_builder.append(' APPLY BATCH')
+
+                result = self.__cluster_handler.execute_query(
+                    "".join(query_builder), consistent=True
+                )
+
+                if result and not result[0]['[applied]']:
+                    raise ConditionalCheckFailedException()
+                return True, old_item
 
     def _get_item_to_update(self, context, table_info, key_attribute_map):
         hash_key_value = key_attribute_map.get(
@@ -1308,10 +1328,12 @@ class CassandraStorageDriver(StorageDriver):
 
     def _get_update_conditions(self, key_attribute_map, old_item):
         conditions = {}
-        for attr_name, attr_value in old_item.iteritems():
-            if attr_name in key_attribute_map:
-                continue
-            conditions[attr_name] = [models.ExpectedCondition.eq(attr_value)]
+        if old_item:
+            for attr_name, attr_value in old_item.iteritems():
+                if attr_name in key_attribute_map:
+                    continue
+                conditions[attr_name] = [
+                    models.ExpectedCondition.eq(attr_value)]
         return conditions
 
     @probe.Probe(__name__)
@@ -1710,7 +1732,7 @@ class CassandraStorageDriver(StorageDriver):
         for attr_name, cond_list in cond_map.iteritems():
             for cond in cond_list:
                 if not self._condition_satisfied(
-                        row.get(attr_name, None), cond):
+                        row.get(attr_name, None) if row else None, cond):
                     return False
         return True
 
