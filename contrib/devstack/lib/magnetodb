@@ -221,7 +221,7 @@ function configure_cassandra() {
     create_keyspace_cassandra user_default_tenant
     create_keyspace_cassandra user_$DEMO_TENANT
 
-    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, PRIMARY KEY(tenant, name));' >> ~/.ccm/cql.txt
+    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, last_updated timestamp, PRIMARY KEY(tenant, name));' >> ~/.ccm/cql.txt
 }
 
 # configure_magnetodb() - Set config files, create data dirs, etc
