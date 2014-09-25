@@ -16,6 +16,7 @@
 
 import collections
 from copy import copy
+from datetime import datetime
 
 from threading import Lock
 
@@ -28,7 +29,7 @@ from magnetodb.storage.table_info_repo import TableInfoRepository
 
 class CassandraTableInfoRepository(TableInfoRepository):
     SYSTEM_TABLE_TABLE_INFO = 'magnetodb.table_info'
-    __field_list = ("schema", "internal_name", "status")
+    __field_list = ("schema", "internal_name", "status", "last_updated")
     __creating_to_active_field_list_to_update = ("internal_name", "status")
 
     def _save_table_info_to_cache(self, context, table_info):
@@ -108,6 +109,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
         return [row['name'] for row in tables]
 
     def __refresh(self, context, table_info, field_list=__field_list):
+
         query_builder = collections.deque()
         query_builder.append("SELECT ")
         query_builder.append(",".join(map('"{}"'.format, field_list)))
@@ -137,6 +139,8 @@ class CassandraTableInfoRepository(TableInfoRepository):
     def update(self, context, table_info, field_list=None):
         if not field_list:
             field_list = self.__field_list
+
+        table_info.last_updated = datetime.now()
 
         query_builder = collections.deque()
         query_builder.append(
@@ -173,7 +177,8 @@ class CassandraTableInfoRepository(TableInfoRepository):
         query_builder = collections.deque()
         query_builder.append(
             'INSERT INTO {} '
-            '(exists, tenant, name, "schema", status, internal_name)'
+            '(exists, tenant, name, "schema", status,'
+            ' internal_name, last_updated)'
             "VALUES(1, '{}', '{}'".format(
                 self.SYSTEM_TABLE_TABLE_INFO, context.tenant, table_info.name
             )
@@ -198,6 +203,9 @@ class CassandraTableInfoRepository(TableInfoRepository):
             query_builder.append(",'{}'".format(table_info.internal_name))
         else:
             query_builder.append(",null")
+
+        table_info.last_updated = datetime.now()
+        query_builder.append(", '{}'".format(table_info.last_updated))
 
         query_builder.append(") IF NOT EXISTS")
 

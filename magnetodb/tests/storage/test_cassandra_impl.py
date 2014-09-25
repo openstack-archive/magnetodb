@@ -15,6 +15,7 @@
 
 import base64
 import json
+from datetime import datetime
 from decimal import Decimal
 from blist import sortedset
 
@@ -380,13 +381,14 @@ class TestCassandraBase(unittest.TestCase):
 
         query = (
             "INSERT INTO magnetodb.table_info (tenant, name, exists, "
-            '"schema", status, internal_name) '
-            "VALUES('{}', '{}', 1, '{}', 'ACTIVE', '{}') IF NOT EXISTS"
+            '"schema", status, internal_name, last_updated) '
+            "VALUES('{}', '{}', 1, '{}', 'ACTIVE', '{}', '{}') IF NOT EXISTS"
         ).format(
             tenant, table_name,
             self.test_table_schema_with_index.to_json() if indexed else
             self.test_table_schema.to_json(),
-            internal_table_name
+            internal_table_name,
+            datetime.now()
         )
         result = self.SESSION.execute(query)
         self.assertTrue(result[0]['[applied]'])
