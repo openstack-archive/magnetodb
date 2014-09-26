@@ -17,7 +17,7 @@ import json
 
 from magnetodb.storage import models
 from magnetodb.storage.models import IndexDefinition
-from magnetodb.common.exception import ValidationException
+from magnetodb.api.amz.dynamodb.exception import AWSValidationException
 
 
 class Props():
@@ -357,20 +357,22 @@ class Parser():
 
             if dynamodb_key_type == Values.KEY_TYPE_HASH:
                 if hash_key_attr_name is not None:
-                    raise ValidationException("Only one 'HASH' key is allowed")
+                    raise AWSValidationException(
+                        "Only one 'HASH' key is allowed"
+                    )
                 hash_key_attr_name = dynamodb_key_attr_name
             elif dynamodb_key_type == Values.KEY_TYPE_RANGE:
                 if range_key_attr_name is not None:
-                    raise ValidationException(
+                    raise AWSValidationException(
                         "Only one 'RANGE' key is allowed"
                     )
                 range_key_attr_name = dynamodb_key_attr_name
             else:
-                raise ValidationException(
+                raise AWSValidationException(
                     "Only 'RANGE' or 'HASH' key types are allowed, but '{}' "
                     "is found".format(dynamodb_key_type))
         if hash_key_attr_name is None:
-            raise ValidationException("HASH key is missing")
+            raise AWSValidationException("HASH key is missing")
         if range_key_attr_name:
             return (hash_key_attr_name, range_key_attr_name)
         return (hash_key_attr_name,)
@@ -410,7 +412,7 @@ class Parser():
         try:
             range_key = key_attrs_for_projection[1]
         except IndexError:
-            raise ValidationException("Range key in index wasn't specified")
+            raise AWSValidationException("Range key in index wasn't specified")
 
         index_name = local_secondary_index_json[Props.INDEX_NAME]
 
@@ -493,7 +495,7 @@ class Parser():
     @classmethod
     def parse_typed_attr_value(cls, typed_attr_value_json):
         if len(typed_attr_value_json) != 1:
-            raise ValidationException(
+            raise AWSValidationException(
                 "Can't recognize attribute format ['{}']".format(
                     json.dumps(typed_attr_value_json)
                 )
@@ -622,12 +624,12 @@ class Parser():
         )
         if condition_type == Values.BETWEEN:
             if actual_args_count != 2:
-                raise ValidationException(
+                raise AWSValidationException(
                     "{} condition type requires exactly 2 arguments, "
                     "but {} given".format(condition_type, actual_args_count),
                 )
             if condition_args[0].attr_type != condition_args[1].attr_type:
-                raise ValidationException(
+                raise AWSValidationException(
                     "{} condition type requires arguments of the "
                     "same type, but different types given".format(
                         condition_type

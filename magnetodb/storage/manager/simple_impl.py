@@ -25,7 +25,9 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import Future
 
 from magnetodb.common.exception import TableAlreadyExistsException
+from magnetodb.common.exception import TableNotExistsException
 from magnetodb.common.exception import BackendInteractionException
+from magnetodb.common.exception import ResourceInUseException
 from magnetodb.common.exception import ValidationError
 
 from magnetodb import notifier
@@ -52,19 +54,7 @@ class SimpleStorageManager(StorageManager):
         self.__task_executor = ThreadPoolExecutor(concurrent_tasks)
         self.__task_semaphore = BoundedSemaphore(concurrent_tasks)
 
-    def create_table(self, context, table_name, table_schema):
-        table_info = TableInfo(table_name, table_schema,
-                               TableMeta.TABLE_STATUS_CREATING)
-        notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_START,
-                        table_schema)
-
-        try:
-            self._table_info_repo.save(context, table_info)
-        except TableAlreadyExistsException as e:
-            notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
-                            e.message, priority=notifier.PRIORITY_ERROR)
-            raise
-
+    def _do_create_table(self, context, table_info):
         try:
             table_info.internal_name = self._storage_driver.create_table(
                 context, table_info
@@ -79,26 +69,62 @@ class SimpleStorageManager(StorageManager):
             raise
 
         notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_END,
+                        table_info.schema)
+
+    def create_table(self, context, table_name, table_schema):
+        notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_START,
                         table_schema)
 
+        table_info = TableInfo(table_name, table_schema,
+                               TableMeta.TABLE_STATUS_CREATING)
+        try:
+            self._table_info_repo.save(context, table_info)
+        except TableAlreadyExistsException as e:
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                            e.message, priority=notifier.PRIORITY_ERROR)
+            raise
+
+        self._do_create_table(context, table_info)
+
         return TableMeta(table_info.schema, table_info.status)
+
+    def _do_delete_table(self, context, table_info):
+        self._storage_driver.delete_table(context, table_info)
+
+        self._table_info_repo.delete(context, table_info.name)
+
+        notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
+                        table_info.name)
 
     def delete_table(self, context, table_name):
         notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_START,
                         table_name)
+        try:
+            table_info = self._table_info_repo.get(context,
+                                                   table_name,
+                                                   ['status'])
+        except TableNotExistsException as e:
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                            e.message, priority=notifier.PRIORITY_ERROR)
+            raise
 
-        table_info = self._table_info_repo.get(context, table_name)
+        if table_info.status == TableMeta.TABLE_STATUS_DELETING:
+            # table is already being deleted, just return immediately
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
+                            table_name)
+            return TableMeta(table_info.schema, table_info.status)
+        elif table_info.status != TableMeta.TABLE_STATUS_ACTIVE:
+            e = ResourceInUseException()
+            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                            table_name + ' ' + e.message,
+                            priority=notifier.PRIORITY_ERROR)
+            raise e
 
         table_info.status = TableMeta.TABLE_STATUS_DELETING
 
         self._table_info_repo.update(context, table_info, ["status"])
 
-        self._storage_driver.delete_table(context, table_info)
-
-        self._table_info_repo.delete(context, table_name)
-
-        notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
-                        table_name)
+        self._do_delete_table(context, table_info)
 
         return TableMeta(table_info.schema, table_info.status)
 

@@ -17,9 +17,10 @@ from magnetodb.api.amz.dynamodb.action import DynamoDBAction
 from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
-from magnetodb.storage import models
+from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
+from magnetodb.api.amz.dynamodb.exception import AWSValidationException
 
-from magnetodb.common import exception
+from magnetodb.storage import models
 
 
 class UpdateItemDynamoDBAction(DynamoDBAction):
@@ -114,7 +115,7 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
         except Exception:
-            raise exception.ValidationException()
+            raise AWSValidationException()
 
         try:
             # update item
@@ -126,7 +127,7 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                 expected_condition_map=expected_item_conditions)
 
             if not result:
-                raise exception.AWSErrorResponseException()
+                raise AWSErrorResponseException()
 
             # format response
             response = {}
@@ -141,8 +142,7 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                 response[parser.Props.ITEM_COLLECTION_METRICS] = {
                     parser.Props.ITEM_COLLECTION_KEY: {
                         parser.Parser.format_item_attributes(
-                            models.AttributeValue(models.ATTRIBUTE_TYPE_STRING,
-                                                  "key")
+                            models.AttributeValue("S", "key")
                         )
                     },
                     parser.Props.SIZE_ESTIMATED_RANGE_GB: [0]
@@ -157,7 +157,7 @@ class UpdateItemDynamoDBAction(DynamoDBAction):
                 )
 
             return response
-        except exception.AWSErrorResponseException as e:
+        except AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise AWSErrorResponseException()
