@@ -24,3 +24,44 @@ Note::
     $ Make sure that your local.conf contains [[local|localrc]] in the first line
     $ See more about configuration of Devstack at http://devstack.org/configuration.html
     $ Also you can change other Magnetodb variables, see file lib/magnetodb
+
+
+To install behind a proxy:
+
+Add the following lines to files '/root/.bashrc', '/home/stack/.bashrc' and '/etc/profile.d/01-proxy.sh'::
+
+    http_proxy=http://xxx.xxx.xxx.xxx:yyyy
+    https_proxy=$http_proxy
+    ftp_proxy=$http_proxy
+    HTTP_PROXY=$http_proxy
+    HTTPS_PROXY=$http_proxy
+    FTP_PROXY=$http_proxy
+    export http_proxy https_proxy ftp_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY
+    alias curl="curl -x $http_proxy"
+
+Note::
+
+    User 'stack' is used as an example, you can use any other user which have rights for sudo.
+    Optionally you can also add a variable for ANT:
+        ANT_OPTS="-Dhttp.proxyHost=http://xxx.xxx.xxx.xxx -Dhttp.proxyPort=yyyy"
+        export ANT_OPTS
+    But this is not necessary.
+
+Add the following lines to file '/etc/apt/apt.conf.d/proxy'::
+
+    Acquire::http::Proxy "http://xxx.xxx.xxx.xxx:yyyy/";
+    Acquire::https::Proxy "https://xxx.xxx.xxx.xxx:yyyy/";
+    Acquire::ftp::Proxy "ftp://xxx.xxx.xxx.xxx:yyyy/";
+    Acquire::::Proxy "true";
+
+Configure git to use proxy::
+
+    $ sudo git config --global http.proxy xxx.xxx.xxx.xxx:yyyy
+
+Before starting the installation, you must relogin or open a new session.
+It is necessary for initialize the variables of environment.
+
+Note::
+
+    Do not set 'OFFLINE=True' in 'local.conf' during the first installation.
+    This option is used only if all the required packages are already installed.
