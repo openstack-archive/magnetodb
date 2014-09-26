@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb import policy
 from magnetodb import storage
 from magnetodb.api import validation
 from magnetodb.openstack.common.log import logging
@@ -30,8 +31,9 @@ class DeleteTableController(object):
 
     @probe.Probe(__name__)
     def delete_table(self, req, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+        #utils.check_project_id(req.context, project_id)
+        policy.enforce(req.context, "mdb:delete_table",
+                       {'tenant_id':project_id})
 
         validation.validate_table_name(table_name)
 
