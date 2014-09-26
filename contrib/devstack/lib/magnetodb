@@ -311,7 +311,9 @@ function start_cassandra() {
     screen_rc 'cassandra' "n=1; addr=2; while [ \\\$n -lt $CASSANDRA_AMOUNT_NODES ]; do sudo ip addr add 127.0.0.\\\${addr}/8 dev lo || [ \\\$? -eq 2 ] && true; let addr=\\\$addr+1; let n=\\\$n+1; done; ccm start"
     echo "===  Load cql.txt  ==="
     timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
-    ccm node1 cqlsh -f ~/.ccm/cql.txt
+    test -e ~/.ccm/cql.state || ccm node1 cqlsh -f ~/.ccm/cql.txt
+    rm -f ~/.ccm/cql.txt
+    echo true > ~/.ccm/cql.state
 }
 
 function start_magnetodb_streaming() {
@@ -381,6 +383,7 @@ function stop_magnetodb() {
 }
 
 function clean_magnetodb() {
+    rm -f ~/.ccm/cql.state
     ccm remove $CASSANDRA_CLUSTER_NAME
     for i in `sudo ip addr show dev lo | grep 'secondary' | awk '{print $2}'`
         do
