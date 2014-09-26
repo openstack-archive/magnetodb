@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb import policy
 from magnetodb import storage
 from magnetodb.api import validation
 from magnetodb.storage import models
@@ -35,8 +36,11 @@ class CreateTableController():
 
     @probe.Probe(__name__)
     def create_table(self, req, body, project_id):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+
+        # utils.check_project_id(req.context, project_id)
+        # Pass project_id attribute from the URL to policy engine.
+        policy.enforce(req.context, "mdb:create_table",
+                       {'tenant_id':project_id})
 
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")

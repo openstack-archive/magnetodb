@@ -1,0 +1,5 @@
+{
+    "mdb:create_table": "role:admin or tenant:%(tenant_id)s",
+    "mdb:delete_table": "role:admin or tenant:%(tenant_id)s",
+    "mdb:list_table": "!"
+}

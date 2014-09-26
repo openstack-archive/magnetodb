@@ -149,7 +149,8 @@ class AWSErrorResponseException(HTTPException):
     error_code = 'InternalServerError'
     status = '500'
 
-    def __init__(self, response_message=None, error_code=None, status=None):
+    def __init__(self, response_message=None, error_code=None, status=None,
+    action=None):
         if response_message is not None:
             self.response_message = response_message
         if error_code is not None:
