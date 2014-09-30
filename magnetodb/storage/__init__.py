@@ -357,3 +357,12 @@ def scan(context, table_name, condition_map, attributes_to_get=None,
         context, table_name, condition_map, attributes_to_get, limit,
         exclusive_start_key, consistent=False
     )
+
+
+def health_check():
+    """
+    :returns: True
+
+    :raises: BackendInteractionException
+    """
+    return __STORAGE_MANAGER_IMPL.health_check()
