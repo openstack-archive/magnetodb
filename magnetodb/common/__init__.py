@@ -12,7 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import shlex
+import string
 import sys
+
 
 if 'eventlet' in sys.modules:
     import eventlet
@@ -35,24 +39,38 @@ def is_global_env_ready():
     return __setup_complete
 
 
-def setup_global_env(program=None, args=None):
-    global __setup_complete
-    assert not __setup_complete
+def setup_global_env(default_program='magnetodb-api'):
+    def decorator(f):
+        def wrapped(*args, **local_conf):
+            global_conf = args[0] if len(args) == 1 else args[1]
+            options = dict(global_conf.items() + local_conf.items())
+            oslo_config_args = options.get("oslo_config_args")
+            program = options.get("program", default_program)
+            s = string.Template(oslo_config_args)
+            oslo_config_args = shlex.split(s.substitute(**options))
+            _setup_global_env(program, oslo_config_args)
+            return f(*args, **local_conf)
+        return wrapped
+    return decorator
 
-    from magnetodb import notifier
-    from magnetodb import storage
-    from magnetodb.common import config
-    from magnetodb.openstack.common import log
-    from magnetodb.openstack.common import gettextutils
 
-    gettextutils.install(PROJECT_NAME, lazy=False)
+def _setup_global_env(program=None, args=None):
+    if not is_global_env_ready():
+        from magnetodb import notifier
+        from magnetodb import storage
+        from magnetodb.common import config
+        from magnetodb.openstack.common import log
+        from magnetodb.openstack.common import gettextutils
 
-    config.parse_args(
-        prog=program,
-        args=args
-    )
-    log.setup(PROJECT_NAME)
-    notifier.setup()
-    storage.setup()
+        gettextutils.install(PROJECT_NAME, lazy=False)
 
-    __setup_complete = True
+        config.parse_args(
+            prog=program,
+            args=args
+        )
+        log.setup(PROJECT_NAME)
+        notifier.setup()
+        storage.setup()
+
+        global __setup_complete
+        __setup_complete = True

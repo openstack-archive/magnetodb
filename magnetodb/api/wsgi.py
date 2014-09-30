@@ -14,15 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import shlex
-import string
-
 import routes
 
 from magnetodb.common import setup_global_env
-from magnetodb.common import is_global_env_ready
 from magnetodb.common import wsgi
 
+from magnetodb.api.openstack import health_check
 from magnetodb.api.openstack.v1 import openstack_api
 from magnetodb.api.openstack.v1 import create_resource
 from magnetodb.api.openstack.v1 import create_table
@@ -91,15 +88,24 @@ class MagnetoDBApplication(wsgi.Router):
                        action="delete_table")
 
     @classmethod
+    @setup_global_env(default_program='magnetodb-api')
     def factory_method(cls, global_conf, **local_conf):
-        if not is_global_env_ready():
-            options = dict(global_conf.items() + local_conf.items())
-            oslo_config_args = options.get("oslo_config_args")
-            s = string.Template(oslo_config_args)
-            oslo_config_args = shlex.split(s.substitute(**options))
-
-            setup_global_env(
-                program=options.get("program", "magnetodb-api"),
-                args=oslo_config_args
-            )
         return cls()
+
+
+class MagnetoDBHealthCheckApplication(wsgi.Router):
+
+    """Health check API"""
+    def __init__(self, auth_uri=''):
+        mapper = routes.Mapper()
+        super(MagnetoDBHealthCheckApplication, self).__init__(mapper)
+
+        mapper.connect("/check", controller=create_resource(
+                       health_check.HealthCheckController(auth_uri)),
+                       conditions={'method': 'GET'},
+                       action="health_check")
+
+    @classmethod
+    @setup_global_env(default_program='magnetodb-api')
+    def factory_method(cls, global_conf, **local_conf):
+        return cls(global_conf.get('auth_uri', ''))
