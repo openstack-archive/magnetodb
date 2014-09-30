@@ -718,3 +718,6 @@ class SimpleStorageManager(StorageManager):
                         payload)
 
         return result
+
+    def health_check(self):
+        return self._storage_driver.health_check()
