@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import string
-import shlex
 import routes
 
 from magnetodb.api import amz
-from magnetodb.common import wsgi, is_global_env_ready, setup_global_env
+from magnetodb.api import with_global_env
+from magnetodb.common import wsgi
 
 
 class DynamoDBApiApplication(wsgi.Router):
@@ -37,16 +36,7 @@ class DynamoDBApiApplication(wsgi.Router):
                        conditions={'method': 'POST'},
                        action="process_request")
 
-    @classmethod
-    def factory_method(cls, global_conf, **local_conf):
-        if not is_global_env_ready():
-            options = dict(global_conf.items() + local_conf.items())
-            oslo_config_args = options.get("oslo_config_args")
-            s = string.Template(oslo_config_args)
-            oslo_config_args = shlex.split(s.substitute(**options))
 
-            setup_global_env(
-                program=options.get("program", "magnetodb-api"),
-                args=oslo_config_args
-            )
-        return cls()
+@with_global_env(default_program='magnetodb-api')
+def app_factory(global_conf, **local_conf):
+    return DynamoDBApiApplication()

@@ -45,7 +45,7 @@ CONDITION_TO_OP = {
 USER_PREFIX = 'u_'
 USER_PREFIX_LENGTH = len(USER_PREFIX)
 
-SYSTEM_KEYSPACE = 'magnetodb'
+SYSTEM_TABLE_TABLE_INFO = 'magnetodb.table_info'
 SYSTEM_COLUMN_INDEX_NAME = 'iname'
 SYSTEM_COLUMN_INDEX_VALUE_STRING = 'ival_str'
 SYSTEM_COLUMN_INDEX_VALUE_NUMBER = 'ival_num'
@@ -1822,3 +1822,11 @@ class CassandraStorageDriver(StorageDriver):
             return attr_val in cond_args
 
         return False
+
+    def health_check(self):
+        query = "SELECT * FROM {} LIMIT 1".format(SYSTEM_TABLE_TABLE_INFO)
+        try:
+            self.__cluster_handler.execute_query(query, consistent=True)
+        except Exception:
+            raise exception.BackendInteractionException()
+        return True

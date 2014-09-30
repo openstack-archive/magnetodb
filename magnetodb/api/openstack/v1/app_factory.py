@@ -14,16 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import shlex
-import string
-from magnetodb.api.openstack.v1 import create_resource
-
 import routes
 
-from magnetodb.common import setup_global_env
-from magnetodb.common import is_global_env_ready
+from magnetodb.api import with_global_env
 from magnetodb.common import wsgi
 
+from magnetodb.api.openstack.v1 import create_resource
 from magnetodb.api.openstack.v1.request import get_item
 from magnetodb.api.openstack.v1.request import batch_get_item
 from magnetodb.api.openstack.v1.request import batch_write_item
@@ -123,16 +119,7 @@ class MagnetoDBApplication(wsgi.Router):
             action="delete_table"
         )
 
-    @classmethod
-    def factory_method(cls, global_conf, **local_conf):
-        if not is_global_env_ready():
-            options = dict(global_conf.items() + local_conf.items())
-            oslo_config_args = options.get("oslo_config_args")
-            s = string.Template(oslo_config_args)
-            oslo_config_args = shlex.split(s.substitute(**options))
 
-            setup_global_env(
-                program=options.get("program", "magnetodb-api"),
-                args=oslo_config_args
-            )
-        return cls()
+@with_global_env(default_program='magnetodb-api')
+def app_factory(global_conf, **local_conf):
+    return MagnetoDBApplication()
