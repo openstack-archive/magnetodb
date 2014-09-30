@@ -12,7 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import shlex
+import string
 import sys
+
 
 if 'eventlet' in sys.modules:
     import eventlet
@@ -35,24 +39,32 @@ def is_global_env_ready():
     return __setup_complete
 
 
-def setup_global_env(program=None, args=None):
-    global __setup_complete
-    assert not __setup_complete
+def setup_global_env(f):
+    def wrapped(cls, global_conf, **local_conf):
+        if not is_global_env_ready():
+            from magnetodb import notifier
+            from magnetodb import storage
+            from magnetodb.common import config
+            from magnetodb.openstack.common import log
+            from magnetodb.openstack.common import gettextutils
 
-    from magnetodb import notifier
-    from magnetodb import storage
-    from magnetodb.common import config
-    from magnetodb.openstack.common import log
-    from magnetodb.openstack.common import gettextutils
+            options = dict(global_conf.items() + local_conf.items())
+            oslo_config_args = options.get("oslo_config_args")
+            program = options.get("program", "magnetodb-api")
+            s = string.Template(oslo_config_args)
+            oslo_config_args = shlex.split(s.substitute(**options))
 
-    gettextutils.install(PROJECT_NAME, lazy=False)
+            gettextutils.install(PROJECT_NAME, lazy=False)
 
-    config.parse_args(
-        prog=program,
-        args=args
-    )
-    log.setup(PROJECT_NAME)
-    notifier.setup()
-    storage.setup()
+            config.parse_args(
+                prog=program,
+                args=oslo_config_args
+            )
+            log.setup(PROJECT_NAME)
+            notifier.setup()
+            storage.setup()
 
-    __setup_complete = True
+            global __setup_complete
+            __setup_complete = True
+        return f(cls, global_conf, **local_conf)
+    return wrapped
