@@ -158,8 +158,8 @@ class Router(object):
 class Request(webob.Request):
     """Add some Openstack API-specific logic to the base webob.Request."""
 
-    default_request_content_types = ('application/json')
-    default_accept_types = ('application/json')
+    default_request_content_types = ('application/json',)
+    default_accept_types = ('application/json',)
     default_accept_type = 'application/json'
 
     def best_match_content_type(self, supported_content_types=None):
