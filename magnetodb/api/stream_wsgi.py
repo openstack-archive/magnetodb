@@ -15,13 +15,11 @@
 
 import json
 import re
-import shlex
-import string
 
 from threading import Event
 import Queue
 
-from magnetodb import common
+from magnetodb.common import setup_global_env
 from magnetodb.openstack.common import log as logging
 from magnetodb import notifier
 from magnetodb import storage
@@ -34,16 +32,8 @@ LOG = logging.getLogger(__name__)
 MAX_FUTURES = 100
 
 
+@setup_global_env(default_program='magnetodb-streaming-api')
 def app_factory(global_conf, **local_conf):
-    if not common.is_global_env_ready():
-        options = dict(global_conf.items() + local_conf.items())
-        oslo_config_args = options.get("oslo_config_args")
-        s = string.Template(oslo_config_args)
-        oslo_config_args = shlex.split(s.substitute(**options))
-        common.setup_global_env(
-            program=options.get("program", "magnetodb-stream-api"),
-            args=oslo_config_args)
-
     return bulk_load_app
 
 
