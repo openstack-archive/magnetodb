@@ -24,7 +24,7 @@ LOG = logging.getLogger(__name__)
 
 ATTRIBUTE_NAME_PATTERN = re.compile("^\w+")
 TABLE_NAME_PATTERN = re.compile("^\w+")
-INDEX_NAME_PATTERN = re.compile("^\w+")
+INDEX_NAME_PATTERN = re.compile("^\w{3,255}$")
 
 WRONG_TYPE_MSG = _(
     "Wrong '%(property_name)s' type. %(json_type)s is expected, "
