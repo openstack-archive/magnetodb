@@ -16,6 +16,8 @@
 import json
 
 from collections import deque
+from hashlib import md5
+from re import sub
 
 from magnetodb.common import exception
 from magnetodb.common.exception import ConditionalCheckFailedException
@@ -71,6 +73,10 @@ SYSTEM_COLUMN_ATTR_EXIST = 'attr_exist'
 DEFAULT_STRING_VALUE = models.AttributeValue('S', decoded_value='')
 DEFAULT_NUMBER_VALUE = models.AttributeValue('N', decoded_value=0)
 DEFAULT_BLOB_VALUE = models.AttributeValue('B', decoded_value='')
+
+INVALID_IDENTIFIER_CHARS = '[\.\-]'
+INVALID_CHARS_REPLACEMENT = '_'
+MAX_IDENTIFIER_LENGTH = 48
 
 
 def _decode_predefined_attr(table_info, cas_name, cas_val, prefix=USER_PREFIX):
@@ -143,8 +149,10 @@ class CassandraStorageDriver(StorageDriver):
 
         table_schema = table_info.schema
 
-        cas_table_name = USER_PREFIX + table_info.name
-        cas_keyspace = USER_PREFIX + context.tenant
+        cas_table_name = USER_PREFIX + self._get_valid_identifier(
+            table_info.name)
+        cas_keyspace = USER_PREFIX + self._get_valid_identifier(
+            context.tenant)
 
         self._create_keyspace_if_not_exists(cas_keyspace)
         key_count = len(table_schema.key_attributes)
@@ -1830,3 +1838,17 @@ class CassandraStorageDriver(StorageDriver):
         except Exception:
             raise exception.BackendInteractionException()
         return True
+
+    @staticmethod
+    def _get_valid_identifier(name):
+        valid_name = sub(INVALID_IDENTIFIER_CHARS,
+                         INVALID_CHARS_REPLACEMENT,
+                         name[:MAX_IDENTIFIER_LENGTH - USER_PREFIX_LENGTH])
+        if valid_name == name:
+            return valid_name
+        else:
+            # human readable prefix + name collision avoidance hash
+            name_hash = md5(name).hexdigest()
+            return valid_name[:MAX_IDENTIFIER_LENGTH - USER_PREFIX_LENGTH -
+                              len(name_hash) - 1] + "_" + name_hash
+
