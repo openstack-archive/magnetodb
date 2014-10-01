@@ -34,7 +34,8 @@ class APITest(unittest.TestCase):
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
     @mock.patch(
-        "magnetodb.common.middleware.fault.FaultWrapper.process_request"
+        "magnetodb.common.middleware.rate_limit.RateLimitMiddleware."
+        "process_request"
     )
     def test_connection_header(self, magnetodb_app_mock):
         magnetodb_app_mock.return_value = "{}"
