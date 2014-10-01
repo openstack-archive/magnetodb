@@ -22,9 +22,10 @@ from magnetodb.openstack.common.log import logging
 
 LOG = logging.getLogger(__name__)
 
+# see http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 ATTRIBUTE_NAME_PATTERN = re.compile("^\w+")
-TABLE_NAME_PATTERN = re.compile("^\w+")
-INDEX_NAME_PATTERN = re.compile("^\w+")
+TABLE_NAME_PATTERN = re.compile("^[a-zA-Z0-9_\-\.]{3,255}$")
+INDEX_NAME_PATTERN = re.compile("^[a-zA-Z0-9_\-\.]{3,255}$")
 
 WRONG_TYPE_MSG = _(
     "Wrong '%(property_name)s' type. %(json_type)s is expected, "
