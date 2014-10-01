@@ -14,17 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from routes.base import Route
-
 from magnetodb.common import wsgi
 from magnetodb.openstack.common.log import logging
-
-from magnetodb.api.openstack.v1 import put_item
-from magnetodb.api.openstack.v1 import get_item
-from magnetodb.api.openstack.v1 import batch_get_item
-from magnetodb.api.openstack.v1 import batch_write_item
-from magnetodb.api.openstack.v1 import delete_item
-from magnetodb.api.openstack.v1 import update_item
 
 
 LOG = logging.getLogger(__name__)
@@ -43,38 +34,3 @@ def create_resource(controller, options=None):
     serializer = wsgi.ResponseSerializer(body_serializers=body_serializers)
 
     return wsgi.Resource(controller, deserializer, serializer)
-
-
-openstack_api = [
-    Route("batch_write_item", "/{project_id}/data/batch_write_item",
-          conditions={'method': 'POST'},
-          controller=create_resource(
-              batch_write_item.BatchWriteItemController()),
-          action="process_request"),
-
-    Route("put_item", "/{project_id}/data/tables/{table_name}/put_item",
-          conditions={'method': 'POST'},
-          controller=create_resource(put_item.PutItemController()),
-          action="process_request"),
-
-    Route("get_item", "/{project_id}/data/tables/{table_name}/get_item",
-          conditions={'method': 'POST'},
-          controller=create_resource(get_item.GetItemController()),
-          action="process_request"),
-
-    Route("delete_item", "/{project_id}/data/tables/{table_name}/delete_item",
-          conditions={'method': 'POST'},
-          controller=create_resource(delete_item.DeleteItemController()),
-          action="process_request"),
-
-    Route("update_item", "/{project_id}/data/tables/{table_name}/update_item",
-          conditions={'method': 'POST'},
-          controller=create_resource(update_item.UpdateItemController()),
-          action="process_request"),
-
-    Route("batch_get_item", "/{project_id}/data/batch_get_item",
-          conditions={'method': 'POST'},
-          controller=create_resource(
-              batch_get_item.BatchGetItemController()),
-          action="process_request"),
-]
