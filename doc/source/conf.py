@@ -35,7 +35,6 @@ def get_file_contents(filename):
 extensions = [
     'sphinx.ext.autodoc',
     'sphinxcontrib.httpdomain',
-    'sphinx.ext.intersphinx',
 ]
 
 if not on_rtd:
@@ -94,6 +93,3 @@ html_last_updated_fmt = os.popen(git_cmd).read()
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = '%sdoc %project'
-
-# Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
