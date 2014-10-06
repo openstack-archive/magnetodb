@@ -47,6 +47,9 @@ class FakeContext(object):
     def __init__(self, tenant):
         self.tenant = tenant
 
+    def to_dict(self):
+        return {'tenant': self.tenant}
+
 
 class TestCassandraBase(unittest.TestCase):
     TENANT_PER_TEST_METHOD = "test"
@@ -281,7 +284,8 @@ class TestCassandraBase(unittest.TestCase):
     def setUpClass(cls):
         super(TestCassandraBase, cls).setUpClass()
 
-        cls.notifier_patcher = mock.patch('magnetodb.notifier.notify')
+        cls.notifier_patcher = mock.patch('magnetodb.notifier.get_notifier')
+        cls.notifier_patcher.return_value = mock.Mock()
         cls.notifier_patcher.start()
 
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)

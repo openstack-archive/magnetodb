@@ -175,11 +175,10 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         mock_get_item.has_calls(expected_get)
         self.assertEqual(unprocessed_items, [])
 
-    @mock.patch('magnetodb.notifier.notify')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
     def test_update_status_on_describe_for_creating_table(
-            self, mock_repo_get, mock_repo_update, mock_notify):
+            self, mock_repo_get, mock_repo_update):
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
@@ -196,11 +195,10 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         self.assertEqual(
             table_meta.status, TableMeta.TABLE_STATUS_CREATE_FAILED)
 
-    @mock.patch('magnetodb.notifier.notify')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
     def test_update_status_on_describe_for_creating_table_negative(
-            self, mock_repo_get, mock_repo_update, mock_notify):
+            self, mock_repo_get, mock_repo_update):
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
@@ -217,11 +215,10 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         self.assertEqual(
             table_meta.status, TableMeta.TABLE_STATUS_CREATING)
 
-    @mock.patch('magnetodb.notifier.notify')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
     def test_update_status_on_describe_for_deleting_table(
-            self, mock_repo_get, mock_repo_update, mock_notify):
+            self, mock_repo_get, mock_repo_update):
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
@@ -239,11 +236,10 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         self.assertEqual(
             table_meta.status, TableMeta.TABLE_STATUS_DELETE_FAILED)
 
-    @mock.patch('magnetodb.notifier.notify')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
     def test_update_status_on_describe_for_deleting_table_negative(
-            self, mock_repo_get, mock_repo_update, mock_notify):
+            self, mock_repo_get, mock_repo_update):
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'

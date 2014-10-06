@@ -22,10 +22,6 @@ import time
 
 from concurrent.futures import Future
 
-from oslo.config import cfg
-
-from magnetodb.openstack.common.notifier import test_notifier
-
 from magnetodb.tests.unittests.common.notifier.test_notification \
     import TestNotify
 from magnetodb.tests.unittests.common.notifier.test_notification \
@@ -44,7 +40,7 @@ class TestNotifyStorageManager(TestNotify):
 
     @mock.patch('magnetodb.storage.table_info_repo')
     def test_notify_create_table_async(self, mock_table_info_repo):
-        TestNotify.cleanup_test_notifier()
+        self.cleanup_test_notifier()
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
@@ -60,7 +56,7 @@ class TestNotifyStorageManager(TestNotify):
         # wait for async create table call to finish
         for i in range(10):
             if (mock_table_info_repo.update.called and
-                    len(test_notifier.NOTIFICATIONS) == 2):
+                    len(self.get_notifications()) == 2):
                 break
             else:
                 time.sleep(1)
@@ -71,19 +67,17 @@ class TestNotifyStorageManager(TestNotify):
         self.assertTrue(mock_storage_driver.create_table.called)
 
         # check notification queue
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
+        self.assertEqual(len(self.get_notifications()), 2)
 
-        start_event = test_notifier.NOTIFICATIONS[0]
-        end_event = test_notifier.NOTIFICATIONS[1]
+        start_event = self.get_notifications()[0]
+        end_event = self.get_notifications()[1]
 
-        self.assertEqual(start_event['priority'],
-                         cfg.CONF.default_notification_level)
+        self.assertEqual(start_event['priority'], 'INFO')
         self.assertEqual(start_event['event_type'],
                          notifier.EVENT_TYPE_TABLE_CREATE_START)
         self.assertEqual(start_event['payload'], table_schema)
 
-        self.assertEqual(end_event['priority'],
-                         cfg.CONF.default_notification_level)
+        self.assertEqual(end_event['priority'], 'INFO')
         self.assertEqual(end_event['event_type'],
                          notifier.EVENT_TYPE_TABLE_CREATE_END)
         self.assertEqual(end_event['payload'], table_schema)
@@ -97,7 +91,7 @@ class TestNotifyStorageManager(TestNotify):
 
     @mock.patch('magnetodb.storage.table_info_repo')
     def test_notify_delete_table_async(self, mock_table_info_repo):
-        TestNotify.cleanup_test_notifier()
+        self.cleanup_test_notifier()
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
@@ -120,7 +114,7 @@ class TestNotifyStorageManager(TestNotify):
         # wait for async delete table call to finish
         for i in range(10):
             if (mock_table_info_repo.delete.called and
-                    len(test_notifier.NOTIFICATIONS) == 2):
+                    len(self.get_notifications()) == 2):
                 # delete_table method of mock_storage_driver has been called
                 break
             else:
@@ -132,19 +126,17 @@ class TestNotifyStorageManager(TestNotify):
         self.assertTrue(mock_table_info_repo.delete.called)
 
         # check notification queue
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
+        self.assertEqual(len(self.get_notifications()), 2)
 
-        start_event = test_notifier.NOTIFICATIONS[0]
-        end_event = test_notifier.NOTIFICATIONS[1]
+        start_event = self.get_notifications()[0]
+        end_event = self.get_notifications()[1]
 
-        self.assertEqual(start_event['priority'],
-                         cfg.CONF.default_notification_level)
+        self.assertEqual(start_event['priority'], 'INFO')
         self.assertEqual(start_event['event_type'],
                          notifier.EVENT_TYPE_TABLE_DELETE_START)
         self.assertEqual(start_event['payload'], table_name)
 
-        self.assertEqual(end_event['priority'],
-                         cfg.CONF.default_notification_level)
+        self.assertEqual(end_event['priority'], 'INFO')
         self.assertEqual(end_event['event_type'],
                          notifier.EVENT_TYPE_TABLE_DELETE_END)
         self.assertEqual(end_event['payload'], table_name)
@@ -169,7 +161,7 @@ class TestNotifyStorageManager(TestNotify):
     def test_notify_batch_write(self, mock_put_item, mock_delete_item,
                                 mock_repo_get, mock_validate_table_is_active,
                                 mock_validate_table_schema, mock_batch_write):
-        TestNotify.cleanup_test_notifier()
+        self.cleanup_test_notifier()
 
         future = Future()
         future.set_result(True)
@@ -213,19 +205,17 @@ class TestNotifyStorageManager(TestNotify):
         storage_manager.execute_write_batch(context, request_map)
 
         # check notification queue
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
+        self.assertEqual(len(self.get_notifications()), 2)
 
-        start_event = test_notifier.NOTIFICATIONS[0]
-        end_event = test_notifier.NOTIFICATIONS[1]
+        start_event = self.get_notifications()[0]
+        end_event = self.get_notifications()[1]
 
-        self.assertEqual(start_event['priority'],
-                         cfg.CONF.default_notification_level)
+        self.assertEqual(start_event['priority'], 'INFO')
         self.assertEqual(start_event['event_type'],
                          notifier.EVENT_TYPE_DATA_BATCHWRITE_START)
         self.assertEqual(len(start_event['payload']), len(request_map))
 
-        self.assertEqual(end_event['priority'],
-                         cfg.CONF.default_notification_level)
+        self.assertEqual(end_event['priority'], 'INFO')
         self.assertEqual(end_event['event_type'],
                          notifier.EVENT_TYPE_DATA_BATCHWRITE_END)
         self.assertEqual(len(end_event['payload']['write_request_map']),
