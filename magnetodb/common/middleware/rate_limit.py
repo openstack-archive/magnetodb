@@ -26,6 +26,8 @@ from magnetodb.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
+NOTIFIER = notifier.NOTIFIER
+
 
 class RateLimitMiddleware(wsgi.Middleware):
     def __init__(self, app, options):
@@ -51,8 +53,8 @@ class RateLimitMiddleware(wsgi.Middleware):
             LOG.debug('Request rate for tenant {} exceeded preconfigured'
                       ' limit {}. Request rejected.',
                       tenant_id, self.rps_per_tenant)
-            notifier.notify({}, notifier.EVENT_TYPE_REQUEST_RATE_LIMITED,
-                            tenant_id)
+            NOTIFIER.info({}, notifier.EVENT_TYPE_REQUEST_RATE_LIMITED,
+                          tenant_id)
             raise exception.RequestQuotaExceeded()
 
         self.last_time[tenant_id] = now

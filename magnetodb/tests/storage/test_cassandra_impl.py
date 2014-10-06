@@ -279,7 +279,7 @@ class TestCassandraBase(unittest.TestCase):
     def setUpClass(cls):
         super(TestCassandraBase, cls).setUpClass()
 
-        cls.notifier_patcher = mock.patch('magnetodb.notifier.notify')
+        cls.notifier_patcher = mock.patch('magnetodb.notifier.NOTIFIER.notify')
         cls.notifier_patcher.start()
 
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
