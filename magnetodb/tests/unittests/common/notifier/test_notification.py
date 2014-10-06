@@ -15,10 +15,8 @@
 
 import unittest
 
-from magnetodb.openstack.common.notifier import api as notifier_api
-from magnetodb.openstack.common.notifier import test_notifier
-
 from oslo.config import cfg
+from oslo.messaging.notify import _impl_test
 
 
 DATETIMEFORMAT = "%Y-%m-%d %H:%M:%S.%f"
@@ -34,19 +32,19 @@ class TestNotify(unittest.TestCase):
 
     @classmethod
     def cleanup_test_notifier(cls):
-        test_notifier.NOTIFICATIONS = []
+        _impl_test.reset()
 
     @classmethod
-    def setup_notification_driver(cls, notification_driver=None):
+    def setup_notification_driver(cls):
         # clean up the notification queues and drivers
         cls.cleanup_test_notifier()
-        notifier_api._reset_drivers()
-
-        if notification_driver is None:
-            notification_driver = [test_notifier.__name__]
-
-        CONF.set_override("notification_driver", notification_driver)
 
     @classmethod
     def setUpClass(cls):
-        cls.setup_notification_driver(notification_driver=None)
+        cls.setup_notification_driver()
+
+    @classmethod
+    def get_notifications(cls):
+        return [message
+                for (ctxt, message, priority, retry)
+                in _impl_test.NOTIFICATIONS]

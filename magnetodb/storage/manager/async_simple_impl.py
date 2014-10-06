@@ -30,6 +30,7 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
                                       concurrent_tasks, batch_chunk_size)
 
     def _do_create_table(self, context, table_info):
+        ctxt = context.to_dict()
         future = self._execute_async(self._storage_driver.create_table,
                                      context, table_info)
 
@@ -40,21 +41,23 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
                 self._table_info_repo.update(
                     context, table_info, ["status", "internal_name"]
                 )
-                notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_END,
-                                table_info.schema)
+                self._notifier.info(
+                    ctxt, notifier.EVENT_TYPE_TABLE_CREATE_END,
+                    table_info.schema)
             else:
                 table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
                 self._table_info_repo.update(
                     context, table_info, ["status"]
                 )
-                notifier.notify(
-                    context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
-                    future.exception(), priority=notifier.PRIORITY_ERROR
+                self._notifier.error(
+                    ctxt, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                    future.exception()
                 )
 
         future.add_done_callback(callback)
 
     def _do_delete_table(self, context, table_info):
+        ctxt = context.to_dict()
         future = self._execute_async(self._storage_driver.delete_table,
                                      context, table_info)
 
@@ -63,15 +66,16 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
                 self._table_info_repo.delete(
                     context, table_info.name
                 )
-                notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
-                                table_info.name)
+                self._notifier.info(
+                    ctxt, notifier.EVENT_TYPE_TABLE_DELETE_END,
+                    table_info.name)
             else:
                 table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
                 self._table_info_repo.update(
                     context, table_info, ["status"]
                 )
-                notifier.notify(
-                    context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                self._notifier.error(
+                    ctxt, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                     future.exception(), priority=notifier.PRIORITY_ERROR
                 )
 
