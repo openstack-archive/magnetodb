@@ -60,8 +60,8 @@ class MagnetoDBUpdateItemTest(MagnetoDBTestCase):
                                         consistent_read=True)
         self.assertEqual(get_resp[1]['item']['ForumName'],
                          {'S': 'forum name'})
-        self.assertEqual(get_resp[1]['item']['Tags'],
-                         {'SS': ['tag set value']})
+        self.assertEqual(set(get_resp[1]['item']['Tags']['SS']),
+                         {'tag set value'})
 
     def test_update_item_non_existent_item_mixed_actions(self):
         self.table_name = rand_name().replace('-', '')
@@ -109,8 +109,8 @@ class MagnetoDBUpdateItemTest(MagnetoDBTestCase):
                          {'S': 'forum name 2'})
         self.assertEqual(get_resp2[1]['item']['LastPostedBy'],
                          {'S': 'user1@test.com'})
-        self.assertEqual(get_resp2[1]['item']['Tags'],
-                         {'SS': ['tag set value 1', 'tag set value 2']})
+        self.assertEqual(set(get_resp2[1]['item']['Tags']['SS']),
+                         {'tag set value 1', 'tag set value 2'})
 
     def test_update_item_non_existent_item_delete_only_actions(self):
         self.table_name = rand_name().replace('-', '')
@@ -152,3 +152,58 @@ class MagnetoDBUpdateItemTest(MagnetoDBTestCase):
                                          consistent_read=True)
         # DELETE only actions should be ignored. Response should be empty.
         self.assertEqual(get_resp3[1], {})
+
+    def test_update_item_add_existing_set(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'ForumName', 'attribute_type': 'S'},
+             {'attribute_name': 'Tags', 'attribute_type': 'SS'}],
+            self.table_name,
+            [{'attribute_name': 'ForumName', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        key = {
+            "ForumName": {
+                "S": "forum name"
+            }
+        }
+        item = {
+            "ForumName": {"S": "forum name"},
+            "Tags": {"SS": ["tag set value 1",
+                            "tag set value 2",
+                            "tag set value 3"]},
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+
+        get_resp = self.client.get_item(self.table_name,
+                                        {"ForumName": {"S": 'forum name'}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item']['ForumName'],
+                         {'S': 'forum name'})
+        self.assertEqual(set(get_resp[1]['item']['Tags']['SS']),
+                         {"tag set value 1", "tag set value 2",
+                          "tag set value 3"})
+
+        # add an old value and a new value to set, old value should be ignored
+        attribute_updates = {
+            "Tags": {
+                "action": "ADD",
+                "value": {
+                    "SS": ["tag set new value 1",
+                           "tag set value 2"]
+                }
+            }
+        }
+        update_resp = self.client.update_item(
+            self.table_name, key, attribute_updates=attribute_updates,
+            expected=None, time_to_live=None, return_values=None)
+
+        self.assertEqual(update_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"ForumName": {"S": 'forum name'}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item']['ForumName'],
+                         {'S': 'forum name'})
+        self.assertEqual(set(get_resp[1]['item']['Tags']['SS']),
+                         {"tag set value 1", "tag set value 2",
+                          "tag set value 3", "tag set new value 1"})
