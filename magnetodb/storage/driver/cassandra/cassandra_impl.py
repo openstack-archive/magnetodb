@@ -1313,7 +1313,7 @@ class CassandraStorageDriver(StorageDriver):
         if attr_value.is_set:
             return models.AttributeValue(
                 old_item[attr_name].attr_type,
-                decoded_value=old_item[attr_name].value.union(
+                decoded_value=old_item[attr_name].decoded_value.union(
                     attr_value.decoded_value
                 )
             )
