@@ -26,6 +26,7 @@ from magnetodb.common import exception
 
 from cassandra import cluster
 from cassandra import query
+from magnetodb import notifier
 from magnetodb.common.cassandra.cluster_handler import ClusterHandler
 from magnetodb.storage import models
 from magnetodb.storage.driver.cassandra import cassandra_impl
@@ -279,8 +280,8 @@ class TestCassandraBase(unittest.TestCase):
     def setUpClass(cls):
         super(TestCassandraBase, cls).setUpClass()
 
-        cls.notifier_patcher = mock.patch('magnetodb.notifier.notify')
-        cls.notifier_patcher.start()
+        cls.original_notifier = notifier.NOTIFIER
+        notifier.NOTIFIER = mock.Mock()
 
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
         cluster_hadler = ClusterHandler(TEST_CONNECTION, query_timeout=300)
@@ -318,7 +319,7 @@ class TestCassandraBase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         super(TestCassandraBase, cls).tearDownClass()
-        cls.notifier_patcher.stop()
+        notifier.NOTIFIER = cls.original_notifier
         if cls._tenant_scope == cls.TENANT_PER_TEST_CLASS:
             cls._drop_tenant(cls.tenant)
         cls.CLUSTER.shutdown()
