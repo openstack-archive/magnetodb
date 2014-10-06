@@ -65,8 +65,13 @@ class SchemaEndpoint(object):
         try:
             table_info = self._table_info_repo.get(context, table_name)
         except TableNotExistsException as e:
-            notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
-                            e.message, priority=notifier.PRIORITY_ERROR)
+            notifier.get_notifier().error(
+                ctx,
+                notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                dict(
+                    table_name=table_name,
+                    message=e.message
+                ))
             LOG.error("Create table failed."
                       " Table info for table '%s' does not exist in repo",
                       table_name)
@@ -74,9 +79,13 @@ class SchemaEndpoint(object):
 
         if table_info.status != models.TableMeta.TABLE_STATUS_CREATING:
             e = ResourceInUseException()
-            notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
-                            table_name + ' ' + e.message,
-                            priority=notifier.PRIORITY_ERROR)
+            notifier.get_notifier().error(
+                ctx,
+                notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                dict(
+                    table_name=table_name,
+                    message=e.message
+                ))
 
             LOG.error("Create table failed."
                       " Table '%s' is in %s state but %s is expexcted",
@@ -94,15 +103,18 @@ class SchemaEndpoint(object):
             table_info.internal_name = internal_name
             self._table_info_repo.update(
                 context, table_info, ["status", "internal_name"])
-            notifier.notify(context, notifier.EVENT_TYPE_TABLE_CREATE_END,
-                            table_name)
+            notifier.get_notifier().info(
+                ctx, notifier.EVENT_TYPE_TABLE_CREATE_END, table_name)
 
             LOG.debug("Table '%s' created", table_name)
         except Exception as e:
-            notifier.notify(
-                context, notifier.EVENT_TYPE_TABLE_CREATE_ERROR, e,
-                priority=notifier.PRIORITY_ERROR
-            )
+            notifier.get_notifier().error(
+                ctx,
+                notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                dict(
+                    table_name=table_name,
+                    message=e.message
+                ))
             table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
             self._table_info_repo.update(context, table_info, ["status"])
 
@@ -118,8 +130,13 @@ class SchemaEndpoint(object):
         try:
             table_info = self._table_info_repo.get(context, table_name)
         except TableNotExistsException as e:
-            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                            e.message, priority=notifier.PRIORITY_ERROR)
+            notifier.get_notifier().error(
+                ctx,
+                notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                dict(
+                    table_name=table_name,
+                    message=e.message
+                ))
 
             LOG.error("Delete table failed."
                       " Table info for table '%s' does not exist in repo",
@@ -129,9 +146,13 @@ class SchemaEndpoint(object):
 
         if table_info.status != models.TableMeta.TABLE_STATUS_DELETING:
             e = ResourceInUseException()
-            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                            table_name + ' ' + e.message,
-                            priority=notifier.PRIORITY_ERROR)
+            notifier.get_notifier().error(
+                ctx,
+                notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                dict(
+                    table_name=table_name,
+                    message=e.message
+                ))
 
             LOG.error("Delete table failed."
                       " Table '%s' is in %s state but %s is expected",
@@ -144,14 +165,17 @@ class SchemaEndpoint(object):
         try:
             self._storage_driver.delete_table(context, table_info)
             self._table_info_repo.delete(context, table_name)
-            notifier.notify(context, notifier.EVENT_TYPE_TABLE_DELETE_END,
-                            table_name)
+            notifier.get_notifier().info(
+                ctx, notifier.EVENT_TYPE_TABLE_DELETE_END, table_name)
             LOG.debug("Table '%s' deleted", table_name)
         except Exception as e:
-            notifier.notify(
-                context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR, e,
-                priority=notifier.PRIORITY_ERROR
-            )
+            notifier.get_notifier().error(
+                ctx,
+                notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                dict(
+                    table_name=table_name,
+                    message=e.message
+                ))
             table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
             self._table_info_repo.update(context, table_info, ["status"])
 
