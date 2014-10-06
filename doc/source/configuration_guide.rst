@@ -150,12 +150,11 @@ Notifications can be sent when tables are created, or deleted, or data items are
  - notification_service: together with default_publisher_id, this becomes the publisher_id (for example: magnetodb.myhost.com)
 
 <notification engine property>
- - notification_driver: magnetodb.openstack.common.notifier.no_op_notifier (do nothing driver)
- - notification_driver = magnetodb.openstack.common.notifier.log_notifier (logging driver)
- - notification_driver = magnetodb.openstack.common.notifier.rpc_notifier (RPC driver)
- - default_notification_level: default_notification_level is used to form actual topic name(s) or to set logging level
+ - notification_driver = no_op (do nothing driver)
+ - notification_driver = log (logging driver)
+ - notification_driver = messaging (RPC driver)
  - default_publisher_id: default_publisher_id is a part of the notification payload
- - notification_topics: defined in rpc_notifier, can be comma separated values. The actual topic names will be %s.%(default_notification_level)s
+ - notification_topics: defined in messaging driver , can be comma separated values. AMQP topic used for OpenStack notifications.
 
 Note: notification_driver can be defined multiple times.
 

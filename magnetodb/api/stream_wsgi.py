@@ -62,6 +62,7 @@ def make_put_item(item):
 
 def bulk_load_app(environ, start_response):
     context = environ['webob.adhoc_attrs']['context']
+    ctxt = context.to_dict()
 
     path = environ['PATH_INFO']
 
@@ -70,8 +71,10 @@ def bulk_load_app(environ, start_response):
     if not re.match("^/v1/\w+/data/tables/\w+/bulk_load$", path):
         start_response('404 Not found', [('Content-Type', 'text/html')])
         yield 'Incorrect url. Please check it and try again\n'
-        notifier.notify(context, notifier.EVENT_TYPE_STREAMING_PATH_ERROR,
-                        path, priority=notifier.PRIORITY_ERROR)
+        notifier.get_notifier().error(
+            ctxt,
+            notifier.EVENT_TYPE_STREAMING_PATH_ERROR,
+            {'path': path})
         return
 
     url_comp = path.split('/')
@@ -82,7 +85,10 @@ def bulk_load_app(environ, start_response):
 
     utils.check_project_id(context, project_id)
 
-    notifier.notify(context, notifier.EVENT_TYPE_STREAMING_DATA_START, path)
+    notifier.get_notifier().info(
+        ctxt,
+        notifier.EVENT_TYPE_STREAMING_DATA_START,
+        {'path': path})
 
     read_count = 0
     processed_count = 0
@@ -143,8 +149,10 @@ def bulk_load_app(environ, start_response):
             LOG.debug('Error inserting item: %s, message: %s',
                       chunk, repr(e))
 
-            notifier.notify(context, notifier.EVENT_TYPE_STREAMING_DATA_ERROR,
-                            {'path': path, 'item': chunk, 'error': e.message})
+            notifier.get_notifier().error(
+                ctxt,
+                notifier.EVENT_TYPE_STREAMING_DATA_ERROR,
+                {'path': path, 'item': chunk, 'error': e.message})
 
     LOG.debug('Request body has been read completely')
 
@@ -174,8 +182,10 @@ def bulk_load_app(environ, start_response):
             LOG.debug('Error inserting item: %s, message: %s',
                       chunk, repr(e))
 
-            notifier.notify(context, notifier.EVENT_TYPE_STREAMING_DATA_ERROR,
-                            {'path': path, 'item': chunk, 'error': e.message})
+            notifier.get_notifier().error(
+                ctxt,
+                notifier.EVENT_TYPE_STREAMING_DATA_ERROR,
+                {'path': path, 'item': chunk, 'error': e.message})
 
     # Update count if error happened before put_item_async was invoked
     if dont_process:
@@ -192,7 +202,8 @@ def bulk_load_app(environ, start_response):
         'failed_items': failed_items
     }
 
-    notifier.notify(context, notifier.EVENT_TYPE_STREAMING_DATA_END,
-                    {'path': path, 'response': resp})
+    notifier.get_notifier().info(
+        ctxt, notifier.EVENT_TYPE_STREAMING_DATA_END,
+        {'path': path, 'response': resp})
 
     yield json.dumps(resp)
