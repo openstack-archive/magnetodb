@@ -1,0 +1,25 @@
+[loggers]
+keys=root
+
+[formatters]
+keys=context_formatter
+
+[handlers]
+keys=stream,file
+
+[logger_root]
+level=DEBUG
+handlers=stream, file
+
+[handler_stream]
+class=StreamHandler
+formatter=context_formatter
+args=(sys.stdout,)
+
+[handler_file]
+class=logging.handlers.RotatingFileHandler
+formatter=context_formatter
+args=('/var/log/magnetodb/magnetodb.log', 'a', 104857600, 10)
+
+[formatter_context_formatter]
+class=magnetodb.openstack.common.log.ContextFormatter
