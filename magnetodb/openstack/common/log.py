@@ -88,6 +88,13 @@ logging_cli_opts = [
                deprecated_name='logfile',
                help='(Optional) Name of log file to output to. '
                     'If no default is set, logging will go to stdout.'),
+    cfg.BoolOpt('log-rotation',
+                default=False,
+                help='Use log rotation.'),
+    cfg.IntOpt('log-max-size',
+               help='Maximum size of log file after it will be rotated.'),
+    cfg.IntOpt('log-backup-count',
+               help='Maximum count of rotating log files.'),
     cfg.StrOpt('log-dir',
                deprecated_name='logdir',
                help='(Optional) The base directory used for relative '
@@ -403,7 +410,14 @@ def _setup_logging_from_conf():
 
     logpath = _get_log_file_path()
     if logpath:
-        filelog = logging.handlers.WatchedFileHandler(logpath)
+        if CONF.log_rotation:
+            filelog = logging.handlers.RotatingFileHandler(
+                logpath,
+                maxBytes=CONF.log_max_size,
+                backupCount=CONF.log_backup_count)
+        else:
+            filelog = logging.handlers.WatchedFileHandler(logpath)
+
         log_root.addHandler(filelog)
 
     if CONF.use_stderr:
