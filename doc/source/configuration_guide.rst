@@ -83,6 +83,7 @@ The magnetodb-api.conf configuration file is organized into the following sectio
  - verbose: show more verbose log output (sets INFO log level output) <boolean value>
  - debug: show debugging output in logs (sets DEBUG log level output) <boolean value>
  - log_file: path to log file <string value>
+ - log_config: path to logging config file, if it is specified, any other log options are ignored
  - use_syslog: use Syslog for logging <boolean value>
  - syslog_log_facility: Syslog facility to receive log lines <string value>
  - logging_exception_prefix: format exception prefix <string value>
