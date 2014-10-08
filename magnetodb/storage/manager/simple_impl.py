@@ -15,6 +15,7 @@
 #    under the License.
 
 import logging
+from datetime import datetime
 
 from threading import BoundedSemaphore
 from threading import Event
@@ -47,10 +48,11 @@ LOG = logging.getLogger(__name__)
 class SimpleStorageManager(StorageManager):
 
     def __init__(self, storage_driver, table_info_repo, concurrent_tasks=1000,
-                 batch_chunk_size=25):
+                 batch_chunk_size=25, schema_operation_timeout=300):
         self._storage_driver = storage_driver
         self._table_info_repo = table_info_repo
         self._batch_chunk_size = batch_chunk_size
+        self._schema_operation_timeout = schema_operation_timeout
         self.__task_executor = ThreadPoolExecutor(concurrent_tasks)
         self.__task_semaphore = BoundedSemaphore(concurrent_tasks)
 
@@ -129,9 +131,47 @@ class SimpleStorageManager(StorageManager):
         return TableMeta(table_info.schema, table_info.status)
 
     def describe_table(self, context, table_name):
-        table_info = self._table_info_repo.get(context, table_name, ['status'])
+        table_info = self._table_info_repo.get(
+            context, table_name, ['status', 'last_updated'])
         notifier.notify(context, notifier.EVENT_TYPE_TABLE_DESCRIBE,
                         table_name, priority=notifier.PRIORITY_DEBUG)
+
+        timedelta = datetime.now() - table_info.last_updated
+
+        if timedelta.total_seconds() > self._schema_operation_timeout:
+            if table_info.status == TableMeta.TABLE_STATUS_CREATING:
+                table_info.status = TableMeta.TABLE_STATUS_CREATE_FAILED
+                self._table_info_repo.update(context, table_info, ['status'])
+                LOG.debug(
+                    "Table '{}' creation timed out."
+                    " Setting status to {}".format(
+                        table_info.name, TableMeta.TABLE_STATUS_CREATE_FAILED)
+                )
+                notifier.notify(
+                    context.to_dict(),
+                    notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
+                    dict(
+                        table_name=table_name,
+                        message='Operation timed out'
+                    )
+                )
+
+            if table_info.status == TableMeta.TABLE_STATUS_DELETING:
+                table_info.status = TableMeta.TABLE_STATUS_DELETE_FAILED
+                self._table_info_repo.update(context, table_info, ['status'])
+                LOG.debug(
+                    "Table '{}' deletion timed out."
+                    " Setting status to {}".format(
+                        table_info.name, TableMeta.TABLE_STATUS_DELETE_FAILED)
+                )
+                notifier.notify(
+                    context.to_dict(),
+                    notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                    dict(
+                        table_name=table_name,
+                        message='Operation timed out'
+                    )
+                )
 
         return TableMeta(table_info.schema, table_info.status)
 
