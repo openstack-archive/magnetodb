@@ -12,17 +12,27 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from oslo.config import cfg
 
-from magnetodb.openstack.common.gettextutils import _
-from magnetodb.openstack.common.notifier import api as notifier_api
+import socket
+from magnetodb.openstack.common.context import RequestContext
+
+from oslo.config import cfg
+from oslo.messaging import get_transport
+from oslo.messaging import notify
+from oslo.messaging import serializer
+
 
 from magnetodb.common import PROJECT_NAME
+from oslo.messaging.openstack.common import jsonutils
 
 extra_notifier_opts = [
     cfg.StrOpt('notification_service',
                default=PROJECT_NAME,
-               help='Service publisher_id for outgoing notifications')
+               help='Service publisher_id for outgoing notifications'),
+    cfg.StrOpt('default_publisher_id',
+               default=None,
+               help='Default publisher_id for outgoing notifications'),
+
 ]
 
 cfg.CONF.register_opts(extra_notifier_opts)
@@ -58,86 +68,57 @@ EVENT_TYPE_STREAMING_DATA_END = 'magnetodb.streaming.data.end'
 EVENT_TYPE_STREAMING_DATA_ERROR = 'magnetodb.streaming.data.error'
 EVENT_TYPE_REQUEST_RATE_LIMITED = 'magnetodb.request.rate.limited'
 
-PRIORITY_DEBUG = notifier_api.DEBUG
-PRIORITY_INFO = notifier_api.INFO
-PRIORITY_WARN = notifier_api.WARN
-PRIORITY_ERROR = notifier_api.ERROR
-PRIORITY_CRITICAL = notifier_api.CRITICAL
 
-
-__ALLOWED_EVENT_TYPES = (
-    EVENT_TYPE_TABLE_CREATE_START,
-    EVENT_TYPE_TABLE_CREATE_END,
-    EVENT_TYPE_TABLE_CREATE_ERROR,
-    EVENT_TYPE_TABLE_DELETE_START,
-    EVENT_TYPE_TABLE_DELETE_END,
-    EVENT_TYPE_TABLE_DELETE_ERROR,
-    EVENT_TYPE_TABLE_DESCRIBE,
-    EVENT_TYPE_TABLE_LIST,
-    EVENT_TYPE_DATA_PUTITEM,
-    EVENT_TYPE_DATA_PUTITEM_START,
-    EVENT_TYPE_DATA_PUTITEM_END,
-    EVENT_TYPE_DATA_DELETEITEM,
-    EVENT_TYPE_DATA_DELETEITEM_START,
-    EVENT_TYPE_DATA_DELETEITEM_END,
-    EVENT_TYPE_DATA_DELETEITEM_ERROR,
-    EVENT_TYPE_DATA_BATCHWRITE_START,
-    EVENT_TYPE_DATA_BATCHWRITE_END,
-    EVENT_TYPE_DATA_BATCHREAD_START,
-    EVENT_TYPE_DATA_BATCHREAD_END,
-    EVENT_TYPE_DATA_UPDATEITEM,
-    EVENT_TYPE_DATA_SELECTITEM,
-    EVENT_TYPE_DATA_SELECTITEM_START,
-    EVENT_TYPE_DATA_SELECTITEM_END,
-    EVENT_TYPE_DATA_SCAN_START,
-    EVENT_TYPE_DATA_SCAN_END,
-    EVENT_TYPE_STREAMING_PATH_ERROR,
-    EVENT_TYPE_STREAMING_DATA_START,
-    EVENT_TYPE_STREAMING_DATA_END,
-    EVENT_TYPE_STREAMING_DATA_ERROR,
-    EVENT_TYPE_REQUEST_RATE_LIMITED
-)
-
-__ALLOWED_PRIORITIES = (
-    PRIORITY_DEBUG,
-    PRIORITY_INFO,
-    PRIORITY_WARN,
-    PRIORITY_ERROR,
-    PRIORITY_CRITICAL
-)
-
-
-__PUBLISHER_ID = None
-__DEFAULT_PRIORITY = None
+__NOTIFIER = None
 
 
 def setup():
-    global __DEFAULT_PRIORITY
-    global __PUBLISHER_ID
+    global __NOTIFIER
+    assert __NOTIFIER is None
 
-    assert __DEFAULT_PRIORITY is None
-    assert __PUBLISHER_ID is None
-
-    __DEFAULT_PRIORITY = cfg.CONF.default_notification_level
-
-    __PUBLISHER_ID = notifier_api.publisher_id(
-        cfg.CONF.notification_service
-    )
+    get_notifier()
 
 
-class BadEventTypeException(Exception):
-    pass
+def get_notifier():
+    global __NOTIFIER
+
+    if not __NOTIFIER:
+        service = cfg.CONF.notification_service
+        host = cfg.CONF.default_publisher_id or socket.gethostname()
+        publisher_id = '{}.{}'.format(service, host)
+
+        __NOTIFIER = notify.Notifier(
+            get_transport(cfg.CONF),
+            publisher_id,
+            serializer=RequestContextSerializer(JsonPayloadSerializer())
+        )
+
+    return __NOTIFIER
 
 
-def notify(context, event_type, payload, priority=None):
-    assert __PUBLISHER_ID is not None
+class JsonPayloadSerializer(serializer.NoOpSerializer):
+    @staticmethod
+    def serialize_entity(context, entity):
+        return jsonutils.to_primitive(entity, convert_instances=True)
 
-    priority = priority or __DEFAULT_PRIORITY
 
-    if event_type not in __ALLOWED_EVENT_TYPES:
-        raise BadEventTypeException(
-            _('%s is not a valid event type') % event_type)
-    if priority not in __ALLOWED_PRIORITIES:
-        raise notifier_api.BadPriorityException(
-            _('%s not in valid priorities') % priority)
-    notifier_api.notify(context, __PUBLISHER_ID, event_type, priority, payload)
+class RequestContextSerializer(serializer.Serializer):
+
+    def __init__(self, base):
+        self._base = base
+
+    def serialize_entity(self, context, entity):
+        if not self._base:
+            return entity
+        return self._base.serialize_entity(context, entity)
+
+    def deserialize_entity(self, context, entity):
+        if not self._base:
+            return entity
+        return self._base.deserialize_entity(context, entity)
+
+    def serialize_context(self, context):
+        return context.to_dict()
+
+    def deserialize_context(self, context):
+        return RequestContext(**context)
