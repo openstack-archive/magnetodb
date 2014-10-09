@@ -50,7 +50,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
     def test_list_tables_empty(self):
         headers, body = self.client.list_tables()
         expected = {'tables': []}
-        self.assertEqual(body, expected)
+        self.assertEqual(expected, body)
 
     @attr(type=['LisT-2'])
     def test_list_tables(self):
@@ -62,7 +62,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         self.tables.append(tname)
         headers, body = self.client.list_tables()
         expected = {'tables': [{'href': tname, 'rel': 'self'}]}
-        self.assertEqual(body, expected)
+        self.assertEqual(expected, body)
 
     def _create_n_tables(self, num):
         for i in range(0, num):
@@ -78,7 +78,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         tnum = 5
         self._create_n_tables(tnum)
         headers, body = self.client.list_tables()
-        self.assertEqual(len(body['tables']), tnum)
+        self.assertEqual(tnum, len(body['tables']))
 
     @attr(type=['LisT-12'])
     def test_list_tables_limit_3_10_tables_with_exclusive(self):
@@ -97,14 +97,14 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         headers, body = self.client.list_tables(
             limit=limit,
             exclusive_start_table_name=last_evaluated_table_name)
-        self.assertEqual(len(body['tables']), tnum % limit)
+        self.assertEqual(tnum % limit, len(body['tables']))
 
     @attr(type=['LisT-30'])
     def test_list_tables_no_exclusive(self):
         tnum = 5
         self._create_n_tables(tnum)
         headers, body = self.client.list_tables()
-        self.assertEqual(len(body['tables']), tnum)
+        self.assertEqual(tnum, len(body['tables']))
 
     @attr(type=['LisT-31', 'LisT-33'])
     def test_list_tables_exclusive(self):
@@ -116,7 +116,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         headers, body = self.client.list_tables(
             limit=limit,
             exclusive_start_table_name=last_evaluated_table_name)
-        self.assertEqual(len(body['tables']), tnum % limit)
+        self.assertEqual(tnum % limit, len(body['tables']))
 
     @attr(type=['LisT-32'])
     def test_list_tables_exclusive_no_previous_run(self):
@@ -126,7 +126,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         last_evaluated_table_name = self.tables[0]
         headers, body = self.client.list_tables(
             exclusive_start_table_name=last_evaluated_table_name)
-        self.assertEqual(len(body['tables']), tnum - 1)
+        self.assertEqual(tnum -1, len(body['tables']))
 
     @attr(type=['LisT-34'])
     def test_list_tables_exclusive_3_symb(self):
@@ -140,7 +140,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         last_evaluated_table_name = self.tables[0]
         headers, body = self.client.list_tables(
             exclusive_start_table_name=last_evaluated_table_name)
-        self.assertEqual(len(body['tables']), 1)
+        self.assertEqual(1, len(body['tables']))
 
     @attr(type=['LisT-38'])
     def test_list_tables_exclusive_non_existent(self):
@@ -154,4 +154,4 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         last_evaluated_table_name = 'aaa'
         headers, body = self.client.list_tables(
             exclusive_start_table_name=last_evaluated_table_name)
-        self.assertEqual(len(body['tables']), 2)
+        self.assertEqual(2, len(body['tables']))

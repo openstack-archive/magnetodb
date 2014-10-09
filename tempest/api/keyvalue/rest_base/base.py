@@ -38,8 +38,6 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         if cls.os_alt:
             cls.client_alt = cls.os_alt.magnetodb_client
             cls.streaming_client_alt = cls.os_alt.magnetodb_streaming_client
-        cls._sequence = -1
-        cls._resource_trash_bin = {}
 
         # SMOKE TABLE: THREADS
         cls.hashkey = 'forum'
@@ -75,15 +73,19 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
             }
         ]
 
-    @classmethod
-    def tearDownClass(cls):
+    def setUp(self):
+        super(MagnetoDBTestCase, self).setUp()
+        self._sequence = -1
+        self._resource_trash_bin = {}
+
+    def tearDown(self):
         """Calls the callables added by addResourceCleanUp,
         when you overwire this function dont't forget to call this too.
         """
         fail_count = 0
-        trash_keys = sorted(cls._resource_trash_bin, reverse=True)
+        trash_keys = sorted(self._resource_trash_bin, reverse=True)
         for key in trash_keys:
-            (function, pos_args, kw_args) = cls._resource_trash_bin[key]
+            (function, pos_args, kw_args) = self._resource_trash_bin[key]
             try:
                 LOG.debug("Cleaning up: %s",
                           friendly_function_call_str(function, *pos_args,
@@ -93,27 +95,28 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
                 fail_count += 1
                 LOG.exception(exc)
             finally:
-                del cls._resource_trash_bin[key]
+                del self._resource_trash_bin[key]
 
-        cls.clear_isolated_creds()
-
-        super(MagnetoDBTestCase, cls).tearDownClass()
+        super(MagnetoDBTestCase, self).tearDown()
         if fail_count:
             LOG.error('%s cleanUp operation failed', fail_count)
 
     @classmethod
-    def addResourceCleanUp(cls, function, *args, **kwargs):
-        """Adds CleanUp callable, used by tearDownClass.
+    def tearDownClass(cls):
+        cls.clear_isolated_creds()
+        super(MagnetoDBTestCase, cls).tearDownClass()
+
+    def addResourceCleanUp(self, function, *args, **kwargs):
+        """Adds CleanUp callable, used by tearDown.
         Recommended to a use (deep)copy on the mutable args.
         """
-        cls._sequence = cls._sequence + 1
-        cls._resource_trash_bin[cls._sequence] = (function, args, kwargs)
-        return cls._sequence
+        self._sequence = self._sequence + 1
+        self._resource_trash_bin[self._sequence] = (function, args, kwargs)
+        return self._sequence
 
-    @classmethod
-    def cancelResourceCleanUp(cls, key):
+    def cancelResourceCleanUp(self, key):
         """Cancel Clean up request."""
-        del cls._resource_trash_bin[key]
+        del self._resource_trash_bin[key]
 
     @classmethod
     def wait_for_table_active(cls, table_name, timeout=120, interval=3,
