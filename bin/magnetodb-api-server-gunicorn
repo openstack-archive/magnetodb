@@ -58,6 +58,9 @@ if __name__ == '__main__':
         "--workers {} "
         "--worker-class eventlet "
         "--worker-connections {} "
+        # limit-request-field_size param must be set to 0
+        # for working with large PKI tokens
+        "--limit-request-field_size 0 "
         "--paste {}".format(
             CONF.bind_host, CONF.bind_port,
             CONF.magnetodb_api_workers, CONF.magnetodb_worker_connections,
