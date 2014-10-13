@@ -47,6 +47,7 @@ if __name__ == '__main__':
         "--bind {}:{} "
         "--workers {} "
         "--worker-class eventlet "
+        "--limit-request-field_size 0 "
         "--paste {}".format(
             CONF.bind_host, CONF.bind_port, CONF.magnetodb_api_workers,
             api_paste_config_file
