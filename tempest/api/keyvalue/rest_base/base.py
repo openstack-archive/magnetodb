@@ -101,6 +101,11 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         if fail_count:
             LOG.error('%s cleanUp operation failed', fail_count)
 
+    def _delete_test_table(self, table_name, alt=False):
+        client = self.client if not alt else self.client_alt
+        client.delete_table(table_name)
+        self.wait_for_table_deleted(table_name, alt=alt)
+
     @classmethod
     def addResourceCleanUp(cls, function, *args, **kwargs):
         """Adds CleanUp callable, used by tearDownClass.
@@ -116,7 +121,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         del cls._resource_trash_bin[key]
 
     @classmethod
-    def wait_for_table_active(cls, table_name, timeout=120, interval=3,
+    def wait_for_table_active(cls, table_name, timeout=120, interval=1,
                               alt=False):
         def check():
             client = cls.client if not alt else cls.client_alt
@@ -126,7 +131,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
 
         return tempest.test.call_until_true(check, timeout, interval)
 
-    def wait_for_table_deleted(self, table_name, timeout=120, interval=3,
+    def wait_for_table_deleted(self, table_name, timeout=120, interval=1,
                                alt=False):
         def check():
             client = self.client if not alt else self.client_alt
@@ -203,7 +208,7 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
                                                  *args,
                                                  **kwargs)
         if cleanup:
-            self.addResourceCleanUp(self.client.delete_table, table_name)
+            self.addResourceCleanUp(self._delete_test_table, table_name)
         if wait_for_active:
             if not self.wait_for_table_active(table_name):
                 self.fail('Table creation timed out')
