@@ -3,7 +3,6 @@ MagnetoDB
 
 **MagnetoDB** - NoSQL database service for OpenStack
 
-
 Links
 ------------------
 Wiki - https://wiki.openstack.org/wiki/MagnetoDB
