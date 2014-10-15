@@ -67,7 +67,7 @@ class SchemaEndpoint(object):
             table_info = self._table_info_repo.get(context, table_name)
         except TableNotExistsException as e:
             self._notifier.error(
-                ctx,
+                context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_name,
@@ -81,7 +81,7 @@ class SchemaEndpoint(object):
         if table_info.status != models.TableMeta.TABLE_STATUS_CREATING:
             e = ResourceInUseException()
             self._notifier.error(
-                ctx,
+                context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_name,
@@ -110,7 +110,7 @@ class SchemaEndpoint(object):
             LOG.debug("Table '%s' created", table_name)
         except Exception as e:
             self._notifier.error(
-                ctx,
+                context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_name,
@@ -132,7 +132,7 @@ class SchemaEndpoint(object):
             table_info = self._table_info_repo.get(context, table_name)
         except TableNotExistsException as e:
             self._notifier.error(
-                ctx,
+                context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
                     table_name=table_name,
@@ -148,7 +148,7 @@ class SchemaEndpoint(object):
         if table_info.status != models.TableMeta.TABLE_STATUS_DELETING:
             e = ResourceInUseException()
             self._notifier.error(
-                ctx,
+                context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
                     table_name=table_name,
@@ -171,7 +171,7 @@ class SchemaEndpoint(object):
             LOG.debug("Table '%s' deleted", table_name)
         except Exception as e:
             self._notifier.error(
-                ctx,
+                context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
                     table_name=table_name,
