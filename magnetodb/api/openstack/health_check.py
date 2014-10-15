@@ -13,6 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+"""
+Health check request is a lightweight request that allows to check availability
+of magnetodb-api service and its subsystems (Keystone, DB back-end).
+"""
+
 import urlparse
 
 from keystoneclient.generic import client
