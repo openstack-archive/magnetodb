@@ -17,12 +17,20 @@
 
 import tempest.clients
 import tempest.config
+from tempest import exceptions
 import tempest.test
 from tempest.common.utils import data_utils
 from tempest.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
+
+
+TABLE_STATUS_ACTIVE = 'ACTIVE'
+TABLE_STATUS_CREATING = 'CREATING'
+TABLE_STATUS_DELETING = 'DELETING'
+TABLE_STATUS_CREATE_FAILED = 'CREATE_FAILED'
+TABLE_STATUS_DELETE_FAILED = 'DELETE_FAILED'
 
 
 class MagnetoDBTestCase(tempest.test.BaseTestCase):
@@ -120,14 +128,16 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         """Cancel Clean up request."""
         del cls._resource_trash_bin[key]
 
-    @classmethod
-    def wait_for_table_active(cls, table_name, timeout=120, interval=1,
+    def wait_for_table_active(self, table_name, timeout=120, interval=1,
                               alt=False):
         def check():
-            client = cls.client if not alt else cls.client_alt
+            client = self.client if not alt else self.client_alt
             headers, body = client.describe_table(table_name)
             if "table" in body and "table_status" in body["table"]:
-                return body["table"]["table_status"] == "ACTIVE"
+                status = body["table"]["table_status"]
+                if status == TABLE_STATUS_CREATE_FAILED:
+                    self.fail('Table creation failure.')
+                return body["table"]["table_status"] == TABLE_STATUS_ACTIVE
 
         return tempest.test.call_until_true(check, timeout, interval)
 
@@ -135,8 +145,14 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
                                alt=False):
         def check():
             client = self.client if not alt else self.client_alt
-            names = [d['href'] for d in client.list_tables()[1]['tables']]
-            return table_name not in names
+            try:
+                headers, body = client.describe_table(table_name)
+                if "table" in body and "table_status" in body["table"]:
+                    status = body["table"]["table_status"]
+                    if status == TABLE_STATUS_DELETE_FAILED:
+                        self.fail('Table deletion failure.')
+            except exceptions.NotFound:
+                return True
 
         return tempest.test.call_until_true(check, timeout, interval)
 
