@@ -30,6 +30,8 @@ API Reference
 
    dynamodb_api.rst
 
+   health_check.rst
+
 ------------------
 User documentation
 ------------------
