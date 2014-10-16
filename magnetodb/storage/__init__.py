@@ -366,3 +366,15 @@ def health_check():
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.health_check()
+
+
+def get_table_statistics(context, table_name):
+    """
+    :param context: current request context
+    :param table_name: String, name of table to get item count from
+
+    :returns: count of items in table and table size
+
+    :raises: BackendInteractionException
+    """
+    return __STORAGE_MANAGER_IMPL.get_table_statistics(context, table_name) 
