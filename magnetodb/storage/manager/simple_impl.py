@@ -888,3 +888,11 @@ class SimpleStorageManager(StorageManager):
 
     def health_check(self):
         return self._storage_driver.health_check()
+
+    def get_table_statistics(self, context, table_name, keys):
+        table_info = self._table_info_repo.get(context, table_name)
+        self._validate_table_is_active(table_info)
+
+        return self._storage_driver.get_table_statistics(context,
+                                                         table_info,
+                                                         keys)
