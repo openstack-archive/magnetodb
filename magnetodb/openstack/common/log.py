@@ -492,6 +492,11 @@ class ContextFormatter(logging.Formatter):
 
     """
 
+    def __init__(self, fmt=None, datefmt=None):
+        super(ContextFormatter, self).__init__(
+            fmt=fmt,
+            datetime=datefmt or _DEFAULT_LOG_DATE_FORMAT)
+
     def format(self, record):
         """Uses contextstring if request_id is set, otherwise default."""
         # NOTE(sdague): default the fancier formating params
