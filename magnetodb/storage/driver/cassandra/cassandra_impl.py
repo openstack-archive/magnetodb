@@ -30,6 +30,7 @@ from magnetodb.storage.driver.cassandra.encoder import (
 )
 
 from cassandra.encoder import cql_quote
+from pyjolokia import Jolokia
 
 
 LOG = logging.getLogger(__name__)
@@ -1834,3 +1835,47 @@ class CassandraStorageDriver(StorageDriver):
         except Exception:
             raise exception.BackendInteractionException()
         return True
+
+    def get_table_statistics(self, context, table_info,
+                             keys=['size', 'count']):
+
+        vals = {
+            'user_prefix': USER_PREFIX,
+            'tenant': context.tenant,
+            'table_name': table_info.name
+        }
+
+        metrics = {
+            'count': {
+                'type': 'exec',
+                'kwargs': {
+                    'mbean': 'org.apache.cassandra.db:type=ColumnFamilies,'
+                             'keyspace={user_prefix}{tenant},'
+                             'columnfamily={user_prefix}'
+                             '{table_name}'.format(**vals),
+                    'operation': 'estimateKeys'
+                }
+            },
+            'size': {
+                'type': 'read',
+                'kwargs': {
+                    'mbean': 'org.apache.cassandra.metrics:type=ColumnFamily,'
+                             'keyspace={user_prefix}{tenant},'
+                             'scope={user_prefix}{table_name},'
+                             'name=TotalDiskSpaceUsed'.format(**vals)
+                }
+            }
+        }
+
+        # TODO(achudnovets): Use the config
+        monitoring = Jolokia('http://127.0.0.1:8778/jolokia/')
+        for k in keys:
+            monitoring.add_request(metrics[k]['type'], **metrics[k]['kwargs'])
+        data = monitoring.getRequests()
+        result = {}
+        for key, item in zip(keys, data):
+            if 'TotalDiskSpaceUsed' in item['request']['mbean']:
+                result[key] = item['value']['Count']
+            else:
+                result[key] = item['value']
+        return result
