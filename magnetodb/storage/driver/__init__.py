@@ -166,3 +166,15 @@ class StorageDriver(object):
         :raises: BackendInteractionException
         """
         raise NotImplementedError()
+
+    def get_table_statistics(self, context, table_info, keys):
+        """
+        :param context: current request context
+        :param table_info: TableInfo instance with table's meta information
+        :param keys: list of metrics
+
+        :returns: count of items in table and table size
+
+        :raises: BackendInteractionException
+        """
+        raise NotImplementedError()
