@@ -16,3 +16,4 @@ Routes>=1.12.3
 WebOb>=1.2.3
 kombu>=2.4.8
 six>=1.7.0
+pyjolokia
