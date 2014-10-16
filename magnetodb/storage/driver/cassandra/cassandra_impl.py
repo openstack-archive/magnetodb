@@ -31,9 +31,20 @@ from magnetodb.storage.driver.cassandra.encoder import (
 )
 
 from cassandra.encoder import cql_quote
-
+from pyjolokia import Jolokia
+from oslo.config import cfg
 
 LOG = logging.getLogger(__name__)
+
+CONF = cfg.ConfigOpts()
+
+jmx_opts = [
+    cfg.ListOpt('jolokia_endpoint_list',
+                help='List of Jolokia endpoints',
+                default=['http://127.0.0.1:8778/jolokia/']),
+]
+
+CONF.register_opts(jmx_opts)
 
 CONDITION_TO_OP = {
     models.Condition.CONDITION_TYPE_EQUAL: '=',
