@@ -32,7 +32,6 @@ from magnetodb.storage.driver.cassandra.encoder import (
 
 from cassandra.encoder import cql_quote
 
-
 LOG = logging.getLogger(__name__)
 
 CONDITION_TO_OP = {
