@@ -32,6 +32,7 @@ from magnetodb.api.openstack.v1.request import describe_table
 from magnetodb.api.openstack.v1.request import scan
 from magnetodb.api.openstack.v1.request import query
 from magnetodb.api.openstack.v1.request import delete_table
+from magnetodb.api.openstack.v1.request import table_usage_details
 
 
 class MagnetoDBApplication(wsgi.Router):
@@ -47,76 +48,89 @@ class MagnetoDBApplication(wsgi.Router):
             controller=create_resource(
                 batch_write_item.BatchWriteItemController()),
             action="process_request"
-        ),
+        )
         mapper.connect(
             "put_item", "/{project_id}/data/tables/{table_name}/put_item",
             conditions={'method': 'POST'},
             controller=create_resource(put_item.PutItemController()),
             action="process_request"
-        ),
+        )
         mapper.connect(
             "get_item", "/{project_id}/data/tables/{table_name}/get_item",
             conditions={'method': 'POST'},
             controller=create_resource(get_item.GetItemController()),
             action="process_request"
-        ),
+        )
         mapper.connect(
             "delete_item",
             "/{project_id}/data/tables/{table_name}/delete_item",
             conditions={'method': 'POST'},
             controller=create_resource(delete_item.DeleteItemController()),
             action="process_request"
-        ),
+        )
         mapper.connect(
             "update_item",
             "/{project_id}/data/tables/{table_name}/update_item",
             conditions={'method': 'POST'},
             controller=create_resource(update_item.UpdateItemController()),
             action="process_request"
-        ),
+        )
         mapper.connect(
             "batch_get_item", "/{project_id}/data/batch_get_item",
             conditions={'method': 'POST'},
             controller=create_resource(
                 batch_get_item.BatchGetItemController()),
             action="process_request"
-        ),
+        )
         mapper.connect(
             "list_tables", "/{project_id}/data/tables",
             conditions={'method': 'GET'},
             controller=create_resource(list_tables.ListTablesController()),
             action="list_tables"
-        ),
+        )
         mapper.connect(
             "create_table", "/{project_id}/data/tables",
             conditions={'method': 'POST'},
             controller=create_resource(create_table.CreateTableController()),
             action="create_table"
-        ),
+        )
         mapper.connect(
             "describe_table", "/{project_id}/data/tables/{table_name}",
             conditions={'method': 'GET'},
             controller=create_resource(
                 describe_table.DescribeTableController()),
             action="describe_table"
-        ),
+        )
         mapper.connect(
             "scan", "/{project_id}/data/tables/{table_name}/scan",
             conditions={'method': 'POST'},
             controller=create_resource(scan.ScanController()),
             action="scan"
-        ),
+        )
         mapper.connect(
             "query", "/{project_id}/data/tables/{table_name}/query",
             conditions={'method': 'POST'},
             controller=create_resource(query.QueryController()),
             action="query"
-        ),
+        )
         mapper.connect(
             "delete_table", "/{project_id}/data/tables/{table_name}",
             conditions={'method': 'DELETE'},
             controller=create_resource(delete_table.DeleteTableController()),
             action="delete_table"
+        )
+        mapper.connect(
+            "list_monitored_tables", "/{project_id}/monitoring/tables",
+            conditions={'method': 'GET'},
+            controller=create_resource(list_tables.ListTablesController()),
+            action="list_tables"
+        )
+        mapper.connect(
+            "monitor_table", "/{project_id}/monitoring/tables/{table_name}",
+            controller=create_resource(
+                table_usage_details.TableUsageController()),
+            conditions={'method': 'GET'},
+            action="table_usage_details"
         )
 
 
