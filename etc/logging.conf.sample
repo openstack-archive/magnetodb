@@ -1,5 +1,5 @@
 [loggers]
-keys=root
+keys=root, magnetodb
 
 [formatters]
 keys=context_formatter
@@ -8,8 +8,14 @@ keys=context_formatter
 keys=stream,file
 
 [logger_root]
+level=NOTSET
+handlers=stream, file
+
+[logger_magnetodb]
 level=DEBUG
 handlers=stream, file
+qualname=magnetodb
+propagate=0
 
 [handler_stream]
 class=StreamHandler
