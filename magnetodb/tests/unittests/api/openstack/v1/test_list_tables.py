@@ -1,3 +1,4 @@
+# Copyright 2014 Symantec Corp.
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -36,3 +37,27 @@ class ListTablesTest(test_base_testcase.APITestCase):
         json_response = response.read()
         response_model = json.loads(json_response)
         self.assertEqual([], response_model['tables'])
+
+    def test_list_tables_invalid_url_parameters(self):
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/default_tenant/data/tables?start_table_name=aaa'
+        conn.request("GET", url, headers=headers)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Unexpected properties were found for 'params': "
+            "MultiDict([(u'start_table_name', u'aaa')])",
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
