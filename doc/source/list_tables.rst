@@ -14,8 +14,8 @@ ListTables
 
    Parameters should be provided via GET query string.
 
-   **start_table_name**
-      | The first table name that this operation will evaluate.
+   **exclusive_start_table_name**
+      | The first table name that this operation will evaluate. Use the value that was returned for last_evaluated_table_name in the previous operation.
       | Type: xsd:string
       | Required: No
 

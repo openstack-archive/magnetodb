@@ -123,11 +123,16 @@ def validate_list_of_objects(value, property_name):
 
 def validate_unexpected_props(value, property_name):
     if len(value) > 0:
+        if isinstance(value, dict):
+            value_str = json.dumps(value)
+        else:
+            value_str = str(value)
+
         raise ValidationError(
             _("Unexpected properties were found for '%(property_name)s': "
               "%(unexpected_props)s"),
             property_name=property_name,
-            unexpected_props=json.dumps(value)
+            unexpected_props=value_str
         )
     return value
 
