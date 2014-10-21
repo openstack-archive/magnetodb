@@ -1,8 +1,6 @@
 MagnetoDB
 =========
-
-**MagnetoDB** - NoSQL database service for OpenStack
-
+**MagnetoDB** - key-value store for OpenStack
 
 Links
 ------------------
@@ -12,4 +10,6 @@ IRC - #magnetodb at FreeNode
 
 Source code - https://github.com/stackforge/magnetodb
 
-Deployment - https://github.com/stackforge/magnetodb/blob/master/doc/deploy_magnetodb_howto.rst
+Documentation - http://magnetodb.readthedocs.org/en/latest/
+
+Specs - http://magnetodb-specs.readthedocs.org/en/latest/
