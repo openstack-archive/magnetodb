@@ -141,6 +141,8 @@ class CassandraTableInfoRepository(TableInfoRepository):
         if not field_list:
             field_list = self.__field_list
 
+        if 'last_updated' not in field_list:
+            field_list.append('last_updated')
         table_info.last_updated = datetime.now()
 
         enc = encoder.Encoder()
