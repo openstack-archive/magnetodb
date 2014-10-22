@@ -1,7 +1,3 @@
-=============
-Api Reference
-=============
-
 --------------------
 RESTful Web API (v1)
 --------------------
@@ -82,7 +78,3 @@ MagnetoDB actions
    batch_get_item.rst
    batch_write_item.rst
 
-
-------------
-DynamoDB API
-------------
