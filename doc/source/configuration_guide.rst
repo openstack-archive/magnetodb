@@ -99,7 +99,7 @@ The magnetodb-api.conf configuration file is organized into the following sectio
 [RPC Configuration Options]
 ```````````````````````````
 
- - rpc_backend: the messaging module to use (kombu by default)
+ - rpc_backend: the messaging module to use (one of rabbit, qpid, zmq; rabbit by default)
  - rpc_thread_pool_size: size of rpc thread pool
  - rpc_conn_pool_size: size of RPC connection pool
  - rpc_response_timeout: seconds to wait for a response from call or multicall
@@ -108,7 +108,7 @@ The magnetodb-api.conf configuration file is organized into the following sectio
  - control_exchange: AMQP exchange to connect to if using RabbitMQ or QPID
  - fake_rabbit: if passed, use a fake RabbitMQ provider
 
-Configuration options if sending notifications via kombu rpc (these are the defaults):
+Configuration options if sending notifications via rabbit rpc (these are the defaults):
 
  - kombu_ssl_version: SSL version to use (valid only if SSL enabled)
  - kombu_ssl_keyfile: SSL key file (valid only if SSL enabled)
@@ -124,7 +124,7 @@ Configuration options if sending notifications via kombu rpc (these are the defa
  - rabbit_retry_interval:  RabbitMQ connection retry interval
  - rabbit_ha_queues: use HA queues in RabbitMQ (x-ha-policy: all). You need to wipe RabbitMQ database when changing this option (boolean value)
 
-QPID (rpc_backend=neutron.openstack.common.rpc.impl_qpid):
+QPID (rpc_backend=qpid):
 
  - qpid_hostname: Qpid broker hostname
  - qpid_port: Qpid broker port
@@ -137,7 +137,7 @@ QPID (rpc_backend=neutron.openstack.common.rpc.impl_qpid):
  - qpid_tcp_nodelay: disable Nagle algorithm
 
 
-ZMQ (rpc_backend=neutron.openstack.common.rpc.impl_zmq):
+ZMQ (rpc_backend=zmq):
 
  - rpc_zmq_bind_address: ZeroMQ bind address. Should be a wildcard (*), an ethernet interface, or IP. The "host" option should point or resolve to this address.
 
