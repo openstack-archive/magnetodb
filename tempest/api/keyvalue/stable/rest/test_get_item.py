@@ -394,6 +394,25 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
         exception = raises_cm.exception
         self.assertIn("ValidationError", exception._error_string)
 
+    @attr(type=['GI-???', 'negative'])
+    def test_get_item_missing_range_key_attribute(self):
+        table_name = self.random_name(10)
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema,
+                                wait_for_active=True)
+
+        self.put_smoke_item(table_name, 'forum1', 'subject2')
+
+        attributes_to_get = ['message']
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.get_item(table_name,
+                                 {self.hashkey: {"S": "forum1"}},
+                                 attributes_to_get,
+                                 True)
+        exception = raises_cm.exception
+        self.assertIn("ValidationError", exception._error_string)
+
     @attr(type=['GI-36', 'negative'])
     def test_get_item_no_match_key(self):
         table_name = rand_name().replace('-', '')
