@@ -221,6 +221,26 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
+    def get_item(self, context, table_name, key_attribute_map,
+                 select_type=None, consistent=True):
+        """
+        :param context: current request context
+        :param table_name: String, name of table to get item from
+        :param key_attribute_map: key attribute name to
+                    AttributeValue mapping. It defines row to get
+        :param select_type: SelectType instance. It defines with attributes
+                    will be returned. If not specified, default will be used:
+                    SelectType.all() for query on table and
+                    SelectType.all_projected() for query on index
+        :param consistent: define is operation consistent or not (by default it
+                    is not consistent)
+
+        :returns: SelectResult instance
+
+        :raises: BackendInteractionException
+        """
+        raise NotImplementedError()
+
     def scan(self, context, table_name, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None,
              consistent=False):

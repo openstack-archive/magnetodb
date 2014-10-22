@@ -24,7 +24,7 @@ from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 class QueryTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API ScanController."""
 
-    @mock.patch('magnetodb.storage.select_item')
+    @mock.patch('magnetodb.storage.query')
     def test_query(self, mock_query):
 
         items = [
@@ -131,7 +131,7 @@ class QueryTest(test_base_testcase.APITestCase):
 
         self.assertEqual(expected_response, response_payload)
 
-    @mock.patch('magnetodb.storage.select_item')
+    @mock.patch('magnetodb.storage.query')
     def test_query_count(self, mock_query):
         mock_query.return_value = models.SelectResult(count=100500)
 

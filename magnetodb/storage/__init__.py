@@ -300,9 +300,10 @@ def update_item(context, table_name, key_attribute_map,
     )
 
 
-def select_item(context, table_name, indexed_condition_map=None,
-                select_type=None, index_name=None, limit=None,
-                exclusive_start_key=None, consistent=True, order_type=None):
+def query(context, table_name, indexed_condition_map=None,
+          select_type=None, index_name=None, limit=None,
+          exclusive_start_key=None, consistent=True,
+          order_type=None):
     """
     :param context: current request context
     :param table_name: String, name of table to get item from
@@ -322,13 +323,37 @@ def select_item(context, table_name, indexed_condition_map=None,
     :param order_type: defines order of returned rows, if 'None' - default
                 order will be used
 
+
     :returns: SelectResult instance
 
     :raises: BackendInteractionException
     """
-    return __STORAGE_MANAGER_IMPL.select_item(
+    return __STORAGE_MANAGER_IMPL.query(
         context, table_name, indexed_condition_map, select_type, index_name,
         limit, exclusive_start_key, consistent, order_type
+    )
+
+
+def get_item(context, table_name, key_attribute_map=None,
+             select_type=None, consistent=True):
+    """
+    :param context: current request context
+    :param table_name: String, name of table to get item from
+    :param key_attribute_map: key attribute name to
+                AttributeValue mapping. It defines row to get
+    :param select_type: SelectType instance. It defines with attributes
+                will be returned. If not specified, default will be used:
+                SelectType.all() for query on table and
+                SelectType.all_projected() for query on index
+    :param consistent: define is operation consistent or not (by default it
+                is not consistent)
+
+    :returns: SelectResult instance
+
+    :raises: BackendInteractionException
+    """
+    return __STORAGE_MANAGER_IMPL.get_item(
+        context, table_name, key_attribute_map, select_type, consistent
     )
 
 

@@ -18,19 +18,14 @@ import json
 
 import mock
 
-from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class UpdateItemTestCase(test_base_testcase.APITestCase):
     """The test for update_method of openstack v1 ReST API."""
 
-    @mock.patch('magnetodb.storage.select_item')
     @mock.patch('magnetodb.storage.update_item')
-    def test_update_item(self, mock_update_item, mock_select_item):
-        value = models.AttributeValue('S', 'me@test.com')
-        mock_select_item.return_value = mock.Mock(
-            items=[{'LastPostedBy': value}])
+    def test_update_item(self, mock_update_item):
 
         mock_update_item.return_value = (True, None)
 
