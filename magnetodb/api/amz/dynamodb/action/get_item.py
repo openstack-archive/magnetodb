@@ -80,19 +80,14 @@ class GetItemDynamoDBAction(DynamoDBAction):
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
 
-            # format conditions to get item
-            indexed_condition_map = {
-                name: [models.IndexedCondition.eq(value)]
-                for name, value in key_attributes.iteritems()
-            }
         except Exception:
             raise AWSValidationException()
 
         try:
             # get item
-            result = storage.select_item(
-                self.context, table_name, indexed_condition_map,
-                select_type=select_type, limit=2, consistent=consistent_read)
+            result = storage.get_item(
+                self.context, table_name, key_attributes,
+                select_type=select_type, consistent=consistent_read)
 
             # format response
             if result.count == 0:

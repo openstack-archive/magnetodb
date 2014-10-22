@@ -391,7 +391,7 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.VerifyAll()
 
     def test_get_item(self):
-        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+        self.storage_mocker.StubOutWithMock(storage, 'get_item')
 
         blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
         blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
@@ -399,9 +399,9 @@ class BotoIntegrationTest(unittest.TestCase):
         hash_key = "4.5621201231232132132132132132132142354E126"
         range_key = "range"
 
-        storage.select_item(
+        storage.get_item(
             IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            select_type=IgnoreArg(), limit=IgnoreArg(),
+            select_type=IgnoreArg(),
             consistent=IgnoreArg()
         ).AndReturn(
             models.SelectResult(
@@ -438,8 +438,8 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.VerifyAll()
 
-    def test_select_item(self):
-        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+    def test_query(self):
+        self.storage_mocker.StubOutWithMock(storage, 'query')
 
         blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
         blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
@@ -447,7 +447,7 @@ class BotoIntegrationTest(unittest.TestCase):
         hash_key = "4.5621201231232132132132132132132142354E126"
         range_key = "range"
 
-        storage.select_item(
+        storage.query(
             IgnoreArg(), IgnoreArg(), IgnoreArg(),
             select_type=IgnoreArg(), index_name=IgnoreArg(), limit=IgnoreArg(),
             exclusive_start_key=IgnoreArg(), consistent=IgnoreArg(),
@@ -490,9 +490,9 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.VerifyAll()
 
     def test_select_item_count(self):
-        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+        self.storage_mocker.StubOutWithMock(storage, 'query')
 
-        storage.select_item(
+        storage.query(
             IgnoreArg(), IgnoreArg(), IgnoreArg(),
             select_type=SelectType.count(), index_name=IgnoreArg(),
             limit=IgnoreArg(), exclusive_start_key=IgnoreArg(),
@@ -514,14 +514,14 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.VerifyAll()
 
     def test_update_item(self):
-        self.storage_mocker.StubOutWithMock(storage, 'select_item')
+        self.storage_mocker.StubOutWithMock(storage, 'get_item')
 
         hash_key = "4.5621201231232132132132132132132142354E126"
         range_key = "range"
 
-        storage.select_item(
+        storage.get_item(
             IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            select_type=IgnoreArg(), limit=IgnoreArg(),
+            select_type=IgnoreArg(),
             consistent=IgnoreArg()
         ).AndReturn(
             models.SelectResult(
