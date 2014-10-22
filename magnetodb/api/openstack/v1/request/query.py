@@ -116,7 +116,7 @@ class QueryController(object):
             validation.validate_unexpected_props(body, "body")
 
         # select item
-        result = storage.select_item(
+        result = storage.query(
             req.context, table_name, indexed_condition_map,
             select_type=select_type, index_name=index_name, limit=limit,
             consistent=consistent_read, order_type=order_type,

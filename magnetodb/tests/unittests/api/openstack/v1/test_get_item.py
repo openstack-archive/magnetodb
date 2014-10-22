@@ -32,8 +32,8 @@ class GetItemTestCase(unittest.TestCase):
     def tearDownClass(cls):
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
-    @mock.patch('magnetodb.storage.select_item')
-    def test_get_item(self, mock_select_item):
+    @mock.patch('magnetodb.storage.get_item')
+    def test_get_item(self, mock_get_item):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
@@ -58,7 +58,7 @@ class GetItemTestCase(unittest.TestCase):
         conn.request("POST", url, headers=headers, body=body)
         response = conn.getresponse()
 
-        self.assertTrue(mock_select_item.called)
+        self.assertTrue(mock_get_item.called)
 
         json_response = response.read()
 

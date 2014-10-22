@@ -61,16 +61,10 @@ class GetItemController(object):
             # parse key_attributes
             key_attributes = parser.Parser.parse_item_attributes(key)
 
-            # format conditions to get item
-            indexed_condition_map = {
-                name: [models.IndexedCondition.eq(value)]
-                for name, value in key_attributes.iteritems()
-            }
-
         # get item
-        result = storage.select_item(
-            req.context, table_name, indexed_condition_map,
-            select_type=select_type, limit=2, consistent=consistent_read)
+        result = storage.get_item(
+            req.context, table_name, key_attributes,
+            select_type=select_type, consistent=consistent_read)
 
         # format response
         if result.count == 0:
