@@ -92,7 +92,8 @@ class GetItemDynamoDBAction(DynamoDBAction):
             # get item
             result = storage.select_item(
                 self.context, table_name, indexed_condition_map,
-                select_type=select_type, limit=2, consistent=consistent_read)
+                select_type=select_type, limit=2, consistent=consistent_read,
+                exact_item=True)
 
             # format response
             if result.count == 0:

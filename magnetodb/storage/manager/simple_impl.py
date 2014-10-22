@@ -642,16 +642,54 @@ class SimpleStorageManager(StorageManager):
 
         return result
 
+    @staticmethod
+    def _raise_condition_schema_mismatch(condition_map, table_info):
+        raise ValidationError(
+            _("Specified query conditions %(indexed_condition_map)s "
+              "doesn't match table schema: %(table_schema)s"),
+            indexed_condition_map=condition_map,
+            table_schema=table_info.schema
+        )
+
     def select_item(self, context, table_name, indexed_condition_map,
                     select_type, index_name=None, limit=None,
                     exclusive_start_key=None, consistent=True,
-                    order_type=None):
+                    order_type=None, exact_item=False):
         table_info = self._table_info_repo.get(context, table_name)
         self._validate_table_is_active(table_info)
 
         schema_attribute_type_map = table_info.schema.attribute_type_map
 
+        condition_map = indexed_condition_map.copy()
+
+        # validate hash key condition
+
         hash_key_name = table_info.schema.hash_key_name
+
+        hash_key_condition_list = condition_map.pop(hash_key_name, None)
+
+        if not hash_key_condition_list:
+            self._raise_condition_schema_mismatch(
+                indexed_condition_map, table_info)
+
+        hash_key_type = schema_attribute_type_map[hash_key_name]
+        for hash_key_condition in hash_key_condition_list:
+            for hash_key_condition_arg in hash_key_condition.args:
+                if hash_key_condition_arg.attr_type != hash_key_type:
+                    self._raise_condition_schema_mismatch(
+                        indexed_condition_map, table_info)
+
+        if (len(hash_key_condition_list) != 1 or
+                    hash_key_condition_list[0].type !=
+                    IndexedCondition.CONDITION_TYPE_EQUAL):
+            raise ValidationError(
+                _("Only equality condition is allowed for HASH key attribute "
+                  "'%(hash_key_name)s'"),
+                hash_key_name=hash_key_name,
+                )
+
+        # validate range key conditions
+
         range_key_name = table_info.schema.range_key_name
 
         if index_name is not None:
@@ -661,74 +699,44 @@ class SimpleStorageManager(StorageManager):
                     _("Index '%(index_name)s' doesn't exist for table "
                       "'%(table_name)s'"),
                     index_name=index_name, table_name=table_name)
-            range_key_name_to_query = index_def.alt_range_key_attr
-        else:
-            range_key_name_to_query = range_key_name
+            range_key_name = index_def.alt_range_key_attr
+
+        range_condition_list = condition_map.pop(range_key_name, None)
+        if range_key_name:
+            range_key_type = schema_attribute_type_map[range_key_name]
+            range_condition_list = range_condition_list or []
+
+            if exact_item and (len(range_condition_list) != 1 or
+                                   (range_condition_list[0].type !=
+                                    IndexedCondition.CONDITION_TYPE_EQUAL)):
+                raise ValidationError(
+                    _("Only equality condition is allowed for RANGE key attribute "
+                      "'%(range_key_name)s'"), range_key_name=range_key_name,
+                    )
+
+            for range_condition in range_condition_list:
+                for range_condition_arg in range_condition.args:
+                    if range_condition_arg.attr_type != range_key_type:
+                        self._raise_condition_schema_mismatch(
+                            indexed_condition_map, table_info)
+
+        # validate extra conditions
+
+        if len(condition_map) > 0:
+            self._raise_condition_schema_mismatch(
+                indexed_condition_map, table_info)
+
+        # validate exclusive start key
 
         if exclusive_start_key is not None:
             self._validate_table_schema(
                 table_info, exclusive_start_key, index_name=index_name
             )
 
-        indexed_condition_map_copy = indexed_condition_map.copy()
-
-        hash_key_condition_list = indexed_condition_map_copy.pop(hash_key_name,
-                                                                 None)
-        range_key_to_query_condition_list = indexed_condition_map_copy.pop(
-            range_key_name_to_query, None
-        )
-
-        indexed_condition_schema_valid = False
-        if len(indexed_condition_map_copy) == 0 and hash_key_condition_list:
-            hash_key_type = schema_attribute_type_map[hash_key_name]
-            for hash_key_condition in hash_key_condition_list:
-                for hash_key_condition_arg in hash_key_condition.args:
-                    if hash_key_condition_arg.attr_type != hash_key_type:
-                        break
-                else:
-                    continue
-                break
-            else:
-                if range_key_to_query_condition_list:
-                    range_key_to_query_type = schema_attribute_type_map[
-                        range_key_name_to_query
-                    ]
-                    for range_key_to_query_condition in (
-                            range_key_to_query_condition_list):
-                        for range_key_to_query_condition_arg in (
-                                range_key_to_query_condition.args):
-                            if (range_key_to_query_condition_arg.attr_type !=
-                                    range_key_to_query_type):
-                                break
-                        else:
-                            continue
-                        break
-                    else:
-                        indexed_condition_schema_valid = True
-                else:
-                    indexed_condition_schema_valid = True
-
-        if not indexed_condition_schema_valid:
-            raise ValidationError(
-                _("Specified query conditions %(indexed_condition_map)s "
-                  "doesn't match table schema: %(table_schema)s"),
-                indexed_condition_map=indexed_condition_map,
-                table_schema=table_info.schema
-            )
-
-        if (len(hash_key_condition_list) != 1 or
-                hash_key_condition_list[0].type !=
-                IndexedCondition.CONDITION_TYPE_EQUAL):
-            raise ValidationError(
-                _("Only equality condition is allowed for HASH key attribute "
-                  "'%(hash_key_name)s'"),
-                hash_key_name=hash_key_name,
-            )
-
         with self.__task_semaphore:
             result = self._storage_driver.select_item(
                 context, table_info, hash_key_condition_list,
-                range_key_to_query_condition_list, select_type,
+                range_condition_list, select_type,
                 index_name, limit, exclusive_start_key, consistent, order_type
             )
         self._notifier.info(

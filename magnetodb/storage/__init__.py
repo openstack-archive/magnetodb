@@ -302,7 +302,8 @@ def update_item(context, table_name, key_attribute_map,
 
 def select_item(context, table_name, indexed_condition_map=None,
                 select_type=None, index_name=None, limit=None,
-                exclusive_start_key=None, consistent=True, order_type=None):
+                exclusive_start_key=None, consistent=True,
+                order_type=None, exact_item=False):
     """
     :param context: current request context
     :param table_name: String, name of table to get item from
@@ -322,13 +323,16 @@ def select_item(context, table_name, indexed_condition_map=None,
     :param order_type: defines order of returned rows, if 'None' - default
                 order will be used
 
+    :param exact_item: if 'True', 'indexed_condition_map' will be validated
+                to match key schema exactly (to select only one item)
+
     :returns: SelectResult instance
 
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.select_item(
         context, table_name, indexed_condition_map, select_type, index_name,
-        limit, exclusive_start_key, consistent, order_type
+        limit, exclusive_start_key, consistent, order_type, exact_item
     )
 
 
