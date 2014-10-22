@@ -7,28 +7,60 @@
 Welcome to MagnetoDB's documentation!
 =====================================
 
-Contents:
+.. include:: introduction.rst
 
+-----------------------
+Developer documentation
+-----------------------
+
+Developer guide
+===============
 .. toctree::
-   :maxdepth: 2
-
-   introduction.rst
+   :maxdepth: 1
 
    developer_guide.rst
 
-   configuration_guide.rst
 
-   user_guide.rst
-
-   admin_guide.rst
+API Reference
+=============
+.. toctree::
+   :maxdepth: 1
 
    api_reference.rst
 
+   dynamodb_api.rst
+
+------------------
+User documentation
+------------------
+
+User guide
+==========
+.. toctree::
+   :maxdepth: 1
+
+   user_guide.rst
+
+Magnetodb CLI
+=============
+.. toctree::
+   :maxdepth: 1
+
    cli.rst
 
-==================
+-----------
+Admin guides
+-----------
+.. toctree::
+   :maxdepth: 1
+
+   admin_guide.rst
+
+   configuration_guide.rst
+
+------------------
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
