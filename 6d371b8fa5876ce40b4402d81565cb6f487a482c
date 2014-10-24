@@ -1,0 +1,9 @@
+Verified+2: Jenkins
+Code-Review+2: Illia Khudoshyn <ikhudoshyn@mirantis.com>
+Code-Review+2: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Workflow+1: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Fri, 24 Oct 2014 13:54:16 +0000
+Reviewed-on: https://review.openstack.org/129905
+Project: stackforge/magnetodb
+Branch: refs/heads/master
