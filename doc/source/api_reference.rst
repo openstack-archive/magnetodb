@@ -78,3 +78,12 @@ MagnetoDB actions
    batch_get_item.rst
    batch_write_item.rst
 
+
+MagnetoDB monitoring actions
+============================
+
+.. toctree::
+   :maxdepth: 1
+
+   list_tables_monitoring.rst
+   table_usage_details.rst
