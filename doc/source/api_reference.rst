@@ -77,4 +77,3 @@ MagnetoDB actions
    scan.rst
    batch_get_item.rst
    batch_write_item.rst
-
