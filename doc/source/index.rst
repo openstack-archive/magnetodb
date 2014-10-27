@@ -28,6 +28,8 @@ API Reference
 
    api_reference.rst
 
+   monitoring_api.rst
+
    dynamodb_api.rst
 
    health_check.rst
@@ -50,9 +52,9 @@ Magnetodb CLI
 
    cli.rst
 
------------
+------------
 Admin guides
------------
+------------
 .. toctree::
    :maxdepth: 1
 
