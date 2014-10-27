@@ -1,0 +1,12 @@
+{
+    "tables": [
+        {
+            "href": "Thread",
+            "rel": "self"
+        },
+        {
+            "href": "test_hash",
+            "rel": "self"
+        }
+    ]
+}
