@@ -344,3 +344,29 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
                                           key_conditions=key_conditions,
                                           consistent_read=True)
         self.assertEqual(item, body['items'][0])
+
+    @attr(type=['BWI-42', 'negative'])
+    def test_batch_write_put_delete_same_item(self):
+        self._create_test_table(self.smoke_attrs, self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        item = self.build_smoke_item('forum1', 'subject2',
+                                     'message text', 'John', '10')
+        key = {
+            self.hashkey: {'S': 'forum1'},
+            self.rangekey: {'S': 'subject2'}
+        }
+
+        request_body = {
+            'request_items': {self.tname: [
+                {'put_request': {'item': item}},
+                {'delete_request': {'key': key}}
+            ]}
+        }
+
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.batch_write_item(request_body)
+
+        exception = raises_cm.exception
+        self.assertIn("ValidationError", exception._error_string)
+        self.assertIn("Both PUT and DELETE", exception._error_string)
