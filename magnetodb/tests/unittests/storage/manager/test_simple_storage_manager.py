@@ -13,6 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from magnetodb.common.exception import ValidationError
 from magnetodb.storage.driver import StorageDriver
 from magnetodb.storage.models import WriteItemRequest, TableMeta
 from magnetodb.storage.table_info_repo import TableInfoRepository, TableInfo
@@ -51,6 +52,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         mock_batch_write.side_effect = NotImplementedError()
 
         table_info = mock.Mock()
+        table_info.schema.key_attributes = ['id', 'range']
         mock_repo_get.return_value = table_info
 
         context = mock.Mock(tenant='fake_tenant')
@@ -255,3 +257,49 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         self.assertEqual(
             table_meta.status, TableMeta.TABLE_STATUS_DELETING)
+
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_validate_table_schema')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_validate_table_is_active')
+    @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
+    def test_execute_write_batch_put_delete_same_item(
+            self, mock_repo_get, mock_validate_table_is_active,
+            mock_validate_table_schema):
+
+        table_info = mock.Mock()
+        table_info.schema.key_attributes = ['id', 'range']
+        mock_repo_get.return_value = table_info
+
+        context = mock.Mock(tenant='fake_tenant')
+
+        table_name = 'fake_table'
+
+        request_map = {
+            table_name: [
+                WriteItemRequest.put(
+                    {
+                        'id': models.AttributeValue('N', 1),
+                        'range': models.AttributeValue('S', '1'),
+                        'str': models.AttributeValue('S', 'str1'),
+                    }
+                ),
+                WriteItemRequest.delete(
+                    {
+                        'id': models.AttributeValue('N', 1),
+                        'range': models.AttributeValue('S', '1')
+                    }
+                )
+            ]
+        }
+
+        storage_manager = SimpleStorageManager(StorageDriver(),
+                                               TableInfoRepository())
+
+        with self.assertRaises(ValidationError) as raises_cm:
+            storage_manager.execute_write_batch(
+                context, request_map
+            )
+
+        exception = raises_cm.exception
+        self.assertIn("More than one", exception._error_string)
