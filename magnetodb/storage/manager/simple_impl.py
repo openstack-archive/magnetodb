@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from collections import defaultdict
 import logging
 from datetime import datetime
 
@@ -34,9 +35,10 @@ from magnetodb.common.exception import ValidationError
 from magnetodb import notifier
 from magnetodb.openstack.common.gettextutils import _
 
-from magnetodb.storage.models import SelectType
 from magnetodb.storage.models import IndexedCondition
+from magnetodb.storage.models import SelectType
 from magnetodb.storage.models import TableMeta
+from magnetodb.storage.models import WriteItemRequest
 
 from magnetodb.storage.manager import StorageManager
 
@@ -428,6 +430,14 @@ class SimpleStorageManager(StorageManager):
         return self._delete_item_async(context, table_info, key_attribute_map,
                                        expected_condition_map)
 
+    @staticmethod
+    def _key_values(table_info, attribute_map):
+        return {
+            key: value
+            for key, value in attribute_map.iteritems()
+            if key in table_info.schema.key_attributes
+        }
+
     def execute_write_batch(self, context, write_request_map):
         self._notifier.info(
             context,
@@ -436,6 +446,9 @@ class SimpleStorageManager(StorageManager):
         write_request_list_to_send = []
         for table_name, write_request_list in write_request_map.iteritems():
             table_info = self._table_info_repo.get(context, table_name)
+
+            keys_to_req = defaultdict(list)
+
             for req in write_request_list:
                 self._validate_table_is_active(table_info)
 
@@ -445,9 +458,26 @@ class SimpleStorageManager(StorageManager):
                 else:
                     self._validate_table_schema(table_info, req.attribute_map)
 
+                key_values = self._key_values(table_info, req.attribute_map)
+
+                keys = tuple(sorted(key_values.iteritems()))
+
+                keys_to_req[keys].append(req)
+
                 write_request_list_to_send.append(
                     (table_info, req)
                 )
+
+            for keys, reqs in keys_to_req.iteritems():
+                if (WriteItemRequest.WRITE_REQUEST_TYPE_PUT in reqs and
+                        WriteItemRequest.WRITE_REQUEST_TYPE_DELETE in reqs):
+                            raise ValidationError(
+                                _("Can't execute request: "
+                                  "Both PUT and DELETE operations requested"
+                                  " for item %(keys)"
+                                  " in table '%(table_name)s'"),
+                                table_name=table_info.name, keys=keys
+                            )
 
         future_result_list = []
         for i in xrange(0, len(write_request_list_to_send),
