@@ -36,72 +36,9 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self._create_test_table(self.smoke_attrs, self.tname,
                                     self.smoke_schema)
 
-    @test.attr(type=['CreT-35', 'negative'])
-    def test_create_table_other_keys_in_schema(self):
-        schema = [{'attribute_name': 'subject', 'key_type': 'HASH'}]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=self.one_attr,
-                                    table_name=self.tname,
-                                    schema=schema)
-
-    @test.attr(type=['CreT-8_1', 'negative'])
-    def test_create_table_malformed_01(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=None, table_name=self.tname,
-                                    schema=None)
-
-    @test.attr(type=['CreT-8_2', 'negative'])
-    def test_create_table_malformed_02(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=self.smoke_attrs,
-                                    table_name=self.tname,
-                                    schema=None)
-
-    @test.attr(type=['CreT-8_3', 'CreT-34', 'negative'])
-    def test_create_table_malformed_03(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=None,
-                                    table_name=self.tname,
-                                    schema=self.smoke_schema)
-
-    @test.attr(type=['CreT-8_4', 'negative'])
-    def test_create_table_malformed_04(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=self.smoke_attrs,
-                                    table_name=None,
-                                    schema=self.smoke_schema)
-
-    @test.attr(type=['CreT-8_5', 'negative'])
-    def test_create_table_malformed_05(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=None, table_name=None,
-                                    schema=self.smoke_schema)
-
-    @test.attr(type=['CreT-8_6', 'negative'])
-    def test_create_table_malformed_06(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=self.smoke_attrs,
-                                    table_name=None,
-                                    schema=None)
-
-    @test.attr(type=['CreT-8_7', 'negative'])
-    def test_create_table_malformed_07(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=None, table_name=None,
-                                    schema=None)
-
     @test.attr(type=['CreT-20_1', 'negative'])
     def test_create_table_malformed_attrs_02(self):
         attr_def = [{'attribute_name': 'test'}]
-        key_schema = [{'attribute_name': 'test', 'key_type': 'HASH'}]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=attr_def,
-                                    table_name=self.tname,
-                                    schema=key_schema)
-
-    @test.attr(type=['CreT-20_2', 'negative'])
-    def test_create_table_malformed_attrs_03(self):
-        attr_def = [{'attribute_type': 'S'}]
         key_schema = [{'attribute_name': 'test', 'key_type': 'HASH'}]
         with self.assertRaises(exceptions.BadRequest):
             self._create_test_table(attr_def=attr_def,
@@ -126,40 +63,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                     table_name=self.tname,
                                     schema=self.schema_hash_only + schema)
 
-    @test.attr(type=['CreT-29', 'negative'])
-    def test_create_table_only_range_key(self):
-        attr_def = [{'attribute_name': 'forum', 'attribute_type': 'S'}]
-        schema = [{'attribute_name': 'forum', 'key_type': 'RANGE'}]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=attr_def,
-                                    table_name=self.tname,
-                                    schema=schema)
-
-    @test.attr(type=['CreT-30', 'negative'])
-    def test_create_table_empty_schema(self):
-        attr_def = [{'attribute_name': 'forum', 'attribute_type': 'S'}]
-        schema = []
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(attr_def=attr_def,
-                                    table_name=self.tname,
-                                    schema=schema)
-
-    @test.attr(type=['CreT-32_1', 'negative'])
-    def test_create_table_redundand_schema_hash(self):
-        schema = [{'attribute_name': 'last_posted_by', 'key_type': 'HASH'}]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + self.index_attrs,
-                                    self.tname,
-                                    self.smoke_schema + schema)
-
-    @test.attr(type=['CreT-32_2', 'negative'])
-    def test_create_table_redundand_schema_range(self):
-        schema = [{'attribute_name': 'last_posted_by', 'key_type': 'RANGE'}]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + self.index_attrs,
-                                    self.tname,
-                                    self.smoke_schema + schema)
-
     @test.attr(type=['CreT-46', 'negative'])
     def test_create_table_too_short_name(self):
         tname = 'qq'
@@ -167,7 +70,8 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self._create_test_table(self.smoke_attrs + self.index_attrs,
                                     tname,
                                     self.smoke_schema,
-                                    self.smoke_lsi)
+                                    self.smoke_lsi,
+                                    wait_for_active=True)
 
     @test.attr(type=['CreT-47', 'negative'])
     def test_create_table_too_long_name(self):
@@ -254,24 +158,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         request_lsi[0]['index_name'] = request_index_name
         with self.assertRaises(exceptions.BadRequest):
             self._create_test_table(self.smoke_attrs + self.index_attrs,
-                                    self.tname,
-                                    self.smoke_schema,
-                                    request_lsi)
-
-    @test.attr(type=['CreT-73', 'negative'])
-    def test_create_table_index_schema_only_hash(self):
-        request_lsi = []
-        request_lsi.append(
-            {
-                'index_name': 'index_name',
-                'key_schema': [
-                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
-                ],
-                'projection': {'projection_type': 'ALL'}
-            }
-        )
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs,
                                     self.tname,
                                     self.smoke_schema,
                                     request_lsi)
@@ -407,52 +293,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self._create_test_table(self.smoke_attrs + index_attrs,
                                     self.tname,
                                     self.smoke_schema,
-                                    request_lsi)
-
-    @test.attr(type=['CreT-84_1', 'negative'])
-    def test_create_table_index_non_key_attrs_all_projection_type(self):
-        index_attrs = [{'attribute_name': 'attr_name1',
-                        'attribute_type': 'S'},
-                       ]
-        non_key_attributes = ['non_key_attr1']
-        request_lsi = [
-            {
-                'index_name': 'index_name',
-                'key_schema': [
-                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
-                    {'attribute_name': 'attr_name1', 'key_type': 'RANGE'}
-                ],
-                'projection': {
-                    'projection_type': 'ALL',
-                    'non_key_attributes': non_key_attributes}
-            }
-        ]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + index_attrs,
-                                    self.tname, self.smoke_schema,
-                                    request_lsi)
-
-    @test.attr(type=['CreT-84_2', 'negative'])
-    def test_create_table_index_non_key_attrs_keys_only_projection_type(self):
-        index_attrs = [{'attribute_name': 'attr_name1',
-                        'attribute_type': 'S'},
-                       ]
-        non_key_attributes = ['non_key_attr1']
-        request_lsi = [
-            {
-                'index_name': 'index_name',
-                'key_schema': [
-                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
-                    {'attribute_name': 'attr_name1', 'key_type': 'RANGE'}
-                ],
-                'projection': {
-                    'projection_type': 'KEYS_ONLY',
-                    'non_key_attributes': non_key_attributes}
-            }
-        ]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + index_attrs,
-                                    self.tname, self.smoke_schema,
                                     request_lsi)
 
     @test.attr(type=['CreT-86', 'negative'])
