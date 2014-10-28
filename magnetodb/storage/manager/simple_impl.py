@@ -103,7 +103,8 @@ class SimpleStorageManager(StorageManager):
 
         self._do_create_table(context, table_info)
 
-        return TableMeta(table_info.schema, table_info.status)
+        return TableMeta(table_info.schema, table_info.status,
+                         table_info.created)
 
     def _do_delete_table(self, context, table_info):
         self._storage_driver.delete_table(context, table_info)
@@ -140,7 +141,8 @@ class SimpleStorageManager(StorageManager):
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_END,
                 table_name)
-            return TableMeta(table_info.schema, table_info.status)
+            return TableMeta(table_info.schema, table_info.status,
+                             table_info.created)
         elif table_info.status != TableMeta.TABLE_STATUS_ACTIVE:
             e = ResourceInUseException()
             self._notifier.error(
@@ -158,7 +160,8 @@ class SimpleStorageManager(StorageManager):
 
         self._do_delete_table(context, table_info)
 
-        return TableMeta(table_info.schema, table_info.status)
+        return TableMeta(table_info.schema, table_info.status,
+                         table_info.created)
 
     def describe_table(self, context, table_name):
         table_info = self._table_info_repo.get(
@@ -205,7 +208,8 @@ class SimpleStorageManager(StorageManager):
                     )
                 )
 
-        return TableMeta(table_info.schema, table_info.status)
+        return TableMeta(table_info.schema, table_info.status,
+                         table_info.created)
 
     def list_tables(self, context, exclusive_start_table_name=None,
                     limit=None):
