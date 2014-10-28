@@ -142,84 +142,6 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
                                           key_conditions=key_conditions)
         self.assertTrue(body['count'] > 0)
 
-    @test.attr(type=['Q-19', 'negative'])
-    def test_query_attributes_to_get_select_all(self):
-        self._create_test_table(self.smoke_attrs,
-                                self.tname,
-                                self.smoke_schema,
-                                wait_for_active=True)
-        self.put_smoke_item(self.tname, 'forum1', 'subject2',
-                            'message text', 'John', '10')
-        attributes_to_get = ['last_posted_by']
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'S': 'forum1'}],
-                'comparison_operator': 'EQ'
-            },
-            'subject': {
-                'attribute_value_list': [{'S': 'subject'}],
-                'comparison_operator': 'BEGINS_WITH'
-            }
-        }
-        with self.assertRaises(exceptions.BadRequest):
-            self.client.query(table_name=self.tname,
-                              key_conditions=key_conditions,
-                              attributes_to_get=attributes_to_get,
-                              consistent_read=True,
-                              select='ALL_ATTRIBUTES')
-
-    @test.attr(type=['Q-20', 'negative'])
-    def test_query_attributes_to_get_select_all_projected(self):
-        self._create_test_table(self.smoke_attrs,
-                                self.tname,
-                                self.smoke_schema,
-                                wait_for_active=True)
-        self.put_smoke_item(self.tname, 'forum1', 'subject2',
-                            'message text', 'John', '10')
-        attributes_to_get = ['last_posted_by']
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'S': 'forum1'}],
-                'comparison_operator': 'EQ'
-            },
-            'subject': {
-                'attribute_value_list': [{'S': 'subject'}],
-                'comparison_operator': 'BEGINS_WITH'
-            }
-        }
-        with self.assertRaises(exceptions.BadRequest):
-            self.client.query(table_name=self.tname,
-                              key_conditions=key_conditions,
-                              attributes_to_get=attributes_to_get,
-                              consistent_read=True,
-                              select='ALL_PROJECTED_ATTRIBUTES')
-
-    @test.attr(type=['Q-21', 'negative'])
-    def test_query_attributes_to_get_select_count(self):
-        self._create_test_table(self.smoke_attrs,
-                                self.tname,
-                                self.smoke_schema,
-                                wait_for_active=True)
-        self.put_smoke_item(self.tname, 'forum1', 'subject2',
-                            'message text', 'John', '10')
-        attributes_to_get = ['last_posted_by']
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'S': 'forum1'}],
-                'comparison_operator': 'EQ'
-            },
-            'subject': {
-                'attribute_value_list': [{'S': 'subject'}],
-                'comparison_operator': 'BEGINS_WITH'
-            }
-        }
-        with self.assertRaises(exceptions.BadRequest):
-            self.client.query(table_name=self.tname,
-                              key_conditions=key_conditions,
-                              attributes_to_get=attributes_to_get,
-                              consistent_read=True,
-                              select='COUNT')
-
     @test.attr(type=['Q-27', 'negative'])
     def test_query_attributes_to_get_empty(self):
         self._create_test_table(self.smoke_attrs,
@@ -239,11 +161,14 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
                 'comparison_operator': 'BEGINS_WITH'
             }
         }
-        with self.assertRaises(exceptions.BadRequest):
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
             self.client.query(table_name=self.tname,
                               key_conditions=key_conditions,
                               attributes_to_get=attributes_to_get,
                               consistent_read=True)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Attribute list can not be empty", error_msg)
 
     def _query_key_cond_comparison_negative(self, attr_type, value,
                                             value_list, compare_op,
@@ -309,13 +234,6 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
                                                  [{'S': 'start'},
                                                   {'S': 'end'}], 'BEGINS_WITH')
 
-    @test.attr(type=['Q-122', 'negative'])
-    def test_query_key_cond_begins_with_bad_field(self):
-        self._query_key_cond_comparison_negative('S', 'startend',
-                                                 [{'S': 'start'}],
-                                                 'BEGINS_WITH',
-                                                 'non_existent_key_attr')
-
     @test.attr(type=['Q-126', 'negative'])
     def test_query_key_cond_between_bad_field(self):
         self._query_key_cond_comparison_negative('S', '1',
@@ -373,32 +291,6 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
             self.client.query(table_name=self.tname,
                               key_conditions=key_conditions,
                               exclusive_start_key=exclusive,
-                              consistent_read=True)
-
-    @test.attr(type=['Q-69', 'negative'])
-    def test_query_index_non_existent(self):
-        self._create_test_table(self.smoke_attrs + self.index_attrs,
-                                self.tname,
-                                self.smoke_schema,
-                                self.smoke_lsi,
-                                wait_for_active=True)
-        self.put_smoke_item(self.tname, 'forum1', 'subject2',
-                            'message text', 'John', '10')
-        index_name = 'non_existent_index'
-        key_conditions = {
-            'forum': {
-                'attribute_value_list': [{'S': 'forum1'}],
-                'comparison_operator': 'EQ'
-            },
-            'last_posted_by': {
-                'attribute_value_list': [{'S': 'John'}],
-                'comparison_operator': 'EQ'
-            }
-        }
-        with self.assertRaises(exceptions.NotFound):
-            self.client.query(table_name=self.tname,
-                              key_conditions=key_conditions,
-                              index_name=index_name,
                               consistent_read=True)
 
     @test.attr(type=['Q-72', 'negative'])

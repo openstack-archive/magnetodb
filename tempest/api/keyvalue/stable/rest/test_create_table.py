@@ -398,3 +398,122 @@ class MagnetoDBCreateTableTestCase(MagnetoDBTestCase):
         self.assertEqual(1, len(indexes2))
         self.assertEqual(request_index_name, indexes1[0]['index_name'])
         self.assertEqual(request_index_name, indexes2[0]['index_name'])
+
+    @attr(type=['CreT-27'])
+    def test_create_table_only_hash(self):
+        tname = rand_name().replace('-', '')
+        headers, body = self._create_test_table(self.one_attr, tname,
+                                                self.schema_hash_only)
+        self.assertEqual(self.schema_hash_only,
+                         body['table_description']['key_schema'])
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
+
+    @attr(type=['CreT-81'])
+    def test_create_table_index_1_non_key(self):
+        tname = rand_name().replace('-', '')
+        index_attrs = [{'attribute_name': 'attr_name1',
+                        'attribute_type': 'S'},
+                       ]
+        non_key_attributes = ['non_key_attr1']
+        request_lsi = [
+            {
+                'index_name': 'index_name',
+                'key_schema': [
+                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                    {'attribute_name': 'attr_name1', 'key_type': 'RANGE'}
+                ],
+                'projection': {
+                    'projection_type': 'INCLUDE',
+                    'non_key_attributes': non_key_attributes}
+            }
+        ]
+        headers, body = self._create_test_table(
+            self.smoke_attrs + index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertIn('non_key_attributes', indexes[0]['projection'])
+        self.assertEqual(non_key_attributes,
+                         indexes[0]['projection']['non_key_attributes'])
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
+
+    @attr(type=['CreT-85'])
+    def test_create_table_index_20_non_key_1_index(self):
+        tname = rand_name().replace('-', '')
+        index_attrs = [{'attribute_name': 'attr_name1',
+                        'attribute_type': 'S'},
+                       ]
+        non_key_attributes = ['non_key_attr' + str(i) for i in range(0, 20)]
+        request_lsi = [
+            {
+                'index_name': 'index_name',
+                'key_schema': [
+                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                    {'attribute_name': 'attr_name1', 'key_type': 'RANGE'}
+                ],
+                'projection': {
+                    'projection_type': 'INCLUDE',
+                    'non_key_attributes': non_key_attributes}
+            }
+        ]
+        headers, body = self._create_test_table(
+            self.smoke_attrs + index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        indexes = body['table_description']['local_secondary_indexes']
+        self.assertIn('non_key_attributes', indexes[0]['projection'])
+        self.assertEqual(20,
+                         len(indexes[0]['projection']['non_key_attributes']))
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))
+
+    @attr(type=['CreT-87'])
+    def test_create_table_index_20_non_key_3_indexes(self):
+        tname = rand_name().replace('-', '')
+        index_attrs = [{'attribute_name': 'attr_name' + str(i),
+                        'attribute_type': 'S'} for i in range(1, 4)
+                       ]
+        non_key_attributes = (['non_key_attr' + str(i) for i in range(1, 8)],
+                              ['non_key_attr' + str(i) for i in range(8, 15)],
+                              ['non_key_attr' + str(i) for i in range(15, 21)])
+        request_lsi = []
+        for i, attr_name in enumerate(index_attrs):
+            request_lsi.append(
+                {
+                    'index_name': '%s_index' % attr_name['attribute_name'],
+                    'key_schema': [
+                        {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                        {'attribute_name': attr_name['attribute_name'],
+                         'key_type': 'RANGE'}
+                    ],
+                    'projection': {
+                        'projection_type': 'INCLUDE',
+                        'non_key_attributes': non_key_attributes[i]}
+                }
+            )
+        headers, body = self._create_test_table(
+            self.smoke_attrs + index_attrs,
+            tname,
+            self.smoke_schema,
+            request_lsi)
+        indexes = body['table_description']['local_secondary_indexes']
+        for i in range(0, 3):
+            self.assertIn('non_key_attributes', indexes[i]['projection'])
+            index_name = indexes[i]['index_name']
+            non_key_attrs = [
+                lsi['projection']['non_key_attributes']
+                for lsi in request_lsi if lsi['index_name'] == index_name
+            ][0]
+            self.assertEqual(len(non_key_attrs), len(indexes[i]['projection']
+                                                     ['non_key_attributes']))
+        # NOTE(aostapenko) we can't guarantee that FAIL occures because of test
+        # theme, no info about error cause from back-end is available
+        self.assertTrue(self.wait_for_table_active(tname))

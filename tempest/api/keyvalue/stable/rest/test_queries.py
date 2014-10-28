@@ -978,7 +978,8 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
     def _query_key_cond_comparison_negative(self, attr_type, value,
                                             value_list, compare_op,
                                             second_key_cond='subject',
-                                            result=exceptions.BadRequest):
+                                            result=exceptions.BadRequest,
+                                            message=None):
         attrs = [
             {'attribute_name': 'forum', 'attribute_type': 'N'},
             {'attribute_name': 'subject', 'attribute_type': attr_type}
@@ -1004,10 +1005,14 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
                 'comparison_operator': compare_op
             }
         }
-        with self.assertRaises(result):
+        with self.assertRaises(result) as raises_cm:
             self.client.query(table_name=self.tname,
                               key_conditions=key_conditions,
                               consistent_read=True)
+        if message:
+            error_msg = raises_cm.exception._error_string
+            self.assertIn(message, error_msg)
+
 
     @test.attr(type=['Q-124', 'negative'])
     def test_query_key_cond_begins_with_set(self):
@@ -1381,3 +1386,160 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
                               key_conditions=key_conditions,
                               consistent_read=True,
                               select='INVALID')
+
+    @test.attr(type=['Q-19', 'negative'])
+    def test_query_attributes_to_get_select_all(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = ['last_posted_by']
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              attributes_to_get=attributes_to_get,
+                              consistent_read=True,
+                              select='ALL_ATTRIBUTES')
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Attribute list is only expected with select_type"
+                      " 'SPECIFIC_ATTRIBUTES'", error_msg)
+
+    @test.attr(type=['Q-20', 'negative'])
+    def test_query_attributes_to_get_select_all_projected(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = ['last_posted_by']
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              attributes_to_get=attributes_to_get,
+                              consistent_read=True,
+                              select='ALL_PROJECTED_ATTRIBUTES')
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Attribute list is only expected with select_type"
+                      " 'SPECIFIC_ATTRIBUTES'", error_msg)
+
+    @test.attr(type=['Q-21', 'negative'])
+    def test_query_attributes_to_get_select_count(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = ['last_posted_by']
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              attributes_to_get=attributes_to_get,
+                              consistent_read=True,
+                              select='COUNT')
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Attribute list is only expected with select_type"
+                      " 'SPECIFIC_ATTRIBUTES'", error_msg)
+
+    @test.attr(type=['Q-27', 'negative'])
+    def test_query_attributes_to_get_empty(self):
+        self._create_test_table(self.smoke_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        attributes_to_get = []
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'subject': {
+                'attribute_value_list': [{'S': 'subject'}],
+                'comparison_operator': 'BEGINS_WITH'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              attributes_to_get=attributes_to_get,
+                              consistent_read=True)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Attribute list can not be empty", error_msg)
+
+    @test.attr(type=['Q-69', 'negative'])
+    def test_query_index_non_existent(self):
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                self.tname,
+                                self.smoke_schema,
+                                self.smoke_lsi,
+                                wait_for_active=True)
+        self.put_smoke_item(self.tname, 'forum1', 'subject2',
+                            'message text', 'John', '10')
+        index_name = 'non_existent_index'
+        key_conditions = {
+            'forum': {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            },
+            'last_posted_by': {
+                'attribute_value_list': [{'S': 'John'}],
+                'comparison_operator': 'EQ'
+            }
+        }
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.query(table_name=self.tname,
+                              key_conditions=key_conditions,
+                              index_name=index_name,
+                              consistent_read=True)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("doesn't exist for table", error_msg)
+
+    @test.attr(type=['Q-122', 'negative'])
+    def test_query_key_cond_begins_with_bad_field(self):
+        self._query_key_cond_comparison_negative(
+            'S', 'startend',
+            [{'S': 'start'}],
+            'BEGINS_WITH',
+            'non_existent_key_attr',
+            message='match table schema'
+        )
