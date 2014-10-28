@@ -33,6 +33,8 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
     @mock.patch('magnetodb.storage.driver.StorageDriver.batch_write')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
+                '_key_values')
+    @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_table_schema')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_table_is_active')
@@ -43,12 +45,14 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                 '_put_item_async')
     def test_execute_write_batch(self, mock_put_item, mock_delete_item,
                                  mock_repo_get, mock_validate_table_is_active,
-                                 mock_validate_table_schema, mock_batch_write):
+                                 mock_validate_table_schema, mock_key_values,
+                                 mock_batch_write):
         future = Future()
         future.set_result(True)
         mock_put_item.return_value = future
         mock_delete_item.return_value = future
         mock_batch_write.side_effect = NotImplementedError()
+        mock_key_values.return_value = {}
 
         table_info = mock.Mock()
         mock_repo_get.return_value = table_info
