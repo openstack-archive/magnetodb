@@ -80,3 +80,46 @@ class MagnetoDBTablesTest(MagnetoDBTestCase):
         new_tables = [n for n in self.client.list_tables()['TableNames']
                       if n == tname]
         self.assertEqual(1, len(new_tables))
+
+    def test_create_table_index_20_non_key_3_indexes(self):
+        tname = rand_name().replace('-', '')
+        index_attrs = [{'AttributeName': 'attr_name' + str(i),
+                        'AttributeType': 'S'} for i in range(1, 4)
+                       ]
+        non_key_attributes = (['non_key_attr' + str(i) for i in range(1, 8)],
+                              ['non_key_attr' + str(i) for i in range(8, 15)],
+                              ['non_key_attr' + str(i) for i in range(15, 21)])
+        request_lsi = []
+        for i, attr_name in enumerate(index_attrs):
+            request_lsi.append(
+                {
+                    'IndexName': '%s_index' % attr_name['AttributeName'],
+                    'KeySchema': [
+                        {'AttributeName': self.hashkey, 'KeyType': 'HASH'},
+                        {'AttributeName': attr_name['AttributeName'],
+                         'KeyType': 'RANGE'}
+                    ],
+                    'Projection': {
+                        'ProjectionType': 'INCLUDE',
+                        'NonKeyAttributes': non_key_attributes[i]}
+                }
+            )
+        body = self.client.create_table(
+            self.smoke_attrs + index_attrs,
+            tname,
+            self.smoke_schema,
+            self.smoke_throughput,
+            request_lsi)
+        self.assertTrue(self.wait_for_table_active(tname))
+        self.addResourceCleanUp(self.client.delete_table, tname)
+        indexes = body['TableDescription']['LocalSecondaryIndexes']
+
+        for i in range(0, 3):
+            self.assertIn('NonKeyAttributes', indexes[i]['Projection'])
+            index_name = indexes[i]['IndexName']
+            non_key_attrs = [
+                lsi['Projection']['NonKeyAttributes']
+                for lsi in request_lsi if lsi['IndexName'] == index_name
+            ][0]
+            self.assertEqual(len(non_key_attrs), len(indexes[i]['Projection']
+                                                     ['NonKeyAttributes']))
