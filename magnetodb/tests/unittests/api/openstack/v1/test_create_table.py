@@ -48,7 +48,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
                                                             "LastPostDateTime")
                 }
             ),
-            models.TableMeta.TABLE_STATUS_ACTIVE
+            models.TableMeta.TABLE_STATUS_ACTIVE,
+            123
         )
 
         conn = httplib.HTTPConnection('localhost:8080')
@@ -106,7 +107,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
                 {'attribute_name': 'ForumName', 'attribute_type': 'S'}
             ],
-            'creation_date_time': 0,
+            'creation_date_time': 123,
             'item_count': 0,
             'key_schema': [
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'},
@@ -154,7 +155,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 },
                 key_attributes=["ForumName", "Subject"]
             ),
-            models.TableMeta.TABLE_STATUS_ACTIVE
+            models.TableMeta.TABLE_STATUS_ACTIVE,
+            123
         )
 
         conn = httplib.HTTPConnection('localhost:8080')
@@ -194,7 +196,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
                 {'attribute_name': 'ForumName', 'attribute_type': 'S'}
             ],
-            'creation_date_time': 0,
+            'creation_date_time': 123,
             'item_count': 0,
             'key_schema': [
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'},
@@ -260,7 +262,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
                                                             "LastPostDateTime")
                 }
             ),
-            models.TableMeta.TABLE_STATUS_ACTIVE
+            models.TableMeta.TABLE_STATUS_ACTIVE,
+            123
         )
         conn = httplib.HTTPConnection('localhost:8080')
         body = """
@@ -313,7 +316,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
                 {'attribute_name': 'ForumName', 'attribute_type': 'S'}
             ],
-            'creation_date_time': 0,
+            'creation_date_time': 123,
             'item_count': 0,
             'key_schema': [
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'}
@@ -349,3 +352,353 @@ class CreateTableTest(test_base_testcase.APITestCase):
         response_payload = json.loads(json_response)
 
         self.assertEqual(expected_response, response_payload)
+
+    def test_create_table_invalid_name_character(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_table_name = 'Thread Table'
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "%s",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "local_secondary_indexes": [
+                    {
+                        "index_name": "LastPostIndex",
+                        "key_schema": [
+                            {
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
+                            },
+                            {
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
+                            }
+                        ],
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
+                        }
+                    }
+                ]
+            }
+        """ % (invalid_table_name)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Wrong table name '%s' found" % (invalid_table_name),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
+
+    def test_create_table_invalid_name_limit(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_table_name = 'Th'
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "%s",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "local_secondary_indexes": [
+                    {
+                        "index_name": "LastPostIndex",
+                        "key_schema": [
+                            {
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
+                            },
+                            {
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
+                            }
+                        ],
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
+                        }
+                    }
+                ]
+            }
+        """ % (invalid_table_name)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Wrong table name '%s' found" % (invalid_table_name),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
+
+    def test_create_table_index_invalid_name_character(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_index_name = 'Last Post Index'
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "Thread",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "local_secondary_indexes": [
+                    {
+                        "index_name": "%s",
+                        "key_schema": [
+                            {
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
+                            },
+                            {
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
+                            }
+                        ],
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
+                        }
+                    }
+                ]
+            }
+        """ % (invalid_index_name)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Wrong index name '%s' found" % (invalid_index_name),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
+
+    def test_create_table_index_invalid_name_limit(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_index_name = 'LP'
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "Thread",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "local_secondary_indexes": [
+                    {
+                        "index_name": "%s",
+                        "key_schema": [
+                            {
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
+                            },
+                            {
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
+                            }
+                        ],
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
+                        }
+                    }
+                ]
+            }
+        """ % (invalid_index_name)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Wrong index name '%s' found" % (invalid_index_name),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
+
+    def test_create_table_attribute_invalid_name_limit(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_attr_name = 'A' * 256
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "Thread",
+                "key_schema": [
+                    {
+                        "attribute_name": "%s",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "local_secondary_indexes": [
+                    {
+                        "index_name": "LastPostIndex",
+                        "key_schema": [
+                            {
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
+                            },
+                            {
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
+                            }
+                        ],
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
+                        }
+                    }
+                ]
+            }
+        """ % (invalid_attr_name)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Wrong attribute name '%s' found" % (invalid_attr_name),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
