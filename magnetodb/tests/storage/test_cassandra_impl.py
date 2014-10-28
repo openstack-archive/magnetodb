@@ -836,7 +836,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
 
 class TestCassandraSelectItem(TestCassandraBase):
 
-    def test_select_item(self):
+    def test_query(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -846,7 +846,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -854,7 +854,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_attr(self):
+    def test_query_attr(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -864,7 +864,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.specific_attributes(['fstr'])
         )
@@ -874,7 +874,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             {'fstr': models.AttributeValue('S', 'fstr')},
             result.items[0])
 
-    def test_select_item_negative(self):
+    def test_query_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -884,14 +884,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '2'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
         self.assertEqual(0, result.count)
 
-    def test_select_item_less(self):
+    def test_query_less(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -903,7 +903,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -911,7 +911,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_less_negative(self):
+    def test_query_less_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -923,14 +923,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
         self.assertEqual(0, result.count)
 
-    def test_select_item_less_eq(self):
+    def test_query_less_eq(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -942,7 +942,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -950,7 +950,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_less_eq_negative(self):
+    def test_query_less_eq_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -962,14 +962,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
         self.assertEqual(0, result.count)
 
-    def test_select_item_greater(self):
+    def test_query_greater(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -981,7 +981,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -989,7 +989,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_greater_negative(self):
+    def test_query_greater_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -1001,14 +1001,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
         self.assertEqual(0, result.count)
 
-    def test_select_item_greater_eq(self):
+    def test_query_greater_eq(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -1020,7 +1020,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -1028,7 +1028,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_greater_eq_negative(self):
+    def test_query_greater_eq_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -1040,14 +1040,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
         self.assertEqual(0, result.count)
 
-    def test_select_item_indexed(self):
+    def test_query_indexed(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -1059,7 +1059,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all(), index_name="index"
         )
@@ -1067,7 +1067,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_indexed_negative(self):
+    def test_query_indexed_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -1079,14 +1079,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all(), index_name="index"
         )
 
         self.assertEqual(0, result.count)
 
-    def test_select_item_between(self):
+    def test_query_between(self):
         self._create_table(indexed=True)
 
         self._insert_data(range_value='0')
@@ -1101,7 +1101,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -1109,7 +1109,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_between2(self):
+    def test_query_between2(self):
         self._create_table(indexed=True)
 
         self._insert_data(range_value='-1')
@@ -1124,7 +1124,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -1132,7 +1132,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_between_negative(self):
+    def test_query_between_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data(range_value='1')
@@ -1146,14 +1146,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
         self.assertEqual(0, result.count)
 
-    def test_select_item_begins_with(self):
+    def test_query_begins_with(self):
         self._create_table(indexed=True)
 
         self._insert_data(range_value='0')
@@ -1172,7 +1172,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -1180,7 +1180,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_begins_with2(self):
+    def test_query_begins_with2(self):
         self._create_table(indexed=True)
 
         self._insert_data(range_value='0')
@@ -1199,7 +1199,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -1207,7 +1207,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self.assertIn('11', result.items[0]['range'].decoded_value)
 
-    def test_select_item_begins_with_negative(self):
+    def test_query_begins_with_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data(range_value='0')
@@ -1225,7 +1225,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
@@ -1246,14 +1246,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
         self.assertEqual(2, result.count)
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all(), limit=1
         )
@@ -1270,13 +1270,13 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.count())
 
         self.assertEqual(1, result.count)
 
-    def test_select_item_exclusive_key(self):
+    def test_query_exclusive_key(self):
         self._create_table(indexed=True)
         self._insert_data()
 
@@ -1289,7 +1289,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': models.AttributeValue('S', '0')
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_conditions,
             models.SelectType.all(),
             exclusive_start_key=exclusive_start_key
@@ -1298,7 +1298,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
 
-    def test_select_item_exclusive_key2(self):
+    def test_query_exclusive_key2(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -1313,7 +1313,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': models.AttributeValue('S', '0')
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_conditions,
             models.SelectType.all(), limit=1,
             exclusive_start_key=exclusive_start_key
@@ -1324,7 +1324,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': models.AttributeValue('S', '0')
         }
 
-        result2 = self.CASANDRA_STORAGE_IMPL.select_item(
+        result2 = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_conditions,
             models.SelectType.all(), limit=1,
             exclusive_start_key=exclusive_start_key2
@@ -1332,7 +1332,7 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self.assertTrue(result.count == 1 or result2.count == 1)
 
-    def test_select_item_exclusive_key_negative(self):
+    def test_query_exclusive_key_negative(self):
         self._create_table(indexed=True)
 
         self._insert_data()
@@ -1346,14 +1346,14 @@ class TestCassandraSelectItem(TestCassandraBase):
             'range': models.AttributeValue('S', '1')
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_conditions,
             models.SelectType.all(), exclusive_start_key=exclusive_start_key
         )
 
         self.assertEqual(0, result.count)
 
-    def test_select_item_exclusive_key_with_range(self):
+    def test_query_exclusive_key_with_range(self):
         self._create_table(indexed=True)
 
         self._insert_data(range_value='1')
@@ -1369,7 +1369,7 @@ class TestCassandraSelectItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all(),
             limit=2
@@ -1383,7 +1383,7 @@ class TestCassandraSelectItem(TestCassandraBase):
 
         self.assertIsNotNone(last_eval_key)
 
-        result2 = self.CASANDRA_STORAGE_IMPL.select_item(
+        result2 = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, indexed_cond,
             models.SelectType.all(), exclusive_start_key=last_eval_key
         )
@@ -1420,7 +1420,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1454,7 +1454,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1488,7 +1488,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1522,7 +1522,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1556,7 +1556,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1593,7 +1593,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1629,7 +1629,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1665,7 +1665,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1701,7 +1701,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1737,7 +1737,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1773,7 +1773,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1812,7 +1812,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1848,7 +1848,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1886,7 +1886,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1925,7 +1925,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1959,7 +1959,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -1993,7 +1993,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2027,7 +2027,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2063,7 +2063,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2097,7 +2097,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2136,7 +2136,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2172,7 +2172,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2208,7 +2208,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2244,7 +2244,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2280,7 +2280,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2316,7 +2316,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2355,7 +2355,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2391,7 +2391,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2429,7 +2429,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2468,7 +2468,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2504,7 +2504,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, keys_condition,
             models.SelectType.all()
         )
@@ -2529,7 +2529,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2552,7 +2552,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2575,7 +2575,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2598,7 +2598,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2621,7 +2621,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2646,7 +2646,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2671,7 +2671,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2696,7 +2696,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2721,7 +2721,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2746,7 +2746,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2771,7 +2771,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2796,7 +2796,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2821,7 +2821,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2846,7 +2846,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2871,7 +2871,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2894,7 +2894,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2917,7 +2917,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2940,7 +2940,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2963,7 +2963,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -2986,7 +2986,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3011,7 +3011,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3036,7 +3036,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3061,7 +3061,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3086,7 +3086,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3111,7 +3111,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3136,7 +3136,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3161,7 +3161,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3186,7 +3186,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3211,7 +3211,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3236,7 +3236,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3269,7 +3269,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3302,7 +3302,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3341,7 +3341,7 @@ class TestCassandraPutItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3376,7 +3376,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3411,7 +3411,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3454,7 +3454,7 @@ class TestCassandraPutItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3487,7 +3487,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3524,7 +3524,7 @@ class TestCassandraPutItem(TestCassandraBase):
             ]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3558,7 +3558,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3593,7 +3593,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3627,7 +3627,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3666,7 +3666,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'range': [models.Condition.eq(models.AttributeValue('S', '1'))]
         }
 
-        result = self.CASANDRA_STORAGE_IMPL.select_item(
+        result = self.CASANDRA_STORAGE_IMPL.query(
             self.context, self.table_name, key_condition,
             models.SelectType.all()
         )
@@ -3910,7 +3910,7 @@ class TestCassandraBatch(TestCassandraBase):
         }]
 
         for key, item in zip(key_conditions, put_items):
-            result = self.CASANDRA_STORAGE_IMPL.select_item(
+            result = self.CASANDRA_STORAGE_IMPL.query(
                 self.context, self.table_name, key, models.SelectType.all())
 
             self.assertEqual([item], result.items)
