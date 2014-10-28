@@ -168,6 +168,10 @@ class TestNotifyStorageManager(TestNotify):
         mock_put_item.return_value = future
         mock_delete_item.return_value = future
 
+        table_info = mock.Mock()
+        table_info.schema.key_attributes = ['id', 'range']
+        mock_repo_get.return_value = table_info
+
         mock_batch_write.side_effect = NotImplementedError()
 
         context = mock.Mock(tenant='fake_tenant')
