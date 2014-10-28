@@ -344,3 +344,33 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
                                           key_conditions=key_conditions,
                                           consistent_read=True)
         self.assertEqual(item, body['items'][0])
+
+    @attr(type=['BWI-54_3'])
+    def test_batch_write_non_existent_table(self):
+        tname = 'non_existent_table'
+        item = self.build_x_item('S', 'forum1', 'subject2',
+                                 ('message', 'S', 'message text'))
+        request_body = {'request_items': {tname: [{'put_request':
+                                                   {'item': item}}]}}
+
+        with self.assertRaises(exceptions.NotFound) as raises_cm:
+            self.client.batch_write_item(request_body)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Not Found", error_msg)
+        self.assertIn("Table 'non_existent_table' does not exist", error_msg)
+
+    @attr(type=['BWI-12'])
+    def test_batch_write_put_empty_attr_name(self):
+        self._create_test_table(self.build_x_attrs('S'),
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        item = self.build_x_item('S', 'forum1', 'subject2',
+                                 ('', 'N', '1000'))
+        request_body = {'request_items': {self.tname: [{'put_request':
+                                                        {'item': item}}]}}
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.batch_write_item(request_body)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Wrong attribute name '' found", error_msg)

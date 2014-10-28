@@ -155,3 +155,20 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         headers, body = self.client.list_tables(
             exclusive_start_table_name=last_evaluated_table_name)
         self.assertEqual(len(body['tables']), 2)
+
+    @attr(type=['LisT-16', 'negative'])
+    def test_list_tables_limit_negative2(self):
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.list_tables(limit=-2)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("'limit' property value[-2] is less then min_value",
+                      error_msg)
+
+    @attr(type=['LisT-17', 'negative'])
+    def test_list_tables_limit_string(self):
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self.client.list_tables(limit="str")
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Integer is expected", error_msg)
