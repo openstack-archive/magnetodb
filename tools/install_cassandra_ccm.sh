@@ -76,7 +76,7 @@ ccm start
 # create keyspace and table
 create_keyspace_cassandra magnetodb
 create_keyspace_cassandra user_default_tenant
-echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, last_updated timestamp, PRIMARY KEY(tenant,name));' >> ~/.ccm/cql.txt
+echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, last_update_date_time timestamp, creation_date_time timestamp, PRIMARY KEY(tenant,name));' >> ~/.ccm/cql.txt
 
 timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
 ccm node1 cqlsh -f ~/.ccm/cql.txt

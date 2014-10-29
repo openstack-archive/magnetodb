@@ -43,7 +43,7 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
         ex = raises_cm.exception
         self.assertIn("Table 'nonexistenttable' does not exist", ex.message)
 
-    def test_set_last_updated_on_save(self):
+    def test_set_last_update_date_time_on_save(self):
         cluster_handler_mock = mock.Mock()
         cluster_handler_mock.execute_query.return_value = [{'[applied]': True}]
         table_repo = CassandraTableInfoRepository(cluster_handler_mock)
@@ -54,13 +54,14 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
 
         table_info = TableInfo(
             'fake_table', table_schema, TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_updated = datetime.now() - timedelta(0, 1000)
+        table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
         table_repo.save(context, table_info)
 
-        seconds = (datetime.now() - table_info.last_updated).total_seconds()
+        seconds = (datetime.now() -
+                   table_info.last_update_date_time).total_seconds()
         self.assertLess(seconds, 30)
 
-    def test_set_last_updated_on_update(self):
+    def test_set_last_update_date_time_on_update(self):
         cluster_handler_mock = mock.Mock()
         cluster_handler_mock.execute_query.return_value = [{'[applied]': True}]
         table_repo = CassandraTableInfoRepository(cluster_handler_mock)
@@ -71,8 +72,10 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
 
         table_info = TableInfo(
             'fake_table', table_schema, TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_updated = datetime.now() - timedelta(0, 1000)
+        table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
+        table_info.creation_date_time = datetime.now()
         table_repo.update(context, table_info)
 
-        seconds = (datetime.now() - table_info.last_updated).total_seconds()
+        seconds = (datetime.now() -
+                   table_info.last_update_date_time).total_seconds()
         self.assertLess(seconds, 30)

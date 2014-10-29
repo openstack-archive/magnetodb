@@ -47,7 +47,8 @@ class DeleteTableController(object):
                         table_schema.schema.attribute_type_map
                     )
                 ),
-                parser.Props.CREATION_DATE_TIME: 0,
+                parser.Props.CREATION_DATE_TIME:
+                    table_schema.creation_date_time,
                 parser.Props.ITEM_COUNT: 0,
                 parser.Props.KEY_SCHEMA: (
                     parser.Parser.format_key_schema(

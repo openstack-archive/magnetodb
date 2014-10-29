@@ -1,0 +1,4 @@
+
+alter table magnetodb.table_info rename created to creation_date_time;
+
+alter table magnetodb.table_info add creation_date_time timestamp;

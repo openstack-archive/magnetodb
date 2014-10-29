@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import logging
+import datetime
 
 from magnetodb import notifier
 
@@ -33,10 +34,12 @@ class AsyncSimpleStorageManager(SimpleStorageManager):
     def _do_create_table(self, context, table_info):
         future = self._execute_async(self._storage_driver.create_table,
                                      context, table_info)
+        table_info.creation_date_time = None
 
         def callback(future):
             if not future.exception():
                 table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
+                table_info.creation_date_time = datetime.datetime.now()
                 table_info.internal_name = future.result()
                 self._table_info_repo.update(
                     context, table_info, ["status", "internal_name"]
