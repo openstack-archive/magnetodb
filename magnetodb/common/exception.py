@@ -37,6 +37,13 @@ class ValidationError(MagnetoError):
     pass
 
 
+class Forbidden(MagnetoError):
+    """Caller is not authorized for operation.
+    HTTP Status Code: 403
+    """
+    pass
+
+
 class RequestQuotaExceeded(MagnetoError):
     """Server is overloaded or caller has exceeded request quota.
     HTTP Status Code: 429
