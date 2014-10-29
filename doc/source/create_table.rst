@@ -46,7 +46,10 @@ CreateTable
       | Type: table_description object
 
 **Errors**
+   BackendInteractionException
+   ClusterIsNotConnectedException
    TableAlreadyExistsException
+   ValidationError
 
 **Sample Request**
 

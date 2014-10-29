@@ -86,7 +86,11 @@ UpdateItem
       | Type: String to object map
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   ConditionalCheckFailedException
+   TableNotExistsException
+   ValidationError
 
 **Sample Request**
 

@@ -71,7 +71,9 @@ Scan
       | Type: Number
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   ValidationError
 
 **Sample Request**
 

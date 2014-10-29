@@ -40,6 +40,7 @@ ListTables
      | Type: array of structs
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
 
 **Sample Response**

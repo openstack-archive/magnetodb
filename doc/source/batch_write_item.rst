@@ -29,7 +29,10 @@ BatchWriteItem
       | Type: String to object map
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   NotImplementedError
+   ValidationError
 
 **Sample Request**
 

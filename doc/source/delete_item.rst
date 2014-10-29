@@ -41,7 +41,10 @@ DeleteItem
       | Type: String to Attributevalue object map
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   ConditionalCheckFailedException
+   ValidationError
 
 **Sample Request**
 

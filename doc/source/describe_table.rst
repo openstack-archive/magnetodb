@@ -32,7 +32,10 @@ DescribeTable
 
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   TableNotExistsException
+   ValidationError
 
 **Sample Response**
 

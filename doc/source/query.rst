@@ -71,7 +71,9 @@ Query
       | Type: String to AttributeValue object map
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   ValidationError
 
 **Sample Request**
 

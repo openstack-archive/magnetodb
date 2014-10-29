@@ -41,7 +41,9 @@ GetItem
       | Type: String to object map
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   ValidationError
 
 **Sample Request**
 

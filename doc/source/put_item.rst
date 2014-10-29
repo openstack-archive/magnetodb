@@ -48,7 +48,10 @@ PutItem
       | Type: String to attribute struct
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   ConditionalCheckFailedException
+   ValidationError
 
 **Sample Request**
 

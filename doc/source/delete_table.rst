@@ -22,7 +22,11 @@ DeleteTable
       | Type: table_description object
 
 **Errors**
-   TBW
+   BackendInteractionException
+   ClusterIsNotConnectedException
+   ResourceInUseException
+   TableNotExistsException
+   ValidationError
 
 **Sample Response**
 
