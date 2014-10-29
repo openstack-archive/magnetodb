@@ -828,7 +828,13 @@ class TableMeta(ModelBase):
                              TABLE_STATUS_ACTIVE, TABLE_STATUS_CREATE_FAILED,
                              TABLE_STATUS_DELETE_FAILED])
 
-    def __init__(self, schema, status):
+    def __setattr__(self, key, value):
+        if key == "creation_date_time":
+            self.__dict__[key] = value
+        else:
+            super(TableMeta, self).__setattr__(key, value)
+
+    def __init__(self, schema, status, creation_date_time):
         """
         :param table_schema: TableSchema instance
         :param status: table status
@@ -837,5 +843,5 @@ class TableMeta(ModelBase):
         assert status in self._allowed_statuses, (
             "Table status '%s' isn't allowed" % status
         )
-
+        self.creation_date_time = creation_date_time
         super(TableMeta, self).__init__(schema=schema, status=status)

@@ -98,6 +98,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
             status = models.TableMeta.TABLE_STATUS_ACTIVE
             name = table_name
             schema = None
+            creation_date_time = None
 
         mock_table_info_repo = mock.Mock()
         mock_table_info_repo.get.return_value = FakeTableInfo()

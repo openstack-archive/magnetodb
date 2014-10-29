@@ -20,6 +20,7 @@ class TableInfo(object):
         self.schema = schema
         self.status = status
         self.internal_name = internal_name
+        self.creation_date_time = None
 
     @property
     def name(self):

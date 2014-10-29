@@ -186,7 +186,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         table_info = TableInfo(
             table_name, None, TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_updated = datetime.now() - timedelta(0, 1000)
+        table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
 
         mock_repo_get.return_value = table_info
 
@@ -206,7 +206,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         table_info = TableInfo(
             table_name, None, TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_updated = datetime.now()
+        table_info.last_update_date_time = datetime.now()
 
         mock_repo_get.return_value = table_info
 
@@ -227,7 +227,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         table_info = TableInfo(
             table_name, None, TableMeta.TABLE_STATUS_DELETING)
 
-        table_info.last_updated = datetime.now() - timedelta(0, 1000)
+        table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
 
         mock_repo_get.return_value = table_info
 
@@ -247,7 +247,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         table_info = TableInfo(
             table_name, None, TableMeta.TABLE_STATUS_DELETING)
-        table_info.last_updated = datetime.now()
+        table_info.last_update_date_time = datetime.now()
 
         mock_repo_get.return_value = table_info
 
