@@ -31,7 +31,8 @@ from magnetodb.storage.table_info_repo import TableInfoRepository
 
 class CassandraTableInfoRepository(TableInfoRepository):
     SYSTEM_TABLE_TABLE_INFO = 'magnetodb.table_info'
-    __field_list = ("schema", "internal_name", "status", "last_updated")
+    __field_list = ("schema", "internal_name", "status",
+                    "last_update_date_time", "creation_date_time")
     __creating_to_active_field_list_to_update = ("internal_name", "status")
 
     def _save_table_info_to_cache(self, context, table_info):
@@ -141,9 +142,9 @@ class CassandraTableInfoRepository(TableInfoRepository):
         if not field_list:
             field_list = self.__field_list
 
-        if 'last_updated' not in field_list:
-            field_list.append('last_updated')
-        table_info.last_updated = datetime.now()
+        if 'last_update_date_time' not in field_list:
+            field_list.append('last_update_date_time')
+        table_info.last_update_date_time = datetime.now()
 
         enc = encoder.Encoder()
 
@@ -187,7 +188,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
         query_builder.append(
             'INSERT INTO {} '
             '(exists, tenant, name, "schema", status,'
-            ' internal_name, last_updated)'
+            ' internal_name, last_update_date_time, creation_date_time)'
             "VALUES(1, '{}', '{}'".format(
                 self.SYSTEM_TABLE_TABLE_INFO, context.tenant, table_info.name
             )
@@ -213,9 +214,13 @@ class CassandraTableInfoRepository(TableInfoRepository):
         else:
             query_builder.append(",null")
 
-        table_info.last_updated = datetime.now()
+        table_info.last_update_date_time = datetime.now()
         query_builder.append(", {}".format(
-            enc.cql_encode_datetime(table_info.last_updated)))
+            enc.cql_encode_datetime(table_info.last_update_date_time)))
+
+        table_info.creation_date_time = table_info.last_update_date_time
+        query_builder.append(", {}".format(
+            enc.cql_encode_datetime(table_info.creation_date_time)))
 
         query_builder.append(") IF NOT EXISTS")
 

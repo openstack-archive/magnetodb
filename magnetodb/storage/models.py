@@ -828,14 +828,15 @@ class TableMeta(ModelBase):
                              TABLE_STATUS_ACTIVE, TABLE_STATUS_CREATE_FAILED,
                              TABLE_STATUS_DELETE_FAILED])
 
-    def __init__(self, schema, status):
+    def __init__(self, schema, status, creation_date_time):
         """
         :param table_schema: TableSchema instance
         :param status: table status
+        :param creation_date_time: table creation timestamp
         """
 
         assert status in self._allowed_statuses, (
             "Table status '%s' isn't allowed" % status
         )
-
-        super(TableMeta, self).__init__(schema=schema, status=status)
+        super(TableMeta, self).__init__(schema=schema, status=status,
+                                        creation_date_time=creation_date_time)

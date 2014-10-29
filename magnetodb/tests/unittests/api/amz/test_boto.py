@@ -100,7 +100,8 @@ class BotoIntegrationTest(unittest.TestCase):
                     ['id', 'name'],
                     {'index_name': models.IndexDefinition('id', 'city1')}
                 ),
-                models.TableMeta.TABLE_STATUS_ACTIVE
+                models.TableMeta.TABLE_STATUS_ACTIVE,
+                None
             )
         )
 
@@ -169,7 +170,8 @@ class BotoIntegrationTest(unittest.TestCase):
                     ['id', 'name'],
                     {'index_name': models.IndexDefinition('id', 'city1')}
                 ),
-                models.TableMeta.TABLE_STATUS_ACTIVE
+                models.TableMeta.TABLE_STATUS_ACTIVE,
+                None
             )
         )
 
@@ -197,7 +199,8 @@ class BotoIntegrationTest(unittest.TestCase):
                                                              'indexed_field')
                     }
                 ),
-                models.TableMeta.TABLE_STATUS_ACTIVE
+                models.TableMeta.TABLE_STATUS_ACTIVE,
+                None
             )
         )
         self.storage_mocker.ReplayAll()
@@ -243,7 +246,8 @@ class BotoIntegrationTest(unittest.TestCase):
                                                              'indexed_field')
                     }
                 ),
-                models.TableMeta.TABLE_STATUS_ACTIVE
+                models.TableMeta.TABLE_STATUS_ACTIVE,
+                None
             )
         )
         storage.create_table(
@@ -322,7 +326,8 @@ class BotoIntegrationTest(unittest.TestCase):
                                                              'indexed_field')
                     }
                 ),
-                models.TableMeta.TABLE_STATUS_ACTIVE
+                models.TableMeta.TABLE_STATUS_ACTIVE,
+                None
             )
         )
         self.storage_mocker.ReplayAll()
@@ -546,7 +551,8 @@ class BotoIntegrationTest(unittest.TestCase):
                     },
                     ['hash_key', 'range_key'],
                 ),
-                models.TableMeta.TABLE_STATUS_ACTIVE
+                models.TableMeta.TABLE_STATUS_ACTIVE,
+                None
             )
         )
 

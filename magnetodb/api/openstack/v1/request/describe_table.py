@@ -47,7 +47,7 @@ class DescribeTableController(object):
                     parser.Parser.format_attribute_definitions(
                         table_meta.schema.attribute_type_map)),
 
-                parser.Props.CREATION_DATE_TIME: 0,
+                parser.Props.CREATION_DATE_TIME: table_meta.creation_date_time,
                 parser.Props.ITEM_COUNT: 0,
 
                 parser.Props.KEY_SCHEMA: (
