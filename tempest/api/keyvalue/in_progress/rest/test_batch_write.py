@@ -51,21 +51,6 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         with self.assertRaises(exceptions.BadRequest):
             self.client.batch_write_item(request_body)
 
-    @attr(type=['BWI-42'])
-    def test_batch_write_put_delete_same_item(self):
-        self._create_test_table(self.smoke_attrs, self.tname,
-                                self.smoke_schema,
-                                wait_for_active=True)
-        item = self.build_smoke_item('forum1', 'subject2',
-                                     'message text', 'John', '10')
-        key = {self.hashkey: {'S': 'forum1'}, self.rangekey: {'S': 'subject2'}}
-        request_body = {'request_items': {self.tname: [{'put_request':
-                                                        {'item': item}},
-                                                       {'delete_request':
-                                                        {'key': key}}]}}
-        with self.assertRaises(exceptions.BadRequest):
-            self.client.batch_write_item(request_body)
-
     @attr(type=['BWI-54_1'])
     def test_batch_write_too_short_tname(self):
         tname = 'qq'
