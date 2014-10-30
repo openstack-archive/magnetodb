@@ -336,14 +336,16 @@ class SimpleStorageManager(StorageManager):
             if_not_exist, expected_condition_map
         )
 
+        weak_self = weakref.proxy(self)
+
         def callback(future):
             if not future.exception():
-                self._notifier.info(
+                weak_self._notifier.info(
                     context, notifier.EVENT_TYPE_DATA_PUTITEM_END,
                     payload
                 )
             else:
-                self._notifier.error(
+                weak_self._notifier.error(
                     context,
                     notifier.EVENT_TYPE_DATA_DELETEITEM_ERROR,
                     payload=future.exception()
@@ -402,15 +404,17 @@ class SimpleStorageManager(StorageManager):
             context, table_info, key_attribute_map, expected_condition_map
         )
 
+        weak_self = weakref.proxy(self)
+
         def callback(future):
             if not future.exception():
-                self._notifier.info(
+                weak_self._notifier.info(
                     context,
                     notifier.EVENT_TYPE_DATA_DELETEITEM_END,
                     payload
                 )
             else:
-                self._notifier.error(
+                weak_self._notifier.error(
                     context,
                     notifier.EVENT_TYPE_DATA_DELETEITEM_ERROR,
                     future.exception()
