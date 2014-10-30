@@ -33,13 +33,14 @@ LOG = logging.getLogger(__name__)
 
 class Fault(object):
 
-    def __init__(self, error):
+    def __init__(self, error, content_type='application/json'):
         self.error = error
+        self.content_type = content_type
 
     @webob.dec.wsgify(RequestClass=wsgi.Request)
     def __call__(self, req):
         serializer = wsgi.ResponseSerializer()
-        resp = serializer.serialize(self.error, req.content_type)
+        resp = serializer.serialize(self.error, self.content_type)
         default_webob_exc = webob.exc.HTTPInternalServerError()
         resp.status_code = self.error.get('code', default_webob_exc.code)
         return resp
@@ -52,6 +53,7 @@ class FaultWrapper(wsgi.Middleware):
         # Common errors
         'RequestQuotaExceeded': webob.exc.HTTPTooManyRequests,
         'ServiceUnavailable': webob.exc.HTTPServiceUnavailable,
+        'Forbidden': webob.exc.HTTPForbidden,
         'InvalidQueryParameter': webob.exc.HTTPBadRequest,
         'ValidationError': webob.exc.HTTPBadRequest,
 
