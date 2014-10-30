@@ -60,16 +60,6 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         with self.assertRaises(exceptions.BadRequest):
             self.client.list_tables(limit=0)
 
-    @attr(type=['LisT-16', 'negative'])
-    def test_list_tables_limit_negative2(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self.client.list_tables(limit=-2)
-
-    @attr(type=['LisT-17', 'negative'])
-    def test_list_tables_limit_string(self):
-        with self.assertRaises(exceptions.BadRequest):
-            self.client.list_tables(limit="str")
-
     @attr(type=['LisT-35'])
     def test_list_tables_exclusive_255_symb(self):
         tnames = 'a' * 255, 'b' * 255

@@ -283,3 +283,45 @@ class MagnetoDBDeleteItemTest(MagnetoDBTestCase):
                                         {"message": {"S": 'message_text'}},
                                         consistent_read=True)
         self.assertEqual(get_resp[1], {})
+
+    @attr(type='delIt-exists-false-2-key')
+    def test_delete_item_conditional_exists(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'},
+             {'attribute_name': 'messageId', 'attribute_type': 'S'},
+             {'attribute_name': 'subject', 'attribute_type': 'S'},
+             {'attribute_name': 'dateTime', 'attribute_type': 'N'},
+             {'attribute_name': 'category', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'},
+             {'attribute_name': 'messageId', 'key_type': 'RANGE'}],
+            wait_for_active=True)
+
+        item = {
+            "message": {"S": 'message_text'},
+            "messageId": {"S": '1'},
+            "subject": {"S": 'testSubject'},
+            "dateTime": {"N": '20140313164951'}
+        }
+        self.client.put_item(self.table_name, item)
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": 'message_text'},
+                                         "messageId": {"S": '1'}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item']['message'],
+                         {'S': 'message_text'})
+        self.assertEqual(get_resp[1]['item']['messageId'],
+                         {'S': '1'})
+        delete_resp = self.client.delete_item(self.table_name,
+                                              {"message":
+                                               {"S": 'message_text'},
+                                               "messageId": {"S": '1'}},
+                                              {"category":
+                                               {"exists": False}})
+        self.assertEqual(delete_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": 'message_text'},
+                                         "messageId": {"S": '1'}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1], {})
