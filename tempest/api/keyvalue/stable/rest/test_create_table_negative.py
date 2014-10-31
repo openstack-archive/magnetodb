@@ -303,3 +303,11 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         error_msg = raises_cm.exception._error_string
         self.assertIn("Bad Request", error_msg)
         self.assertIn("Only one 'RANGE' key is allowed", error_msg)
+
+    @test.attr(type=['CreT-???', 'negative'])
+    def test_create_table_no_attribute_type(self):
+        with self.assertRaises(exceptions.BadRequest):
+            self._create_test_table(attr_def=[
+                {'attribute_name': self.hashkey},
+                {'attribute_name': self.rangekey, 'attribute_type': 'S'}
+            ], table_name=None, schema=None)
