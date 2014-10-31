@@ -40,7 +40,8 @@ class DescribeTableTest(test_base_testcase.APITestCase):
 
         table_meta = models.TableMeta(
             models.TableSchema(attr_map, key_attrs, index_map),
-            models.TableMeta.TABLE_STATUS_ACTIVE)
+            models.TableMeta.TABLE_STATUS_ACTIVE,
+            123)
 
         mock_describe_table.return_value = table_meta
 
@@ -58,7 +59,7 @@ class DescribeTableTest(test_base_testcase.APITestCase):
                 {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
                 {'attribute_name': 'ForumName', 'attribute_type': 'S'}
             ],
-            'creation_date_time': 0,
+            'creation_date_time': 123,
             'item_count': 0,
             'key_schema': [
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'},

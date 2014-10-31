@@ -386,13 +386,15 @@ class TestCassandraBase(unittest.TestCase):
 
         query = (
             "INSERT INTO magnetodb.table_info (tenant, name, exists, "
-            '"schema", status, internal_name, last_updated) '
-            "VALUES('{}', '{}', 1, '{}', 'ACTIVE', '{}', {}) IF NOT EXISTS"
+            '"schema", status, internal_name, last_update_date_time,'
+            'creation_date_time) '
+            "VALUES('{}', '{}', 1, '{}', 'ACTIVE', '{}', {}, {}) IF NOT EXISTS"
         ).format(
             tenant, table_name,
             self.test_table_schema_with_index.to_json() if indexed else
             self.test_table_schema.to_json(),
             internal_table_name,
+            encoder.Encoder().cql_encode_datetime(datetime.now()),
             encoder.Encoder().cql_encode_datetime(datetime.now())
         )
         result = self.SESSION.execute(query)

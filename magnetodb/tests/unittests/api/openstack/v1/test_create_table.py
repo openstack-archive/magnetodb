@@ -48,7 +48,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
                                                             "LastPostDateTime")
                 }
             ),
-            models.TableMeta.TABLE_STATUS_ACTIVE
+            models.TableMeta.TABLE_STATUS_ACTIVE,
+            123
         )
 
         conn = httplib.HTTPConnection('localhost:8080')
@@ -106,7 +107,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
                 {'attribute_name': 'ForumName', 'attribute_type': 'S'}
             ],
-            'creation_date_time': 0,
+            'creation_date_time': 123,
             'item_count': 0,
             'key_schema': [
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'},
@@ -154,7 +155,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 },
                 key_attributes=["ForumName", "Subject"]
             ),
-            models.TableMeta.TABLE_STATUS_ACTIVE
+            models.TableMeta.TABLE_STATUS_ACTIVE,
+            123
         )
 
         conn = httplib.HTTPConnection('localhost:8080')
@@ -194,7 +196,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
                 {'attribute_name': 'ForumName', 'attribute_type': 'S'}
             ],
-            'creation_date_time': 0,
+            'creation_date_time': 123,
             'item_count': 0,
             'key_schema': [
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'},
@@ -260,7 +262,8 @@ class CreateTableTest(test_base_testcase.APITestCase):
                                                             "LastPostDateTime")
                 }
             ),
-            models.TableMeta.TABLE_STATUS_ACTIVE
+            models.TableMeta.TABLE_STATUS_ACTIVE,
+            123
         )
         conn = httplib.HTTPConnection('localhost:8080')
         body = """
@@ -313,7 +316,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
                 {'attribute_name': 'ForumName', 'attribute_type': 'S'}
             ],
-            'creation_date_time': 0,
+            'creation_date_time': 123,
             'item_count': 0,
             'key_schema': [
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'}
