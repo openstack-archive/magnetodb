@@ -108,7 +108,7 @@ class AttributeType(ModelBase):
 
     __cache = dict()
 
-    VALIDATION_ERROR_PATTERN = _("Attribute type '%(type)s' isn't recognized")
+    VALIDATION_ERROR_PATTERN = _("Attribute type '%(type)s' is not recognized")
 
     _allowed_primitive_types = set(
         [PRIMITIVE_TYPE_STRING, PRIMITIVE_TYPE_NUMBER, PRIMITIVE_TYPE_BLOB]
@@ -119,7 +119,9 @@ class AttributeType(ModelBase):
     )
 
     def validate(self, attr_type):
-        assert isinstance(attr_type, basestring)
+        if not isinstance(attr_type, basestring):
+            raise ValidationError(self.VALIDATION_ERROR_PATTERN,
+                                  type=attr_type)
 
         if len(attr_type) == 1:
             if attr_type not in self._allowed_primitive_types:
