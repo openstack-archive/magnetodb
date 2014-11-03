@@ -28,6 +28,10 @@ from cassandra import query as cassandra_query
 
 LOG = logging.getLogger(__name__)
 
+cassandra_cluster.ControlConnection._SELECT_SCHEMA_PEERS = (
+    "SELECT rpc_address, schema_version, peer FROM system.peers"
+)
+
 
 def _monitor_control_connection(cluster_handler_ref):
     while True:
