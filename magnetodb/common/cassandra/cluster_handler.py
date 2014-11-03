@@ -23,6 +23,8 @@ import time
 import weakref
 
 from cassandra import cluster as cassandra_cluster
+from cassandra import ConsistencyLevel
+from cassandra.protocol import QueryMessage
 from magnetodb.common import exception
 from cassandra import query as cassandra_query
 
@@ -126,6 +128,16 @@ class ClusterHandler(object):
             msg = "Error executing query {}:{}".format(query, e.message)
             LOG.exception(msg)
             raise ex
+
+    def execute_schema_change_query(self, query):
+        if self.__cluster is None:
+            raise ClusterIsNotConnectedException()
+
+        LOG.debug("Executing schema_change_query {}".format(query))
+        with self.__task_semaphore:
+            self.__cluster.control_connection._connection.wait_for_response(
+                QueryMessage(query, ConsistencyLevel.ONE)
+            )
 
     def wait_for_table_status(self, keyspace_name, table_name,
                               expected_exists):
