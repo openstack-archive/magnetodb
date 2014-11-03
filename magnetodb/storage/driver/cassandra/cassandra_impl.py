@@ -208,9 +208,7 @@ class CassandraStorageDriver(StorageDriver):
 
         query_builder.append("))")
 
-        self.__cluster_handler.execute_query(
-            "".join(query_builder),
-            consistent=True)
+        self.__cluster_handler.execute_query("".join(query_builder))
         LOG.debug("Create Table CQL request executed. "
                   "Waiting for schema agreement...")
 
@@ -234,9 +232,7 @@ class CassandraStorageDriver(StorageDriver):
 
         query = 'DROP TABLE ' + table_info.internal_name
 
-        self.__cluster_handler.execute_query(
-            query,
-            consistent=True)
+        self.__cluster_handler.execute_query(query)
 
         LOG.debug("Delete Table CQL request executed. "
                   "Waiting for schema agreement...")
