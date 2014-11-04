@@ -201,10 +201,12 @@ class MagnetoDBTableOperationsTestCase(MagnetoDBTestCase):
 
     def test_table_operations(self):
         tname = rand_name().replace('-', '')
+        url = '{url}/data/tables/{table}'.format(
+            url=self.client.base_url, table=tname)
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertNotIn(tname, tables)
+        self.assertNotIn(url, tables)
 
         not_found_msg = "'%s' does not exist" % tname
         self._check_exception(exceptions.NotFound, not_found_msg,
@@ -233,7 +235,7 @@ class MagnetoDBTableOperationsTestCase(MagnetoDBTestCase):
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertNotIn(tname, tables)
+        self.assertNotIn(url, tables)
 
         headers, body = self.client.create_table(
             ATTRIBUTE_DEFINITIONS,
@@ -260,7 +262,7 @@ class MagnetoDBTableOperationsTestCase(MagnetoDBTestCase):
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertIn(tname, tables)
+        self.assertIn(url, tables)
 
         self.client.put_item(tname, ITEM)
         self.client.get_item(tname, ITEM_PRIMARY_KEY)
@@ -280,7 +282,7 @@ class MagnetoDBTableOperationsTestCase(MagnetoDBTestCase):
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertNotIn(tname, tables)
+        self.assertNotIn(url, tables)
 
         # checking that data in the table is not accessible after table
         # deletion
@@ -547,13 +549,17 @@ class MagnetoDBMultitenancyTableTestCase(MagnetoDBTestCase):
 
     def test_table_operations(self):
         tname = rand_name().replace('-', '')
+        url = '{url}/data/tables/{table}'.format(
+            url=self.client.base_url, table=tname)
+        url_alt = '{url}/data/tables/{table}'.format(
+            url=self.client_alt.base_url, table=tname)
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertNotIn(tname, tables)
+        self.assertNotIn(url, tables)
         resp, body = self.client_alt.list_tables()
         tables_alt = [table['href'] for table in body['tables']]
-        self.assertNotIn(tname, tables_alt)
+        self.assertNotIn(url_alt, tables_alt)
 
         headers, body = self.client.create_table(
             ATTRIBUTE_DEFINITIONS,
@@ -568,10 +574,10 @@ class MagnetoDBMultitenancyTableTestCase(MagnetoDBTestCase):
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertIn(tname, tables)
+        self.assertIn(url, tables)
         resp, body = self.client_alt.list_tables()
         tables_alt = [table['href'] for table in body['tables']]
-        self.assertIn(tname, tables_alt)
+        self.assertIn(url_alt, tables_alt)
 
         self.wait_for_table_active(tname)
         self.wait_for_table_active(tname, alt=True)
@@ -581,10 +587,10 @@ class MagnetoDBMultitenancyTableTestCase(MagnetoDBTestCase):
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertIn(tname, tables)
+        self.assertIn(url, tables)
         resp, body = self.client_alt.list_tables()
         tables_alt = [table['href'] for table in body['tables']]
-        self.assertNotIn(tname, tables_alt)
+        self.assertNotIn(url_alt, tables_alt)
 
         headers, body = self.client_alt.create_table(
             ATTRIBUTE_DEFINITIONS,
@@ -595,20 +601,20 @@ class MagnetoDBMultitenancyTableTestCase(MagnetoDBTestCase):
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertIn(tname, tables)
+        self.assertIn(url, tables)
         resp, body = self.client_alt.list_tables()
         tables_alt = [table['href'] for table in body['tables']]
-        self.assertIn(tname, tables_alt)
+        self.assertIn(url_alt, tables_alt)
 
         self.client.delete_table(tname)
         self.wait_for_table_deleted(tname)
 
         resp, body = self.client.list_tables()
         tables = [table['href'] for table in body['tables']]
-        self.assertNotIn(tname, tables)
+        self.assertNotIn(url, tables)
         resp, body = self.client_alt.list_tables()
         tables_alt = [table['href'] for table in body['tables']]
-        self.assertIn(tname, tables_alt)
+        self.assertIn(url_alt, tables_alt)
 
         self.client_alt.delete_table(tname)
         self.wait_for_table_deleted(tname, alt=True)
