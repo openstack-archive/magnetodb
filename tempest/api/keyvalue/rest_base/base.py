@@ -42,10 +42,14 @@ class MagnetoDBTestCase(tempest.test.BaseTestCase):
         cls.os, cls.os_alt = cls.get_client_manager()
 
         cls.client = cls.os.magnetodb_client
+        cls.client.get_auth()
         cls.streaming_client = cls.os.magnetodb_streaming_client
+        cls.streaming_client.get_auth()
         if cls.os_alt:
             cls.client_alt = cls.os_alt.magnetodb_client
+            cls.client_alt.get_auth()
             cls.streaming_client_alt = cls.os_alt.magnetodb_streaming_client
+            cls.streaming_client_alt.get_auth()
         cls._sequence = -1
         cls._resource_trash_bin = {}
 
