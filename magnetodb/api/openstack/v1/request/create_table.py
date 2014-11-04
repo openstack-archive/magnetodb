@@ -62,6 +62,9 @@ class CreateTableController():
 
             key_attrs = parser.Parser.parse_key_schema(key_attrs_json)
 
+            # Add the validation for the hash key types
+            validation.validate_scalar_types(attribute_definitions, key_attrs)
+
             # parse table indexed field list
             lsi_defs_json = body.pop(
                 parser.Props.LOCAL_SECONDARY_INDEXES, None
