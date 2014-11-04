@@ -63,7 +63,7 @@ class ListTablesController():
         if table_names and str(limit) == str(len(table_names)):
             res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
 
-        res["tables"] = [{"rel": "self", "href": name} for name in
-                         table_names]
+        res["tables"] = [{"rel": "self", "href": "{url}/{name}".format(
+            url=req.path_url, name=name)} for name in table_names]
 
         return res
