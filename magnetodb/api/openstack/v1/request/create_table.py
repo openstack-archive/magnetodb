@@ -60,6 +60,9 @@ class CreateTableController():
             key_attrs_json = body.pop(parser.Props.KEY_SCHEMA, None)
             validation.validate_list(key_attrs_json, parser.Props.KEY_SCHEMA)
 
+            # Add the validation for the hash key type
+            validation.validate_attr_type(attribute_definitions)
+
             key_attrs = parser.Parser.parse_key_schema(key_attrs_json)
 
             # parse table indexed field list

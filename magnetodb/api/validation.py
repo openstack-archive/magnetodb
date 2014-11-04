@@ -18,7 +18,7 @@ import re
 
 from magnetodb.common.exception import ValidationError
 from magnetodb.openstack.common.log import logging
-
+from magnetodb.storage import models
 
 LOG = logging.getLogger(__name__)
 
@@ -168,3 +168,14 @@ def validate_index_name(value):
             prop_value=value
         )
     return value
+
+
+def validate_attr_type(value):
+    for attr_name in value:
+        attr_type = value[attr_name]['type']
+
+        if str(attr_type).upper() not in \
+                models.AttributeType.allowed_primitive_types:
+            raise ValidationError(
+                _("No set type hash key is supported")
+            )
