@@ -61,7 +61,9 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
                                 cleanup=False)
         self.tables.append(tname)
         headers, body = self.client.list_tables()
-        expected = {'tables': [{'href': tname, 'rel': 'self'}]}
+        url = self.client.base_url
+        expected = {'tables': [{'href': '{url}/data/tables/{table}'.format(
+            url=url, table=tname), 'rel': 'self'}]}
         self.assertEqual(body, expected)
 
     def _create_n_tables(self, num):
@@ -86,6 +88,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         limit = 3
         self._create_n_tables(tnum)
         last_evaluated_table_name = None
+        url = self.client.base_url
         for i in range(0, tnum / limit):
             headers, body = self.client.list_tables(
                 limit=limit,
@@ -93,7 +96,8 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
             last_evaluated_table_name = body['last_evaluated_table_name']
             self.assertEqual(len(body['tables']), limit)
             self.assertEqual(body['tables'][-1]['href'],
-                             last_evaluated_table_name)
+                             '{url}/data/tables/{table}'.format(
+                             url=url, table=last_evaluated_table_name))
         headers, body = self.client.list_tables(
             limit=limit,
             exclusive_start_table_name=last_evaluated_table_name)
