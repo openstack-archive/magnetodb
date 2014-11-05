@@ -39,6 +39,8 @@ CASSANDRA_REPL_FACTOR=${CASSANDRA_REPL_FACTOR:-3}
 CASSANDRA_MAX_HEAP_SIZE=${CASSANDRA_MAX_HEAP_SIZE:-300M}
 CASSANDRA_HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-100M}
 
+CASSANDRA_JOLOKIA_URL=${CASSANDRA_JOLOKIA_URL:-'http://labs.consol.de/maven/repository/org/jolokia/jolokia-jvm/1.2.2/jolokia-jvm-1.2.2-agent.jar'}
+
 # Set up default directories
 MAGNETODB_CONF_DIR=${MAGNETODB_CONF_DIR:-/etc/magnetodb}
 MAGNETODB_DIR=${MAGNETODB_DIR:-$DEST/magnetodb}
@@ -217,6 +219,8 @@ function configure_cassandra() {
 
     ccm populate -n $CASSANDRA_AMOUNT_NODES || true
 
+    wget -q $CASSANDRA_JOLOKIA_URL -O ~/.ccm/jolokia-jvm-agent.jar
+
     create_keyspace_cassandra magnetodb
     create_keyspace_cassandra user_default_tenant
     create_keyspace_cassandra user_$DEMO_TENANT
@@ -308,9 +312,12 @@ function start_cassandra() {
     cat /proc/meminfo
     echo "===  Starting Cassandra Cluster  ==="
     ccm start
+    timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
+    # Start jolokia agent
+    for ((i=1; i<=$CASSANDRA_AMOUNT_NODES; i++)); do java -jar ~/.ccm/jolokia-jvm-agent.jar --host 127.0.0.$i start `cat ~/.ccm/$CASSANDRA_CLUSTER_NAME/node$i/cassandra.pid`; done
+
     screen_rc 'cassandra' "n=1; addr=2; while [ \\\$n -lt $CASSANDRA_AMOUNT_NODES ]; do sudo ip addr add 127.0.0.\\\${addr}/8 dev lo || [ \\\$? -eq 2 ] && true; let addr=\\\$addr+1; let n=\\\$n+1; done; ccm start"
     echo "===  Load cql.txt  ==="
-    timeout 120 sh -c 'while ! nc -z 127.0.0.1 9160; do sleep 1; done' || echo 'Could not login at 127.0.0.1:9160'
     test -e ~/.ccm/cql.state || ccm node1 cqlsh -f ~/.ccm/cql.txt
     rm -f ~/.ccm/cql.txt
     echo true > ~/.ccm/cql.state
