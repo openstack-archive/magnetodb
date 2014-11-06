@@ -209,12 +209,12 @@ class CassandraStorageDriver(StorageDriver):
 
         self.__cluster_handler.execute_query("".join(query_builder))
         LOG.debug("Create Table CQL request executed. "
-                  "Waiting for schema agreement...")
+                  "Checking table status...")
 
-        self.__cluster_handler.wait_for_table_status(
+        self.__cluster_handler.check_table_status(
             keyspace_name=cas_keyspace, table_name=cas_table_name,
             expected_exists=True)
-        LOG.debug("Waiting for schema agreement... Done")
+        LOG.debug("Checking table status... Done")
 
         return '"{}"."{}"'.format(cas_keyspace, cas_table_name)
 
@@ -234,17 +234,17 @@ class CassandraStorageDriver(StorageDriver):
         self.__cluster_handler.execute_query(query)
 
         LOG.debug("Delete Table CQL request executed. "
-                  "Waiting for schema agreement...")
+                  "Checking table status...")
 
         internal_name_splited = table_info.internal_name.split(".")
 
-        self.__cluster_handler.wait_for_table_status(
+        self.__cluster_handler.check_table_status(
             keyspace_name=internal_name_splited[0][1:-1],
             table_name=internal_name_splited[1][1:-1],
             expected_exists=False
         )
 
-        LOG.debug("Waiting for schema agreement... Done")
+        LOG.debug("Checking table status... Done")
 
     def _create_keyspace_if_not_exists(self, cas_keyspace):
         replication_info = self.__default_keyspace_opts["replication"]

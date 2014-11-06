@@ -23,6 +23,8 @@ import time
 import weakref
 
 from cassandra import cluster as cassandra_cluster
+from cassandra import ConsistencyLevel
+from cassandra.protocol import QueryMessage
 from magnetodb.common import exception
 from cassandra import query as cassandra_query
 
@@ -30,6 +32,36 @@ LOG = logging.getLogger(__name__)
 
 cassandra_cluster.ControlConnection._SELECT_SCHEMA_PEERS = (
     "SELECT rpc_address, schema_version, peer FROM system.peers"
+)
+
+wait_for_schema_agreement_origin = (
+    cassandra_cluster.ControlConnection.wait_for_schema_agreement
+)
+
+
+def wait_for_schema_agreement(control_con, connection=None,
+                              preloaded_results=None):
+    for i in xrange(3):
+        matched = wait_for_schema_agreement_origin(
+            control_con, connection=connection,
+            preloaded_results=preloaded_results
+        )
+
+        if matched:
+            break
+
+        # refresh schema version if schema agreement was stuck somehow
+
+        query = QueryMessage(
+            "ALTER TABLE magnetodb.dummy WITH comment=''",
+            consistency_level=ConsistencyLevel.ONE
+        )
+        connection.wait_for_response(query)
+
+    return matched
+
+cassandra_cluster.ControlConnection.wait_for_schema_agreement = (
+    wait_for_schema_agreement
 )
 
 
@@ -131,39 +163,28 @@ class ClusterHandler(object):
             LOG.exception(msg)
             raise ex
 
-    def wait_for_table_status(self, keyspace_name, table_name,
-                              expected_exists):
-        LOG.debug("Start waiting for table status changing...")
+    def check_table_status(self, keyspace_name, table_name, expected_exists):
+        LOG.debug("Checking table status ...")
 
-        while True:
-            keyspace_meta = self.__cluster.metadata.keyspaces.get(
-                keyspace_name
+        keyspace_meta = self.__cluster.metadata.keyspaces.get(
+            keyspace_name
+        )
+
+        if keyspace_meta is None:
+            raise exception.BackendInteractionException(
+                "Keyspace '{}' does not exist".format(keyspace_name)
             )
 
-            if keyspace_meta is None:
-                raise exception.BackendInteractionException(
-                    "Keyspace '{}' does not exist".format(keyspace_name)
-                )
+        table_meta = keyspace_meta.tables.get(table_name)
+        if expected_exists != (table_meta is not None):
+            raise SchemaUpdateException()
 
-            table_meta = keyspace_meta.tables.get(table_name)
-            if expected_exists == (table_meta is not None):
-                self.__cluster.control_connection.wait_for_schema_agreement()
-                break
-
-            LOG.debug("Table status isn't correct "
-                      "(expected_exists: %(expected_exists)s, "
-                      "table_meta: %(table_meta)s). "
-                      "Wait and check again.",
-                      {'expected_exists': expected_exists,
-                       'table_meta': table_meta})
-            time.sleep(1)
-
-        LOG.debug("Table status is correct "
-                  "(expected_exists: %(expected_exists)s, "
-                  "table_meta: %(table_meta)s).",
-                  {'expected_exists': expected_exists,
-                   'table_meta': table_meta})
+        return True
 
 
 class ClusterIsNotConnectedException(Exception):
+    pass
+
+
+class SchemaUpdateException(Exception):
     pass
