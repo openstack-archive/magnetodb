@@ -62,17 +62,17 @@ if [ -f tempest/tempest.log ] ; then
 fi
 
 #Saving cassandra logs
-echo `ls -la /opt/stack/new/.ccm/`
+echo `ls -la $DEST_DIR/.ccm/`
 echo "Saving Cassandra logs"
-CASSANDRA_NODES=`ls /opt/stack/new/.ccm/test/|grep node`
+CASSANDRA_NODES=`ls $DEST_DIR/.ccm/test/|grep node`
 
 if [ -n "$CASSANDRA_NODES" ]; then
     for i in $CASSANDRA_NODES; do
         echo $i
-        CASSANDRA_LOG_FILES=`ls /opt/stack/new/.ccm/test/${i}/logs/`
+        CASSANDRA_LOG_FILES=`ls $DEST_DIR/.ccm/test/${i}/logs/`
         for l in $CASSANDRA_LOG_FILES;do
             echo $l
-            sudo cp /opt/stack/new/.ccm/test/${i}/logs/$l $LOGS_DIR/cassandra_${i}_${l}
+            sudo cp $DEST_DIR/.ccm/test/${i}/logs/$l $LOGS_DIR/cassandra_${i}_${l}
         done
     done
 fi
