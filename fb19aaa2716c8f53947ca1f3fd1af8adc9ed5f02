@@ -1,0 +1,12 @@
+Verified+2: Jenkins
+Code-Review+1: Nuno Santos <nuno_santos@symantec.com>
+Code-Review+2: Illia Khudoshyn <ikhudoshyn@mirantis.com>
+Workflow+1: Illia Khudoshyn <ikhudoshyn@mirantis.com>
+Code-Review+2: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Workflow+1: Dmitriy Ukhlov <dukhlov@mirantis.com>
+Code-Review+1: Oleksandr Minakov <alexander_minakov@symantec.com>
+Submitted-by: Jenkins
+Submitted-at: Mon, 10 Nov 2014 17:16:34 +0000
+Reviewed-on: https://review.openstack.org/132878
+Project: stackforge/magnetodb
+Branch: refs/heads/master
