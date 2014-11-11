@@ -15,9 +15,10 @@
 # This script is executed inside pre_test_hook function in desvstack gate.
 
 # Install magnetodb devstack integration
-MAGNETODB_BASE=/opt/stack/new/magnetodb/contrib/devstack
-DEVSTACK_BASE=/opt/stack/new/devstack
-DEVSTACK_GATE=/opt/stack/new/devstack-gate
+DEST_DIR=/opt/stack/new
+MAGNETODB_BASE=$DEST_DIR/magnetodb/contrib/devstack
+DEVSTACK_BASE=$DEST_DIR/devstack
+DEVSTACK_GATE=$DEST_DIR/devstack-gate
 
 cp $MAGNETODB_BASE/lib/* $DEVSTACK_BASE/lib
 cp $MAGNETODB_BASE/extras.d/* $DEVSTACK_BASE/extras.d
