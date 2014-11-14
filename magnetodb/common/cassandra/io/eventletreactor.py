@@ -24,17 +24,13 @@ from functools import partial
 import logging
 import os
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO  # ignore flake8 warning: # NOQA
+from six.moves import xrange
 
 from errno import EALREADY, EINPROGRESS, EWOULDBLOCK, EINVAL
 
 from cassandra import OperationTimedOut
 from cassandra.connection import Connection, ConnectionShutdown
 from cassandra.protocol import RegisterMessage
-from cassandra.marshal import int32_unpack
 
 
 log = logging.getLogger(__name__)
@@ -74,15 +70,24 @@ class EventletConnection(Connection):
         Connection.__init__(self, *args, **kwargs)
 
         self.connected_event = Event()
-        self._iobuf = StringIO()
         self._write_queue = Queue()
 
         self._callbacks = {}
         self._push_watchers = defaultdict(set)
 
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.settimeout(1.0)
-        self._socket.connect((self.host, self.port))
+        sockerr = None
+        addresses = socket.getaddrinfo(self.host, self.port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        for (af, socktype, proto, canonname, sockaddr) in addresses:
+            try:
+                self._socket = socket.socket(af, socktype, proto)
+                self._socket.settimeout(1.0)
+                self._socket.connect(sockaddr)
+                sockerr = None
+                break
+            except socket.error as err:
+                sockerr = err
+        if sockerr:
+            raise socket.error(sockerr.errno, "Tried connecting to %s. Last error: %s" % ([a[4] for a in addresses], sockerr.strerror))
 
         if self.sockopts:
             for args in self.sockopts:
@@ -116,14 +121,17 @@ class EventletConnection(Connection):
             # don't leave in-progress operations hanging
             self.connected_event.set()
 
+    def handle_close(self):
+        log.debug("connection closed by server")
+        self.close()
+
     def handle_write(self):
         while True:
             try:
                 next_msg = self._write_queue.get()
                 self._socket.send(next_msg)
             except socket.error as err:
-                log.debug(
-                    "Exception during socket sendall for %s: %s", self, err)
+                log.debug("Exception during socket send for %s: %s", self, err)
                 self.defunct(err)
                 return  # Leave the write loop
 
@@ -134,8 +142,7 @@ class EventletConnection(Connection):
                 run_select()
             except Exception as exc:
                 if not self.is_closed:
-                    log.debug(
-                        "Exception during read select() for %s: %s", self, exc)
+                    log.debug("Exception during read select() for %s: %s", self, exc)
                     self.defunct(exc)
                 return
 
@@ -144,46 +151,14 @@ class EventletConnection(Connection):
                 self._iobuf.write(buf)
             except socket.error as err:
                 if not is_timeout(err):
-                    log.debug(
-                        "Exception during socket recv for %s: %s", self, err)
+                    log.debug("Exception during socket recv for %s: %s", self, err)
                     self.defunct(err)
                     return  # leave the read loop
 
             if self._iobuf.tell():
-                while True:
-                    pos = self._iobuf.tell()
-                    if pos < 8 or (self._total_reqd_bytes > 0
-                                   and pos < self._total_reqd_bytes):
-                        # we don't have a complete header yet or we
-                        # already saw a header, but we don't have a
-                        # complete message yet
-                        break
-                    else:
-                        # have enough for header, read body len from header
-                        self._iobuf.seek(4)
-                        body_len = int32_unpack(self._iobuf.read(4))
-
-                        # seek to end to get length of current buffer
-                        self._iobuf.seek(0, os.SEEK_END)
-                        pos = self._iobuf.tell()
-
-                        if pos >= body_len + 8:
-                            # read message header and body
-                            self._iobuf.seek(0)
-                            msg = self._iobuf.read(8 + body_len)
-
-                            # leave leftover in current buffer
-                            leftover = self._iobuf.read()
-                            self._iobuf = StringIO()
-                            self._iobuf.write(leftover)
-
-                            self._total_reqd_bytes = 0
-                            self.process_msg(msg, body_len)
-                        else:
-                            self._total_reqd_bytes = body_len + 8
-                            break
+                self.process_io_buffer()
             else:
-                log.debug("connection closed by server")
+                log.debug("Connection %s closed by server", self)
                 self.close()
                 return
 
