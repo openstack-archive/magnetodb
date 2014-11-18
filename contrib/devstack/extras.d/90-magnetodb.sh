@@ -15,8 +15,10 @@ if is_service_enabled magnetodb; then
     fi
 
     if [[ "$1" == "unstack" ]]; then
-        echo "Stopping Magnetodb"
+        echo "Stopping MagnetoDB"
         stop_magnetodb
+        echo "Cleaning MagnetoDB data"
+        clean_magnetodb
     fi
 
     if [[ "$1" == "clean" ]]; then
