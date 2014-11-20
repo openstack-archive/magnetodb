@@ -110,11 +110,11 @@ class AttributeType(ModelBase):
 
     VALIDATION_ERROR_PATTERN = _("Attribute type '%(type)s' is not recognized")
 
-    _allowed_primitive_types = set(
+    allowed_primitive_types = frozenset(
         [PRIMITIVE_TYPE_STRING, PRIMITIVE_TYPE_NUMBER, PRIMITIVE_TYPE_BLOB]
     )
 
-    _allowed_collection_types = set(
+    allowed_collection_types = set(
         [None, COLLECTION_TYPE_SET, COLLECTION_TYPE_MAP]
     )
 
@@ -124,13 +124,13 @@ class AttributeType(ModelBase):
                                   type=attr_type)
 
         if len(attr_type) == 1:
-            if attr_type not in self._allowed_primitive_types:
+            if attr_type not in self.allowed_primitive_types:
                 raise ValidationError(self.VALIDATION_ERROR_PATTERN,
                                       type=attr_type)
             return
 
         collection_type = attr_type[-1]
-        if collection_type not in self._allowed_collection_types:
+        if collection_type not in self.allowed_collection_types:
             raise ValidationError(self.VALIDATION_ERROR_PATTERN,
                                   type=attr_type)
 
@@ -140,8 +140,8 @@ class AttributeType(ModelBase):
                                       type=attr_type)
             key_type = attr_type[0]
             value_type = attr_type[1]
-            if (key_type not in self._allowed_primitive_types or
-                    value_type not in self._allowed_primitive_types):
+            if (key_type not in self.allowed_primitive_types or
+                    value_type not in self.allowed_primitive_types):
                 raise ValidationError(self.VALIDATION_ERROR_PATTERN,
                                       type=attr_type)
             return
@@ -149,7 +149,7 @@ class AttributeType(ModelBase):
             raise ValidationError(self.VALIDATION_ERROR_PATTERN,
                                   type=attr_type)
         element_type = attr_type[0]
-        if element_type not in self._allowed_primitive_types:
+        if element_type not in self.allowed_primitive_types:
             raise ValidationError(self.VALIDATION_ERROR_PATTERN,
                                   type=attr_type)
 

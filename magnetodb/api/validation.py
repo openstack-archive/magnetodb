@@ -18,7 +18,7 @@ import re
 
 from magnetodb.common.exception import ValidationError
 from magnetodb.openstack.common.log import logging
-
+from magnetodb.storage import models
 
 LOG = logging.getLogger(__name__)
 
@@ -168,3 +168,22 @@ def validate_index_name(value):
             prop_value=value
         )
     return value
+
+
+def validate_scalar_types(definitions, key_attrs):
+    '''
+        Validate scalar types for attributes
+
+        Args:
+            definitions(dict of str: str): the table definitions
+            key_attrs(list of str): the key schema of the table
+    '''
+    for attr_name in key_attrs:
+        if attr_name in definitions:
+            attr_type = definitions[attr_name]['type']
+            if (str(attr_type) not in
+                    models.AttributeType.allowed_primitive_types):
+                raise ValidationError(
+                    _("Type '%(prop_value)s' is not supported for "
+                        "primary key"),
+                    prop_value=attr_type)
