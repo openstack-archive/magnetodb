@@ -702,3 +702,93 @@ class CreateTableTest(test_base_testcase.APITestCase):
         }
 
         self.assertEqual(expected_error, response_payload['error'])
+
+    def test_create_table_no_type_validation_with_primary_hash_key(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_primary_hash_key_type = 'SS'
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "set",
+                        "attribute_type": "%s"
+                    }
+                ],
+                "table_name": "testtempest532783215",
+                "key_schema": [
+                    {
+                        "attribute_name": "set",
+                        "key_type": "HASH"
+                    }
+                ]
+            }
+        """ % (invalid_primary_hash_key_type)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Type '%s' is not supported for primary key"
+                       % (invalid_primary_hash_key_type),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
+
+    def test_create_table_no_type_validation_with_primary_range_key(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_primary_range_key_type = 'SS'
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "set",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "%s"
+                    }
+                ],
+                "table_name": "testtempest532783218",
+                "key_schema": [
+                    {
+                        "attribute_name": "set",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ]
+            }
+        """ % (invalid_primary_range_key_type)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Type '%s' is not supported for primary key"
+                       % (invalid_primary_range_key_type),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
