@@ -62,6 +62,9 @@ class CreateTableController():
 
             key_attrs = parser.Parser.parse_key_schema(key_attrs_json)
 
+            # Validate the primary key, which could only use scalar types
+            validation.validate_scalar_types(attribute_definitions, key_attrs)
+
             # parse table indexed field list
             lsi_defs_json = body.pop(
                 parser.Props.LOCAL_SECONDARY_INDEXES, None
