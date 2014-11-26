@@ -33,6 +33,13 @@ from magnetodb.api.openstack.v1.request import scan
 from magnetodb.api.openstack.v1.request import query
 from magnetodb.api.openstack.v1.request import delete_table
 from magnetodb.api.openstack.v1.request import table_usage_details
+from magnetodb.api.openstack.v1.request import create_backup
+from magnetodb.api.openstack.v1.request import list_backups
+from magnetodb.api.openstack.v1.request import describe_backup
+from magnetodb.api.openstack.v1.request import delete_backup
+from magnetodb.api.openstack.v1.request import create_restore_job
+from magnetodb.api.openstack.v1.request import list_restore_jobs
+from magnetodb.api.openstack.v1.request import describe_restore_job
 
 
 class MagnetoDBApplication(wsgi.Router):
@@ -132,6 +139,69 @@ class MagnetoDBApplication(wsgi.Router):
                 table_usage_details.TableUsageController()),
             conditions={'method': 'GET'},
             action="table_usage_details"
+        )
+
+        mapper.connect(
+            "create_backup",
+            "/{project_id}/management/{table_id}/backups",
+            conditions={'method': 'POST'},
+            controller=create_resource(
+                create_backup.CreateBackupController()),
+            action="create_table"
+        )
+
+        mapper.connect(
+            "list_backups",
+            "/{project_id}/management/{table_id}/backups",
+            conditions={'method': 'GET'},
+            controller=create_resource(
+                list_backups.ListBackupsController()),
+            action="list_backups"
+        )
+
+        mapper.connect(
+            "describe_backup",
+            "/{project_id}/management/{table_id}/backups/{backup_id}",
+            conditions={'method': 'GET'},
+            controller=create_resource(
+                describe_backup.DescribeBackupController()),
+            action="describe_backup"
+        )
+
+        mapper.connect(
+            "delete_backup",
+            "/{project_id}/management/{table_id}/backups/{backup_id}",
+            conditions={'method': 'DELETE'},
+            controller=create_resource(
+                delete_backup.DeleteBackupController()),
+            action="delete_backup"
+        )
+
+        mapper.connect(
+            "create_restore_job",
+            "/{project_id}/management/{table_id}/restores",
+            conditions={'method': 'POST'},
+            controller=create_resource(
+                create_restore_job.CreateRestoreJobController()),
+            action="create_restore_job"
+        )
+
+        mapper.connect(
+            "list_restore_jobs",
+            "/{project_id}/management/{table_id}/restores",
+            conditions={'method': 'GET'},
+            controller=create_resource(
+                list_restore_jobs.ListRestoreJobsController()),
+            action="list_restore_jobs"
+        )
+
+        mapper.connect(
+            "describe_restore_job",
+            "/{project_id}/management/{table_id}/restores/{restore_job_id}",
+            conditions={'method': 'GET'},
+            controller=create_resource(
+                describe_restore_job.DescribeRestoreJobController()),
+            action="describe_restore_job"
         )
 
 

@@ -842,3 +842,11 @@ class TableMeta(ModelBase):
         )
         super(TableMeta, self).__init__(schema=schema, status=status,
                                         creation_date_time=creation_date_time)
+
+
+class Backup(ModelBase):
+    pass
+
+
+class RestoreJob(ModelBase):
+    pass
