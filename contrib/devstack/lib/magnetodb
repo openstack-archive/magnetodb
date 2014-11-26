@@ -57,6 +57,7 @@ MAGNETODB_USER=${MAGNETODB_USER:-magnetodb}
 MAGNETODB_SERVICE=${MAGNETODB_SERVICE:-magnetodb}
 MAGNETODB_STREAMING_SERVICE=${MAGNETODB_STREAMING_SERVICE:-magnetodb-streaming}
 MAGNETODB_MONITORING_SERVICE=${MAGNETODB_MONITORING_SERVICE:-magnetodb-monitoring}
+MAGNETODB_MANAGEMENT_SERVICE=${MAGNETODB_MANAGEMENT_SERVICE:-magnetodb-management}
 MAGNETODB_SERVICE_HOST=${MAGNETODB_SERVICE_HOST:-$SERVICE_HOST}
 MAGNETODB_SERVICE_PORT=${MAGNETODB_SERVICE_PORT:-8480}
 MAGNETODB_STREAMING_SERVICE_PORT=${MAGNETODB_STREAMING_SERVICE_PORT:-8481}
@@ -110,6 +111,17 @@ function create_magnetodb_credentials() {
             --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/monitoring" \
             --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/monitoring" \
             --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/monitoring"
+        MAGNETODB_MANAGEMENT_SERVICE=$(openstack service create \
+            $MAGNETODB_MANAGEMENT_SERVICE \
+            --type=kv-management \
+            --description="MagnetoDB management Service" \
+            | grep " id " | get_field 2)
+        openstack endpoint create \
+            $MAGNETODB_MANAGEMENT_SERVICE \
+            --region RegionOne \
+            --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/management" \
+            --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/management" \
+            --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/management"
         MAGNETODB_STREAMING_SERVICE=$(openstack service create \
             $MAGNETODB_STREAMING_SERVICE \
             --type=kv-streaming \
