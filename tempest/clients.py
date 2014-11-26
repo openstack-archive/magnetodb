@@ -22,6 +22,7 @@ from tempest.services import botoclients
 from tempest.services.keyvalue.json.magnetodb_client import MagnetoDBClientJSON
 from tempest.services.keyvalue.json import magnetodb_streaming_client
 from tempest.services.keyvalue.json import magnetodb_monitoring_client
+from tempest.services.keyvalue.json import magnetodb_management_client
 
 LOG = logging.getLogger(__name__)
 
@@ -73,6 +74,9 @@ class Manager(object):
                 *client_args))
         self.magnetodb_streaming_client = (
             magnetodb_streaming_client.MagnetoDBStreamingClientJSON(
+                *client_args))
+        self.magnetodb_management_client = (
+            magnetodb_management_client.MagnetoDBManagementClientJSON(
                 *client_args))
 
 
