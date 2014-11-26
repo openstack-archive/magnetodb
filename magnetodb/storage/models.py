@@ -842,3 +842,52 @@ class TableMeta(ModelBase):
         )
         super(TableMeta, self).__init__(schema=schema, status=status,
                                         creation_date_time=creation_date_time)
+
+
+class Backup(ModelBase):
+    BACKUP_STATUS_CREATING = "CREATING"
+    BACKUP_STATUS_DELETING = "DELETING"
+    BACKUP_STATUS_CREATED = "CREATING"
+    BACKUP_STATUS_CREATE_FAILED = "CREATE_FAILED"
+    BACKUP_STATUS_DELETE_FAILED = "DELETE_FAILED"
+
+    _allowed_statuses = set([BACKUP_STATUS_CREATING,
+                             BACKUP_STATUS_DELETING,
+                             BACKUP_STATUS_CREATED,
+                             BACKUP_STATUS_CREATE_FAILED,
+                             BACKUP_STATUS_DELETE_FAILED])
+
+    def __init__(self, backup_id, backup_name, table_id, status,
+                 start_datetime, finish_datetime, location, strategy):
+
+        assert status in self._allowed_statuses, (
+            "Backup status '%s' is not allowed" % status
+        )
+        super(Backup, self).__init__(
+            backup_id=backup_id, backup_name=backup_name, table_id=table_id,
+            status=status, start_datetime=start_datetime,
+            finish_datetime=finish_datetime, location=location,
+            strategy=strategy)
+
+
+class RestoreJob(ModelBase):
+    RESTORE_STATUS_RESTORING = "RESTORING"
+    RESTORE_STATUS_FINISHED = "FINISHED"
+    RESTORE_STATUS_FAILED = "RESTORE_FAILED"
+
+    _allowed_statuses = set([RESTORE_STATUS_RESTORING,
+                             RESTORE_STATUS_FINISHED,
+                             RESTORE_STATUS_FAILED])
+
+    def __init__(self, restore_id, backup_id, backup_name, table_id, status,
+                 start_datetime, finish_datetime, source, strategy):
+
+        assert status in self._allowed_statuses, (
+            "Restore status '%s' is not allowed" % status
+        )
+
+        super(RestoreJob, self).__init__(
+            restore_id=restore_id, backup_id=backup_id,
+            backup_name=backup_name, table_id=table_id, status=status,
+            start_datetime=start_datetime, finish_datetime=finish_datetime,
+            source=source, strategy=strategy)
