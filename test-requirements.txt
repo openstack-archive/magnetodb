@@ -1,6 +1,5 @@
 boto>=2.32.1
 discover
-funkload
 hacking>=0.9.2,<0.10
 httplib2>=0.7.5
 mock>=1.0
