@@ -34,6 +34,7 @@ from magnetodb.common.exception import ValidationError
 
 
 class Props():
+    TABLE_ID = "table_id"
     TABLE_NAME = "table_name"
     ATTRIBUTE_DEFINITIONS = "attribute_definitions"
     ATTRIBUTE_NAME = "attribute_name"
@@ -98,10 +99,29 @@ class Props():
     LINKS = "links"
     HREF = "href"
     REL = "rel"
+    SELF = "self"
 
     REQUEST_ITEMS = "request_items"
     REQUEST_DELETE = "delete_request"
     REQUEST_PUT = "put_request"
+
+    STATUS = "status"
+    STRATEGY = "strategy"
+    START_DATETIME = "start_datetime"
+    FINISH_DATETIME = "finish_datetime"
+
+    BACKUPS = "backups"
+    BACKUP_ID = "backup_id"
+    BACKUP_NAME = "backup_name"
+    EXCLUSIVE_START_BACKUP_ID = "exclusive_start_backup_id"
+    LAST_EVALUATED_BACKUP_ID = "last_evaluated_backup_id"
+    LOCATION = "location"
+
+    RESTORE_JOBS = "restore_jobs"
+    RESTORE_JOB_ID = "restore_job_id"
+    EXCLUSIVE_START_RESTORE_JOB_ID = "exclusive_start_restore_job_id"
+    LAST_EVALUATED_RESTORE_JOB_ID = "last_evaluated_restore_job_id"
+    SOURCE = "source"
 
 
 class Values():
@@ -737,3 +757,76 @@ class Parser():
     @classmethod
     def format_table_status(cls, table_status):
         return table_status
+
+    @classmethod
+    def format_backup(cls, backup, self_link_prefix):
+        if not backup:
+            return {}
+
+        res = {
+            Props.BACKUP_ID: backup.id,
+            Props.BACKUP_NAME: backup.name,
+            Props.TABLE_ID: backup.table_id,
+            Props.STATUS: backup.status,
+            Props.STRATEGY: backup.strategy,
+            Props.START_DATETIME: backup.start_date_time,
+        }
+
+        if backup.finish_datetime:
+            res[Props.FINISH_DATETIME] = backup.finish_datetime
+
+        links = [
+            {
+                Props.REL: Props.SELF,
+                Props.HREF: cls.format_backup_href(backup, self_link_prefix)
+            },
+            {
+                Props.REL: Props.LOCATION,
+                Props.HREF: backup.location
+            }
+        ]
+
+        res[Props.LINKS] = links
+
+        return res
+
+    @classmethod
+    def format_backup_href(cls, backup, self_link_prefix):
+        return '{}/{}'.format(self_link_prefix, backup.id)
+
+    @classmethod
+    def format_restore_job(cls, restore_job, self_link_prefix):
+        if not restore_job:
+            return {}
+
+        res = {
+            Props.RESTORE_JOB_ID: restore_job.id,
+            Props.BACKUP_ID: restore_job.backup_id,
+            Props.TABLE_ID: restore_job.table_id,
+            Props.STATUS: restore_job.status,
+            Props.STRATEGY: restore_job.strategy,
+            Props.START_DATETIME: restore_job.start_date_time,
+        }
+
+        if restore_job.finish_datetime:
+            res[Props.FINISH_DATETIME] = restore_job.finish_datetime
+
+        links = [
+            {
+                Props.REL: Props.SELF,
+                Props.HREF: cls.format_restore_job_href(
+                    restore_job, self_link_prefix)
+            },
+            {
+                Props.REL: Props.SOURCE,
+                Props.HREF: restore_job.source
+            }
+        ]
+
+        res[Props.LINKS] = links
+
+        return res
+
+    @classmethod
+    def format_restore_job_href(cls, restore_job, self_link_prefix):
+        return '{}/{}'.format(self_link_prefix, restore_job.id)
