@@ -24,7 +24,6 @@ import kombu
 from keystoneclient.generic import client
 
 from magnetodb import api
-from magnetodb.common import exception
 from magnetodb.common import config
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
@@ -78,7 +77,7 @@ class HealthCheckApp(object):
         resp = ''
         try:
             storage.health_check()
-        except exception.BackendInteractionException:
+        except Exception:
             resp = cas_error_msg
 
         if not keystoneclient.discover(self.auth_uri):
