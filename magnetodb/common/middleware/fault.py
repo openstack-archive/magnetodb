@@ -24,6 +24,7 @@ import traceback
 
 import webob
 
+from magnetodb.common import exception
 from magnetodb.common import wsgi
 
 from magnetodb.openstack.common import log as logging
@@ -112,7 +113,12 @@ class FaultWrapper(wsgi.Middleware):
     def process_request(self, req):
         try:
             return req.get_response(self.application)
+        except (exception.BackendInteractionException,
+                exception.ValidationError) as ex:
+            LOG.debug(ex)
+            return req.get_response(Fault(self._error(ex)))
         except Exception as ex:
+            # some lower lever exception. It is better to know about it
             LOG.exception(ex)
             return req.get_response(Fault(self._error(ex)))
 

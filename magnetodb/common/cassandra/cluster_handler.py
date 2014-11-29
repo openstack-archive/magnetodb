@@ -164,7 +164,7 @@ class ClusterHandler(object):
         )
 
         if keyspace_meta is None:
-            raise exception.BackendInteractionException(
+            raise exception.BackendInteractionError(
                 "Keyspace '{}' does not exist".format(keyspace_name)
             )
 

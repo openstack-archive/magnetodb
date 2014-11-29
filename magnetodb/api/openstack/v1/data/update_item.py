@@ -84,7 +84,7 @@ class UpdateItemController(object):
             expected_condition_map=expected_item_conditions)
 
         if not result:
-            raise exception.BackendInteractionException()
+            raise exception.BackendInteractionError("Unexpected empty result")
 
         # format response
         response = {}
