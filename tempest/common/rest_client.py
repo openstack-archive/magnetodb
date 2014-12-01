@@ -51,6 +51,7 @@ class RestClient(object):
 
         self.service = CONF.magnetodb.service_type
         self.token = None
+        self.tenant_id = None
         self.base_url = None
         self.region = {}
         for cfgname in dir(self.config):
@@ -177,6 +178,8 @@ class RestClient(object):
                 print("Failed to obtain token for user: %s" % e)
                 raise
 
+            self.tenant_id = auth_data['token']['tenant']['id']
+
             mgmt_url = None
             for ep in auth_data['serviceCatalog']:
                 if ep["type"] == service:
@@ -248,6 +251,8 @@ class RestClient(object):
                     continue  # this isn't the entry for us.
 
                 endpoints = service_info['endpoints']
+
+                self.tenant_id = json.loads(body)['token']['project']['id']
 
                 # Look for an endpoint in the region if configured.
                 if service in self.region:

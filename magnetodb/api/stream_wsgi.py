@@ -59,7 +59,7 @@ def bulk_load_app(environ, start_response):
 
     _notifier = notifier.get_notifier()
 
-    if not re.match("^/v1/\w+/data/tables/\w+/bulk_load$", path):
+    if not re.match("^/v1/data/\w+/tables/\w+/bulk_load$", path):
         start_response('404 Not found', [('Content-Type', 'text/plain')])
         yield 'Incorrect url. Please check it and try again\n'
         _notifier.error(
@@ -69,7 +69,7 @@ def bulk_load_app(environ, start_response):
         return
 
     url_comp = path.split('/')
-    project_id = url_comp[2]
+    project_id = url_comp[3]
     table_name = url_comp[5]
 
     LOG.debug('Tenant: %s, table name: %s', project_id, table_name)

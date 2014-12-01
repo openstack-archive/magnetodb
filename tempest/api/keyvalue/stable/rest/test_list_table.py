@@ -62,7 +62,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         self.tables.append(tname)
         headers, body = self.client.list_tables()
         url = self.client.base_url
-        expected = {'tables': [{'href': '{url}/data/tables/{table}'.format(
+        expected = {'tables': [{'href': '{url}/tables/{table}'.format(
             url=url, table=tname), 'rel': 'self'}]}
         self.assertEqual(body, expected)
 
@@ -96,7 +96,7 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
             last_evaluated_table_name = body['last_evaluated_table_name']
             self.assertEqual(len(body['tables']), limit)
             self.assertEqual(body['tables'][-1]['href'],
-                             '{url}/data/tables/{table}'.format(
+                             '{url}/tables/{table}'.format(
                              url=url, table=last_evaluated_table_name))
         headers, body = self.client.list_tables(
             limit=limit,

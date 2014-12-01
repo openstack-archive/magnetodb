@@ -1,4 +1,4 @@
-# Copyright 2014 Mirantis Inc.
+# Copyright 2014 Symantec Corporation
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,8 +13,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import json
-
 from tempest.common import rest_client
 from tempest import config
 
@@ -22,21 +20,17 @@ from tempest import config
 CONF = config.TempestConfig()
 
 
-class MagnetoDBStreamingClientJSON(rest_client.RestClient):
+class MagnetoDBMonitoringClientJSON(rest_client.RestClient):
 
     def __init__(self, config, user, password, auth_url, tenant_name=None,
                  auth_version='v2'):
 
-        super(MagnetoDBStreamingClientJSON, self).__init__(
+        super(MagnetoDBMonitoringClientJSON, self).__init__(
             config, user, password, auth_url, tenant_name, auth_version)
 
-        self.service = CONF.magnetodb_streaming.service_type
+        self.service = CONF.magnetodb_monitoring.service_type
 
-    def upload_items(self, table_name, items):
-        post_body = ''.join([json.dumps(item) + '\n' for item in items])
-        return self.upload_raw_stream(table_name, post_body)
-
-    def upload_raw_stream(self, table_name, stream):
-        url = '/'.join(['tables', table_name, 'bulk_load'])
-        resp, body = self.post(url, stream, self.headers)
+    def get_all_metrics(self, table_name):
+        url = '/'.join([self.tenant_id, 'tables', table_name])
+        resp, body = self.get(url, self.headers)
         return resp, self._parse_resp(body)
