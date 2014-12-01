@@ -54,7 +54,7 @@ class QueryTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/Threads/query'
+        url = '/v1/data/default_tenant/tables/Threads/query'
         body = """
             {
                "attributes_to_get": [
@@ -139,7 +139,7 @@ class QueryTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/Threads/query'
+        url = '/v1/data/default_tenant/tables/Threads/query'
         body = """
             {
                 "key_conditions":

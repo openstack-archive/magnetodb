@@ -29,7 +29,7 @@ class ListTablesTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables'
+        url = '/v1/data/default_tenant/tables'
         conn.request("GET", url, headers=headers)
 
         response = conn.getresponse()
@@ -43,7 +43,7 @@ class ListTablesTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables?start_table_name=aaa'
+        url = '/v1/data/default_tenant/tables?start_table_name=aaa'
         conn.request("GET", url, headers=headers)
 
         response = conn.getresponse()
