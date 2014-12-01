@@ -49,10 +49,10 @@ class DescribeTableTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/Thread'
+        url = '/v1/data/default_tenant/tables/Thread'
 
-        table_url = ('http://localhost:8080/v1/default_tenant'
-                     '/data/tables/Thread')
+        table_url = ('http://localhost:8080/v1/data/default_tenant'
+                     '/tables/Thread')
         expected_response = {'table': {
             'attribute_definitions': [
                 {'attribute_name': 'Subject', 'attribute_type': 'S'},

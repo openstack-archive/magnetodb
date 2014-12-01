@@ -28,9 +28,9 @@ class CreateTableTest(test_base_testcase.APITestCase):
         self.headers = {'Content-Type': 'application/json',
                         'Accept': 'application/json'}
 
-        self.url = '/v1/default_tenant/data/tables'
+        self.url = '/v1/data/default_tenant/tables'
 
-        self.table_url = ('http://localhost:8080/v1/default_tenant/data'
+        self.table_url = ('http://localhost:8080/v1/data/default_tenant'
                           '/tables/Thread')
 
     @mock.patch('magnetodb.storage.create_table')
@@ -226,7 +226,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables'
+        url = '/v1/data/default_tenant/tables'
         body = '{"table_name": "spam"}'
 
         conn.request("POST", url, headers=headers, body=body)

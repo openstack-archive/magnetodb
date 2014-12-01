@@ -32,7 +32,7 @@ class PutitemTestCase(test_base_testcase.APITestCase):
         mock_put_item.return_value = (True, None)
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/the_table/put_item'
+        url = '/v1/data/default_tenant/tables/the_table/put_item'
         body = """
             {
                 "item": {
@@ -87,7 +87,7 @@ class PutitemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/the_table/put_item'
+        url = '/v1/data/default_tenant/tables/the_table/put_item'
         body = """
             {
                 "item": {
