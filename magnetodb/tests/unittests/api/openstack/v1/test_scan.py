@@ -54,7 +54,7 @@ class ScanTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/Threads/scan'
+        url = '/v1/data/default_tenant/tables/Threads/scan'
         body = """
             {
                "attributes_to_get": [

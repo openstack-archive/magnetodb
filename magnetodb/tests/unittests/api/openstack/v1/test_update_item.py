@@ -33,7 +33,7 @@ class UpdateItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/the_table/update_item'
+        url = '/v1/data/default_tenant/tables/the_table/update_item'
 
         body = """
             {
@@ -80,7 +80,7 @@ class UpdateItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/the_table/update_item'
+        url = '/v1/data/default_tenant/tables/the_table/update_item'
 
         body = """
             {

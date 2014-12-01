@@ -29,7 +29,7 @@ class BatchWriteItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/batch_write_item'
+        url = '/v1/data/default_tenant/batch_write_item'
         body = """
             {
                 "request_items": {
@@ -86,7 +86,7 @@ class BatchWriteItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/batch_write_item'
+        url = '/v1/data/default_tenant/batch_write_item'
         body = '{"foo": "bar"}'
         conn.request("POST", url, headers=headers, body=body)
 

@@ -33,7 +33,7 @@ class TableUsageTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/monitoring/tables/the_table?' \
+        url = '/v1/monitoring/default_tenant/tables/the_table?' \
               'metrics=size,item_count'
         conn.request("GET", url, headers=headers)
 

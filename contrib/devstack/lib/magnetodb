@@ -95,9 +95,9 @@ function create_magnetodb_credentials() {
         openstack endpoint create \
             $MAGNETODB_SERVICE \
             --region RegionOne \
-            --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/\$(tenant_id)s" \
-            --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/\$(tenant_id)s" \
-            --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/\$(tenant_id)s"
+            --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/data/\$(tenant_id)s" \
+            --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/data/\$(tenant_id)s" \
+            --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_SERVICE_PORT/v1/data/\$(tenant_id)s"
         MAGNETODB_STREAMING_SERVICE=$(openstack service create \
             $MAGNETODB_STREAMING_SERVICE \
             --type=kv-streaming \
@@ -106,9 +106,9 @@ function create_magnetodb_credentials() {
         openstack endpoint create \
             $MAGNETODB_STREAMING_SERVICE \
             --region RegionOne \
-            --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/\$(tenant_id)s" \
-            --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/\$(tenant_id)s" \
-            --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/\$(tenant_id)s"
+            --publicurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/data/\$(tenant_id)s" \
+            --adminurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/data/\$(tenant_id)s" \
+            --internalurl "$MAGNETODB_SERVICE_PROTOCOL://$MAGNETODB_SERVICE_HOST:$MAGNETODB_STREAMING_SERVICE_PORT/v1/data/\$(tenant_id)s"
     fi
 }
 

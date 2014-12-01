@@ -30,7 +30,7 @@ class DeleteItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/the_table/delete_item'
+        url = '/v1/data/default_tenant/tables/the_table/delete_item'
 
         # basic test case: delete item by key
         body = """
@@ -61,7 +61,7 @@ class DeleteItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/the_table/delete_item'
+        url = '/v1/data/default_tenant/tables/the_table/delete_item'
 
         # conditional delete item: in addition to key,
         # expected conditions and/or return values can be specified
@@ -107,7 +107,7 @@ class DeleteItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/the_table/delete_item'
+        url = '/v1/data/default_tenant/tables/the_table/delete_item'
         body = '{"foo": "bar"}'
         conn.request("POST", url, headers=headers, body=body)
         response = conn.getresponse()
