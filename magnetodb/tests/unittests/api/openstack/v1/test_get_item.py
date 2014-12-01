@@ -29,7 +29,7 @@ class GetItemTestCase(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/default_tenant/data/tables/the_table/get_item'
+        url = '/v1/data/default_tenant/tables/the_table/get_item'
 
         body = """
             {

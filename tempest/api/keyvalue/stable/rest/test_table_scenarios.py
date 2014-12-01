@@ -201,7 +201,7 @@ class MagnetoDBTableOperationsTestCase(MagnetoDBTestCase):
 
     def test_table_operations(self):
         tname = rand_name().replace('-', '')
-        url = '{url}/data/tables/{table}'.format(
+        url = '{url}/tables/{table}'.format(
             url=self.client.base_url, table=tname)
 
         resp, body = self.client.list_tables()
@@ -549,9 +549,9 @@ class MagnetoDBMultitenancyTableTestCase(MagnetoDBTestCase):
 
     def test_table_operations(self):
         tname = rand_name().replace('-', '')
-        url = '{url}/data/tables/{table}'.format(
+        url = '{url}/tables/{table}'.format(
             url=self.client.base_url, table=tname)
-        url_alt = '{url}/data/tables/{table}'.format(
+        url_alt = '{url}/tables/{table}'.format(
             url=self.client_alt.base_url, table=tname)
 
         resp, body = self.client.list_tables()
