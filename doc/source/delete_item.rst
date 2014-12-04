@@ -4,7 +4,7 @@ DeleteItem
 .. automodule:: magnetodb.api.openstack.v1.delete_item
    :members:
 
-.. http:post:: v1/{project_id}/data/tables/{table_name}/delete_item
+.. http:post:: v1/data/{project_id}/tables/{table_name}/delete_item
 
 **Request Syntax**
 

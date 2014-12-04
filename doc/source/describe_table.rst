@@ -4,7 +4,7 @@ DescribeTable
 .. automodule:: magnetodb.api.openstack.v1.describe_table
    :members:
 
-.. http:get:: v1/{project_id}/data/tables/{table_name}
+.. http:get:: v1/data/{project_id}/tables/{table_name}
 
 **Request Syntax**
 

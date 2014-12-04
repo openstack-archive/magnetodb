@@ -4,7 +4,7 @@ ListTables
 .. automodule:: magnetodb.api.openstack.v1.list_tables
    :members:
 
-.. http:get:: v1/{project_id}/monitoring/tables
+.. http:get:: v1/monitoring/{project_id}/tables
 
 **Request Syntax**
 

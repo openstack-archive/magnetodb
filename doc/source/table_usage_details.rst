@@ -4,7 +4,7 @@ TableUsageDetails
 .. automodule:: magnetodb.api.openstack.v1.request.table_usage_details.py
    :members:
 
-.. http:get:: v1/{project_id}/monitoring/tables/{table_name}?metrics=metric1,metric2
+.. http:get:: v1/monitoring/{project_id}/tables/{table_name}?metrics=metric1,metric2
 
 **Request Syntax**
 

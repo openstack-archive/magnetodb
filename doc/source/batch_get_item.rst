@@ -4,7 +4,7 @@ BatchGetItem
 .. automodule:: magnetodb.api.openstack.v1.batch_get_item
    :members:
 
-.. http:post:: v1/{project_id}/data/batch_get_item
+.. http:post:: v1/data/{project_id}/batch_get_item
 
 **Request Syntax**
 
