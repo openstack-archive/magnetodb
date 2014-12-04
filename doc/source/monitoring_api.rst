@@ -36,13 +36,13 @@ Examples
 
 All metrics:
 
-http://{host}:8480/v1/{project_id}/monitoring/tables/table_name
+http://{host}:8480/v1/monitoring/{project_id}/tables/table_name
 
 One metric:
 
-http://{host}:8480/v1/{project_id}/monitoring/tables/table_name?metrics=size
+http://{host}:8480/v1/monitoring/{project_id}/tables/table_name?metrics=size
 
 Few metrics:
 
-http://{host}:8480/v1/{project_id}/
-monitoring/tables/table_name?metrics=size,item_count
+http://{host}:8480/v1/monitoring/{project_id}/
+tables/table_name?metrics=size,item_count

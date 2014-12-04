@@ -4,7 +4,7 @@ BatchWriteItem
 .. automodule:: magnetodb.api.openstack.v1.batch_write_item
    :members:
 
-.. http:post:: v1/{project_id}/data/batch_write_item
+.. http:post:: v1/data/{project_id}/batch_write_item
 
 **Request Syntax**
 
