@@ -23,7 +23,7 @@ from oslo.messaging import serializer
 
 
 from magnetodb.common import PROJECT_NAME
-from oslo.messaging.openstack.common import jsonutils
+from oslo.serialization import jsonutils
 
 extra_notifier_opts = [
     cfg.StrOpt('notification_service',
