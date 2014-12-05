@@ -91,6 +91,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
             models.TableMeta(
+                '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
                     {
                         'city1': models.AttributeType('S'),
@@ -161,6 +162,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
             models.TableMeta(
+                '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
                     {
                         'city1': models.AttributeType('S'),
@@ -187,6 +189,7 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
         storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
             models.TableMeta(
+                '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
                     {
                         'hash': models.AttributeType('N'),
@@ -234,6 +237,7 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
         storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
             models.TableMeta(
+                '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
                     {
                         'hash': models.AttributeType('N'),
@@ -315,6 +319,7 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
         storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
             models.TableMeta(
+                '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
                     {
                         'hash': models.AttributeType('N'),
@@ -544,6 +549,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
             models.TableMeta(
+                '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
                     {
                         'hash_key': models.AttributeType('N'),

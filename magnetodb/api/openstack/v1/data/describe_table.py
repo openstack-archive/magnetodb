@@ -54,6 +54,7 @@ class DescribeTableController(object):
                     parser.Parser.format_key_schema(
                         table_meta.schema.key_attributes)),
 
+                parser.Props.TABLE_ID: str(table_meta.id),
                 parser.Props.TABLE_NAME: table_name,
 
                 parser.Props.TABLE_STATUS: (
