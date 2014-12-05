@@ -36,6 +36,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
     @mock.patch('magnetodb.storage.create_table')
     def test_create_table(self, mock_create_table):
         mock_create_table.return_value = models.TableMeta(
+            '00000000-0000-0000-0000-000000000000',
             models.TableSchema(
                 attribute_type_map={
                     "ForumName": models.AttributeType('S'),
@@ -125,6 +126,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                  ],
                  'projection': {'projection_type': 'ALL'}}
             ],
+            'table_id': '00000000-0000-0000-0000-000000000000',
             'table_name': 'Thread',
             'table_size_bytes': 0,
             'table_status': 'ACTIVE',
@@ -147,6 +149,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
     @mock.patch('magnetodb.storage.create_table')
     def test_create_table_no_sec_indexes(self, mock_create_table):
         mock_create_table.return_value = models.TableMeta(
+            '00000000-0000-0000-0000-000000000000',
             models.TableSchema(
                 attribute_type_map={
                     "ForumName": models.AttributeType('S'),
@@ -202,6 +205,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'},
                 {'attribute_name': 'Subject', 'key_type': 'RANGE'}
             ],
+            'table_id': '00000000-0000-0000-0000-000000000000',
             'table_name': 'Thread',
             'table_size_bytes': 0,
             'table_status': 'ACTIVE',
@@ -250,6 +254,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
     @mock.patch('magnetodb.storage.create_table')
     def test_create_table_no_range(self, mock_create_table):
         mock_create_table.return_value = models.TableMeta(
+            '00000000-0000-0000-0000-000000000000',
             models.TableSchema(
                 attribute_type_map={
                     "ForumName": models.AttributeType('S'),
@@ -333,6 +338,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                  ],
                  'projection': {'projection_type': 'ALL'}}
             ],
+            'table_id': '00000000-0000-0000-0000-000000000000',
             'table_name': 'Thread',
             'table_size_bytes': 0,
             'table_status': 'ACTIVE',
