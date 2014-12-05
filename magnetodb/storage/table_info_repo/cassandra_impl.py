@@ -31,7 +31,7 @@ from magnetodb.storage.table_info_repo import TableInfoRepository
 
 class CassandraTableInfoRepository(TableInfoRepository):
     SYSTEM_TABLE_TABLE_INFO = 'magnetodb.table_info'
-    __field_list = ("schema", "internal_name", "status",
+    __field_list = ("id", "schema", "internal_name", "status",
                     "last_update_date_time", "creation_date_time")
     __creating_to_active_field_list_to_update = ("internal_name", "status")
 
@@ -72,7 +72,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
                 table_info = self._get_table_info_from_cache(context,
                                                              table_name)
                 if table_info is None:
-                    table_info = TableInfo(table_name, None, None)
+                    table_info = TableInfo(table_name, None, None, None)
                     self.__refresh(context, table_info)
                     self._save_table_info_to_cache(context, table_info)
                     return table_info
@@ -187,10 +187,11 @@ class CassandraTableInfoRepository(TableInfoRepository):
         query_builder = collections.deque()
         query_builder.append(
             'INSERT INTO {} '
-            '(exists, tenant, name, "schema", status,'
+            '(exists, tenant, name, id, "schema", status,'
             ' internal_name, last_update_date_time, creation_date_time)'
-            "VALUES(1, '{}', '{}'".format(
-                self.SYSTEM_TABLE_TABLE_INFO, context.tenant, table_info.name
+            "VALUES(1, '{}', '{}', '{}'".format(
+                self.SYSTEM_TABLE_TABLE_INFO, context.tenant, table_info.name,
+                table_info.id
             )
         )
 
