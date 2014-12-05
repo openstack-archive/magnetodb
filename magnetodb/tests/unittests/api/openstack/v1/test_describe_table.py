@@ -39,6 +39,7 @@ class DescribeTableTest(test_base_testcase.APITestCase):
         }
 
         table_meta = models.TableMeta(
+            '00000000-0000-0000-0000-000000000000',
             models.TableSchema(attr_map, key_attrs, index_map),
             models.TableMeta.TABLE_STATUS_ACTIVE,
             123)
@@ -77,6 +78,7 @@ class DescribeTableTest(test_base_testcase.APITestCase):
                  ],
                  'projection': {'projection_type': 'ALL'}}
             ],
+            'table_id': '00000000-0000-0000-0000-000000000000',
             'table_name': 'Thread',
             'table_size_bytes': 0,
             'table_status': 'ACTIVE',
