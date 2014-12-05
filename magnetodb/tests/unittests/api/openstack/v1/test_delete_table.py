@@ -41,6 +41,7 @@ class DeleteTableTest(test_base_testcase.APITestCase):
         }
 
         table_meta = models.TableMeta(
+            'fake_id',
             models.TableSchema(attr_map, key_attrs, index_map),
             models.TableMeta.TABLE_STATUS_DELETING,
             123)
@@ -79,6 +80,7 @@ class DeleteTableTest(test_base_testcase.APITestCase):
                  ],
                  'projection': {'projection_type': 'ALL'}}
             ],
+            'table_id': 'fake_id',
             'table_name': 'Thread',
             'table_size_bytes': 0,
             'table_status': 'DELETING',

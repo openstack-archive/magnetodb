@@ -21,6 +21,7 @@ from threading import BoundedSemaphore
 from threading import Event
 
 import weakref
+import uuid
 
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import Future
@@ -81,13 +82,17 @@ class SimpleStorageManager(StorageManager):
             notifier.EVENT_TYPE_TABLE_CREATE_END,
             table_info.schema)
 
+    def _get_table_id(self, table_name):
+        return uuid.uuid1().hex
+
     def create_table(self, context, table_name, table_schema):
         self._notifier.info(
             context,
             notifier.EVENT_TYPE_TABLE_CREATE_START,
             table_schema)
 
-        table_info = TableInfo(table_name, table_schema,
+        table_id = self._get_table_id(table_name)
+        table_info = TableInfo(table_name, table_id, table_schema,
                                TableMeta.TABLE_STATUS_CREATING)
 
         try:
@@ -104,7 +109,7 @@ class SimpleStorageManager(StorageManager):
 
         self._do_create_table(context, table_info)
 
-        return TableMeta(table_info.schema, table_info.status,
+        return TableMeta(table_info.id, table_info.schema, table_info.status,
                          table_info.creation_date_time)
 
     def _do_delete_table(self, context, table_info):
@@ -142,7 +147,8 @@ class SimpleStorageManager(StorageManager):
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_END,
                 table_name)
-            return TableMeta(table_info.schema, table_info.status,
+            return TableMeta(table_info.id, table_info.schema,
+                             table_info.status,
                              table_info.creation_date_time)
         elif table_info.status != TableMeta.TABLE_STATUS_ACTIVE:
             e = ResourceInUseException()
@@ -161,7 +167,7 @@ class SimpleStorageManager(StorageManager):
 
         self._do_delete_table(context, table_info)
 
-        return TableMeta(table_info.schema, table_info.status,
+        return TableMeta(table_info.id, table_info.schema, table_info.status,
                          table_info.creation_date_time)
 
     def describe_table(self, context, table_name):
@@ -209,7 +215,7 @@ class SimpleStorageManager(StorageManager):
                     )
                 )
 
-        return TableMeta(table_info.schema, table_info.status,
+        return TableMeta(table_info.id, table_info.schema, table_info.status,
                          table_info.creation_date_time)
 
     def list_tables(self, context, exclusive_start_table_name=None,
