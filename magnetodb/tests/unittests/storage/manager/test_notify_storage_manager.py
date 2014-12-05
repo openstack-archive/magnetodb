@@ -102,6 +102,7 @@ class TestNotifyStorageManager(TestNotify):
         class FakeTableInfo:
             status = models.TableMeta.TABLE_STATUS_ACTIVE
             name = table_name
+            id = None
             schema = None
             creation_date_time = None
 

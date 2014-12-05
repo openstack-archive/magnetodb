@@ -53,7 +53,8 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
         table_schema.to_json.return_value = ''
 
         table_info = TableInfo(
-            'fake_table', table_schema, TableMeta.TABLE_STATUS_CREATING)
+            'fake_table', 'fake_id', table_schema,
+            TableMeta.TABLE_STATUS_CREATING)
         table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
         table_repo.save(context, table_info)
 
@@ -71,7 +72,8 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
         table_schema.to_json.return_value = ''
 
         table_info = TableInfo(
-            'fake_table', table_schema, TableMeta.TABLE_STATUS_CREATING)
+            'fake_table', 'fake_id', table_schema,
+            TableMeta.TABLE_STATUS_CREATING)
         table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
         table_repo.update(context, table_info)
 

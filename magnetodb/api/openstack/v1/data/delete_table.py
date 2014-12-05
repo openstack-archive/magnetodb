@@ -35,7 +35,7 @@ class DeleteTableController(object):
 
         validation.validate_table_name(table_name)
 
-        table_schema = storage.delete_table(req.context, table_name)
+        table_meta = storage.delete_table(req.context, table_name)
 
         url = req.path_url
         bookmark = req.path_url
@@ -44,27 +44,28 @@ class DeleteTableController(object):
             parser.Props.TABLE_DESCRIPTION: {
                 parser.Props.ATTRIBUTE_DEFINITIONS: (
                     parser.Parser.format_attribute_definitions(
-                        table_schema.schema.attribute_type_map
+                        table_meta.schema.attribute_type_map
                     )
                 ),
                 parser.Props.CREATION_DATE_TIME:
-                    table_schema.creation_date_time,
+                    table_meta.creation_date_time,
                 parser.Props.ITEM_COUNT: 0,
                 parser.Props.KEY_SCHEMA: (
                     parser.Parser.format_key_schema(
-                        table_schema.schema.key_attributes
+                        table_meta.schema.key_attributes
                     )
                 ),
                 parser.Props.LOCAL_SECONDARY_INDEXES: (
                     parser.Parser.format_local_secondary_indexes(
-                        table_schema.schema.key_attributes[0],
-                        table_schema.schema.index_def_map
+                        table_meta.schema.key_attributes[0],
+                        table_meta.schema.index_def_map
                     )
                 ),
+                parser.Props.TABLE_ID: table_meta.id,
                 parser.Props.TABLE_NAME: table_name,
 
                 parser.Props.TABLE_STATUS: (
-                    parser.Parser.format_table_status(table_schema.status)),
+                    parser.Parser.format_table_status(table_meta.status)),
                 parser.Props.TABLE_SIZE_BYTES: 0,
 
                 parser.Props.LINKS: [
