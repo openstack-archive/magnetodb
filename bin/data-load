@@ -51,6 +51,9 @@ from magnetodb.storage import models
 from magnetodb import storage
 from magnetodb.common.config import CONF
 
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 
 class NameSpace(object):
     """Custom Namespace object for parser. """
