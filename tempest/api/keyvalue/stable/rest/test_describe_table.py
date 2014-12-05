@@ -25,6 +25,7 @@ class MagnetoDBDescribeTableTestCase(MagnetoDBTestCase):
         self.assertTrue('table' in response)
         content = response['table']
         self.assertEqual(table_name, content['table_name'])
+        self.assertIn('table_id', content)
         self.assertEqual(len(attributes),
                          len(content['attribute_definitions']))
         for attribute in content['attribute_definitions']:
