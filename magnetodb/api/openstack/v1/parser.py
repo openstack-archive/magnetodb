@@ -36,6 +36,7 @@ from magnetodb.common.exception import ValidationError
 class Props():
     TABLE_ID = "table_id"
     TABLE_NAME = "table_name"
+    TABLE_ID = "table_id"
     ATTRIBUTE_DEFINITIONS = "attribute_definitions"
     ATTRIBUTE_NAME = "attribute_name"
     ATTRIBUTE_TYPE = "attribute_type"

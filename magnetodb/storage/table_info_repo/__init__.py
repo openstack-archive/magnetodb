@@ -15,19 +15,20 @@
 
 
 class TableInfo(object):
-    def __init__(self, name, schema, status, internal_name=None,
+    def __init__(self, name, id, schema, status, internal_name=None,
                  creation_date_time=None, last_update_date_time=None):
-        self.__name = name
+        self.name = name
+        self.id = id
         self.schema = schema
         self.status = status
         self.internal_name = internal_name
         self.creation_date_time = creation_date_time
         self.last_update_date_time = last_update_date_time
 
-    @property
-    def name(self):
-        return self.__name
-
+#    @property
+#    def name(self):
+#        return self.__name
+#
     def __hash__(self):
         return hash(self.__name)
 

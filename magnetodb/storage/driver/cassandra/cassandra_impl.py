@@ -141,8 +141,8 @@ class CassandraStorageDriver(StorageDriver):
         self.__default_keyspace_opts = default_keyspace_opts
 
     @staticmethod
-    def _get_internal_name(name):
-        return uuid.uuid1().hex
+    def _get_internal_name(table_info):
+        return table_info.id
 
     @probe.Probe(__name__)
     def create_table(self, context, table_info):
@@ -159,8 +159,7 @@ class CassandraStorageDriver(StorageDriver):
 
         table_schema = table_info.schema
 
-        cas_table_name = USER_PREFIX + self._get_internal_name(
-            table_info.name)
+        cas_table_name = USER_PREFIX + self._get_internal_name(table_info)
         cas_keyspace = USER_PREFIX + context.tenant
 
         self._create_keyspace_if_not_exists(cas_keyspace)
