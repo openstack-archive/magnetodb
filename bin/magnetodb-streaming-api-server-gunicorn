@@ -35,6 +35,9 @@ common_opts = [
 
 CONF.register_opts(common_opts)
 
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 if __name__ == '__main__':
     from magnetodb.common import PROJECT_NAME
     prog_name = os.path.basename(sys.argv[0])

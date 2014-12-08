@@ -1286,3 +1286,22 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
                                         "ALL_OLD")
         self.assertIn('attributes', put_resp[1])
         self.assertEqual(new_item, put_resp[1]["attributes"])
+
+    def test_put_item_unicode(self):
+        self.table_name = rand_name().replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'message', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'message', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        value = u'\u00c3\u00a2'
+        item = {
+            "message": {"S": value}
+        }
+        put_resp = self.client.put_item(self.table_name, item)
+        self.assertEqual(put_resp[1], {})
+        get_resp = self.client.get_item(self.table_name,
+                                        {"message": {"S": value}},
+                                        consistent_read=True)
+        self.assertEqual(get_resp[1]['item']['message'],
+                         {'S': value})
