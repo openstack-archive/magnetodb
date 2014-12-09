@@ -49,7 +49,7 @@ class ContextMiddleware(wsgi.Middleware):
         """
         # Use the default empty context, with admin turned on for
         # backwards compatibility
-        user_id = req.headers.get('X-User-Name', None)
+        user_id = req.headers.get('X-User-Id', None)
         tenant_id = req.headers.get('X-Tenant-Id', None)
         req.context = self.make_context(is_admin=True,
                                         user_id=user_id,
