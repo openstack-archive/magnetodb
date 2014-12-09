@@ -40,4 +40,5 @@ class CreateBackupTest(test_base_testcase.APITestCase):
 
         json_response = response.read()
         response_model = json.loads(json_response)
-        self.assertEqual({}, response_model)
+        self.assertEqual('default_table', response_model['table_name'])
+        self.assertEqual('the_backup', response_model['backup_name'])

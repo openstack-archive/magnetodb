@@ -30,4 +30,5 @@ class MagnetoDBBackupTest(MagnetoDBTestCase):
 
         headers, body = self.management_client.create_backup(
             self.tname, 'the_backup')
-        self.assertEquals({}, body)
+        self.assertEqual(self.tname, body['table_name'])
+        self.assertEqual('the_backup', body['backup_name'])

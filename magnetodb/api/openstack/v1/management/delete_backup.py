@@ -17,19 +17,27 @@ from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
+from magnetodb.storage.backup_manager import BackupManager
 
 
 class DeleteBackupController(object):
     """ Deletes a backup. """
+
+    def __init__(self):
+        self.manager = BackupManager()
 
     @probe.Probe(__name__)
     def process_request(self, req, project_id, table_name, backup_id):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        validation.validate_table_name(table_name)
+        with probe.Probe(__name__ + '.validation'):
+            validation.validate_table_name(table_name)
 
-        backup = None
+        backup = self.manager.delete_backup(
+            req.context, table_name, backup_id
+        )
+
         href_prefix = req.path_url
         response = parser.Parser.format_backup(backup, href_prefix)
 

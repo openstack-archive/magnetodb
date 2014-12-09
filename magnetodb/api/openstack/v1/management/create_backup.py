@@ -17,29 +17,34 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.api import validation
 from magnetodb.common import probe
+from magnetodb.storage.backup_manager import BackupManager
 
 
 class CreateBackupController(object):
     """ Creates a backup for a table."""
+
+    def __init__(self):
+        self.manager = BackupManager()
 
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        validation.validate_table_name(table_name)
-
         with probe.Probe(__name__ + '.validation'):
+            validation.validate_table_name(table_name)
+
             validation.validate_object(body, "body")
 
-            # backup_name =
-            body.pop(parser.Props.BACKUP_NAME, None)
-            # strategy =
-            body.pop(parser.Props.STRATEGY, None)
+            backup_name = body.pop(parser.Props.BACKUP_NAME, None)
+            strategy = body.pop(parser.Props.STRATEGY, {})
 
             validation.validate_unexpected_props(body, "body")
 
-        backup = None
+        backup = self.manager.create_backup(
+            req.context, table_name, backup_name, strategy
+        )
+
         href_prefix = req.path_url
         response = parser.Parser.format_backup(backup, href_prefix)
 

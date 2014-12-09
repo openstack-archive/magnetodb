@@ -17,29 +17,36 @@ from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
+from magnetodb.storage.backup_manager import BackupManager
 
 
 class ListBackupsController(object):
     """ Deletes a backup. """
+
+    def __init__(self):
+        self.manager = BackupManager()
 
     @probe.Probe(__name__)
     def process_request(self, req, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        validation.validate_table_name(table_name)
+        with probe.Probe(__name__ + '.validation'):
+            validation.validate_table_name(table_name)
 
-        params = req.params.copy()
+            params = req.params.copy()
 
-        # exclusive_start_backup_id = params.pop(
-        #     parser.Props.EXCLUSIVE_START_BACKUP_ID, None)
+            exclusive_start_backup_id = params.pop(
+                parser.Props.EXCLUSIVE_START_BACKUP_ID, None)
 
-        limit = params.pop(parser.Props.LIMIT, None)
-        if limit:
-            limit = validation.validate_integer(limit, parser.Props.LIMIT,
-                                                min_val=0)
+            limit = params.pop(parser.Props.LIMIT, None)
+            if limit:
+                limit = validation.validate_integer(limit, parser.Props.LIMIT,
+                                                    min_val=0)
 
-        backups = []
+        backups = self.manager.list_backups(
+            req.context, table_name, exclusive_start_backup_id, limit)
+
         response = {}
 
         if backups and str(limit) == str(len(backups)):
