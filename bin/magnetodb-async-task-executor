@@ -71,6 +71,7 @@ class SchemaEndpoint(object):
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_name,
+                    table_uuid="",
                     message=e.message
                 ))
             LOG.error("Create table failed."
@@ -85,6 +86,7 @@ class SchemaEndpoint(object):
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_name,
+                    table_uuid="",
                     message=e.message
                 ))
 
@@ -105,23 +107,30 @@ class SchemaEndpoint(object):
             self._table_info_repo.update(
                 context, table_info, ["status", "internal_name"])
             self._notifier.info(
-                context, notifier.EVENT_TYPE_TABLE_CREATE_END, table_name)
+                context,
+                notifier.EVENT_TYPE_TABLE_CREATE_END,
+                dict(
+                    table_name=table_name,
+                    table_uuid=internal_name.split('.')[-1],
+                    index_count=len(table_info.schema['index_def_map'].keys())
+                ))
 
-            LOG.debug("Table '%s' created", table_name)
+            LOG.debug("Table '%s' with uuid %s created", table_name,
+                      internal_name)
         except Exception as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_name,
+                    table_uuid=internal_name.split('.')[-1],
                     message=e.message
                 ))
             table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
             self._table_info_repo.update(context, table_info, ["status"])
 
-            LOG.error("Create table '%s' failed. %s",
-                      table_name,
-                      str(e))
+            LOG.error("Create table '%s' with uuid %s failed. %s",
+                      table_name, internal_name, str(e))
 
     def delete(self, ctx, table_name):
         LOG.debug("Start deleting table '%s'", table_name)
@@ -145,6 +154,7 @@ class SchemaEndpoint(object):
 
             return
 
+        table_uuid = table_info.internal_name.split('.')[-1]
         if table_info.status != models.TableMeta.TABLE_STATUS_DELETING:
             e = ResourceInUseException()
             self._notifier.error(
@@ -152,12 +162,14 @@ class SchemaEndpoint(object):
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
                     table_name=table_name,
+                    table_uuid=table_uuid,
                     message=e.message
                 ))
 
-            LOG.error("Delete table failed."
-                      " Table '%s' is in %s state but %s is expected",
+            LOG.error("Delete table failed. Table '%s' with uuid %s is in %s "
+                      "state but %s is expected",
                       table_name,
+                      table_info.internal_name,
                       table_info.status,
                       models.TableMeta.TABLE_STATUS_DELETING)
 
@@ -167,21 +179,29 @@ class SchemaEndpoint(object):
             self._storage_driver.delete_table(context, table_info)
             self._table_info_repo.delete(context, table_name)
             self._notifier.info(
-                context, notifier.EVENT_TYPE_TABLE_DELETE_END, table_name)
-            LOG.debug("Table '%s' deleted", table_name)
+                context,
+                notifier.EVENT_TYPE_TABLE_DELETE_END,
+                dict(
+                    table_name=table_name,
+                    table_uuid=table_uuid
+                ))
+            LOG.debug("Table '%s' with uuid %s deleted", table_name,
+                      table_info.internal_name)
         except Exception as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
                     table_name=table_name,
+                    table_uuid=table_uuid,
                     message=e.message
                 ))
             table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
             self._table_info_repo.update(context, table_info, ["status"])
 
-            LOG.error("Delete table '%s' failed. %s",
+            LOG.error("Delete table '%s' with uuid %s failed. %s",
                       table_name,
+                      table_info.internal_name,
                       str(e))
 
 
