@@ -4,7 +4,7 @@ Query
 .. automodule:: magnetodb.api.openstack.v1.query
    :members:
 
-.. http:post:: v1/{project_id}/data/tables/{table_name}/query
+.. http:post:: v1/data/{project_id}/tables/{table_name}/query
 
 **Request Syntax**
 

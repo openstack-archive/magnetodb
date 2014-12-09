@@ -4,7 +4,7 @@ Scan
 .. automodule:: magnetodb.api.openstack.v1.scan
    :members:
 
-.. http:post:: v1/{project_id}/data/tables/{table_name}/scan
+.. http:post:: v1/data/{project_id}/tables/{table_name}/scan
 
 **Request Syntax**
 

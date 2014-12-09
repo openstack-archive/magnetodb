@@ -4,7 +4,7 @@ GetItem
 .. automodule:: magnetodb.api.openstack.v1.get_item
    :members:
 
-.. http:post:: v1/{project_id}/data/tables/{table_name}/get_item
+.. http:post:: v1/data/{project_id}/tables/{table_name}/get_item
 
 **Request Syntax**
 
