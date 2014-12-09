@@ -14,18 +14,30 @@
 #    under the License.
 import httplib
 import json
+import mock
 
+from magnetodb.storage.backup_info_repo import BackupInfo
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class DeleteBackupTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API DeleteBackupController."""
-    def test_delete_backup(self):
+
+    @mock.patch('magnetodb.storage.delete_backup')
+    def test_delete_backup(self, delete_backup_mock):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
         url = '/v1/management/default_tenant/default_table/backups/the_backup'
+
+        delete_backup_mock.return_value = BackupInfo(
+            'id',
+            'the_backup',
+            'default_table',
+            BackupInfo.BACKUP_STATUS_CREATING,
+            'location'
+        )
 
         conn.request("DELETE", url, headers=headers)
 
@@ -33,4 +45,5 @@ class DeleteBackupTest(test_base_testcase.APITestCase):
 
         json_response = response.read()
         response_model = json.loads(json_response)
-        self.assertEqual({}, response_model)
+        self.assertEqual('default_table', response_model['table_name'])
+        self.assertEqual('the_backup', response_model['backup_name'])
