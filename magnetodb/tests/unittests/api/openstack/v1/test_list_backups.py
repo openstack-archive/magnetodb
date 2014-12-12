@@ -15,18 +15,21 @@
 
 import httplib
 import json
+import mock
 
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class ListBackupsTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API ListBackupController."""
-    def test_list_backups(self):
+    @mock.patch('magnetodb.storage.list_backups')
+    def test_list_backups(self, list_backups_mock):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
         url = '/v1/management/default_tenant/default_table/backups'
+        list_backups_mock.return_value = []
         conn.request("GET", url, headers=headers)
 
         response = conn.getresponse()
