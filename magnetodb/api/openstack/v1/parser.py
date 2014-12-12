@@ -770,10 +770,11 @@ class Parser():
             Props.STATUS: backup.status,
             Props.STRATEGY: backup.strategy,
             Props.START_DATE_TIME: backup.start_date_time,
+            Props.LOCATION: backup.location
         }
 
-        if backup.finish_datetime:
-            res[Props.FINISH_DATE_TIME] = backup.finish_datetime
+        if backup.finish_date_time:
+            res[Props.FINISH_DATE_TIME] = backup.finish_date_time
 
         links = [
             {
