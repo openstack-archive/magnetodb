@@ -72,3 +72,7 @@ class ConditionalCheckFailedException(BackendInteractionException):
         super(ConditionalCheckFailedException, self).__init__(
             message, **kwargs
         )
+
+
+class BackupNotExists(BackendInteractionException):
+    pass
