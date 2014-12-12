@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import uuid
+
+from magnetodb import storage
 from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
@@ -27,9 +30,13 @@ class DescribeBackupController(object):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        validation.validate_table_name(table_name)
+        with probe.Probe(__name__ + '.validation'):
+            validation.validate_table_name(table_name)
 
-        backup = None
+        backup = storage.describe_backup(
+            req.context, table_name, uuid.UUID(backup_id)
+        )
+
         href_prefix = req.path_url
         response = parser.Parser.format_backup(backup, href_prefix)
 
