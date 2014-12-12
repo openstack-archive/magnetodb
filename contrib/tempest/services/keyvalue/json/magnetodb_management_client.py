@@ -12,6 +12,7 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+import json
 
 from contrib.tempest.common import rest_client
 from contrib.tempest import config
@@ -30,9 +31,12 @@ class MagnetoDBManagementClientJSON(rest_client.RestClient):
 
         self.service = CONF.magnetodb_management.service_type
 
-    def create_backup(self, table_name, backup_name):
+    def create_backup(self, table_name, backup_name, strategy={}):
         url = '/'.join([self.tenant_id, table_name, 'backups'])
-        request_body = "{{\"backup_name\": \"{}\"}}".format(backup_name)
+        request_body = (
+            "{{\"backup_name\": \"{}\", \"strategy\":{}}}".format(
+                backup_name, json.dumps(strategy))
+        )
         resp, body = self.post(url, request_body, self.headers)
         return resp, self._parse_resp(body)
 
