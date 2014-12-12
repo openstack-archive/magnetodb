@@ -844,3 +844,34 @@ class TableMeta(ModelBase):
         super(TableMeta, self).__init__(id=id, schema=schema,
                                         status=status,
                                         creation_date_time=creation_date_time)
+
+
+class BackupInfo(ModelBase):
+    BACKUP_STATUS_CREATING = "CREATING"
+    BACKUP_STATUS_DELETING = "DELETING"
+    BACKUP_STATUS_CREATED = "CREATED"
+    BACKUP_STATUS_CREATE_FAILED = "CREATE_FAILED"
+    BACKUP_STATUS_DELETE_FAILED = "DELETE_FAILED"
+
+    _allowed_statuses = set([BACKUP_STATUS_CREATING,
+                             BACKUP_STATUS_DELETING,
+                             BACKUP_STATUS_CREATED,
+                             BACKUP_STATUS_CREATE_FAILED,
+                             BACKUP_STATUS_DELETE_FAILED])
+
+    def __init__(self, id, name, table_name, status, location,
+                 start_date_time=None, finish_date_time=None, strategy={}):
+
+        assert status in self._allowed_statuses, (
+            "Backup status '%s' is not allowed" % status
+        )
+        super(BackupInfo, self).__init__(
+            id=id,
+            name=name,
+            table_name=table_name,
+            status=status,
+            start_date_time=start_date_time,
+            finish_date_time=finish_date_time,
+            location=location,
+            strategy=strategy
+        )
