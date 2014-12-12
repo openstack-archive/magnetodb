@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import uuid
+
+from magnetodb import storage
 from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
@@ -27,23 +30,32 @@ class ListBackupsController(object):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
 
-        validation.validate_table_name(table_name)
+        with probe.Probe(__name__ + '.validation'):
+            validation.validate_table_name(table_name)
 
-        params = req.params.copy()
+            params = req.params.copy()
 
-        # exclusive_start_backup_id = params.pop(
-        #     parser.Props.EXCLUSIVE_START_BACKUP_ID, None)
+            exclusive_start_backup_id = params.pop(
+                parser.Props.EXCLUSIVE_START_BACKUP_ID, None)
 
-        limit = params.pop(parser.Props.LIMIT, None)
-        if limit:
-            limit = validation.validate_integer(limit, parser.Props.LIMIT,
-                                                min_val=0)
+            if exclusive_start_backup_id:
+                exclusive_start_backup_id = uuid.UUID(
+                    exclusive_start_backup_id
+                )
 
-        backups = []
+            limit = params.pop(parser.Props.LIMIT, None)
+            if limit:
+                limit = validation.validate_integer(limit, parser.Props.LIMIT,
+                                                    min_val=0)
+
+        backups = storage.list_backups(
+            req.context, table_name, exclusive_start_backup_id, limit)
+
         response = {}
 
         if backups and str(limit) == str(len(backups)):
-            response[parser.Props.LAST_EVALUATED_BACKUP_ID] = backups[-1].id
+            response[parser.Props.LAST_EVALUATED_BACKUP_ID] = (
+                backups[-1].id.hex)
 
         self_link_prefix = req.path_url
 
