@@ -1,5 +1,6 @@
 CREATE KEYSPACE magnetodb  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
-CREATE TABLE magnetodb.table_info(tenant text, name text, id uuid, exists int, "schema" text, status text, internal_name text, last_update_date_time timestamp, creation_date_time timestamp, PRIMARY KEY(tenant, name));
+CREATE TABLE magnetodb.table_info(tenant text, name text, exists int, "schema" text, status text, internal_name text, last_update_date_time timestamp, creation_date_time timestamp, PRIMARY KEY(tenant, name));
+CREATE TABLE magnetodb.backup_info(tenant_table text, id text, name text, table_name text, status text, start_date_time timestamp, finish_date_time timestamp, location text, strategy text, PRIMARY KEY(tenant_table, id));
 CREATE TABLE magnetodb.dummy(id int PRIMARY KEY);
 
 CREATE KEYSPACE u_default_tenant  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
