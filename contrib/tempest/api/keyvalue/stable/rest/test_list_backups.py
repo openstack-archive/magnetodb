@@ -22,11 +22,41 @@ class MagnetoDBListBackupsTest(MagnetoDBTestCase):
         super(MagnetoDBListBackupsTest, self).setUp()
         self.tname = rand_name().replace('-', '')
 
-    def test_create_backup(self):
+    def test_list_backups(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
                                 self.smoke_schema,
                                 wait_for_active=True)
 
-        headers, body = self.management_client.list_backups(self.tname)
-        self.assertEquals([], body['backups'])
+        bname1 = rand_name().replace('-', '')
+        self.management_client.create_backup(
+            self.tname, bname1, {'name': 'default'})
+
+        bname2 = rand_name().replace('-', '')
+        self.management_client.create_backup(
+            self.tname, bname2, {'name': 'default'})
+
+        bname3 = rand_name().replace('-', '')
+        self.management_client.create_backup(
+            self.tname, bname3, {'name': 'default'})
+
+        headers, body = self.management_client.list_backups(
+            self.tname, limit=2)
+        self.assertEquals(2, len(body['backups']))
+
+        last_eval_id = body['last_evaluated_backup_id']
+        backups1 = body['backups']
+
+        headers, body = self.management_client.list_backups(
+            self.tname, exclusive_start_backup_id=last_eval_id, limit=2)
+        self.assertEquals(1, len(body['backups']))
+
+        backups2 = body['backups']
+
+        bnames = [b['backup_name'] for b in backups1]
+        bnames.extend([b['backup_name'] for b in backups2])
+
+        self.assertEqual(3, len(bnames))
+        self.assertTrue(bname1 in bnames)
+        self.assertTrue(bname2 in bnames)
+        self.assertTrue(bname3 in bnames)
