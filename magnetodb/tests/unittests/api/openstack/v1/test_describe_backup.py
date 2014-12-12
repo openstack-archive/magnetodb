@@ -14,18 +14,34 @@
 #    under the License.
 import httplib
 import json
+import mock
+import uuid
 
+from magnetodb.storage.models import BackupMeta
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class DescribeBackupTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API DescribeBackupController."""
-    def test_describe_backup(self):
+    @mock.patch('magnetodb.storage.describe_backup')
+    def test_describe_backup(self, describe_backup_mock):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/management/default_tenant/default_table/backups/the_backup'
+
+        the_uuid = uuid.uuid4()
+
+        url = '/v1/management/default_tenant/default_table/backups/{}'.format(
+            the_uuid.hex)
+
+        describe_backup_mock.return_value = BackupMeta(
+            the_uuid,
+            'the_backup',
+            'default_table',
+            BackupMeta.BACKUP_STATUS_CREATING,
+            'location'
+        )
 
         conn.request("GET", url, headers=headers)
 
@@ -33,4 +49,5 @@ class DescribeBackupTest(test_base_testcase.APITestCase):
 
         json_response = response.read()
         response_model = json.loads(json_response)
-        self.assertEqual({}, response_model)
+        self.assertEqual('default_table', response_model['table_name'])
+        self.assertEqual('the_backup', response_model['backup_name'])
