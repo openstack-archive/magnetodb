@@ -21,13 +21,26 @@ class MagnetoDBDescribeBackupTest(MagnetoDBTestCase):
     def setUp(self):
         super(MagnetoDBDescribeBackupTest, self).setUp()
         self.tname = rand_name().replace('-', '')
+        self.bname = rand_name().replace('-', '')
 
-    def test_create_backup(self):
+    def test_describe_backup(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
                                 self.smoke_schema,
                                 wait_for_active=True)
 
+        headers, body = self.management_client.create_backup(
+            self.tname, self.bname, {'name': 'default'})
+
+        backup_id = body['backup_id']
+        self.assertEqual(self.tname, body['table_name'])
+        self.assertEqual(self.bname, body['backup_name'])
+        self.assertEqual('CREATING', body['status'])
+        self.assertEqual('default', body['strategy']['name'])
+
         headers, body = self.management_client.describe_backup(
-            self.tname, 'backup_id')
-        self.assertEquals({}, body)
+            self.tname, backup_id)
+        self.assertEqual(self.tname, body['table_name'])
+        self.assertEqual(self.bname, body['backup_name'])
+        self.assertEqual('CREATING', body['status'])
+        self.assertEqual('default', body['strategy']['name'])
