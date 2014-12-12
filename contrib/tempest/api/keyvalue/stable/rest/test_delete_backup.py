@@ -22,7 +22,7 @@ class MagnetoDBDeleteBackupTest(MagnetoDBTestCase):
         super(MagnetoDBDeleteBackupTest, self).setUp()
         self.tname = rand_name().replace('-', '')
 
-    def test_create_backup(self):
+    def test_delete_backup(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
                                 self.smoke_schema,
@@ -30,4 +30,7 @@ class MagnetoDBDeleteBackupTest(MagnetoDBTestCase):
 
         headers, body = self.management_client.delete_backup(
             self.tname, 'backup_id')
-        self.assertEquals({}, body)
+        self.assertEqual(self.tname, body['table_name'])
+        self.assertEqual('backup_id', body['backup_id'])
+        self.assertEqual('the_backup_name', body['backup_name'])
+        self.assertEqual('default', body['strategy']['name'])
