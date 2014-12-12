@@ -422,6 +422,7 @@ function clean_magnetodb() {
         do
             sudo ip addr del $i dev lo
         done
+    sudo rm -rf $MAGNETODB_CONF_DIR
 }
 
 
