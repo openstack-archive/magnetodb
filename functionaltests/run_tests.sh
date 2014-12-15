@@ -1,6 +1,6 @@
 #!/bin/bash -x
 #This script will run tepmest
-TEMPEST_DIR=${TEMPEST_DIR:-/opt/stack/new/magnetodb/tempest}
+TEMPEST_DIR=${TEMPEST_DIR:-/opt/stack/new/magnetodb/contrib/tempest}
 LOGS_DIR=/opt/stack/logs
 cd $TEMPEST_DIR
 
