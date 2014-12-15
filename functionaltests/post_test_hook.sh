@@ -25,13 +25,13 @@ sudo pip install -r $DEST_DIR/magnetodb/test-requirements.txt
 
 cd $DEST_DIR/magnetodb/functionaltests
 ip=$(/sbin/ip a | grep eth0|grep inet|awk '{print $2}'|sed 's/\/.*//g')
-sudo cp $DEST_DIR/tempest/etc/tempest.conf $DEST_DIR/magnetodb/tempest/tempest.conf
+sudo cp $DEST_DIR/tempest/etc/tempest.conf $DEST_DIR/magnetodb/contrib/tempest/tempest.conf
 
 sudo sed -e '{ /\[boto\]/ a\
 magnetodb_url = http://'$ip':8480
-}' -i $DEST_DIR/magnetodb/tempest/tempest.conf
-sudo sed -e "s/#aws_secret=<None>/aws_secret = ''/" -e "s/#aws_access=<None>/aws_access = ''/" -i $DEST_DIR/magnetodb/tempest/tempest.conf
-sudo bash -c "cat <<EOF >>$DEST_DIR/magnetodb/tempest/tempest.conf
+}' -i $DEST_DIR/magnetodb/contrib/tempest/tempest.conf
+sudo sed -e "s/#aws_secret=<None>/aws_secret = ''/" -e "s/#aws_access=<None>/aws_access = ''/" -i $DEST_DIR/magnetodb/contrib/tempest/tempest.conf
+sudo bash -c "cat <<EOF >>$DEST_DIR/magnetodb/contrib/tempest/tempest.conf
 [magnetodb]
 service_type = kv-storage
 EOF"
@@ -54,7 +54,7 @@ fi
 
 # Preparing artifacts for publishing
 
-cd $DEST_DIR/magnetodb/
+cd $DEST_DIR/magnetodb/contrib/
 sudo cp tempest/tempest.conf $LOGS_DIR/magnetodb_tempest_conf
 
 if [ -f tempest/tempest.log ] ; then
