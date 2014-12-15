@@ -15,6 +15,7 @@
 # This script is executed inside pre_test_hook function in desvstack gate.
 
 # Install magnetodb devstack integration
+export ENABLED_SERVICES=tempest
 DEST_DIR=/opt/stack/new
 MAGNETODB_BASE=$DEST_DIR/magnetodb/contrib/devstack
 DEVSTACK_BASE=$DEST_DIR/devstack
