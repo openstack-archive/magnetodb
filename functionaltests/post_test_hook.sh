@@ -17,6 +17,9 @@
 DEST_DIR=/opt/stack/new
 LOGS_DIR=/opt/stack/logs
 
+# Disable installation of external tempest and leave only this project
+export ENABLED_SERVICES=magnetodb
+
 # Install packages from test-requirements.txt
 
 sudo pip install -r $DEST_DIR/magnetodb/test-requirements.txt
