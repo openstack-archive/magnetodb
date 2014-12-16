@@ -99,7 +99,7 @@ class ClusterHandler(object):
         self.__connection_monitor_thread.start()
 
     def __del__(self):
-        self.__closed = True
+        self.shutdown()
 
     def shutdown(self):
         self.__closed = True
@@ -163,7 +163,8 @@ class ClusterHandler(object):
             LOG.exception(msg)
             raise ex
 
-    def check_table_status(self, keyspace_name, table_name, expected_exists):
+    def check_table_status(self, keyspace_name, table_name, expected_exists,
+                           indexed_field_list=()):
         LOG.debug("Checking table status ...")
 
         keyspace_meta = self.__cluster.metadata.keyspaces.get(
@@ -176,8 +177,16 @@ class ClusterHandler(object):
             )
 
         table_meta = keyspace_meta.tables.get(table_name)
-        if expected_exists != (table_meta is not None):
-            raise SchemaUpdateException()
+        if expected_exists:
+            if table_meta is None:
+                raise SchemaUpdateException()
+            for indexed_field in indexed_field_list:
+                column = table_meta.columns.get(indexed_field)
+                if not column.index:
+                    raise SchemaUpdateException()
+        else:
+            if table_meta is not None:
+                raise SchemaUpdateException()
 
         return True
 
