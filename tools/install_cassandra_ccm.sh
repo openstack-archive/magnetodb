@@ -1,18 +1,16 @@
-#!/bin/bash
+#!/bin/bash -x
 
-if [ -z $1 ]
-then
-    CASSANDRA_AMOUNT_NODES=1
-else
-    CASSANDRA_AMOUNT_NODES=$1
-fi
-
+CASSANDRA_AMOUNT_NODES=1
+MAGNETODB_DIR=$WORKSPACE
 CCM_REPO=${CCM_REPO:-'https://github.com/pcmanus/ccm.git'}
 CCM_BRANCH=${CCM_BRANCH:-master}
 CCM_DIR=${CCM_DIR:-$HOME/ccm}
 CASSANDRA_VER=${CASSANDRA_VER:-2.0.11}
 CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-test}
 CASSANDRA_REPL_FACTOR=${CASSANDRA_REPL_FACTOR:-1}
+GRADLE_VER=${GRADLE_VER:-2.2.1}
+GRADLE_REPO=${GRADLE_REPO:-"https://services.gradle.org/distributions/gradle-$GRADLE_VER-bin.zip"}
+GRADLE_DEST=`mktemp -d`
 
 function fix_etc_hosts {
     # HPcloud stopped adding the hostname to /etc/hosts with their
@@ -47,7 +45,21 @@ function configure_cassandra() {
         let addr=$addr+1
         let n=$n+1
     done
+
     ccm status $CASSANDRA_CLUSTER_NAME || ccm create $CASSANDRA_CLUSTER_NAME -v $CASSANDRA_VER
+
+    # Build cassandra custom index
+    wget -q $GRADLE_REPO -O $GRADLE_DEST/gradle.zip
+    cd $GRADLE_DEST
+    unzip gradle.zip
+    PATH=$PATH:$GRADLE_DEST/gradle-$GRADLE_VER/bin
+    cd $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices
+    gradle build
+    CCIV=`grep '^version' build.gradle | cut -d"'" -f2`
+    cp $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices/build/libs/magnetodb-cass
+    andra-custom-indices-$CCIV.jar ~/.ccm/repository/${CASSANDRA_VER}/lib/
+
+    # Populate cassandra nodes
     ccm populate -n $CASSANDRA_AMOUNT_NODES || true
 }
 
