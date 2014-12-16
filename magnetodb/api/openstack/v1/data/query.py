@@ -40,7 +40,7 @@ class QueryController(object):
 
             # get attributes_to_get
             attributes_to_get = body.pop(parser.Props.ATTRIBUTES_TO_GET, None)
-            if attributes_to_get:
+            if attributes_to_get is not None:
                 validation.validate_list(attributes_to_get,
                                          parser.Props.ATTRIBUTES_TO_GET)
                 for attr_name in attributes_to_get:

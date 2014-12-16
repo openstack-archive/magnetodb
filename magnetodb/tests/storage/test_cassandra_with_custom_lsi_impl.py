@@ -30,7 +30,7 @@ from cassandra import query
 from cassandra import encoder
 from magnetodb.common.cassandra.cluster_handler import ClusterHandler
 from magnetodb.storage import models
-from magnetodb.storage.driver.cassandra import cassandra_impl
+from magnetodb.storage.driver.cassandra import cassandra_with_custom_lsi_impl
 from magnetodb.storage.manager.simple_impl import SimpleStorageManager
 from magnetodb.storage.table_info_repo.cassandra_impl import (
     CassandraTableInfoRepository
@@ -145,9 +145,12 @@ class TestCassandraBase(unittest.TestCase):
     )
 
     test_data_system_fields = {
-        cassandra_impl.SYSTEM_COLUMN_EXTRA_ATTR_DATA: 'map<text,blob>',
-        cassandra_impl.SYSTEM_COLUMN_EXTRA_ATTR_TYPES: 'map<text,text>',
-        cassandra_impl.SYSTEM_COLUMN_ATTR_EXIST: 'map<text,int>'
+        cassandra_with_custom_lsi_impl.SYSTEM_COLUMN_EXTRA_ATTR_DATA:
+            'map<text,blob>',
+        cassandra_with_custom_lsi_impl.SYSTEM_COLUMN_EXTRA_ATTR_TYPES:
+            'map<text,text>',
+        cassandra_with_custom_lsi_impl.SYSTEM_COLUMN_ATTR_EXIST:
+            'map<text,int>'
     }
 
     test_data_dynamic_fields = {
@@ -289,8 +292,7 @@ class TestCassandraBase(unittest.TestCase):
         cls.notifier_patcher.start()
 
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
-        cls.CLUSTER_HANDLER = ClusterHandler(TEST_CONNECTION,
-                                             query_timeout=300)
+        cls.CLUSTER_HANDLER = ClusterHandler(TEST_CONNECTION, query_timeout=300)
         table_info_repo = CassandraTableInfoRepository(cls.CLUSTER_HANDLER)
 
         default_keyspace_opts = {
@@ -300,8 +302,10 @@ class TestCassandraBase(unittest.TestCase):
             }
         }
 
-        storage_driver = cassandra_impl.CassandraStorageDriver(
-            cls.CLUSTER_HANDLER, default_keyspace_opts
+        storage_driver = (
+            cassandra_with_custom_lsi_impl.CassandraStorageDriverWithCustomLSI(
+                cls.CLUSTER_HANDLER, default_keyspace_opts
+            )
         )
         cls.CASANDRA_STORAGE_IMPL = SimpleStorageManager(storage_driver,
                                                          table_info_repo)
@@ -331,7 +335,6 @@ class TestCassandraBase(unittest.TestCase):
         cls.CLUSTER.shutdown()
         cls.CLUSTER_HANDLER.shutdown()
 
-
     def setUp(self):
         if self._tenant_scope == self.TENANT_PER_TEST_METHOD:
             self.keyspace = self._get_unique_name()
@@ -353,7 +356,7 @@ class TestCassandraBase(unittest.TestCase):
     @classmethod
     def _create_tenant(cls, tenant):
         query = "CREATE KEYSPACE {}{} WITH replication".format(
-            cassandra_impl.USER_PREFIX, tenant)
+            cassandra_with_custom_lsi_impl.USER_PREFIX, tenant)
         query += " = {'class':'SimpleStrategy', 'replication_factor':1}"
 
         cls.SESSION.execute(query)
@@ -361,13 +364,14 @@ class TestCassandraBase(unittest.TestCase):
     @classmethod
     def _drop_tenant(cls, tenant):
         query = (
-            "DROP KEYSPACE {}{}".format(cassandra_impl.USER_PREFIX, tenant)
+            "DROP KEYSPACE {}{}".format(
+                cassandra_with_custom_lsi_impl.USER_PREFIX, tenant
+            )
         )
 
         cls.SESSION.execute(query)
 
     def _get_table_names(self, tenant=None):
-
         query = (
             "SELECT name FROM magnetodb.table_info WHERE tenant='{}'"
         ).format(
@@ -382,7 +386,8 @@ class TestCassandraBase(unittest.TestCase):
         table_name = table_name or self.table_name
 
         internal_table_name = '"{}{}"."{}{}"'.format(
-            cassandra_impl.USER_PREFIX, tenant, cassandra_impl.USER_PREFIX,
+            cassandra_with_custom_lsi_impl.USER_PREFIX, tenant,
+            cassandra_with_custom_lsi_impl.USER_PREFIX,
             self._get_unique_name()
         )
 
@@ -406,36 +411,55 @@ class TestCassandraBase(unittest.TestCase):
 
         for name, field in self.test_data_keys.iteritems():
             typ, _, _, _ = field
-            query += '{}{} {},'.format(cassandra_impl.USER_PREFIX, name, typ)
+            query += '{}{} {},'.format(
+                cassandra_with_custom_lsi_impl.USER_PREFIX, name, typ
+            )
 
         for name, field in self.test_data_predefined_fields.iteritems():
             typ, _, _, _ = field
-            query += '{}{} {},'.format(cassandra_impl.USER_PREFIX, name, typ)
+            query += '{}{} {},'.format(
+                cassandra_with_custom_lsi_impl.USER_PREFIX, name, typ
+            )
 
         for name, field in self.test_data_system_fields.iteritems():
             query += '{} {},'.format(name, field)
 
         if indexed:
-            query += (
-                "{} text, {} text, {} decimal, {} blob,"
-                " PRIMARY KEY({}id, {}, {}, {}, {}, {}range))".format(
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_NAME,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
-                    cassandra_impl.USER_PREFIX,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_NAME,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
-                    cassandra_impl.USER_PREFIX
-                )
+            query += "{} text,".format(
+                cassandra_with_custom_lsi_impl.SYSTEM_COLUMN_QUERY_PARAMETERS
             )
-        else:
-            query += " PRIMARY KEY({}id, {}range))".format(
-                cassandra_impl.USER_PREFIX, cassandra_impl.USER_PREFIX
-            )
+
+        query += " PRIMARY KEY({}id, {}range))".format(
+            cassandra_with_custom_lsi_impl.USER_PREFIX,
+            cassandra_with_custom_lsi_impl.USER_PREFIX
+        )
+
         self.SESSION.execute(query)
+
+        if indexed:
+            query = (
+                "CREATE CUSTOM INDEX ON {}({}) USING "
+                "'com.mirantis.magnetodb.cassandra.db.index"
+                ".MagnetoDBLocalSecondaryIndex' "
+                "WITH OPTIONS = {{'query_properties_field':'true'}}"
+            ).format(
+                internal_table_name,
+                cassandra_with_custom_lsi_impl.SYSTEM_COLUMN_QUERY_PARAMETERS
+            )
+            self.SESSION.execute(query)
+
+            query = (
+                "CREATE CUSTOM INDEX ON {}({}{}) USING "
+                "'com.mirantis.magnetodb.cassandra.db.index"
+                ".MagnetoDBLocalSecondaryIndex' "
+                "WITH OPTIONS = {{'query_properties_field':'false'}}"
+            ).format(
+                internal_table_name,
+                cassandra_with_custom_lsi_impl.USER_PREFIX,
+                "indexed"
+            )
+
+            self.SESSION.execute(query)
 
     def _drop_table(self, tenant=None, table_name=None):
         query = (
@@ -460,24 +484,15 @@ class TestCassandraBase(unittest.TestCase):
         tenant = tenant or self.tenant
         table_name = table_name or self.table_name
         query = (
-            'SELECT internal_name, "schema" FROM magnetodb.table_info '
+            'SELECT internal_name FROM magnetodb.table_info '
             "WHERE tenant='{}' and name='{}'"
         ).format(
             tenant, table_name
         )
         result = self.SESSION.execute(query)
         internal_table_name = result[0]["internal_name"]
-        schema = models.ModelBase.from_json(result[0]["schema"])
 
-        query = "SELECT * FROM {}".format(internal_table_name)
-
-        if schema.index_def_map:
-            query += " WHERE {}={}".format(
-                cassandra_impl.SYSTEM_COLUMN_INDEX_NAME,
-                cassandra_impl.ENCODED_DEFAULT_STRING_VALUE
-            )
-
-        query += " ALLOW FILTERING"
+        query = "SELECT * FROM {} ALLOW FILTERING".format(internal_table_name)
 
         return self.SESSION.execute(query)
 
@@ -506,16 +521,19 @@ class TestCassandraBase(unittest.TestCase):
         for name, field in predefined_fields.iteritems():
             _, sval, _, _ = field
             set_items.append(
-                '{}{}={}'.format(cassandra_impl.USER_PREFIX, name, sval)
+                '{}{}={}'.format(
+                    cassandra_with_custom_lsi_impl.USER_PREFIX, name, sval
+                )
             )
 
         for name, field in dynamic_fields.iteritems():
             _, sval, typ, _ = field
             set_items.append("{}['{}'] = 0x{}".format(
-                cassandra_impl.SYSTEM_COLUMN_EXTRA_ATTR_DATA, name, sval)
+                cassandra_with_custom_lsi_impl.SYSTEM_COLUMN_EXTRA_ATTR_DATA,
+                name, sval)
             )
             set_items.append("{}['{}'] ='{}'".format(
-                cassandra_impl.SYSTEM_COLUMN_EXTRA_ATTR_TYPES, name, typ)
+                cassandra_with_custom_lsi_impl.SYSTEM_COLUMN_EXTRA_ATTR_TYPES, name, typ)
             )
 
         for name, field in dict(self.test_data_keys.items() +
@@ -525,7 +543,7 @@ class TestCassandraBase(unittest.TestCase):
 
             set_items.append(
                 "{}['{}']=1".format(
-                    cassandra_impl.SYSTEM_COLUMN_ATTR_EXIST,
+                    cassandra_with_custom_lsi_impl.SYSTEM_COLUMN_ATTR_EXIST,
                     name
                 )
             )
@@ -533,58 +551,10 @@ class TestCassandraBase(unittest.TestCase):
         query += ",".join(set_items)
 
         query += " WHERE {}id = {} AND {}range='{}'".format(
-            cassandra_impl.USER_PREFIX, id_value, cassandra_impl.USER_PREFIX,
+            cassandra_with_custom_lsi_impl.USER_PREFIX, id_value,
+            cassandra_with_custom_lsi_impl.USER_PREFIX,
             range_value
         )
-
-        if schema.index_def_map:
-            default_index_cond_params = (
-                cassandra_impl.SYSTEM_COLUMN_INDEX_NAME,
-                cassandra_impl.ENCODED_DEFAULT_STRING_VALUE,
-                cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
-                cassandra_impl.ENCODED_DEFAULT_BLOB_VALUE,
-                cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
-                cassandra_impl.ENCODED_DEFAULT_STRING_VALUE,
-                cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
-                cassandra_impl.ENCODED_DEFAULT_NUMBER_VALUE
-            )
-
-            queries = [
-                query + (
-                    " AND {}={} AND {}={} AND {}={} AND {}={}".format(
-                        *default_index_cond_params
-                    )
-                )
-            ]
-
-            for index_name, index_def in schema.index_def_map.iteritems():
-                params = list(default_index_cond_params)
-                params[1] = '{}'.format(index_name)
-                index_type = schema.attribute_type_map[
-                    index_def.alt_range_key_attr]
-
-                index_value = predefined_fields[
-                    index_def.alt_range_key_attr
-                ][1]
-                if index_type == models.AttributeType('B'):
-                    params[3] = index_value
-                elif index_type == models.AttributeType('S'):
-                    params[5] = index_value
-                elif index_type == models.AttributeType('N'):
-                    params[7] = index_value
-                else:
-                    self.fail()
-
-                queries.append(
-                    query +
-                    " AND {}='{}' AND {}={} AND {}={} AND {}={}".format(
-                        *params
-                    )
-                )
-
-            query = (
-                "BEGIN UNLOGGED BATCH " + " ".join(queries) + " APPLY BATCH"
-            )
 
         self.SESSION.execute(query)
 
