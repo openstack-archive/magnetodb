@@ -6,12 +6,15 @@ Scan
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/scan
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
 .. literalinclude:: ../api/openstack/samples/scan_request_syntax.json
    :language: javascript
 
-**Request Parameters**:
+Request Parameters
+``````````````````
 
    **attributes_to_get**
       | Type: array of Strings
@@ -47,13 +50,16 @@ Scan
       | Type: Number
       | Required: No
 
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/scan_response_syntax.json
     :language: javascript
 
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **count**
       | The number of items in the response.
@@ -70,17 +76,24 @@ Scan
    **scanned_count**
       | Type: Number
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
-   ValidationError
+------
+Errors
+------
 
-**Sample Request**
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+   | ValidationError
+
+--------------
+Sample Request
+--------------
 
 .. literalinclude:: ../api/openstack/samples/scan_sample_request.json
     :language: javascript
 
-**Sample Response**
+---------------
+Sample Response
+---------------
 
 .. literalinclude:: ../api/openstack/samples/scan_sample_response.json
     :language: javascript

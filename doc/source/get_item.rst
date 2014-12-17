@@ -6,12 +6,15 @@ GetItem
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/get_item
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
 .. literalinclude:: ../api/openstack/samples/get_item_request_syntax.json
    :language: javascript
 
-**Request Parameters**:
+Request Parameters
+``````````````````
 
    **key**
       | The primary key of the item to retrieve.
@@ -28,29 +31,37 @@ GetItem
       | Type: Boolean
       | Required: No
 
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/get_item_response_syntax.json
     :language: javascript
 
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **item**
       | An itemi with attributes.
       | Type: String to object map
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
-   ValidationError
+------
+Errors
+------
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+   | ValidationError
 
-**Sample Request**
+--------------
+Sample Request
+--------------
 
 .. literalinclude:: ../api/openstack/samples/get_item_sample_request.json
     :language: javascript
 
-**Sample Response**
-
+---------------
+Sample Response
+---------------
 .. literalinclude:: ../api/openstack/samples/get_item_sample_response.json
     :language: javascript

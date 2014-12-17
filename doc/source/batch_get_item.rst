@@ -6,24 +6,30 @@ BatchGetItem
 
 .. http:post:: v1/data/{project_id}/batch_get_item
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
 .. literalinclude:: ../api/openstack/samples/batch_get_item_request_syntax.json
    :language: javascript
 
-**Request Parameters**:
+Request Parameters
+``````````````````
 
    **request_items**
       | Type: String to object map
       | Required: Yes
 
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/batch_get_item_response_syntax.json
     :language: javascript
 
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **responses**
       | Type: String to map
@@ -31,17 +37,24 @@ BatchGetItem
    **unprocessed_keys**
       | Type: String to object map
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
-   ValidationError
+------
+Errors
+------
 
-**Sample Request**
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+   | ValidationError
+
+--------------
+Sample Request
+--------------
 
 .. literalinclude:: ../api/openstack/samples/batch_get_item_sample_request.json
     :language: javascript
 
-**Sample Response**
+---------------
+Sample Response
+---------------
 
 .. literalinclude:: ../api/openstack/samples/batch_get_item_sample_response.json
     :language: javascript

@@ -6,12 +6,15 @@ DeleteItem
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/delete_item
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
 .. literalinclude:: ../api/openstack/samples/delete_item_request_syntax.json
    :language: javascript
 
-**Request Parameters**:
+Request Parameters
+``````````````````
 
    **key**
       | Primary key of the item to delete.
@@ -28,30 +31,40 @@ DeleteItem
       | Valid values: NONE | ALL_OLD | UPDATED_OLD | ALL_NEW | UPDATED_NEW
       | Required: No
 
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/delete_item_response_syntax.json
     :language: javascript
 
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **attributes**
       | Item attributes
       | Type: String to Attributevalue object map
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
-   ConditionalCheckFailedException
-   ValidationError
+------
+Errors
+------
 
-**Sample Request**
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+   | ConditionalCheckFailedException
+   | ValidationError
+
+--------------
+Sample Request
+--------------
 
 .. literalinclude:: ../api/openstack/samples/delete_item_sample_request.json
     :language: javascript
 
-**Sample Response**
+---------------
+Sample Response
+---------------
 
 .. literalinclude:: ../api/openstack/samples/delete_item_sample_response.json
     :language: javascript

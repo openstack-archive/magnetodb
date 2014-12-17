@@ -6,12 +6,15 @@ CreateTable
 
 .. http:post:: v1/data/{project_id}/tables
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
 .. literalinclude:: ../api/openstack/samples/create_table_request_syntax.json
    :language: javascript
 
-**Request Parameters**:
+Request Parameters
+``````````````````
 
    **table_name**
      | The name of the table. Unique per project.
@@ -33,30 +36,40 @@ CreateTable
      | Type: array of objects
      | Required: No
 
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/create_table_response_syntax.json
     :language: javascript
 
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **table_description**
       | Represents the properties of a table.
       | Type: table_description object
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
-   TableAlreadyExistsException
-   ValidationError
+------
+Errors
+------
 
-**Sample Request**
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+   | TableAlreadyExistsException
+   | ValidationError
+
+--------------
+Sample Request
+--------------
 
 .. literalinclude:: ../api/openstack/samples/create_table_sample_request.json
     :language: javascript
 
-**Sample Response**
+---------------
+Sample Response
+---------------
 
 .. literalinclude:: ../api/openstack/samples/create_table_sample_response.json
     :language: javascript
