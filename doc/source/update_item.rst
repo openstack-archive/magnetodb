@@ -6,12 +6,15 @@ UpdateItem
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/update_item
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
 .. literalinclude:: ../api/openstack/samples/update_item_request_syntax.json
    :language: javascript
 
-**Request Parameters**:
+Request Parameters
+``````````````````
 
    **key**
       | The primary key of the item to retrieve.
@@ -72,32 +75,40 @@ UpdateItem
       | Type: String
       | Valid values: NONE | ALL_OLD | UPDATED_OLD | ALL_NEW | UPDATED_NEW
       | Required: No
-
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/update_item_response_syntax.json
     :language: javascript
 
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **attributes**
       | Item attributes
       | Type: String to object map
+------
+Errors
+------
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
-   ConditionalCheckFailedException
-   TableNotExistsException
-   ValidationError
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+   | ConditionalCheckFailedException
+   | TableNotExistsException
+   | ValidationError
 
-**Sample Request**
+--------------
+Sample Request
+--------------
 
 .. literalinclude:: ../api/openstack/samples/update_item_sample_request.json
     :language: javascript
 
-**Sample Response**
+---------------
+Sample Response
+---------------
 
 .. literalinclude:: ../api/openstack/samples/update_item_sample_response.json
     :language: javascript

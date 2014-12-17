@@ -6,12 +6,15 @@ Query
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/query
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
 .. literalinclude:: ../api/openstack/samples/query_request_syntax.json
    :language: javascript
 
-**Request Parameters**:
+Request Parameters
+``````````````````
 
    **attributes_to_get**
       | Type: array of Strings
@@ -50,13 +53,16 @@ Query
       | Valid values: ALL_ATTRIBUTES | ALL_PROJECTED_ATTRIBUTES | SPECIFIC_ATTRIBUTES | COUNT
       | Required: No
 
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/query_response_syntax.json
     :language: javascript
 
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **count**
       | The number of items in the response.
@@ -70,17 +76,24 @@ Query
       | The primary key of the item where the operation stopped.
       | Type: String to AttributeValue object map
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
-   ValidationError
+------
+Errors
+------
 
-**Sample Request**
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+   | ValidationError
+
+--------------
+Sample Request
+--------------
 
 .. literalinclude:: ../api/openstack/samples/query_sample_request.json
     :language: javascript
 
-**Sample Response**
+---------------
+Sample Response
+---------------
 
 .. literalinclude:: ../api/openstack/samples/query_sample_response.json
     :language: javascript

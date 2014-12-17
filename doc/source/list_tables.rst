@@ -6,11 +6,14 @@ ListTables
 
 .. http:get:: v1/data/{project_id}/tables
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
    This operation does not require a request body
 
-**Request Parameters**:
+Request Parameters
+``````````````````
 
    Parameters should be provided via GET query string.
 
@@ -24,12 +27,15 @@ ListTables
       | Type: xsd:int
       | Required: No
 
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/list_tables_response_syntax.json
     :language: javascript
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **last_evaluated_table_name**
       | The name of the last table in the current page of results.
@@ -39,8 +45,16 @@ ListTables
      | Array of the table info items
      | Type: array of structs
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
+------
+Errors
+------
 
-**Sample Response**
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+
+---------------
+Sample Response
+---------------
+
+.. literalinclude:: ../api/openstack/samples/list_tables_sample_response.json
+    :language: javascript
