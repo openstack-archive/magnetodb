@@ -6,23 +6,29 @@ DescribeTable
 
 .. http:get:: v1/data/{project_id}/tables/{table_name}
 
-**Request Syntax**
+--------------
+Request Syntax
+--------------
 
    This operation does not require a request body
 
-**Response Syntax**
+---------------
+Response Syntax
+---------------
 
 .. literalinclude:: ../api/openstack/samples/describe_table_response_syntax.json
     :language: javascript
 
-**Response Elements**
+Response Elements
+`````````````````
 
    **table**
       | Represents the properties of a table.
       | Type: table_description object
 
 
-**Table Statuses**
+Table Statuses
+``````````````
 
 - ACTIVE
 - CREATING
@@ -30,14 +36,18 @@ DescribeTable
 - DELETING
 - DELETE_FAILURE
 
+------
+Errors
+------
 
-**Errors**
-   BackendInteractionException
-   ClusterIsNotConnectedException
-   TableNotExistsException
-   ValidationError
+   | BackendInteractionException
+   | ClusterIsNotConnectedException
+   | TableNotExistsException
+   | ValidationError
 
-**Sample Response**
+---------------
+Sample Response
+---------------
 
 .. literalinclude:: ../api/openstack/samples/describe_table_sample_response.json
        :language: javascript

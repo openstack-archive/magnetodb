@@ -1,0 +1,27 @@
+{
+    "item": {
+        //HASH KEY
+        "ForumName": {
+            "S": "MagnetoDB"
+        },
+        //RANGE KEY
+        "Subject": {
+            "S": "How do I update multiple items?"
+        },
+        "Message": {
+            "S": "Message text"
+        },
+        "Read":{
+            "S":"true"
+        }
+    }
+    },
+    "expected": {
+        "Message": {
+            "value": {"S":"Message text"}
+        },
+        "Read":{
+            "exists":true
+        }
+    },
+...
