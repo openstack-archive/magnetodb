@@ -790,6 +790,17 @@ class TableSchema(ModelBase):
             raise ValidationError("Local secondary indexes are not allowed "
                                   "for tables with hash key only")
 
+        # Validate the primary hash and range key types, make sure them are
+        # scalar types
+        for attr_name in key_attributes:
+            if attr_name in attribute_type_map:
+                attr_type = attribute_type_map[attr_name]
+                if attr_type is not None and attr_type.collection_type is not \
+                        None:
+                    raise ValidationError(
+                        _("Type '%(prop_value)s' is not a scalar type"),
+                        prop_value=attr_type['type'])
+
         for index_name, index_def in index_def_map.iteritems():
             if index_def.alt_hash_key_attr != key_attributes[0]:
                 msg = _("Hash key of index '%(index_name)s' must "

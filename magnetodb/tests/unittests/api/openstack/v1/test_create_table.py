@@ -708,3 +708,145 @@ class CreateTableTest(test_base_testcase.APITestCase):
         }
 
         self.assertEqual(expected_error, response_payload['error'])
+
+    def test_create_table_no_type_validation_with_primary_hash_key(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_primary_hash_key_type = 'SS'
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "%s"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "Thread",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "local_secondary_indexes": [
+                    {
+                        "index_name": "LastPostIndex",
+                        "key_schema": [
+                            {
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
+                            },
+                            {
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
+                            }
+                        ],
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
+                        }
+                    }
+                ]
+            }
+        """ % (invalid_primary_hash_key_type)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Type '%s' is not a scalar type"
+                       % (invalid_primary_hash_key_type),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
+
+    def test_create_table_no_type_validation_with_primary_range_key(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
+        invalid_primary_range_key_type = 'SS'
+
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "%s"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "Thread",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "key_type": "RANGE"
+                    }
+                ],
+                "local_secondary_indexes": [
+                    {
+                        "index_name": "LastPostIndex",
+                        "key_schema": [
+                            {
+                                "attribute_name": "ForumName",
+                                "key_type": "HASH"
+                            },
+                            {
+                                "attribute_name": "LastPostDateTime",
+                                "key_type": "RANGE"
+                            }
+                        ],
+                        "projection": {
+                            "projection_type": "KEYS_ONLY"
+                        }
+                    }
+                ]
+            }
+        """ % (invalid_primary_range_key_type)
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+
+        self.assertEqual(400, response.status)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        expected_error = {
+            'message': "Type '%s' is not a scalar type"
+                       % (invalid_primary_range_key_type),
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
