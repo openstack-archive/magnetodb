@@ -307,6 +307,16 @@ function configure_magnetodb() {
     sed -i -e "s|^[# ^t]*rabbit_password =.*|rabbit_password = $RABBIT_PASSWORD|g" $MAGNETODB_CONF_DIR/magnetodb-api.conf
 }
 
+# configure_magnetodb_tempest_plugin() - copies magnetodb tempest plugin to tempest dir
+function configure_magnetodb_tempest_plugin() {
+    echo -e nose >> $TEMPEST_DIR/test-requirements.txt
+    echo -e nose-subunit >> $TEMPEST_DIR/test-requirements.txt
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/stable/"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/in_progress/"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/not_ready/"
+    cp -r $MAGNETODB_DIR/contrib/tempest/ $TEMPEST_DIR/..
+}
+
 # function screen_run - This function is a modification of function screen_it and allows you to run processes are not declared as service
 # Helper to launch a service in a named screen
 # screen_run service "command-line"
