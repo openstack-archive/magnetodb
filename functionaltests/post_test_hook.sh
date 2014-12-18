@@ -17,26 +17,8 @@
 DEST_DIR=/opt/stack/new
 LOGS_DIR=/opt/stack/logs
 
-# Install packages from test-requirements.txt
-
-sudo pip install -r $DEST_DIR/magnetodb/test-requirements.txt
-
-# Preparing tempest.conf
-
-cd $DEST_DIR/magnetodb/functionaltests
-ip=$(/sbin/ip a | grep eth0|grep inet|awk '{print $2}'|sed 's/\/.*//g')
-sudo cp $DEST_DIR/tempest/etc/tempest.conf $DEST_DIR/magnetodb/contrib/tempest/tempest.conf
-
-sudo sed -e '{ /\[boto\]/ a\
-magnetodb_url = http://'$ip':8480
-}' -i $DEST_DIR/magnetodb/contrib/tempest/tempest.conf
-sudo sed -e "s/#aws_secret=<None>/aws_secret = ''/" -e "s/#aws_access=<None>/aws_access = ''/" -i $DEST_DIR/magnetodb/contrib/tempest/tempest.conf
-sudo bash -c "cat <<EOF >>$DEST_DIR/magnetodb/contrib/tempest/tempest.conf
-[magnetodb]
-service_type = kv-storage
-EOF"
-
 # Run tempest tests
+cd $DEST_DIR/magnetodb/functionaltests
 
 sudo ./run_tests.sh
 RETVAL=$?
