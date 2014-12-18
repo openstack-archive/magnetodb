@@ -9,6 +9,9 @@ if is_service_enabled magnetodb; then
         echo_summary "Configuring Magnetodb"
         configure_magnetodb
         create_magnetodb_credentials
+        if is_service_enabled tempest; then
+            configure_magnetodb_tempest_plugin
+        fi
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Starting Magnetodb"
         start_magnetodb
