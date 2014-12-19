@@ -27,6 +27,8 @@ class DeleteItemController(object):
     @api.enforce_policy("mdb:delete_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
+        req.context.metric_name = "mdb.req.delete_item"
+
         with probe.Probe(__name__ + '.jsonschema.validate'):
             validation.validate_object(body, "body")
 

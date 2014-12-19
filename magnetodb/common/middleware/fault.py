@@ -120,7 +120,9 @@ class FaultWrapper(wsgi.Middleware):
         except Exception as ex:
             # some lower lever exception. It is better to know about it
             LOG.exception(ex)
-            return req.get_response(Fault(self._error(ex)))
+            resp = req.get_response(Fault(self._error(ex)))
+            req.context.status_code = resp.status_code
+            return resp
 
     @classmethod
     def factory_method(cls, global_config, **local_config):

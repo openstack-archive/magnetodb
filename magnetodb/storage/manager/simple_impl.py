@@ -18,6 +18,7 @@ from concurrent import futures
 import logging
 import datetime
 import threading
+import time
 import weakref
 import uuid
 
@@ -44,6 +45,12 @@ class SimpleStorageManager(manager.StorageManager):
         self._notifier = notifier.get_notifier()
 
     def _do_create_table(self, context, table_info):
+        start_time = time.time()
+        self._notifier.info(
+            context,
+            notifier.EVENT_TYPE_TABLE_CREATE_START,
+            table_info.schema
+        )
         try:
             table_info.internal_name = self._storage_driver.create_table(
                 context, table_info
@@ -58,24 +65,24 @@ class SimpleStorageManager(manager.StorageManager):
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_info.name,
-                    message=ex.message
+                    message=ex.message,
+                    value=start_time
                 ))
             raise
 
         self._notifier.info(
             context,
             notifier.EVENT_TYPE_TABLE_CREATE_END,
-            table_info.schema)
+            dict(
+                schema=table_info.schema,
+                value=start_time
+            ))
 
     def _get_table_id(self, table_name):
         return uuid.uuid1()
 
     def create_table(self, context, table_name, table_schema):
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_TABLE_CREATE_START,
-            table_schema)
-
+        start_time = time.time()
         table_id = self._get_table_id(table_name)
         table_info = table_info_repo.TableInfo(
             table_name, table_id, table_schema,
@@ -90,7 +97,8 @@ class SimpleStorageManager(manager.StorageManager):
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_name,
-                    message=e.message
+                    message=e.message,
+                    value=start_time
                 ))
             raise
 
@@ -103,6 +111,7 @@ class SimpleStorageManager(manager.StorageManager):
             table_info.creation_date_time)
 
     def _do_delete_table(self, context, table_info):
+        start_time = time.time()
         self._storage_driver.delete_table(context, table_info)
 
         self._table_info_repo.delete(context, table_info.name)
@@ -110,9 +119,13 @@ class SimpleStorageManager(manager.StorageManager):
         self._notifier.info(
             context,
             notifier.EVENT_TYPE_TABLE_DELETE_END,
-            table_info.name)
+            dict(
+                table_name=table_info.name,
+                value=start_time
+            ))
 
     def delete_table(self, context, table_name):
+        start_time = time.time()
         self._notifier.info(
             context,
             notifier.EVENT_TYPE_TABLE_DELETE_START,
@@ -127,7 +140,8 @@ class SimpleStorageManager(manager.StorageManager):
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
                     table_name=table_name,
-                    message=e.message
+                    message=e.message,
+                    value=start_time
                 ))
             raise
 
@@ -136,7 +150,10 @@ class SimpleStorageManager(manager.StorageManager):
             self._notifier.info(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_END,
-                table_name)
+                dict(
+                    table_name=table_name,
+                    value=start_time
+                ))
             return models.TableMeta(table_info.id, table_info.schema,
                                     table_info.status,
                                     table_info.creation_date_time)
@@ -147,7 +164,8 @@ class SimpleStorageManager(manager.StorageManager):
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
                     table_name=table_name,
-                    message=e.message
+                    message=e.message,
+                    value=start_time
                 ))
             raise e
 
