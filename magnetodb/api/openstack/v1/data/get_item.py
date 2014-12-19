@@ -19,6 +19,7 @@ from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -27,6 +28,7 @@ class GetItemController(object):
     """The Getitem operation returns an item with the given primary key. """
 
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.get_item")
     def process_request(self, req, body, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id

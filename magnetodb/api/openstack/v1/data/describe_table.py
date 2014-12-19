@@ -21,6 +21,7 @@ from magnetodb.openstack.common.log import logging
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 
 
 LOG = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class DescribeTableController(object):
     """Returns information about the table."""
 
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.describe_table")
     def describe_table(self, req, project_id, table_name):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id

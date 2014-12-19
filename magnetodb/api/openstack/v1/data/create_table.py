@@ -23,6 +23,7 @@ from magnetodb.openstack.common.log import logging
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 
 LOG = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class CreateTableController():
     """
 
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.create_table")
     def create_table(self, req, body, project_id):
         utils.check_project_id(req.context, project_id)
         req.context.tenant = project_id
