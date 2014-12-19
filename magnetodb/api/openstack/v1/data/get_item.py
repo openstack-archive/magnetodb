@@ -15,10 +15,11 @@
 #    under the License.
 
 from magnetodb import api
-from magnetodb.api.openstack.v1 import parser
-from magnetodb.api import validation
-from magnetodb.common import probe
 from magnetodb import storage
+from magnetodb.api import validation
+from magnetodb.api.openstack.v1 import parser
+from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 from magnetodb.storage import models
 
 
@@ -27,6 +28,7 @@ class GetItemController(object):
 
     @api.enforce_policy("mdb:get_item")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.get_item")
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
