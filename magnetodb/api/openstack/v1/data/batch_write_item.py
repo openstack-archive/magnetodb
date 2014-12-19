@@ -29,6 +29,8 @@ class BatchWriteItemController(object):
     @api.enforce_policy("mdb:batch_write_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id):
+        req.context.metric_name = "mdb.req.batch_write_item"
+
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
 

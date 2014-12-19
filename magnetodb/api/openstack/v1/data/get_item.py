@@ -28,6 +28,8 @@ class GetItemController(object):
     @api.enforce_policy("mdb:get_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
+        req.context.metric_name = "mdb.req.get_item"
+
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
 

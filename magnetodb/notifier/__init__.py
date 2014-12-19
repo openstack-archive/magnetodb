@@ -16,12 +16,14 @@
 import socket
 
 from oslo.config import cfg
-from oslo import messaging
 from oslo.messaging import notify
 from oslo.messaging import serializer
+from oslo.messaging import transport
 from oslo.serialization import jsonutils
 
 from magnetodb import common as mdb_common
+from magnetodb.notifier import notifier_statsd_adapter
+from magnetodb.notifier.notifier_statsd_util import *
 from magnetodb.openstack.common import context as ctxt
 
 extra_notifier_opts = [
@@ -36,66 +38,44 @@ extra_notifier_opts = [
 
 cfg.CONF.register_opts(extra_notifier_opts)
 
-EVENT_TYPE_TABLE_CREATE_START = 'magnetodb.table.create.start'
-EVENT_TYPE_TABLE_CREATE_END = 'magnetodb.table.create.end'
-EVENT_TYPE_TABLE_CREATE_ERROR = 'magnetodb.table.create.error'
-EVENT_TYPE_TABLE_DELETE_START = 'magnetodb.table.delete.start'
-EVENT_TYPE_TABLE_DELETE_END = 'magnetodb.table.delete.end'
-EVENT_TYPE_TABLE_DELETE_ERROR = 'magnetodb.table.delete.error'
-EVENT_TYPE_TABLE_DESCRIBE = 'magnetodb.table.describe'
-EVENT_TYPE_TABLE_LIST = 'magnetodb.table.list'
-EVENT_TYPE_DATA_PUTITEM = 'magnetodb.data.putitem'
-EVENT_TYPE_DATA_PUTITEM_START = 'magnetodb.data.putitem.start'
-EVENT_TYPE_DATA_PUTITEM_END = 'magnetodb.data.putitem.end'
-EVENT_TYPE_DATA_DELETEITEM = 'magnetodb.data.deleteitem'
-EVENT_TYPE_DATA_DELETEITEM_START = 'magnetodb.data.deleteitem.start'
-EVENT_TYPE_DATA_DELETEITEM_END = 'magnetodb.data.deleteitem.end'
-EVENT_TYPE_DATA_DELETEITEM_ERROR = 'magnetodb.data.deleteitem.error'
-EVENT_TYPE_DATA_BATCHWRITE_START = 'magnetodb.data.batchwrite.start'
-EVENT_TYPE_DATA_BATCHWRITE_END = 'magnetodb.data.batchwrite.end'
-EVENT_TYPE_DATA_BATCHREAD_START = 'magnetodb.data.batchread.start'
-EVENT_TYPE_DATA_BATCHREAD_END = 'magnetodb.data.batchread.end'
-EVENT_TYPE_DATA_UPDATEITEM = 'magnetodb.data.updateitem'
-EVENT_TYPE_DATA_GETITEM = 'magnetodb.data.getitem'
-EVENT_TYPE_DATA_GETITEM_START = 'magnetodb.data.getitem.start'
-EVENT_TYPE_DATA_GETITEM_END = 'magnetodb.data.getitem.end'
-EVENT_TYPE_DATA_QUERY = 'magnetodb.data.query'
-EVENT_TYPE_DATA_QUERY_START = 'magnetodb.data.query.start'
-EVENT_TYPE_DATA_QUERY_END = 'magnetodb.data.query.end'
-EVENT_TYPE_DATA_SCAN_START = 'magnetodb.data.scan.start'
-EVENT_TYPE_DATA_SCAN_END = 'magnetodb.data.scan.end'
-EVENT_TYPE_STREAMING_PATH_ERROR = 'magnetodb.streaming.path.error'
-EVENT_TYPE_STREAMING_DATA_START = 'magnetodb.streaming.data.start'
-EVENT_TYPE_STREAMING_DATA_END = 'magnetodb.streaming.data.end'
-EVENT_TYPE_STREAMING_DATA_ERROR = 'magnetodb.streaming.data.error'
-EVENT_TYPE_REQUEST_RATE_LIMITED = 'magnetodb.request.rate.limited'
-
-
 __NOTIFIER = None
+__STATSD_ADAPTED_NOTIFIER = None
 
 
 def setup():
     global __NOTIFIER
     assert __NOTIFIER is None
+    global __STATSD_ADAPTED_NOTIFIER
+    assert __STATSD_ADAPTED_NOTIFIER is None
 
     get_notifier()
 
 
-def get_notifier():
+def _get_messaging_notifier():
     global __NOTIFIER
 
     if not __NOTIFIER:
         service = cfg.CONF.notification_service
         host = cfg.CONF.default_publisher_id or socket.gethostname()
         publisher_id = '{}.{}'.format(service, host)
-
         __NOTIFIER = notify.Notifier(
-            messaging.get_transport(cfg.CONF),
+            transport.get_transport(cfg.CONF),
             publisher_id,
             serializer=RequestContextSerializer(JsonPayloadSerializer())
         )
 
     return __NOTIFIER
+
+
+def get_notifier():
+    global __STATSD_ADAPTED_NOTIFIER
+
+    if not __STATSD_ADAPTED_NOTIFIER:
+        __STATSD_ADAPTED_NOTIFIER = (
+            notifier_statsd_adapter.StatsdAdaptedNotifier(
+                _get_messaging_notifier()))
+
+    return __STATSD_ADAPTED_NOTIFIER
 
 
 class JsonPayloadSerializer(serializer.NoOpSerializer):
