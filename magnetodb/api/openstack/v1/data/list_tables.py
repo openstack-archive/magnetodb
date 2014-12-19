@@ -15,11 +15,12 @@
 #    under the License.
 
 from magnetodb import api
-from magnetodb.api.openstack.v1 import parser
-from magnetodb.api import validation
-from magnetodb.common import probe
-from magnetodb.openstack.common import log as logging
 from magnetodb import storage
+from magnetodb.api import validation
+from magnetodb.api.openstack.v1 import parser
+from magnetodb.common import probe
+from magnetodb.common.utils import statsd
+from magnetodb.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class ListTablesController():
     """
     @api.enforce_policy("mdb:list_tables")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.list_tables")
     def list_tables(self, req, project_id):
         params = req.params.copy()
 
