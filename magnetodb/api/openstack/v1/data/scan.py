@@ -18,6 +18,7 @@ from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import probe
+from magnetodb.common.utils import request_context_decorator
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
 from magnetodb.storage import models
@@ -32,7 +33,9 @@ class ScanController(object):
 
     @api.enforce_policy("mdb:scan")
     @probe.Probe(__name__)
+    @request_context_decorator.request_type("magnetodb.req.mdb.Scan")
     def scan(self, req, body, project_id, table_name):
+
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
 
