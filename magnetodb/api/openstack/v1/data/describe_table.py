@@ -15,9 +15,10 @@
 #    under the License.
 
 from magnetodb import api
-from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api import validation
 from magnetodb.common import probe
+from magnetodb.common.utils import request_context_decorator
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
 
@@ -29,7 +30,9 @@ class DescribeTableController(object):
 
     @api.enforce_policy("mdb:describe_table")
     @probe.Probe(__name__)
+    @request_context_decorator.request_type("magnetodb.req.mdb.DescribeTable")
     def describe_table(self, req, project_id, table_name):
+
         validation.validate_table_name(table_name)
 
         table_meta = storage.describe_table(req.context, table_name)
@@ -79,4 +82,5 @@ class DescribeTableController(object):
                     table_meta.schema.index_def_map
                 )
             )
+
         return result

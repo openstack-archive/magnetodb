@@ -89,6 +89,16 @@ class AmzDynamoDBApiController():
                     (service_name, api_version, action_name))
             )
 
+        # context.request_type is set to
+        # magnetodb.request.{short_svc_name}.{action_name}, such as
+        # magnetodb.request.DynamoDB.ListTables.
+        # Here we use short name for service name instead.
+        short_svc_name = service_name
+        if service_name == 'DynamoDB':
+            short_svc_name = 'ddb'
+        context.request_type = ("magnetodb.request.{}.{}".format(
+            short_svc_name, action_name))
+
         return action.perform(context, action_params)
 
     def process_request(self, req, body):
