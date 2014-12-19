@@ -24,6 +24,9 @@ from magnetodb.common import wsgi
 from magnetodb import notifier
 from magnetodb.openstack.common import log as logging
 
+MDB_DATA_API_URL_PREFIX = "/v1/data/"
+MDB_DATA_API_URL_PATTERN = "^" + MDB_DATA_API_URL_PREFIX + "\w+"
+
 LOG = logging.getLogger(__name__)
 
 
@@ -69,9 +72,9 @@ class RateLimitMiddleware(wsgi.Middleware):
 
         tenant_id = None
 
-        if re.match("^/v1/\w+", path):
+        if re.match(MDB_DATA_API_URL_PATTERN, path):
             url_comp = path.split('/')
-            tenant_id = url_comp[2]
+            tenant_id = url_comp[3]
         else:
             tenant_id = req.headers.get('X-Tenant-Id', None)
 
