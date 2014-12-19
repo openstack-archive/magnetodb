@@ -21,6 +21,7 @@ from magnetodb.openstack.common.log import logging
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 
 
 LOG = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ class ListTablesController():
     """
     @enforce_policy("mdb:list_tables")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.list_tables")
     def list_tables(self, req, project_id):
         params = req.params.copy()
 

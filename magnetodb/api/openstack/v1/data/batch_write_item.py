@@ -20,6 +20,7 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.api import enforce_policy
 from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 
 
 class BatchWriteItemController(object):
@@ -29,6 +30,7 @@ class BatchWriteItemController(object):
 
     @enforce_policy("mdb:batch_write_item")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.batch_write_item")
     def process_request(self, req, body, project_id):
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")

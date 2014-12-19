@@ -22,6 +22,7 @@ from magnetodb.storage import models
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 from magnetodb.storage.models import IndexedCondition
 
 LOG = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ class QueryController(object):
 
     @enforce_policy("mdb:query")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.query")
     def query(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")

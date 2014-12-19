@@ -19,6 +19,7 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb import storage
 from magnetodb.common import exception
 from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 from magnetodb.storage.models import UpdateReturnValuesType
 
 
@@ -29,6 +30,7 @@ class UpdateItemController(object):
 
     @enforce_policy("mdb:update_item")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.update_item")
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")

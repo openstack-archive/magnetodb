@@ -20,6 +20,7 @@ from magnetodb.api import enforce_policy
 
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.common import probe
+from magnetodb.common.utils import statsd
 
 from magnetodb.storage.models import InsertReturnValuesType
 
@@ -29,6 +30,7 @@ class PutItemController(object):
 
     @enforce_policy("mdb:put_item")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.put_item")
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
