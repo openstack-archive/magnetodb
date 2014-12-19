@@ -18,6 +18,7 @@ from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import probe
+from magnetodb.common.utils import request_context_decorator
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
 
@@ -30,6 +31,7 @@ class ListTablesController():
     """
     @api.enforce_policy("mdb:list_tables")
     @probe.Probe(__name__)
+    @request_context_decorator.request_type("list_tables")
     def list_tables(self, req, project_id):
         params = req.params.copy()
 

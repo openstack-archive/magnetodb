@@ -117,6 +117,9 @@ def create_table(context, table_name, table_schema):
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(
+        table_name=table_name, table_schema=table_schema
+    )
     return __STORAGE_MANAGER_IMPL.create_table(context, table_name,
                                                table_schema)
 
@@ -132,6 +135,7 @@ def delete_table(context, table_name):
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(table_name=table_name)
     return __STORAGE_MANAGER_IMPL.delete_table(context, table_name)
 
 
@@ -146,6 +150,7 @@ def describe_table(context, table_name):
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(table_name=table_name)
     return __STORAGE_MANAGER_IMPL.describe_table(context, table_name)
 
 
@@ -158,6 +163,9 @@ def list_tables(context, exclusive_start_table_name=None, limit=None):
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(
+        exclusive_start_table_name=exclusive_start_table_name, limit=limit
+    )
     return __STORAGE_MANAGER_IMPL.list_tables(
         context, exclusive_start_table_name, limit
     )
@@ -198,6 +206,11 @@ def put_item(context, table_name, attribute_map, return_values=None,
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(
+        table_name=table_name, attribute_map=attribute_map,
+        return_values=return_values, if_not_exist=if_not_exist,
+        expected_condition_map=expected_condition_map
+    )
     return __STORAGE_MANAGER_IMPL.put_item(
         context, table_name, attribute_map, return_values,
         if_not_exist, expected_condition_map
@@ -249,6 +262,10 @@ def delete_item(context, table_name, key_attribute_map,
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(
+        table_name=table_name, key_attribute_map=key_attribute_map,
+        expected_condition_map=expected_condition_map
+    )
     return __STORAGE_MANAGER_IMPL.delete_item(
         context, table_name, key_attribute_map, expected_condition_map
     )
@@ -284,6 +301,7 @@ def execute_write_batch(context, write_request_map):
 
     :returns: Unprocessed request list
     """
+
     return __STORAGE_MANAGER_IMPL.execute_write_batch(context,
                                                       write_request_map)
 
@@ -296,6 +314,7 @@ def execute_get_batch(context, get_request_list):
 
     :returns: tuple of items list and unprocessed request list
     """
+    context.request_args = dict(get_request_list=get_request_list)
     return __STORAGE_MANAGER_IMPL.execute_get_batch(context, get_request_list)
 
 
@@ -317,6 +336,11 @@ def update_item(context, table_name, key_attribute_map,
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(
+        table_name=table_name, key_attribute_map=key_attribute_map,
+        attribute_action_map=attribute_action_map,
+        expected_condition_map=expected_condition_map
+    )
     return __STORAGE_MANAGER_IMPL.update_item(
         context, table_name, key_attribute_map, attribute_action_map,
         expected_condition_map
@@ -351,6 +375,12 @@ def query(context, table_name, indexed_condition_map=None,
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(
+        table_name=table_name, indexed_condition_map=indexed_condition_map,
+        select_type=select_type, index_name=index_name, limit=limit,
+        exclusive_start_key=exclusive_start_key, consistent=consistent,
+        order_type=order_type
+    )
     return __STORAGE_MANAGER_IMPL.query(
         context, table_name, indexed_condition_map, select_type, index_name,
         limit, exclusive_start_key, consistent, order_type
@@ -401,6 +431,11 @@ def scan(context, table_name, condition_map, attributes_to_get=None,
 
     :raises: BackendInteractionException
     """
+    context.request_args = dict(
+        table_name=table_name, condition_map=condition_map,
+        attributes_to_get=attributes_to_get, limit=limit,
+        exclusive_start_key=exclusive_start_key, consistent=consistent,
+    )
     return __STORAGE_MANAGER_IMPL.scan(
         context, table_name, condition_map, attributes_to_get, limit,
         exclusive_start_key, consistent=False

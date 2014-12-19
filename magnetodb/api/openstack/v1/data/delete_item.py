@@ -17,6 +17,7 @@ from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import probe
+from magnetodb.common.utils import request_context_decorator
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -26,6 +27,7 @@ class DeleteItemController(object):
 
     @api.enforce_policy("mdb:delete_item")
     @probe.Probe(__name__)
+    @request_context_decorator.request_type("delete_item")
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.jsonschema.validate'):
             validation.validate_object(body, "body")

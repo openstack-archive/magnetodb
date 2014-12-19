@@ -17,6 +17,7 @@
 from concurrent import futures
 import logging
 import threading
+import time
 import weakref
 import uuid
 
@@ -45,38 +46,44 @@ class SimpleStorageManager(manager.StorageManager):
         self._notifier = notifier.get_notifier()
 
     def _do_create_table(self, context, table_info):
+        start_time = time.time()
         try:
             table_info.internal_name = self._storage_driver.create_table(
                 context, table_info
             )
-            table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
-            self._table_info_repo.update(
-                context, table_info, ["status", "internal_name"]
-            )
         except exception.BackendInteractionError as ex:
+            table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
+            self._table_info_repo.update(
+                context, table_info, ["status"]
+            )
+
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
                     table_name=table_info.name,
-                    message=ex.message
+                    message=ex.message,
+                    value=start_time
                 ))
             raise
 
-        self._notifier.info(
+        table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
+        self._table_info_repo.update(
+            context, table_info, ["status", "internal_name"]
+        )
+
+        self._notifier.audit(
             context,
-            notifier.EVENT_TYPE_TABLE_CREATE_END,
-            table_info.schema)
+            notifier.EVENT_TYPE_TABLE_CREATE,
+            dict(
+                schema=table_info.schema,
+                value=start_time
+            ))
 
     def _get_table_id(self, table_name):
         return uuid.uuid1()
 
     def create_table(self, context, table_name, table_schema):
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_TABLE_CREATE_START,
-            table_schema)
-
         table_id = self._get_table_id(table_name)
         table_info = table_info_repo.TableInfo(
             table_name, table_id, table_schema,
@@ -85,14 +92,7 @@ class SimpleStorageManager(manager.StorageManager):
 
         try:
             self._table_info_repo.save(context, table_info)
-        except exception.TableAlreadyExistsException as e:
-            self._notifier.error(
-                context,
-                notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
-                dict(
-                    table_name=table_name,
-                    message=e.message
-                ))
+        except exception.TableAlreadyExistsException:
             raise
 
         self._do_create_table(context, table_info)
@@ -104,53 +104,50 @@ class SimpleStorageManager(manager.StorageManager):
             table_info.creation_date_time)
 
     def _do_delete_table(self, context, table_info):
-        self._storage_driver.delete_table(context, table_info)
+        start_time = time.time()
+
+        try:
+            self._storage_driver.delete_table(context, table_info)
+        except exception.BackendInteractionError as ex:
+            table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
+            self._table_info_repo.update(context, table_info, ["status"])
+
+            self._notifier.error(
+                context,
+                notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                dict(
+                    table_name=table_info.name,
+                    message=ex.message,
+                    value=start_time
+                ))
+            raise
 
         self._table_info_repo.delete(context, table_info.name)
 
-        self._notifier.info(
+        self._notifier.audit(
             context,
-            notifier.EVENT_TYPE_TABLE_DELETE_END,
-            table_info.name)
+            notifier.EVENT_TYPE_TABLE_DELETE,
+            dict(
+                table_name=table_info.name,
+                value=start_time
+            )
+        )
 
     def delete_table(self, context, table_name):
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_TABLE_DELETE_START,
-            table_name)
         try:
             table_info = self._table_info_repo.get(context,
                                                    table_name,
                                                    ['status'])
-        except exception.TableNotExistsException as e:
-            self._notifier.error(
-                context,
-                notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                dict(
-                    table_name=table_name,
-                    message=e.message
-                ))
+        except exception.TableNotExistsException:
             raise
 
         if table_info.status == models.TableMeta.TABLE_STATUS_DELETING:
             # table is already being deleted, just return immediately
-            self._notifier.info(
-                context,
-                notifier.EVENT_TYPE_TABLE_DELETE_END,
-                table_name)
             return models.TableMeta(table_info.id, table_info.schema,
                                     table_info.status,
                                     table_info.creation_date_time)
         elif table_info.in_use:
-            e = exception.ResourceInUseException()
-            self._notifier.error(
-                context,
-                notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                dict(
-                    table_name=table_name,
-                    message=e.message
-                ))
-            raise e
+            raise exception.ResourceInUseException()
 
         table_info.status = models.TableMeta.TABLE_STATUS_DELETING
 
@@ -160,15 +157,20 @@ class SimpleStorageManager(manager.StorageManager):
             # if table internal name is missing, table is not actually created
             # just remove the table_info entry for the table and
             # send notification
-            LOG.info(("Table '{}' with tenant id '{}', id '{}' does not have "
-                      "valid internal name. Unable or no need to delete.").
-                     format(table_info.name, context.tenant, table_info.id))
+            msg = ("Table '{}' with tenant id '{}', id '{}' does not have "
+                   "valid internal name. Unable or no need to delete."
+                   ).format(table_info.name, context.tenant, table_info.id)
+            LOG.info(msg)
             self._table_info_repo.delete(context, table_info.name)
 
             self._notifier.info(
                 context,
-                notifier.EVENT_TYPE_TABLE_DELETE_END,
-                table_info.name)
+                notifier.EVENT_TYPE_TABLE_DELETE,
+                dict(
+                    table_name=table_name,
+                    message=msg,
+                    value=time.time()
+                ))
         else:
             self._do_delete_table(context, table_info)
 
@@ -181,10 +183,6 @@ class SimpleStorageManager(manager.StorageManager):
     def describe_table(self, context, table_name):
         table_info = self._table_info_repo.get(
             context, table_name, ['status', 'last_update_date_time'])
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_TABLE_DESCRIBE,
-            table_name)
 
         if timeutils.is_older_than(table_info.last_update_date_time,
                                    self._schema_operation_timeout):
@@ -197,14 +195,6 @@ class SimpleStorageManager(manager.StorageManager):
                         table_info.name,
                         models.TableMeta.TABLE_STATUS_CREATE_FAILED)
                 )
-                self._notifier.error(
-                    context,
-                    notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
-                    dict(
-                        table_name=table_name,
-                        message='Operation timed out'
-                    )
-                )
 
             if table_info.status == models.TableMeta.TABLE_STATUS_DELETING:
                 table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
@@ -215,14 +205,6 @@ class SimpleStorageManager(manager.StorageManager):
                         table_info.name,
                         models.TableMeta.TABLE_STATUS_DELETE_FAILED)
                 )
-                self._notifier.error(
-                    context,
-                    notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                    dict(
-                        table_name=table_name,
-                        message='Operation timed out'
-                    )
-                )
 
         return models.TableMeta(
             table_info.id,
@@ -232,19 +214,9 @@ class SimpleStorageManager(manager.StorageManager):
 
     def list_tables(self, context, exclusive_start_table_name=None,
                     limit=None):
-        tnames = self._table_info_repo.get_tenant_table_names(
+        return self._table_info_repo.get_tenant_table_names(
             context, exclusive_start_table_name, limit
         )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_TABLE_LIST,
-            dict(
-                exclusive_start_table_name=exclusive_start_table_name,
-                limit=limit
-            )
-        )
-
-        return tnames
 
     def list_tenant_tables(self, last_evaluated_project=None,
                            last_evaluated_table=None, limit=None):
@@ -330,57 +302,18 @@ class SimpleStorageManager(manager.StorageManager):
                 context, table_info, attribute_map, return_values,
                 if_not_exist, expected_condition_map
             )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_PUTITEM,
-            dict(
-                table_name=table_name,
-                attribute_map=attribute_map,
-                return_values=return_values,
-                if_not_exist=if_not_exist,
-                expected_condition_map=expected_condition_map
-            )
-        )
 
         return result
 
     def _put_item_async(self, context, table_info, attribute_map,
                         return_values=None, if_not_exist=False,
                         expected_condition_map=None):
-        payload = dict(
-            table_name=table_info.name,
-            attribute_map=attribute_map,
-            return_values=return_values,
-            if_not_exist=if_not_exist,
-            expected_condition_map=expected_condition_map
-        )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_PUTITEM_START,
-            payload)
-
         put_future = self._execute_async(
             self._storage_driver.put_item,
             context, table_info, attribute_map, return_values,
             if_not_exist, expected_condition_map
         )
 
-        weak_self = weakref.proxy(self)
-
-        def callback(future):
-            if not future.exception():
-                weak_self._notifier.info(
-                    context, notifier.EVENT_TYPE_DATA_PUTITEM_END,
-                    payload
-                )
-            else:
-                weak_self._notifier.error(
-                    context,
-                    notifier.EVENT_TYPE_DATA_DELETEITEM_ERROR,
-                    payload=future.exception()
-                )
-
-        put_future.add_done_callback(callback)
         return put_future
 
     def put_item_async(self, context, table_name, attribute_map, return_values,
@@ -404,52 +337,15 @@ class SimpleStorageManager(manager.StorageManager):
             result = self._storage_driver.delete_item(
                 context, table_info, key_attribute_map, expected_condition_map
             )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_DELETEITEM,
-            dict(
-                table_name=table_name,
-                key_attribute_map=key_attribute_map,
-                expected_condition_map=expected_condition_map
-            )
-        )
-
         return result
 
     def _delete_item_async(self, context, table_info, key_attribute_map,
                            expected_condition_map=None):
-        payload = dict(
-            table_name=table_info.name,
-            key_attribute_map=key_attribute_map,
-            expected_condition_map=expected_condition_map
-        )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_DELETEITEM_START,
-            payload)
-
         del_future = self._execute_async(
             self._storage_driver.delete_item,
             context, table_info, key_attribute_map, expected_condition_map
         )
 
-        weak_self = weakref.proxy(self)
-
-        def callback(future):
-            if not future.exception():
-                weak_self._notifier.info(
-                    context,
-                    notifier.EVENT_TYPE_DATA_DELETEITEM_END,
-                    payload
-                )
-            else:
-                weak_self._notifier.error(
-                    context,
-                    notifier.EVENT_TYPE_DATA_DELETEITEM_ERROR,
-                    future.exception()
-                )
-
-        del_future.add_done_callback(callback)
         return del_future
 
     def delete_item_async(self, context, table_name, key_attribute_map,
@@ -469,10 +365,6 @@ class SimpleStorageManager(manager.StorageManager):
         ]
 
     def execute_write_batch(self, context, write_request_map):
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_BATCHWRITE_START,
-            write_request_map)
         write_request_list_to_send = []
         for table_name, write_request_list in write_request_map.iteritems():
             table_info = self._table_info_repo.get(context, table_name)
@@ -533,15 +425,6 @@ class SimpleStorageManager(manager.StorageManager):
                     ] = tables_unprocessed_items
 
                 tables_unprocessed_items.append(write_request)
-
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_BATCHWRITE_END,
-            dict(
-                write_request_map=write_request_map,
-                unprocessed_items=unprocessed_items
-            )
-        )
 
         return unprocessed_items
 
@@ -655,24 +538,10 @@ class SimpleStorageManager(manager.StorageManager):
                 return executor
             prepared_batch.append(make_request_executor())
 
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_BATCHREAD_START,
-            read_request_list)
-
         for request_executor in prepared_batch:
             request_executor()
 
         done_event.wait()
-
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_BATCHREAD_END,
-            dict(
-                read_request_list=read_request_list,
-                unprocessed_items=unprocessed_items
-            )
-        )
 
         return items, unprocessed_items
 
@@ -687,16 +556,6 @@ class SimpleStorageManager(manager.StorageManager):
                 context, table_info, key_attribute_map, attribute_action_map,
                 expected_condition_map
             )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_UPDATEITEM,
-            dict(
-                table_name=table_name,
-                key_attribute_map=key_attribute_map,
-                attribute_action_map=attribute_action_map,
-                expected_condition_map=expected_condition_map
-            )
-        )
 
         return result
 
@@ -786,20 +645,6 @@ class SimpleStorageManager(manager.StorageManager):
                 range_condition_list, select_type,
                 index_name, limit, exclusive_start_key, consistent, order_type
             )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_QUERY,
-            dict(
-                table_name=table_name,
-                indexed_condition_map=indexed_condition_map,
-                select_type=select_type,
-                index_name=index_name,
-                limit=limit,
-                exclusive_start_key=exclusive_start_key,
-                consistent=consistent,
-                order_type=order_type
-            )
-        )
 
         return result
 
@@ -833,31 +678,11 @@ class SimpleStorageManager(manager.StorageManager):
                 range_condition_list, select_type,
                 consistent=consistent
             )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_GETITEM,
-            dict(
-                table_name=table_name,
-                hash_key=hash_key_value,
-                range_key=range_key_value,
-                select_type=select_type,
-                consistent=consistent
-            )
-        )
 
         return result
 
     def _get_item_async(self, context, table_info, hash_key, range_key,
                         attributes_to_get, consistent=True):
-        payload = dict(table_name=table_info.name,
-                       hash_key=hash_key,
-                       range_key=range_key,
-                       attributes_to_get=attributes_to_get,
-                       consistent=consistent)
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_GETITEM_START,
-            payload)
         select_type = (
             models.SelectType.all() if attributes_to_get is None else
             models.SelectType.specific_attributes(attributes_to_get)
@@ -873,10 +698,6 @@ class SimpleStorageManager(manager.StorageManager):
             context, table_info, hash_key_condition_list,
             range_key_condition_list, select_type, consistent=consistent
         )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_GETITEM_END,
-            payload)
         return result
 
     def scan(self, context, table_name, condition_map, attributes_to_get=None,
@@ -888,26 +709,11 @@ class SimpleStorageManager(manager.StorageManager):
         if exclusive_start_key is not None:
             self._validate_table_schema(table_info, exclusive_start_key)
 
-        payload = dict(table_name=table_name,
-                       condition_map=condition_map,
-                       attributes_to_get=attributes_to_get,
-                       limit=limit,
-                       exclusive_start_key=exclusive_start_key,
-                       consistent=consistent)
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_SCAN_START,
-            payload)
-
         with self.__task_semaphore:
             result = self._storage_driver.scan(
                 context, table_info, condition_map, attributes_to_get,
                 limit, exclusive_start_key, consistent
             )
-        self._notifier.info(
-            context,
-            notifier.EVENT_TYPE_DATA_SCAN_END,
-            payload)
 
         return result
 
