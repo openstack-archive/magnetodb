@@ -19,6 +19,7 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import probe
 from magnetodb import storage
+from magnetodb import notifier
 from magnetodb.storage import models
 
 
@@ -27,7 +28,9 @@ class GetItemController(object):
 
     @api.enforce_policy("mdb:get_item")
     @probe.Probe(__name__)
+    @notifier.request_type("magnetodb.req.mdb.GetItem")
     def process_request(self, req, body, project_id, table_name):
+
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
 
