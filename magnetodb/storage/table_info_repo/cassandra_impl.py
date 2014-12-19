@@ -222,7 +222,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
         if not result[0]['[applied]']:
             raise exception.TableNotExistsException(
-                "Table {} is not exists".format(table_info.name)
+                "Table {} does not exist".format(table_info.name)
             )
         self._remove_table_info_from_cache(context, table_info.name)
         return True

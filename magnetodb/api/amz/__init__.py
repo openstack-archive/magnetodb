@@ -89,6 +89,8 @@ class AmzDynamoDBApiController():
                     (service_name, api_version, action_name))
             )
 
+        context.request_type = action_name
+
         return action.perform(context, action_params)
 
     def process_request(self, req, body):
