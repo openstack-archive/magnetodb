@@ -20,6 +20,7 @@ from magnetodb.api import validation
 from magnetodb.common import probe
 from magnetodb import storage
 from magnetodb.storage import models
+from magnetodb.common.utils import statsd
 
 
 class PutItemController(object):
@@ -27,6 +28,7 @@ class PutItemController(object):
 
     @api.enforce_policy("mdb:put_item")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.put_item")
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")

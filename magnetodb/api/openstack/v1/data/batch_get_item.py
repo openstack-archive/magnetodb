@@ -18,6 +18,7 @@ from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.common import probe
 from magnetodb import storage
+from magnetodb.common.utils import statsd
 
 
 class BatchGetItemController(object):
@@ -27,6 +28,7 @@ class BatchGetItemController(object):
 
     @api.enforce_policy("mdb:batch_get_item")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.batch_get_item")
     def process_request(self, req, body, project_id):
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
