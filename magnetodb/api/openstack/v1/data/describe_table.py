@@ -20,6 +20,7 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
+from magnetodb.common.utils import statsd
 
 LOG = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class DescribeTableController(object):
 
     @api.enforce_policy("mdb:describe_table")
     @probe.Probe(__name__)
+    @statsd.timer_stats("mdb.req.describe_table")
     def describe_table(self, req, project_id, table_name):
         validation.validate_table_name(table_name)
 

@@ -23,6 +23,7 @@ from oslo.serialization import jsonutils
 
 from magnetodb import common as mdb_common
 from magnetodb.openstack.common import context as ctxt
+from magnetodb.notifier import notifier_statsd_adapter
 
 extra_notifier_opts = [
     cfg.StrOpt('notification_service',
@@ -70,8 +71,13 @@ EVENT_TYPE_STREAMING_DATA_END = 'magnetodb.streaming.data.end'
 EVENT_TYPE_STREAMING_DATA_ERROR = 'magnetodb.streaming.data.error'
 EVENT_TYPE_REQUEST_RATE_LIMITED = 'magnetodb.request.rate.limited'
 
+STATSD_METRIC_CREATE_TABLE_TASK = "mdb.req.create_table_task"
+STATSD_METRIC_CREATE_TABLE_ERROR_TASK = "mdb.req.create_table_task.error"
+STATSD_METRIC_DELETE_TABLE_TASK = "mdb.req.delete_table_task"
+STATSD_METRIC_DELETE_TABLE_ERROR_TASK = "mdb.req.delete_table_task.error"
 
 __NOTIFIER = None
+__STATSD_ADAPTED_NOTIFIER = None
 
 
 def setup():
@@ -79,6 +85,10 @@ def setup():
     assert __NOTIFIER is None
 
     get_notifier()
+
+    global __STATSD_ADAPTED_NOTIFIER
+    assert __STATSD_ADAPTED_NOTIFIER is None
+    get_statsd_adapted_notifier()
 
 
 def get_notifier():
@@ -96,6 +106,16 @@ def get_notifier():
         )
 
     return __NOTIFIER
+
+
+def get_statsd_adapted_notifier():
+    global __STATSD_ADAPTED_NOTIFIER
+
+    if not __STATSD_ADAPTED_NOTIFIER:
+        __STATSD_ADAPTED_NOTIFIER = (
+            notifier_statsd_adapter.StatsdAdaptedNotifier(get_notifier()))
+
+    return __STATSD_ADAPTED_NOTIFIER
 
 
 class JsonPayloadSerializer(serializer.NoOpSerializer):
