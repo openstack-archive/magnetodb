@@ -26,14 +26,15 @@ LOG = logging.getLogger(__name__)
 
 
 class CreateTableController():
-    """
-    The CreateTable operation adds a new table.
+    """The CreateTable operation adds a new table.
     Table names must be unique within each tenant.
     """
 
     @api.enforce_policy("mdb:create_table")
     @probe.Probe(__name__)
     def create_table(self, req, body, project_id):
+        req.context.metric_name = "mdb.req.create_table"
+
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
 

@@ -32,6 +32,7 @@ class ListTablesController():
     @api.enforce_policy("mdb:list_tables")
     @probe.Probe(__name__)
     def list_tables(self, req, project_id):
+        req.context.metric_name = "mdb.req.list_tables"
         params = req.params.copy()
 
         exclusive_start_table_name = params.pop(

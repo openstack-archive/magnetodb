@@ -75,7 +75,7 @@ class TestNotifyStorageManager(test_notification.TestNotify):
         self.assertEqual(end_event['priority'], 'INFO')
         self.assertEqual(end_event['event_type'],
                          notifier.EVENT_TYPE_TABLE_CREATE_END)
-        self.assertEqual(end_event['payload'], table_schema)
+        self.assertEqual(end_event['payload']['schema'], table_schema)
 
         time_start = datetime.datetime.strptime(
             start_event['timestamp'], DATETIMEFORMAT)
@@ -136,7 +136,7 @@ class TestNotifyStorageManager(test_notification.TestNotify):
         self.assertEqual(end_event['priority'], 'INFO')
         self.assertEqual(end_event['event_type'],
                          notifier.EVENT_TYPE_TABLE_DELETE_END)
-        self.assertEqual(end_event['payload'], table_name)
+        self.assertEqual(end_event['payload']['table_name'], table_name)
 
         time_start = datetime.datetime.strptime(
             start_event['timestamp'], DATETIMEFORMAT)
