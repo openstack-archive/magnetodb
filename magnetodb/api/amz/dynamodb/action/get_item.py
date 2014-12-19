@@ -1,3 +1,4 @@
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -44,6 +45,7 @@ class GetItemDynamoDBAction(action.DynamoDBAction):
     }
 
     def __call__(self):
+
         try:
             table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 

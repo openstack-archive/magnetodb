@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import logging
+import time
 
 from magnetodb import notifier
 
@@ -33,6 +34,7 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
         )
 
     def _do_create_table(self, context, table_info):
+        start_time = time.time()
         future = self._execute_async(self._storage_driver.create_table,
                                      context, table_info)
 
@@ -45,8 +47,13 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
                 )
                 self._notifier.info(
                     context,
-                    notifier.EVENT_TYPE_TABLE_CREATE_END,
-                    table_info.schema)
+                    notifier.EVENT_TYPE_TABLE_CREATE,
+                    dict(
+                        table_name=table_info.name,
+                        table_uuid=str(table_info.id),
+                        schema=table_info.schema,
+                        value=start_time
+                    ))
             else:
                 table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
                 self._table_info_repo.update(
@@ -55,12 +62,17 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
                 self._notifier.error(
                     context,
                     notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
-                    future.exception()
-                )
+                    dict(
+                        table_name=table_info.name,
+                        table_uuid=str(table_info.id),
+                        message=future.exception(),
+                        value=start_time
+                    ))
 
         future.add_done_callback(callback)
 
     def _do_delete_table(self, context, table_info):
+        start_time = time.time()
         future = self._execute_async(self._storage_driver.delete_table,
                                      context, table_info)
 
@@ -70,8 +82,12 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
                     context, table_info.name
                 )
                 self._notifier.info(
-                    context, notifier.EVENT_TYPE_TABLE_DELETE_END,
-                    table_info.name)
+                    context, notifier.EVENT_TYPE_TABLE_DELETE,
+                    dict(
+                        table_name=table_info.name,
+                        table_uuid=str(table_info.id),
+                        value=start_time
+                    ))
             else:
                 table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
                 self._table_info_repo.update(
@@ -79,7 +95,11 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
                 )
                 self._notifier.error(
                     context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                    future.exception()
-                )
+                    dict(
+                        message=future.exception(),
+                        table_name=table_info.name,
+                        table_uuid=str(table_info.id),
+                        value=start_time
+                    ))
 
         future.add_done_callback(callback)

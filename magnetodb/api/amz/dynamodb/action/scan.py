@@ -1,3 +1,4 @@
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -76,6 +77,7 @@ class ScanDynamoDBAction(action.DynamoDBAction):
     }
 
     def __call__(self):
+
         try:
             # TODO(ikhudoshyn): table_name may be index name
             table_name = self.action_params.get(parser.Props.TABLE_NAME, None)

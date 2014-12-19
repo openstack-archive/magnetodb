@@ -1,3 +1,4 @@
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -32,6 +33,7 @@ class ListTablesDynamoDBAction(action.DynamoDBAction):
     }
 
     def __call__(self):
+
         exclusive_start_table_name = (
             self.action_params.get(parser.Props.EXCLUSIVE_START_TABLE_NAME,
                                    None)

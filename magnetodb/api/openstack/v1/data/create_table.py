@@ -21,6 +21,7 @@ from magnetodb.common import exception
 from magnetodb.common import probe
 from magnetodb.i18n import _
 from magnetodb.openstack.common import log as logging
+from magnetodb import notifier
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -28,14 +29,15 @@ LOG = logging.getLogger(__name__)
 
 
 class CreateTableController():
-    """
-    The CreateTable operation adds a new table.
+    """The CreateTable operation adds a new table.
     Table names must be unique within each tenant.
     """
 
     @api.enforce_policy("mdb:create_table")
     @probe.Probe(__name__)
+    @notifier.request_type("magnetodb.req.mdb.CreateTable")
     def create_table(self, req, body, project_id):
+
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
 
