@@ -1,11 +1,11 @@
 {
     "tables": [
         {
-            "href": "http://localhost:8480/v1/fake_project_id/data/tables/Thread",
+            "href": "http://localhost:8480/v1/data/fake_project_id/tables/Thread",
             "rel": "self"
         },
         {
-            "href": "http://localhost:8480/v1/fake_project_id/data/tables/test_hash",
+            "href": "http://localhost:8480/v1/data/fake_project_id/tables/test_hash",
             "rel": "self"
         }
     ]
