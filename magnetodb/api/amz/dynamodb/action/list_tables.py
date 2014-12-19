@@ -1,3 +1,4 @@
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -16,6 +17,7 @@
 from magnetodb.api.amz.dynamodb import action
 from magnetodb.api.amz.dynamodb import parser
 from magnetodb.common import exception
+from magnetodb import notifier
 from magnetodb import storage
 
 
@@ -32,6 +34,8 @@ class ListTablesDynamoDBAction(action.DynamoDBAction):
     }
 
     def __call__(self):
+        self.context.event = notifier.EVENT_TYPE_DYNAMO_TABLE_LIST
+
         exclusive_start_table_name = (
             self.action_params.get(parser.Props.EXCLUSIVE_START_TABLE_NAME,
                                    None)

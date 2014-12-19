@@ -19,6 +19,7 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
+from magnetodb import notifier
 from magnetodb import storage
 
 LOG = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class ListTablesController():
     @api.enforce_policy("mdb:list_tables")
     @probe.Probe(__name__)
     def list_tables(self, req, project_id):
+        req.context.event = notifier.EVENT_TYPE_REQUEST_TABLE_LIST
         params = req.params.copy()
 
         exclusive_start_table_name = params.pop(

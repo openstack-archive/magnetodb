@@ -1,3 +1,4 @@
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -13,12 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
-from magnetodb import storage
 from magnetodb.api.amz.dynamodb import action
 from magnetodb.api.amz.dynamodb import exception as ddb_exception
 from magnetodb.api.amz.dynamodb import parser
 from magnetodb.common import exception
+from magnetodb import notifier
+from magnetodb import storage
 
 
 class DescribeTableDynamoDBAction(action.DynamoDBAction):
@@ -31,6 +32,7 @@ class DescribeTableDynamoDBAction(action.DynamoDBAction):
 
     def __call__(self):
 
+        self.context.event = notifier.EVENT_TYPE_DYNAMO_TABLE_DESCRIBE
         table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
         if not table_name:

@@ -18,6 +18,7 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
+from magnetodb import notifier
 from magnetodb import storage
 
 LOG = logging.getLogger(__name__)
@@ -29,6 +30,8 @@ class DeleteTableController(object):
     @api.enforce_policy("mdb:delete_table")
     @probe.Probe(__name__)
     def delete_table(self, req, project_id, table_name):
+        req.context.event = notifier.EVENT_TYPE_REQUEST_TABLE_DELETE
+
         validation.validate_table_name(table_name)
 
         table_meta = storage.delete_table(req.context, table_name)

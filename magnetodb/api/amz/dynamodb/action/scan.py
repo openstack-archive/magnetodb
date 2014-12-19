@@ -1,3 +1,4 @@
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -16,6 +17,7 @@
 from magnetodb.api.amz.dynamodb import action
 from magnetodb.api.amz.dynamodb import parser
 from magnetodb.common import exception
+from magnetodb import notifier
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -76,6 +78,8 @@ class ScanDynamoDBAction(action.DynamoDBAction):
     }
 
     def __call__(self):
+        self.context.event = notifier.EVENT_TYPE_DYNAMO_SCAN
+
         try:
             # TODO(ikhudoshyn): table_name may be index name
             table_name = self.action_params.get(parser.Props.TABLE_NAME, None)

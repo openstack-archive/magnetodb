@@ -18,6 +18,7 @@ from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import probe
+from magnetodb import notifier
 from magnetodb import storage
 
 
@@ -29,6 +30,8 @@ class BatchWriteItemController(object):
     @api.enforce_policy("mdb:batch_write_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id):
+        req.context.event = notifier.EVENT_TYPE_REQUEST_BATCHWRITE
+
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
 

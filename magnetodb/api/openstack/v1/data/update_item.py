@@ -18,6 +18,7 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import exception
 from magnetodb.common import probe
+from magnetodb import notifier
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -30,6 +31,8 @@ class UpdateItemController(object):
     @api.enforce_policy("mdb:update_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
+        req.context.event = notifier.EVENT_TYPE_REQUEST_UPDATEITEM
+
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
 

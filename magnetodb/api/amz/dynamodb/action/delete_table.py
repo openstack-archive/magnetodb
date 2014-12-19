@@ -1,3 +1,4 @@
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -16,6 +17,7 @@
 
 from magnetodb.api.amz.dynamodb import action
 from magnetodb.api.amz.dynamodb import parser
+from magnetodb import notifier
 from magnetodb import storage
 from magnetodb.common import exception
 
@@ -30,6 +32,7 @@ class DeleteTableDynamoDBAction(action.DynamoDBAction):
 
     def __call__(self):
 
+        self.context.event = notifier.EVENT_TYPE_DYNAMO_TABLE_DELETE
         table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
         try:

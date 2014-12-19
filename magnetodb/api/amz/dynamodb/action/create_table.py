@@ -1,3 +1,4 @@
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -19,6 +20,7 @@ from magnetodb.api.amz.dynamodb import parser
 from magnetodb import storage
 from magnetodb.api.amz.dynamodb import exception as ddb_exception
 from magnetodb.common import exception
+from magnetodb import notifier
 from magnetodb.storage import models
 
 
@@ -86,6 +88,7 @@ class CreateTableDynamoDBAction(action.DynamoDBAction):
             raise ddb_exception.AWSValidationException()
 
         try:
+            self.context.event = notifier.EVENT_TYPE_DYNAMO_TABLE_CREATE
             # creating table
             table_meta = storage.create_table(
                 self.context, table_name, table_schema
