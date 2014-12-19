@@ -19,9 +19,9 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
+from magnetodb import notifier
 from magnetodb import storage
 from magnetodb.storage import models
-
 
 LOG = logging.getLogger(__name__)
 
@@ -31,7 +31,9 @@ class QueryController(object):
 
     @api.enforce_policy("mdb:query")
     @probe.Probe(__name__)
+    @notifier.request_type("magnetodb.req.mdb.Query")
     def query(self, req, body, project_id, table_name):
+
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
 

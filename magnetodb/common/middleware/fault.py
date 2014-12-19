@@ -110,17 +110,30 @@ class FaultWrapper(wsgi.Middleware):
 
         return error
 
+    def _set_message_in_request_context(self, error_details, req):
+        if (hasattr(req.context, 'message') and
+                req.context.message and
+                isinstance(req.context.message, dict)):
+            req.context.message.update(error_details)
+        else:
+            req.context.message = dict(error_details)
+
     def process_request(self, req):
         try:
             return req.get_response(self.application)
         except (exception.BackendInteractionException,
                 exception.ValidationError) as ex:
             LOG.debug(ex)
-            return req.get_response(Fault(self._error(ex)))
+            error_details = self._error(ex)
+            self._set_message_in_request_context(error_details, req)
+            return req.get_response(Fault(error_details))
         except Exception as ex:
             # some lower lever exception. It is better to know about it
             LOG.exception(ex)
-            return req.get_response(Fault(self._error(ex)))
+            error_details = self._error(ex)
+            self._set_message_in_request_context(error_details, req)
+            resp = req.get_response(Fault(error_details))
+            return resp
 
     @classmethod
     def factory_method(cls, global_config, **local_config):
