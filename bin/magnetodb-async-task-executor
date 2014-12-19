@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# Copyright 2015 Symantec Corporation
 # Copyright 2013 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -17,6 +17,7 @@
 
 import os
 import sys
+import time
 
 from oslo.config import cfg
 from oslo import messaging
@@ -61,10 +62,15 @@ class SchemaEndpoint(object):
     def create(self, ctx, table_name):
         LOG.debug("Start creating table '%s'", table_name)
 
+        start_time = time.time()
         context = ctxt.RequestContext(**ctx)
 
         try:
             table_info = self._table_info_repo.get(context, table_name)
+            self._notifier.info(
+                context,
+                notifier.EVENT_TYPE_TABLE_CREATE_START,
+                table_info.schema)
         except exception.TableNotExistsException as e:
             self._notifier.error(
                 context,
@@ -72,8 +78,10 @@ class SchemaEndpoint(object):
                 dict(
                     table_name=table_name,
                     table_uuid="",
-                    message=e.message
-                ))
+                    message=e.message,
+                    value=start_time
+                )
+            )
             LOG.error("Create table failed."
                       " Table info for table '%s' does not exist in repo",
                       table_name)
@@ -87,8 +95,10 @@ class SchemaEndpoint(object):
                 dict(
                     table_name=table_name,
                     table_uuid=str(table_info.id),
-                    message=e.message
-                ))
+                    message=e.message,
+                    value=start_time
+                )
+            )
 
             LOG.error("Create table failed. Table '%s' with uuid '%s' is in "
                       "%s state but %s is expexcted",
@@ -113,8 +123,10 @@ class SchemaEndpoint(object):
                 dict(
                     table_name=table_name,
                     table_uuid=str(table_info.id),
-                    index_count=len(table_info.schema['index_def_map'].keys())
-                ))
+                    index_count=len(table_info.schema['index_def_map'].keys()),
+                    value=start_time
+                )
+            )
 
             LOG.debug("Table '%s' with uuid %s created", table_name,
                       str(table_info.id))
@@ -125,8 +137,10 @@ class SchemaEndpoint(object):
                 dict(
                     table_name=table_name,
                     table_uuid=str(table_info.id),
-                    message=e.message
-                ))
+                    message=e.message,
+                    value=start_time
+                )
+            )
             table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
             self._table_info_repo.update(context, table_info, ["status"])
 
@@ -135,6 +149,7 @@ class SchemaEndpoint(object):
 
     def delete(self, ctx, table_name):
         LOG.debug("Start deleting table '%s'", table_name)
+        start_time = time.time()
 
         context = ctxt.RequestContext(**ctx)
 
@@ -146,8 +161,10 @@ class SchemaEndpoint(object):
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
                     table_name=table_name,
-                    message=e.message
-                ))
+                    message=e.message,
+                    value=start_time
+                )
+            )
 
             LOG.error("Delete table failed."
                       " Table info for table '%s' does not exist in repo",
@@ -163,8 +180,10 @@ class SchemaEndpoint(object):
                 dict(
                     table_name=table_name,
                     table_uuid=str(table_info.id),
-                    message=e.message
-                ))
+                    message=e.message,
+                    value=start_time
+                )
+            )
 
             LOG.error("Delete table failed. Table '%s' with uuid %s is in %s "
                       "state but %s is expected",
@@ -183,8 +202,10 @@ class SchemaEndpoint(object):
                 notifier.EVENT_TYPE_TABLE_DELETE_END,
                 dict(
                     table_name=table_name,
-                    table_uuid=str(table_info.id)
-                ))
+                    table_uuid=str(table_info.id),
+                    value=start_time
+                )
+            )
             LOG.debug("Table '%s' with uuid %s deleted", table_name,
                       str(table_info.id))
         except Exception as e:
@@ -194,8 +215,10 @@ class SchemaEndpoint(object):
                 dict(
                     table_name=table_name,
                     table_uuid=str(table_info.id),
-                    message=e.message
-                ))
+                    message=e.message,
+                    value=start_time
+                )
+            )
             table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
             self._table_info_repo.update(context, table_info, ["status"])
 
@@ -221,7 +244,7 @@ if __name__ == '__main__':
     endpoints = [
         SchemaEndpoint(),
     ]
-    LOG.debug('Creating PRC server..')
+    LOG.debug('Creating RPC server..')
     server = messaging.get_rpc_server(transport, target, endpoints,
                                       executor='blocking')
     LOG.debug('Starting...')

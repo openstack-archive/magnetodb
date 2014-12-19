@@ -30,6 +30,8 @@ class UpdateItemController(object):
     @api.enforce_policy("mdb:update_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
+        req.context.metric_name = "mdb.req.update_item"
+
         with probe.Probe(__name__ + '.validation'):
             validation.validate_object(body, "body")
 

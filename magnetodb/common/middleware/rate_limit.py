@@ -19,9 +19,9 @@ up to configured value
 import re
 import time
 
+from magnetodb import notifier
 from magnetodb.common import exception
 from magnetodb.common import wsgi
-from magnetodb import notifier
 from magnetodb.openstack.common import log as logging
 
 MDB_DATA_API_URL_PREFIX = "/v1/data/"

@@ -29,6 +29,8 @@ class DeleteTableController(object):
     @api.enforce_policy("mdb:delete_table")
     @probe.Probe(__name__)
     def delete_table(self, req, project_id, table_name):
+        req.context.metric_name = "mdb.req.delete_table"
+
         validation.validate_table_name(table_name)
 
         table_meta = storage.delete_table(req.context, table_name)
