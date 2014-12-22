@@ -14,8 +14,10 @@
 #    under the License.
 
 import unittest
+import mock
 
 from magnetodb.tests.fake import magnetodb_api_fake
+from magnetodb import policy
 
 
 class APITestCase(unittest.TestCase):
@@ -28,3 +30,10 @@ class APITestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         magnetodb_api_fake.stop_fake_magnetodb_api()
+
+    def setUp(self):
+        self.policy_original = policy.enforce
+        policy.enforce = mock.MagicMock(return_value=1)
+
+    def tearDown(self):
+        policy.enforce = self.policy_original

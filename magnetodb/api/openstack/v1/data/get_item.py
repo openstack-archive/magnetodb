@@ -15,9 +15,9 @@
 #    under the License.
 
 from magnetodb.api import validation
+from magnetodb.api import enforce_policy
 
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 from magnetodb import storage
 from magnetodb.storage import models
@@ -26,11 +26,9 @@ from magnetodb.storage import models
 class GetItemController(object):
     """The Getitem operation returns an item with the given primary key. """
 
+    @enforce_policy("mdb:get_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
-
         with probe.Probe(__name__ + '.validate'):
             validation.validate_object(body, "body")
 

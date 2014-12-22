@@ -72,3 +72,9 @@ class ConditionalCheckFailedException(BackendInteractionException):
         super(ConditionalCheckFailedException, self).__init__(
             message, **kwargs
         )
+
+
+class ConfigNotFound(MagnetoError):
+    def __init__(self, **kwargs):
+        message = "Could not find config at %s" % kwargs.get('path')
+        super(ConfigNotFound, self).__init__(message, **kwargs)

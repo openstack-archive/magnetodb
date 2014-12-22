@@ -1,0 +1,18 @@
+{
+    "context_is_admin": "role:admin",
+    "admin": "role:admin",
+    "default": "",
+
+    "mdb:create_table": "",
+    "mdb:delete_table": "",
+    "mdb:list_tables": "",
+    "mdb:describe_table": "",
+    "mdb:put_item": "",
+    "mdb:get_item": "",
+    "mdb:update_item": "",
+    "mdb:delete_item": "",
+    "mdb:batch_write_item": "",
+    "mdb:batch_get_item": "",
+    "mdb:query": "",
+    "mdb:scan": ""
+}

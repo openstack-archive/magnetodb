@@ -16,7 +16,26 @@
 import shlex
 import string
 
+from magnetodb import policy
+from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import setup_global_env
+from magnetodb.openstack.common.log import logging
+
+
+LOG = logging.getLogger(__name__)
+
+
+def enforce_policy(rule):
+    def decorator(f):
+        def wrapper(self, *args, **kwargs):
+            context = args[0].context
+            project_id = kwargs.get('project_id')
+            utils.check_project_id(context, project_id)
+            policy.enforce(context, rule, {})
+            LOG.debug('RBAC: Authorization granted')
+            return f(self, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def with_global_env(default_program=None):

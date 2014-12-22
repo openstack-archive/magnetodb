@@ -15,8 +15,8 @@
 
 from magnetodb import storage
 from magnetodb.api import validation
+from magnetodb.api import enforce_policy
 from magnetodb.api.openstack.v1 import parser
-from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 from magnetodb.storage.models import DeleteReturnValuesType
 
@@ -24,11 +24,9 @@ from magnetodb.storage.models import DeleteReturnValuesType
 class DeleteItemController(object):
     """ Deletes a single item in a table by primary key. """
 
+    @enforce_policy("mdb:delete_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
-
         with probe.Probe(__name__ + '.jsonschema.validate'):
             validation.validate_object(body, "body")
 
