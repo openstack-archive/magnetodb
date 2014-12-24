@@ -16,6 +16,7 @@
 
 DEST_DIR=/opt/stack/new
 LOGS_DIR=/opt/stack/logs
+CCI_BUILD_PATH=$DEST_DIR/magnetodb/contrib/cassandra/magnetodb-cassandra-custom-indices/build
 
 # Install packages from test-requirements.txt
 
@@ -77,5 +78,11 @@ if [ -n "$CASSANDRA_NODES" ]; then
     done
 fi
 
+#Saving magnetodb-cassandra-custom-indices.jar
+CCI_JAR=`ls $CCI_BUILD_PATH/libs/magnetodb-cassandra-custom-indices-*.jar`
+if [ -n $CCI_JAR ]; then
+  echo "Saving magnetodb-cassandra-custom-indices.jar"
+  sudo cp $CCI_JAR $LOGS_DIR
+fi
 
 exit $RETVAL
