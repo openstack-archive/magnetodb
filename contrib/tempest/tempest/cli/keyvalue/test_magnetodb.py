@@ -19,10 +19,10 @@ import subprocess
 import time
 
 from tempest import cli
-from tempest import config
+from tempest import config_magnetodb as config
 from tempest.openstack.common import log as logging
 
-CONF = config.TempestConfig()
+CONF = config.CONF
 
 LOG = logging.getLogger(__name__)
 
