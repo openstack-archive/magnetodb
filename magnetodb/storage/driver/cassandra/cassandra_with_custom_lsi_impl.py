@@ -188,11 +188,11 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
 
         if table_schema.index_def_map:
             query = (
-                "CREATE CUSTOM INDEX ON {}({}) USING "
+                "CREATE CUSTOM INDEX ON {}({}{}{}) USING "
                 "'com.mirantis.magnetodb.cassandra.db.index"
                 ".MagnetoDBLocalSecondaryIndex' "
                 "WITH OPTIONS = {{'query_properties_field':'true'}}"
-            ).format(cas_full_table_name, SYSTEM_COLUMN_QUERY_PARAMETERS)
+            ).format(cas_full_table_name, '"', SYSTEM_COLUMN_QUERY_PARAMETERS, '"')
             self.__cluster_handler.execute_query(query)
             LOG.debug("Create query_properties index CQL request executed.")
 
@@ -201,12 +201,12 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
                 cas_indexed_field_list.append(cas_indexed_field)
 
                 query = (
-                    "CREATE CUSTOM INDEX ON {}({}) USING "
+                    "CREATE CUSTOM INDEX ON {}({}{}{}) USING "
                     "'com.mirantis.magnetodb.cassandra.db.index"
                     ".MagnetoDBLocalSecondaryIndex' "
                     "WITH OPTIONS = {{'query_properties_field':'false'}}"
                 ).format(
-                    cas_full_table_name, cas_indexed_field
+                    cas_full_table_name, '"', cas_indexed_field, '"'
                 )
                 self.__cluster_handler.execute_query(query)
                 LOG.debug(
