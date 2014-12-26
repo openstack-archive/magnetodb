@@ -1,7 +1,7 @@
 blist
 cassandra-driver>=2.1.2
 eventlet>=0.15.2
-gunicorn
+gunicorn>=18.0
 iso8601>=0.1.9
 jsonschema>=2.0.0,<3.0.0
 keystonemiddleware>=1.0.0
