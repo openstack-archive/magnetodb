@@ -19,11 +19,13 @@ from tempest import test
 
 from tempest import exceptions
 from tempest import clients_magnetodb as clients
+from tempest import config_magnetodb as config
 from tempest.common.utils import data_utils
 from tempest.openstack.common import log as logging
 
 from unittest.case import _AssertRaisesContext
 
+CONF = config.CONF
 
 LOG = logging.getLogger(__name__)
 test.clients = clients
@@ -66,6 +68,8 @@ class MagnetoDBTestCase(test.BaseTestCase):
                 LOG.debug("Cleaning up: %s",
                           friendly_function_call_str(function, *pos_args,
                                                      **kw_args))
+                if not CONF.magnetodb.cleanup:
+                    raise Exception("Cleanup is turned off")
                 function(*pos_args, **kw_args)
             except BaseException as exc:
                 fail_count += 1
