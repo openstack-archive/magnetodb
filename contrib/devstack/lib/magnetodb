@@ -312,6 +312,7 @@ function configure_magnetodb() {
 function configure_magnetodb_tempest_plugin() {
     echo -e nose >> $TEMPEST_DIR/test-requirements.txt
     echo -e nose-subunit >> $TEMPEST_DIR/test-requirements.txt
+    iniset $TEMPEST_DIR/etc/tempest.conf magnetodb table_cleanup "True"
     iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/stable/"
     iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/in_progress/"
     iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/not_ready/"

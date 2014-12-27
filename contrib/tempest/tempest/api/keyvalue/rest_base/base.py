@@ -66,6 +66,8 @@ class MagnetoDBTestCase(test.BaseTestCase):
                 LOG.debug("Cleaning up: %s",
                           friendly_function_call_str(function, *pos_args,
                                                      **kw_args))
+                if not CONF.magnetodb.table_cleanup:
+                    raise Exception("Table cleanup is turned off")
                 function(*pos_args, **kw_args)
             except BaseException as exc:
                 fail_count += 1

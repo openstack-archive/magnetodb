@@ -31,6 +31,9 @@ MagnetoDBGroup = [
     cfg.StrOpt('catalog_type',
                default="kv-storage",
                help="The name of the MagnetoDB service type"),
+    cfg.BoolOpt('table_cleanup',
+                default=True,
+                help="Cleanup tables if True"),
 ]
 
 magnetodb_streaming_group = cfg.OptGroup(
