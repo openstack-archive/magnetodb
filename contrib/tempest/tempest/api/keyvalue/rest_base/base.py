@@ -19,11 +19,13 @@ from tempest import test
 
 from tempest import exceptions
 from tempest import clients_magnetodb as clients
+from tempest import config_magnetodb as config
 from tempest.common.utils import data_utils
 from tempest.openstack.common import log as logging
 
 from unittest.case import _AssertRaisesContext
 
+CONF = config.CONF
 
 LOG = logging.getLogger(__name__)
 test.clients = clients
@@ -89,8 +91,9 @@ class MagnetoDBTestCase(test.BaseTestCase):
         """Adds CleanUp callable, used by tearDownClass.
         Recommended to a use (deep)copy on the mutable args.
         """
-        cls._sequence = cls._sequence + 1
-        cls._resource_trash_bin[cls._sequence] = (function, args, kwargs)
+        if CONF.magnetodb.cleanup:
+            cls._sequence = cls._sequence + 1
+            cls._resource_trash_bin[cls._sequence] = (function, args, kwargs)
         return cls._sequence
 
     @classmethod
