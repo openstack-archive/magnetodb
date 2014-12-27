@@ -20,6 +20,11 @@ LOGS_DIR=/opt/stack/logs
 # Run tempest tests
 cd $DEST_DIR/magnetodb/functionaltests
 
+sudo bash -c "cat <<EOF >>$DEST_DIR/tempest/etc/tempest.conf
+[magnetodb]
+cleanup = False
+EOF"
+
 sudo ./run_tests.sh
 RETVAL=$?
 
