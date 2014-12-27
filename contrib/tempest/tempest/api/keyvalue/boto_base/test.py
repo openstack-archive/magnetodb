@@ -27,7 +27,7 @@ import keystoneclient.exceptions
 
 from tempest import clients
 from tempest.common.utils.file_utils import have_effective_read_access
-from tempest import config as cfg
+from tempest import config_magnetodb as config
 from tempest import exceptions
 from tempest.openstack.common import log as logging
 from tempest import test
@@ -36,6 +36,7 @@ from tempest.api.keyvalue.boto_base.utils.wait import state_wait
 from tempest.api.keyvalue.boto_base.utils.wait import wait_exception
 
 
+CONF = config.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -49,11 +50,10 @@ def decision_maker():
     def all_read(*args):
         return all(map(have_effective_read_access, args))
 
-    config = cfg.CONF
-    materials_path = config.boto.s3_materials_path
-    ami_path = materials_path + os.sep + config.boto.ami_manifest
-    aki_path = materials_path + os.sep + config.boto.aki_manifest
-    ari_path = materials_path + os.sep + config.boto.ari_manifest
+    materials_path = CONF.boto.s3_materials_path
+    ami_path = materials_path + os.sep + CONF.boto.ami_manifest
+    aki_path = materials_path + os.sep + CONF.boto.aki_manifest
+    ari_path = materials_path + os.sep + CONF.boto.ari_manifest
 
     A_I_IMAGES_READY = all_read(ami_path, aki_path, ari_path)
     boto_logger = logging.getLogger('boto')
@@ -69,7 +69,7 @@ def decision_maker():
         raise Exception("Unknown (Authentication?) Error")
     openstack = clients.Manager()
     try:
-        if urlparse.urlparse(config.boto.ec2_url).hostname is None:
+        if urlparse.urlparse(CONF.boto.ec2_url).hostname is None:
             raise Exception("Failed to get hostname from the ec2_url")
         ec2client = openstack.ec2api_client
         try:
@@ -86,7 +86,7 @@ def decision_maker():
         EC2_CAN_CONNECT_ERROR = str(exc)
 
     try:
-        if urlparse.urlparse(config.boto.s3_url).hostname is None:
+        if urlparse.urlparse(CONF.boto.s3_url).hostname is None:
             raise Exception("Failed to get hostname from the s3_url")
         s3client = openstack.s3_client
         try:
@@ -230,8 +230,9 @@ class BotoTestCase(test.BaseTestCase):
         """Adds CleanUp callable, used by tearDownClass.
         Recommended to a use (deep)copy on the mutable args.
         """
-        cls._sequence = cls._sequence + 1
-        cls._resource_trash_bin[cls._sequence] = (function, args, kwargs)
+        if CONF.magnetodb.cleanup:
+            cls._sequence = cls._sequence + 1
+            cls._resource_trash_bin[cls._sequence] = (function, args, kwargs)
         return cls._sequence
 
     @classmethod
