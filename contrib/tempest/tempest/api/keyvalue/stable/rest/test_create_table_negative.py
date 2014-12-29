@@ -311,3 +311,21 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                 {'attribute_name': self.hashkey},
                 {'attribute_name': self.rangekey, 'attribute_type': 'S'}
             ], table_name=None, schema=None)
+
+    @test.attr(type=['CreT-36_1', 'negative'])
+    def test_create_table_hash_key_set(self):
+        attr_def = [{'attribute_name': 'set', 'attribute_type': 'SS'}]
+        key_schema = [{'attribute_name': 'set', 'key_type': 'HASH'}]
+        with self.assertRaises(exceptions.BadRequest):
+            self._create_test_table(attr_def=attr_def,
+                                    table_name=self.tname,
+                                    schema=key_schema)
+
+    @test.attr(type=['CreT-36_2', 'negative'])
+    def test_create_table_range_key_set(self):
+        attr_def = [{'attribute_name': 'set', 'attribute_type': 'SS'}]
+        schema = [{'attribute_name': 'set', 'key_type': 'RANGE'}]
+        with self.assertRaises(exceptions.BadRequest):
+            self._create_test_table(attr_def=self.one_attr + attr_def,
+                                    table_name=self.tname,
+                                    schema=self.schema_hash_only + schema)
