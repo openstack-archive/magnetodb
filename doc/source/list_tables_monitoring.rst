@@ -1,7 +1,7 @@
 ListTables
 ==========
 
-.. automodule:: magnetodb.api.openstack.v1.list_tables
+.. automodule:: magnetodb.api.openstack.v1.monitoring.monitoring_list_tables
    :members:
 
 .. http:get:: v1/monitoring/{project_id}/tables

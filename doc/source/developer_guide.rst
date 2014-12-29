@@ -127,9 +127,7 @@ Contributing Your Work
 ----------------------
 
 Once your work is complete you may wish to contribute it to the project.
-Refer to `Improve MagnetoDB`_ for information. MagnetoDB uses the Gerrit code
-review system. For information on how to submit your branch to Gerrit, see
-`How to contribute to MagnetoDB`_.
+MagnetoDB uses the Gerrit code review system.
 
 
 Unit Tests
@@ -139,9 +137,7 @@ MagnetoDB contains a suite of unit tests, in the `/magnetodb/tests/unittests`
 directory.
 
 Any proposed code change will be automatically rejected by the
-`OpenStack Jenkins server`_ if the change causes unit test failures.
-
-.. _OpenStack Jenkins server: `Continuous Integration with Jenkins`_
+OpenStack Jenkins server if the change causes unit test failures.
 
 
 Preferred way to run the tests
@@ -273,7 +269,7 @@ MagnetoDB contains a suite of integration tests (in the
 `/tempest` directory).
 
 Any proposed code change will be automatically rejected by the
-`OpenStack Jenkins server`_ if the change causes unit test failures.
+OpenStack Jenkins server if the change causes unit test failures.
 
 Refer to `Tests on environment with devstack`_ for information, how to install
 and set environment and how to run such kind of tests.
@@ -336,18 +332,6 @@ magnetodb.common.middleware
    :undoc-members:
    :show-inheritance:
 
-magnetodb.common.notifier
-=========================
-
-.. automodule:: magnetodb.common.notifier.decimal_encoder
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: magnetodb.common.notifier.event
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 magnetodb.storage
 =================

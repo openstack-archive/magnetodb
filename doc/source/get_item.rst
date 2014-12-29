@@ -1,7 +1,7 @@
 GetItem
 =======
 
-.. automodule:: magnetodb.api.openstack.v1.get_item
+.. automodule:: magnetodb.api.openstack.v1.data.get_item
    :members:
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/get_item

@@ -1,7 +1,7 @@
 DeleteTable
 ===========
 
-.. automodule:: magnetodb.api.openstack.v1.delete_table
+.. automodule:: magnetodb.api.openstack.v1.data.delete_table
    :members:
 
 .. http:delete:: v1/data/{project_id}/tables/{table_name}
