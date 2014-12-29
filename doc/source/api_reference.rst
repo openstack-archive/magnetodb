@@ -24,29 +24,29 @@ This section lists the common errors that all actions return. Any action-specifi
 
 .. automodule:: magnetodb.common.exception
 
-    .. autoexception:: InternalFailure
+    .. autoexception:: MagnetoError
 
-    .. autoexception:: RequestQuotaExceeded
+    .. autoexception:: BackendInteractionException
 
-    .. autoexception:: OverLimit
-
-    .. autoexception:: InvalidClientToken
+    .. autoexception:: ValidationError
 
     .. autoexception:: Forbidden
 
-    .. autoexception:: InvalidParameterCombination
+    .. autoexception:: RequestQuotaExceeded
 
-    .. autoexception:: InvalidParameterValue
+    .. autoexception:: TableNotExistsException
+
+    .. autoexception:: TableAlreadyExistsException
+
+    .. autoexception:: ResourceInUseException
 
     .. autoexception:: InvalidQueryParameter
 
-    .. autoexception:: MalformedQueryString
+    .. autoexception:: ConditionalCheckFailedException
 
-    .. autoexception:: MissingParameter
+    .. autoexception:: ConfigNotFound
 
-    .. autoexception:: ServiceUnavailable
-
-    .. autoexception:: ValidationError
+    .. autoexception:: BackupNotExists
 
 
 Operation details

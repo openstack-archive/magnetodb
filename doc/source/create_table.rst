@@ -1,7 +1,7 @@
 CreateTable
 ===========
 
-.. automodule:: magnetodb.api.openstack.v1.create_table
+.. automodule:: magnetodb.api.openstack.v1.data.create_table
    :members:
 
 .. http:post:: v1/data/{project_id}/tables

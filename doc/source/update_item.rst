@@ -1,7 +1,7 @@
 UpdateItem
 ==========
 
-.. automodule:: magnetodb.api.openstack.v1.update_item
+.. automodule:: magnetodb.api.openstack.v1.data.update_item
    :members:
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/update_item
@@ -75,6 +75,8 @@ Request Parameters
       | Type: String
       | Valid values: NONE | ALL_OLD | UPDATED_OLD | ALL_NEW | UPDATED_NEW
       | Required: No
+
+
 ---------------
 Response Syntax
 ---------------
@@ -89,6 +91,8 @@ Response Elements
    **attributes**
       | Item attributes
       | Type: String to object map
+
+
 ------
 Errors
 ------

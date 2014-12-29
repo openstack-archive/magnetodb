@@ -1,7 +1,7 @@
 BatchGetItem
 ============
 
-.. automodule:: magnetodb.api.openstack.v1.batch_get_item
+.. automodule:: magnetodb.api.openstack.v1.data.batch_get_item
    :members:
 
 .. http:post:: v1/data/{project_id}/batch_get_item

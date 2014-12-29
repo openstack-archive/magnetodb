@@ -1,7 +1,7 @@
 Scan
 =====
 
-.. automodule:: magnetodb.api.openstack.v1.scan
+.. automodule:: magnetodb.api.openstack.v1.data.scan
    :members:
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/scan

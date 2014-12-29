@@ -1,7 +1,7 @@
 DescribeTable
 =============
 
-.. automodule:: magnetodb.api.openstack.v1.describe_table
+.. automodule:: magnetodb.api.openstack.v1.data.describe_table
    :members:
 
 .. http:get:: v1/data/{project_id}/tables/{table_name}

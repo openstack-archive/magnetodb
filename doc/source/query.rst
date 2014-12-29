@@ -1,7 +1,7 @@
 Query
 =====
 
-.. automodule:: magnetodb.api.openstack.v1.query
+.. automodule:: magnetodb.api.openstack.v1.data.query
    :members:
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/query

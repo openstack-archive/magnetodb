@@ -1,7 +1,7 @@
 TableUsageDetails
 =================
 
-.. automodule:: magnetodb.api.openstack.v1.request.table_usage_details.py
+.. automodule:: magnetodb.api.openstack.v1.monitoring.table_usage_details
    :members:
 
 .. http:get:: v1/monitoring/{project_id}/tables/{table_name}?metrics=metric1,metric2

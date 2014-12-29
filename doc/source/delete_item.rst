@@ -1,7 +1,7 @@
 DeleteItem
 ==========
 
-.. automodule:: magnetodb.api.openstack.v1.delete_item
+.. automodule:: magnetodb.api.openstack.v1.data.delete_item
    :members:
 
 .. http:post:: v1/data/{project_id}/tables/{table_name}/delete_item
