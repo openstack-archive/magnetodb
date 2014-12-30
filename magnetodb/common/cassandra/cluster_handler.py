@@ -30,10 +30,6 @@ from cassandra import query as cassandra_query
 
 LOG = logging.getLogger(__name__)
 
-cassandra_cluster.ControlConnection._SELECT_SCHEMA_PEERS = (
-    "SELECT rpc_address, schema_version, peer FROM system.peers"
-)
-
 wait_for_schema_agreement_origin = (
     cassandra_cluster.ControlConnection.wait_for_schema_agreement
 )
