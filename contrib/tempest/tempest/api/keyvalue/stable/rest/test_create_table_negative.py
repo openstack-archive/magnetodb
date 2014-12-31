@@ -311,3 +311,29 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                 {'attribute_name': self.hashkey},
                 {'attribute_name': self.rangekey, 'attribute_type': 'S'}
             ], table_name=None, schema=None)
+
+    @test.attr(type=['CreT-36_1', 'negative'])
+    def test_create_table_hash_key_set(self):
+        key_type = 'SS'
+        attr_def = [{'attribute_name': 'set', 'attribute_type': key_type}]
+        key_schema = [{'attribute_name': 'set', 'key_type': 'HASH'}]
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self._create_test_table(attr_def=attr_def,
+                                    table_name=self.tname,
+                                    schema=key_schema)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Type '%s' is not a scalar type" % key_type, error_msg)
+
+    @test.attr(type=['CreT-36_2', 'negative'])
+    def test_create_table_range_key_set(self):
+        key_type = 'SS'
+        attr_def = [{'attribute_name': 'set', 'attribute_type': key_type}]
+        schema = [{'attribute_name': 'set', 'key_type': 'RANGE'}]
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self._create_test_table(attr_def=self.one_attr + attr_def,
+                                    table_name=self.tname,
+                                    schema=self.schema_hash_only + schema)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Type '%s' is not a scalar type" % key_type, error_msg)

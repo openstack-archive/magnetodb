@@ -785,6 +785,13 @@ class TableSchema(ModelBase):
                     "Definition for attribute['%(attr_name)s'] wasn't found",
                     attr_name=key_attr
                 )
+            # Validate the primary hash and range key types, make sure them are
+            # scalar types
+            attr_type = attribute_type_map.get(key_attr, None)
+            if attr_type is not None and attr_type.collection_type is not None:
+                raise ValidationError(
+                    _("Type '%(prop_value)s' is not a scalar type"),
+                    prop_value=attr_type['type'])
 
         if len(key_attr) < 2 and index_def_map:
             raise ValidationError("Local secondary indexes are not allowed "
