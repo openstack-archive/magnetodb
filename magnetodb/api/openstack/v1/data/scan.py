@@ -14,16 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb import storage
-from magnetodb.api import validation
-from magnetodb.api import enforce_policy
-
-from magnetodb.openstack.common.log import logging
-
+from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api import validation
 from magnetodb.common import probe
+from magnetodb.openstack.common import log as logging
+from magnetodb import storage
 from magnetodb.storage import models
-from magnetodb.storage.models import ScanCondition
 
 LOG = logging.getLogger(__name__)
 
@@ -33,7 +30,7 @@ class ScanController(object):
     and item attributes by accessing every item in the table.
     """
 
-    @enforce_policy("mdb:scan")
+    @api.enforce_policy("mdb:scan")
     @probe.Probe(__name__)
     def scan(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validation'):
@@ -83,7 +80,7 @@ class ScanController(object):
                                            parser.Props.SCAN_FILTER)
 
                 condition_map = parser.Parser.parse_attribute_conditions(
-                    scan_filter_json, condition_class=ScanCondition
+                    scan_filter_json, condition_class=models.ScanCondition
                 )
             else:
                 condition_map = None

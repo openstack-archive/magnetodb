@@ -15,9 +15,9 @@
 
 import routes
 
-from magnetodb.api import with_global_env
+from magnetodb import api
 from magnetodb.common import wsgi
-from magnetodb.api.openstack.v1 import create_resource
+from magnetodb.api.openstack import v1 as api_v1
 from magnetodb.api.openstack.v1.monitoring import table_usage_details
 from magnetodb.api.openstack.v1.monitoring import monitoring_list_tables
 
@@ -25,6 +25,7 @@ from magnetodb.api.openstack.v1.monitoring import monitoring_list_tables
 class MonitoringApplication(wsgi.Router):
 
     """Monitoring API"""
+
     def __init__(self):
         mapper = routes.Mapper()
         super(MonitoringApplication, self).__init__(mapper)
@@ -32,20 +33,20 @@ class MonitoringApplication(wsgi.Router):
         mapper.connect(
             "list_monitored_tables", "/{project_id}/tables",
             conditions={'method': 'GET'},
-            controller=create_resource(
+            controller=api_v1.create_resource(
                 monitoring_list_tables.MonitoringListTablesController()),
             action="list_tables"
         )
         mapper.connect(
             "monitor_table",
             "/{project_id}/tables/{table_name}",
-            controller=create_resource(
+            controller=api_v1.create_resource(
                 table_usage_details.TableUsageController()),
             conditions={'method': 'GET'},
             action="table_usage_details"
         )
 
 
-@with_global_env(default_program='monitoring-api')
+@api.with_global_env(default_program='monitoring-api')
 def app_factory(global_conf, **local_conf):
     return MonitoringApplication()

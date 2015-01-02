@@ -13,17 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
+from magnetodb.api.amz.dynamodb import action
 from magnetodb.api.amz.dynamodb import parser
-
+from magnetodb.api.amz.dynamodb import exception
 from magnetodb import storage
-from magnetodb.api.amz.dynamodb.exception import AWSValidationException
-from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
-
 from magnetodb.storage import models
 
 
-class QueryDynamoDBAction(DynamoDBAction):
+class QueryDynamoDBAction(action.DynamoDBAction):
     schema = {
         "required": [parser.Props.KEY_CONDITIONS,
                      parser.Props.TABLE_NAME],
@@ -141,7 +138,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                 models.ORDER_TYPE_DESC
             )
         except Exception:
-            raise AWSValidationException()
+            raise exception.AWSValidationException()
 
         try:
             # select item
@@ -180,7 +177,7 @@ class QueryDynamoDBAction(DynamoDBAction):
                         result.last_evaluated_key)
                 )
             return response
-        except AWSErrorResponseException as e:
+        except exception.AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise AWSErrorResponseException()
+            raise exception.AWSErrorResponseException()

@@ -15,8 +15,7 @@
 
 import os
 
-from magnetodb.common import PROJECT_NAME
-from magnetodb.common import setup_global_env
+from magnetodb import common as mdb_common
 
 
 def get_root_source(start_search_path, root_dir_name):
@@ -28,8 +27,8 @@ def get_root_source(start_search_path, root_dir_name):
         cur_path = new_cur_path
     return os.path.dirname(cur_path)
 
-PROJECT_ROOT_DIR = get_root_source(__file__, PROJECT_NAME)
+PROJECT_ROOT_DIR = get_root_source(__file__, mdb_common.PROJECT_NAME)
 
-setup_global_env(program="magnetodb-api", args=[
-    "--config-file", PROJECT_ROOT_DIR+"/etc/magnetodb-api-test.conf"
+mdb_common.setup_global_env(program="magnetodb-api", args=[
+    "--config-file", PROJECT_ROOT_DIR + "/etc/magnetodb-api-test.conf"
 ])

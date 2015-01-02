@@ -13,29 +13,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from concurrent import futures
 import datetime
-from magnetodb.storage.driver import StorageDriver
-from magnetodb.storage.models import WriteItemRequest
-from magnetodb.storage.table_info_repo import TableInfoRepository
 import mock
 import time
 
-from concurrent.futures import Future
-
-from magnetodb.tests.unittests.common.notifier.test_notification \
-    import TestNotify
-from magnetodb.tests.unittests.common.notifier.test_notification \
-    import DATETIMEFORMAT
+from magnetodb.tests.unittests.common.notifier import test_notification
 
 from magnetodb import notifier
-
+from magnetodb.storage import driver
+from magnetodb.storage.manager import simple_impl
+from magnetodb.storage.manager import async_simple_impl
 from magnetodb.storage import models
-from magnetodb.storage.manager.simple_impl import SimpleStorageManager
-from magnetodb.storage.manager.async_simple_impl \
-    import AsyncSimpleStorageManager
+from magnetodb.storage import table_info_repo
+
+DATETIMEFORMAT = test_notification.DATETIMEFORMAT
 
 
-class TestNotifyStorageManager(TestNotify):
+class TestNotifyStorageManager(test_notification.TestNotify):
     """Unit tests for event notifier in Storage Manager."""
 
     @mock.patch('magnetodb.storage.table_info_repo')
@@ -49,8 +44,8 @@ class TestNotifyStorageManager(TestNotify):
         mock_storage_driver = mock.Mock()
         mock_storage_driver.create_table.return_value = True
 
-        storage_manager = AsyncSimpleStorageManager(mock_storage_driver,
-                                                    mock_table_info_repo)
+        storage_manager = async_simple_impl.AsyncSimpleStorageManager(
+            mock_storage_driver, mock_table_info_repo)
         storage_manager.create_table(context, table_name, table_schema)
 
         # wait for async create table call to finish
@@ -109,8 +104,8 @@ class TestNotifyStorageManager(TestNotify):
         mock_table_info_repo = mock.Mock()
         mock_table_info_repo.get.return_value = FakeTableInfo()
 
-        storage_manager = AsyncSimpleStorageManager(mock_storage_driver,
-                                                    mock_table_info_repo)
+        storage_manager = async_simple_impl.AsyncSimpleStorageManager(
+            mock_storage_driver, mock_table_info_repo)
         storage_manager.delete_table(context, table_name)
 
         # wait for async delete table call to finish
@@ -165,7 +160,7 @@ class TestNotifyStorageManager(TestNotify):
                                 mock_validate_table_schema, mock_batch_write):
         self.cleanup_test_notifier()
 
-        future = Future()
+        future = futures.Future()
         future.set_result(True)
         mock_put_item.return_value = future
         mock_delete_item.return_value = future
@@ -182,21 +177,21 @@ class TestNotifyStorageManager(TestNotify):
 
         request_map = {
             table_name: [
-                WriteItemRequest.put(
+                models.WriteItemRequest.put(
                     {
                         'id': models.AttributeValue('N', 1),
                         'range': models.AttributeValue('S', '1'),
                         'str': models.AttributeValue('S', 'str1'),
                     }
                 ),
-                WriteItemRequest.put(
+                models.WriteItemRequest.put(
                     {
                         'id': models.AttributeValue('N', 2),
                         'range': models.AttributeValue('S', '1'),
                         'str': models.AttributeValue('S', 'str1')
                     }
                 ),
-                WriteItemRequest.delete(
+                models.WriteItemRequest.delete(
                     {
                         'id': models.AttributeValue('N', 3),
                         'range': models.AttributeValue('S', '3')
@@ -205,8 +200,8 @@ class TestNotifyStorageManager(TestNotify):
             ]
         }
 
-        storage_manager = SimpleStorageManager(
-            StorageDriver(), TableInfoRepository()
+        storage_manager = simple_impl.SimpleStorageManager(
+            driver.StorageDriver(), table_info_repo.TableInfoRepository()
         )
         storage_manager.execute_write_batch(context, request_map)
 

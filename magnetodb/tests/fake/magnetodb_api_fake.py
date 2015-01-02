@@ -20,9 +20,10 @@ from paste import deploy
 import wsgi_intercept
 from wsgi_intercept import http_client_intercept
 
-from magnetodb.tests import PROJECT_ROOT_DIR
+from magnetodb import tests
 
-PASTE_CONFIG_FILE = os.path.join(PROJECT_ROOT_DIR, 'etc/api-paste-test.ini')
+PASTE_CONFIG_FILE = os.path.join(tests.PROJECT_ROOT_DIR,
+                                 'etc/api-paste-test.ini')
 
 
 def run_fake_magnetodb_api():

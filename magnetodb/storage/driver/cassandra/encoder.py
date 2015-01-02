@@ -13,19 +13,20 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import json
-from collections import deque
 
-from binascii import hexlify
-from cassandra.encoder import cql_quote
+import binascii
+import collections
+import json
+
+from cassandra import encoder
 
 
 def _encode_b(value):
-    return "0x" + hexlify(value)
+    return "0x" + binascii.hexlify(value)
 
 
 def _encode_ss(value):
-    return "{{{}}}".format(','.join(map(cql_quote, value)))
+    return "{{{}}}".format(','.join(map(encoder.cql_quote, value)))
 
 
 def _encode_ns(value):
@@ -37,47 +38,48 @@ def _encode_bs(value):
 
 
 def _encode_ssm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
-        builder.extend((prefix, cql_quote(k), ":", cql_quote(v)))
+        builder.extend((prefix, encoder.cql_quote(k), ":",
+                        encoder.cql_quote(v)))
         prefix = ","
     builder.append('}')
     return "".join(builder)
 
 
 def _encode_snm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
-        builder.extend((prefix, cql_quote(k), ":", str(v)))
+        builder.extend((prefix, encoder.cql_quote(k), ":", str(v)))
         prefix = ","
     builder.append('}')
     return "".join(builder)
 
 
 def _encode_sbm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
-        builder.extend((prefix, cql_quote(k), ":", _encode_b(v)))
+        builder.extend((prefix, encoder.cql_quote(k), ":", _encode_b(v)))
         prefix = ","
     builder.append('}')
     return "".join(builder)
 
 
 def _encode_nsm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
-        builder.extend((prefix, str(k), ":", cql_quote(v)))
+        builder.extend((prefix, str(k), ":", encoder.cql_quote(v)))
         prefix = ","
     builder.append('}')
     return "".join(builder)
 
 
 def _encode_nnm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
         builder.extend((prefix, str(k), ":", str(v)))
@@ -87,7 +89,7 @@ def _encode_nnm(value):
 
 
 def _encode_nbm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
         builder.extend((prefix, str(k), ":", _encode_b(v)))
@@ -97,17 +99,17 @@ def _encode_nbm(value):
 
 
 def _encode_bsm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
-        builder.extend((prefix, _encode_b(k), ":", cql_quote(v)))
+        builder.extend((prefix, _encode_b(k), ":", encoder.cql_quote(v)))
         prefix = ","
     builder.append('}')
     return "".join(builder)
 
 
 def _encode_bnm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
         builder.extend((prefix, _encode_b(k), ":", str(v)))
@@ -117,7 +119,7 @@ def _encode_bnm(value):
 
 
 def _encode_bbm(value):
-    builder = deque()
+    builder = collections.deque()
     prefix = '{'
     for k, v in value.iteritems():
         builder.extend((prefix, _encode_b(k), ":", _encode_b(v)))
@@ -127,7 +129,7 @@ def _encode_bbm(value):
 
 
 _CQL_ENCODER_MAP = {
-    'S': cql_quote,
+    'S': encoder.cql_quote,
     'N': str,
     'B': _encode_b,
     'SS': _encode_ss,
@@ -158,6 +160,6 @@ def encode_dynamic_attr_value(attr_value):
     if attr_value is None:
         return 'null'
 
-    return "0x" + hexlify(
+    return "0x" + binascii.hexlify(
         json.dumps(attr_value.encoded_value, sort_keys=True)
     )

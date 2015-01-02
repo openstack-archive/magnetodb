@@ -15,8 +15,7 @@
 #    under the License.
 
 from magnetodb.common import wsgi
-from magnetodb.openstack.common.log import logging
-
+from magnetodb.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

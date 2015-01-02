@@ -13,17 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
+from magnetodb.api.amz.dynamodb import action
+from magnetodb.api.amz.dynamodb import exception
 from magnetodb.api.amz.dynamodb import parser
-
 from magnetodb import storage
-from magnetodb.api.amz.dynamodb.exception import AWSValidationException
-from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
-
 from magnetodb.storage import models
 
 
-class PutItemDynamoDBAction(DynamoDBAction):
+class PutItemDynamoDBAction(action.DynamoDBAction):
     schema = {
         "required": [parser.Props.ITEM,
                      parser.Props.TABLE_NAME],
@@ -106,7 +103,7 @@ class PutItemDynamoDBAction(DynamoDBAction):
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
         except Exception:
-            raise AWSValidationException()
+            raise exception.AWSValidationException()
 
         try:
             # put item
@@ -120,7 +117,7 @@ class PutItemDynamoDBAction(DynamoDBAction):
             )
 
             if not result:
-                raise AWSErrorResponseException()
+                raise exception.AWSErrorResponseException()
 
             # format response
             response = {}
@@ -150,7 +147,7 @@ class PutItemDynamoDBAction(DynamoDBAction):
                 )
 
             return response
-        except AWSErrorResponseException as e:
+        except exception.AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise AWSErrorResponseException()
+            raise exception.AWSErrorResponseException()
