@@ -18,20 +18,21 @@ import logging
 from oslo import messaging
 
 from magnetodb.common import config
-from magnetodb.storage.manager.simple_impl import SimpleStorageManager
+from magnetodb.storage.manager import simple_impl as manager
 
 LOG = logging.getLogger(__name__)
 CONF = config.CONF
 
 
-class QueuedStorageManager(SimpleStorageManager):
+class QueuedStorageManager(manager.SimpleStorageManager):
     def __init__(self, storage_driver, table_info_repo,
                  concurrent_tasks=1000, batch_chunk_size=25,
                  schema_operation_timeout=300):
-        SimpleStorageManager.__init__(
+        manager.SimpleStorageManager.__init__(
             self, storage_driver, table_info_repo,
             concurrent_tasks, batch_chunk_size,
-            schema_operation_timeout)
+            schema_operation_timeout
+        )
 
         transport = messaging.get_transport(CONF)
         target = messaging.Target(topic='schema')

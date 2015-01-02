@@ -14,10 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.api import validation
-from magnetodb.api import enforce_policy
-
+from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api import validation
 from magnetodb.common import probe
 from magnetodb import storage
 from magnetodb.storage import models
@@ -26,7 +25,7 @@ from magnetodb.storage import models
 class GetItemController(object):
     """The Getitem operation returns an item with the given primary key. """
 
-    @enforce_policy("mdb:get_item")
+    @api.enforce_policy("mdb:get_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validate'):

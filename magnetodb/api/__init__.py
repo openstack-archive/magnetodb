@@ -16,11 +16,10 @@
 import shlex
 import string
 
-from magnetodb import policy
 from magnetodb.api.openstack.v1 import utils
-from magnetodb.common import setup_global_env
-from magnetodb.openstack.common.log import logging
-
+from magnetodb import common as mdb_common
+from magnetodb.openstack.common import log as logging
+from magnetodb import policy
 
 LOG = logging.getLogger(__name__)
 
@@ -46,7 +45,7 @@ def with_global_env(default_program=None):
             program = options.get("program", default_program)
             s = string.Template(oslo_config_args)
             oslo_config_args = shlex.split(s.substitute(**options))
-            setup_global_env(program, oslo_config_args)
+            mdb_common.setup_global_env(program, oslo_config_args)
             return f(global_conf, **local_conf)
         return wrapped
     return decorator

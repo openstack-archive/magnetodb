@@ -12,12 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import httplib
 import json
 import mock
 import uuid
 
-from magnetodb.storage.models import BackupMeta
+from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
@@ -35,11 +36,11 @@ class DescribeBackupTest(test_base_testcase.APITestCase):
         url = '/v1/management/default_tenant/default_table/backups/{}'.format(
             the_uuid.hex)
 
-        describe_backup_mock.return_value = BackupMeta(
+        describe_backup_mock.return_value = models.BackupMeta(
             the_uuid,
             'the_backup',
             'default_table',
-            BackupMeta.BACKUP_STATUS_CREATING,
+            models.BackupMeta.BACKUP_STATUS_CREATING,
             'location'
         )
 

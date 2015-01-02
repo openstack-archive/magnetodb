@@ -13,18 +13,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb import storage
-from magnetodb.api import validation
-from magnetodb.api import enforce_policy
+from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api import validation
 from magnetodb.common import probe
-from magnetodb.storage.models import DeleteReturnValuesType
+from magnetodb import storage
+from magnetodb.storage import models
 
 
 class DeleteItemController(object):
     """ Deletes a single item in a table by primary key. """
 
-    @enforce_policy("mdb:delete_item")
+    @api.enforce_policy("mdb:delete_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.jsonschema.validate'):
@@ -60,7 +60,7 @@ class DeleteItemController(object):
             validation.validate_string(return_values_json,
                                        parser.Props.RETURN_VALUES)
 
-            return_values = DeleteReturnValuesType(return_values_json)
+            return_values = models.DeleteReturnValuesType(return_values_json)
 
             validation.validate_unexpected_props(body, "body")
 

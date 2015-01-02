@@ -13,25 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import eventlet
 from eventlet.green import select
 from eventlet.green import socket
 from eventlet import queue
-
+import errno
+import functools
+from six import moves
 import threading
 
-from collections import defaultdict
-from functools import partial
 import logging
 import os
 
-from six.moves import xrange
-
-import errno
-
 import cassandra
-from cassandra import connection
-from cassandra import protocol
+from cassandra import connection as cassandra_connection
+from cassandra import protocol as cassandra_protocol
 
 
 log = logging.getLogger(__name__)
@@ -44,7 +41,7 @@ def is_timeout(err):
     )
 
 
-class EventletConnection(connection.Connection):
+class EventletConnection(cassandra_connection.Connection):
     """
     An implementation of :class:`.Connection` that utilizes ``eventlet``.
     """
@@ -68,13 +65,13 @@ class EventletConnection(connection.Connection):
             return conn
 
     def __init__(self, *args, **kwargs):
-        connection.Connection.__init__(self, *args, **kwargs)
+        cassandra_connection.Connection.__init__(self, *args, **kwargs)
 
         self.connected_event = threading.Event()
         self._write_queue = queue.Queue()
 
         self._callbacks = {}
-        self._push_watchers = defaultdict(set)
+        self._push_watchers = collections.defaultdict(set)
 
         sockerr = None
         addresses = socket.getaddrinfo(
@@ -124,7 +121,7 @@ class EventletConnection(connection.Connection):
 
         if not self.is_defunct:
             self.error_all_callbacks(
-                connection.ConnectionShutdown(
+                cassandra_connection.ConnectionShutdown(
                     "Connection to %s was closed" % self.host
                 )
             )
@@ -146,7 +143,7 @@ class EventletConnection(connection.Connection):
                 return  # Leave the write loop
 
     def handle_read(self):
-        run_select = partial(select.select, (self._socket,), (), ())
+        run_select = functools.partial(select.select, (self._socket,), (), ())
         while True:
             try:
                 run_select()
@@ -176,18 +173,19 @@ class EventletConnection(connection.Connection):
 
     def push(self, data):
         chunk_size = self.out_buffer_size
-        for i in xrange(0, len(data), chunk_size):
+        for i in moves.xrange(0, len(data), chunk_size):
             self._write_queue.put(data[i:i + chunk_size])
 
     def register_watcher(self, event_type, callback, register_timeout=None):
         self._push_watchers[event_type].add(callback)
         self.wait_for_response(
-            protocol.RegisterMessage(event_list=[event_type]),
+            cassandra_protocol.RegisterMessage(event_list=[event_type]),
             timeout=register_timeout)
 
     def register_watchers(self, type_callback_dict, register_timeout=None):
         for event_type, callback in type_callback_dict.items():
             self._push_watchers[event_type].add(callback)
         self.wait_for_response(
-            protocol.RegisterMessage(event_list=type_callback_dict.keys()),
+            cassandra_protocol.RegisterMessage(
+                event_list=type_callback_dict.keys()),
             timeout=register_timeout)

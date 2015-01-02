@@ -12,14 +12,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from magnetodb.api import validation
 
-from magnetodb.api import enforce_policy
+from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
-from magnetodb import storage
+from magnetodb.api import validation
 from magnetodb.common import exception
 from magnetodb.common import probe
-from magnetodb.storage.models import UpdateReturnValuesType
+from magnetodb import storage
+from magnetodb.storage import models
 
 
 class UpdateItemController(object):
@@ -27,7 +27,7 @@ class UpdateItemController(object):
     Edits(or inserts if item does not already exist) an item's attributes.
     """
 
-    @enforce_policy("mdb:update_item")
+    @api.enforce_policy("mdb:update_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validation'):
@@ -72,7 +72,7 @@ class UpdateItemController(object):
             validation.validate_string(return_values_json,
                                        parser.Props.RETURN_VALUES)
 
-            return_values = UpdateReturnValuesType(return_values_json)
+            return_values = models.UpdateReturnValuesType(return_values_json)
 
             validation.validate_unexpected_props(body, "body")
 

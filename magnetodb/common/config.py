@@ -15,7 +15,7 @@
 
 from oslo.config import cfg
 
-from magnetodb.common import PROJECT_NAME
+from magnetodb import common as mdb_common
 
 common_opts = [
     cfg.StrOpt('storage_manager_config', default="{}"),
@@ -27,6 +27,6 @@ CONF.register_opts(common_opts)
 
 def parse_args(prog=None, args=None, default_config_files=None):
     cfg.CONF(args=args,
-             project=PROJECT_NAME,
+             project=mdb_common.PROJECT_NAME,
              prog=prog,
              default_config_files=default_config_files)

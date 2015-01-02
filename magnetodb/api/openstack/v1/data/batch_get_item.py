@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb import storage
+from magnetodb import api
 from magnetodb.api import validation
-from magnetodb.api import enforce_policy
-
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.common import probe
+from magnetodb import storage
 
 
 class BatchGetItemController(object):
@@ -26,7 +25,7 @@ class BatchGetItemController(object):
     of one or more items from one or more tables.
     """
 
-    @enforce_policy("mdb:batch_get_item")
+    @api.enforce_policy("mdb:batch_get_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id):
         with probe.Probe(__name__ + '.validation'):

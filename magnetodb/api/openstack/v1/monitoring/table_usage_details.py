@@ -14,9 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb.openstack.common import log as logging
 from magnetodb import storage
-from magnetodb.openstack.common.log import logging
-
 
 LOG = logging.getLogger(__name__)
 
