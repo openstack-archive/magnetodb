@@ -174,5 +174,13 @@ class MagnetoDBClientJSON(service_client.ServiceClient):
         resp, body = self.get(url)
         return resp, self._parse_resp(body)
 
+    def healthcheck(self, fullcheck=False):
+        self.get('tables')
+        base_url = '/'.join(self.base_url.split('/')[0:-3])
+        url = '/'.join([base_url, 'healthcheck'])
+        if fullcheck:
+            url = url + '?fullcheck=true'
+        return self.raw_request(url, 'GET')
+
     def _parse_resp(self, body):
         return json.loads(body)
