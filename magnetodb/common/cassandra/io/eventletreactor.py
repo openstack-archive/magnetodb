@@ -14,10 +14,11 @@
 # limitations under the License.
 
 import eventlet
-from eventlet.green import select, socket
-from eventlet.queue import Queue
+from eventlet.green import select
+from eventlet.green import socket
+from eventlet import queue
 
-from threading import Event
+import threading
 
 from collections import defaultdict
 from functools import partial
@@ -26,11 +27,11 @@ import os
 
 from six.moves import xrange
 
-from errno import EALREADY, EINPROGRESS, EWOULDBLOCK, EINVAL
+import errno
 
-from cassandra import OperationTimedOut
-from cassandra.connection import Connection, ConnectionShutdown
-from cassandra.protocol import RegisterMessage
+import cassandra
+from cassandra import connection
+from cassandra import protocol
 
 
 log = logging.getLogger(__name__)
@@ -38,12 +39,12 @@ log = logging.getLogger(__name__)
 
 def is_timeout(err):
     return (
-        err in (EINPROGRESS, EALREADY, EWOULDBLOCK) or
-        (err == EINVAL and os.name in ('nt', 'ce'))
+        err in (errno.EINPROGRESS, errno.EALREADY, errno.EWOULDBLOCK) or
+        (err == errno.EINVAL and os.name in ('nt', 'ce'))
     )
 
 
-class EventletConnection(Connection):
+class EventletConnection(connection.Connection):
     """
     An implementation of :class:`.Connection` that utilizes ``eventlet``.
     """
@@ -62,15 +63,15 @@ class EventletConnection(Connection):
             raise conn.last_error
         elif not conn.connected_event.is_set():
             conn.close()
-            raise OperationTimedOut("Timed out creating connection")
+            raise cassandra.OperationTimedOut("Timed out creating connection")
         else:
             return conn
 
     def __init__(self, *args, **kwargs):
-        Connection.__init__(self, *args, **kwargs)
+        connection.Connection.__init__(self, *args, **kwargs)
 
-        self.connected_event = Event()
-        self._write_queue = Queue()
+        self.connected_event = threading.Event()
+        self._write_queue = queue.Queue()
 
         self._callbacks = {}
         self._push_watchers = defaultdict(set)
@@ -123,7 +124,10 @@ class EventletConnection(Connection):
 
         if not self.is_defunct:
             self.error_all_callbacks(
-                ConnectionShutdown("Connection to %s was closed" % self.host))
+                connection.ConnectionShutdown(
+                    "Connection to %s was closed" % self.host
+                )
+            )
             # don't leave in-progress operations hanging
             self.connected_event.set()
 
@@ -178,12 +182,12 @@ class EventletConnection(Connection):
     def register_watcher(self, event_type, callback, register_timeout=None):
         self._push_watchers[event_type].add(callback)
         self.wait_for_response(
-            RegisterMessage(event_list=[event_type]),
+            protocol.RegisterMessage(event_list=[event_type]),
             timeout=register_timeout)
 
     def register_watchers(self, type_callback_dict, register_timeout=None):
         for event_type, callback in type_callback_dict.items():
             self._push_watchers[event_type].add(callback)
         self.wait_for_response(
-            RegisterMessage(event_list=type_callback_dict.keys()),
+            protocol.RegisterMessage(event_list=type_callback_dict.keys()),
             timeout=register_timeout)

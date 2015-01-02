@@ -15,12 +15,12 @@
 
 import httplib
 import json
+import mox
 import unittest
 
 from magnetodb import storage
-from magnetodb.common.exception import TableNotExistsException
+from magnetodb.common import exception
 from magnetodb.tests.fake import magnetodb_api_fake
-from mox import Mox, IgnoreArg
 
 
 class APITest(unittest.TestCase):
@@ -37,7 +37,7 @@ class APITest(unittest.TestCase):
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
     def setUp(self):
-        self.storage_mocker = Mox()
+        self.storage_mocker = mox.Mox()
 
     def tearDown(self):
         self.storage_mocker.UnsetStubs()
@@ -45,8 +45,8 @@ class APITest(unittest.TestCase):
     def test_describe_unexisting_table(self):
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
-        storage.describe_table(IgnoreArg(), 'test_table1').AndRaise(
-            TableNotExistsException
+        storage.describe_table(mox.IgnoreArg(), 'test_table1').AndRaise(
+            exception.TableNotExistsException
         )
 
         self.storage_mocker.ReplayAll()

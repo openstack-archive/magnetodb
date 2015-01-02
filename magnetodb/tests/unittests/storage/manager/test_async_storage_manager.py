@@ -57,8 +57,8 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
 
         # TableInfo status should be creating initially when
         # table_info_repo.save is called
-        self.assertEquals(models.TableMeta.TABLE_STATUS_CREATING,
-                          table_info_save_args_list[0][1].status)
+        self.assertEqual(models.TableMeta.TABLE_STATUS_CREATING,
+                         table_info_save_args_list[0][1].status)
 
         # wait for async create table call to finish
         for i in range(10):

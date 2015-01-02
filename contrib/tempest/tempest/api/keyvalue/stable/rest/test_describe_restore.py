@@ -30,4 +30,4 @@ class MagnetoDBDescribeRestoreTest(MagnetoDBTestCase):
 
         headers, body = self.management_client.describe_restore_job(
             self.tname, 'restore_job_id')
-        self.assertEquals({}, body)
+        self.assertEqual({}, body)
