@@ -15,15 +15,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import test
+from unittest import case
 
+from tempest import test
 from tempest import exceptions
 from tempest import clients_magnetodb as clients
 from tempest.common.utils import data_utils
 from tempest.openstack.common import log as logging
-
-from unittest.case import _AssertRaisesContext
-
 
 LOG = logging.getLogger(__name__)
 test.clients = clients
@@ -242,7 +240,7 @@ class MagnetoDBTestCase(test.BaseTestCase):
         ]
 
     def assertRaises(self, excClass, callableObj=None, *args, **kwargs):
-        context = _AssertRaisesContext(excClass, self)
+        context = case._AssertRaisesContext(excClass, self)
         if callableObj is None:
             return context
         with context:

@@ -13,18 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb.api.amz.dynamodb import action
+from magnetodb.api.amz.dynamodb import exception
 from magnetodb.api.amz.dynamodb import parser
-
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-
 from magnetodb import storage
-from magnetodb.api.amz.dynamodb.exception import AWSValidationException
-from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
-
 from magnetodb.storage import models
 
 
-class GetItemDynamoDBAction(DynamoDBAction):
+class GetItemDynamoDBAction(action.DynamoDBAction):
     schema = {
         "required": [parser.Props.KEY,
                      parser.Props.TABLE_NAME],
@@ -81,7 +77,7 @@ class GetItemDynamoDBAction(DynamoDBAction):
             )
 
         except Exception:
-            raise AWSValidationException()
+            raise exception.AWSValidationException()
 
         try:
             # get item
@@ -109,7 +105,7 @@ class GetItemDynamoDBAction(DynamoDBAction):
                 )
 
             return response
-        except AWSErrorResponseException as e:
+        except exception.AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise AWSErrorResponseException()
+            raise exception.AWSErrorResponseException()

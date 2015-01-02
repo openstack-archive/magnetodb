@@ -13,18 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
+from magnetodb.api.amz.dynamodb import action
+from magnetodb.api.amz.dynamodb import exception as ddb_exception
 from magnetodb.api.amz.dynamodb import parser
-
+from magnetodb.common import exception
 from magnetodb import storage
-from magnetodb.api.amz.dynamodb.exception import AWSValidationException
-from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
 from magnetodb.storage import models
 
-from magnetodb.common import exception
 
-
-class DeleteItemDynamoDBAction(DynamoDBAction):
+class DeleteItemDynamoDBAction(action.DynamoDBAction):
     schema = {
         "required": [parser.Props.KEY,
                      parser.Props.TABLE_NAME],
@@ -105,7 +102,7 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
         except Exception:
-            raise AWSValidationException()
+            raise ddb_exception.AWSValidationException()
 
         try:
             # put item
@@ -115,13 +112,13 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
                 key_attributes,
                 expected_condition_map=expected_item_conditions
             )
-        except AWSErrorResponseException as e:
+        except ddb_exception.AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise AWSErrorResponseException()
+            raise ddb_exception.AWSErrorResponseException()
 
         if not result:
-            raise AWSErrorResponseException()
+            raise ddb_exception.AWSErrorResponseException()
 
         # format response
         response = {}
@@ -157,4 +154,4 @@ class DeleteItemDynamoDBAction(DynamoDBAction):
 
             return response
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise exception.ddb_exception.AWSErrorResponseException()

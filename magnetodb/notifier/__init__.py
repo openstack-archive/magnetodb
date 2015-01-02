@@ -14,20 +14,20 @@
 #    under the License.
 
 import socket
-from magnetodb.openstack.common.context import RequestContext
+from magnetodb.openstack.common import context as ctxt
 
 from oslo.config import cfg
-from oslo.messaging import get_transport
+from oslo import messaging
 from oslo.messaging import notify
 from oslo.messaging import serializer
 
 
-from magnetodb.common import PROJECT_NAME
+from magnetodb import common
 from oslo.serialization import jsonutils
 
 extra_notifier_opts = [
     cfg.StrOpt('notification_service',
-               default=PROJECT_NAME,
+               default=common.PROJECT_NAME,
                help='Service publisher_id for outgoing notifications'),
     cfg.StrOpt('default_publisher_id',
                default=None,
@@ -91,7 +91,7 @@ def get_notifier():
         publisher_id = '{}.{}'.format(service, host)
 
         __NOTIFIER = notify.Notifier(
-            get_transport(cfg.CONF),
+            messaging.get_transport(cfg.CONF),
             publisher_id,
             serializer=RequestContextSerializer(JsonPayloadSerializer())
         )
@@ -124,4 +124,4 @@ class RequestContextSerializer(serializer.Serializer):
         return context.to_dict()
 
     def deserialize_context(self, context):
-        return RequestContext(**context)
+        return ctxt.RequestContext(**context)

@@ -14,39 +14,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from concurrent import futures
 import logging
-from datetime import datetime
-
-from threading import BoundedSemaphore
-from threading import Event
-
+import datetime
+import threading
 import weakref
 import uuid
 
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import Future
-
-from magnetodb.common.exception import TableAlreadyExistsException
-from magnetodb.common.exception import TableNotExistsException
-from magnetodb.common.exception import BackendInteractionException
-from magnetodb.common.exception import ResourceInUseException
-from magnetodb.common.exception import ValidationError
-
+from magnetodb.common import exception
 from magnetodb import notifier
 from magnetodb.openstack.common.gettextutils import _
-
-from magnetodb.storage.models import IndexedCondition
-from magnetodb.storage.models import SelectType
-from magnetodb.storage.models import TableMeta
-
-from magnetodb.storage.manager import StorageManager
-
-from magnetodb.storage.table_info_repo import TableInfo
+from magnetodb.storage import manager
+from magnetodb.storage import models
+from magnetodb.storage import table_info_repo
 
 LOG = logging.getLogger(__name__)
 
 
-class SimpleStorageManager(StorageManager):
+class SimpleStorageManager(manager.StorageManager):
 
     def __init__(self, storage_driver, table_info_repo, concurrent_tasks=1000,
                  batch_chunk_size=25, schema_operation_timeout=300):
@@ -54,8 +39,8 @@ class SimpleStorageManager(StorageManager):
         self._table_info_repo = table_info_repo
         self._batch_chunk_size = batch_chunk_size
         self._schema_operation_timeout = schema_operation_timeout
-        self.__task_executor = ThreadPoolExecutor(concurrent_tasks)
-        self.__task_semaphore = BoundedSemaphore(concurrent_tasks)
+        self.__task_executor = futures.ThreadPoolExecutor(concurrent_tasks)
+        self.__task_semaphore = threading.BoundedSemaphore(concurrent_tasks)
         self._notifier = notifier.get_notifier()
 
     def _do_create_table(self, context, table_info):
@@ -63,11 +48,11 @@ class SimpleStorageManager(StorageManager):
             table_info.internal_name = self._storage_driver.create_table(
                 context, table_info
             )
-            table_info.status = TableMeta.TABLE_STATUS_ACTIVE
+            table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
             self._table_info_repo.update(
                 context, table_info, ["status", "internal_name"]
             )
-        except BackendInteractionException as ex:
+        except exception.BackendInteractionException as ex:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
@@ -92,12 +77,14 @@ class SimpleStorageManager(StorageManager):
             table_schema)
 
         table_id = self._get_table_id(table_name)
-        table_info = TableInfo(table_name, table_id, table_schema,
-                               TableMeta.TABLE_STATUS_CREATING)
+        table_info = table_info_repo.TableInfo(
+            table_name, table_id, table_schema,
+            models.TableMeta.TABLE_STATUS_CREATING
+        )
 
         try:
             self._table_info_repo.save(context, table_info)
-        except TableAlreadyExistsException as e:
+        except exception.TableAlreadyExistsException as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
@@ -109,8 +96,11 @@ class SimpleStorageManager(StorageManager):
 
         self._do_create_table(context, table_info)
 
-        return TableMeta(table_info.id, table_info.schema, table_info.status,
-                         table_info.creation_date_time)
+        return models.TableMeta(
+            table_info.id,
+            table_info.schema,
+            table_info.status,
+            table_info.creation_date_time)
 
     def _do_delete_table(self, context, table_info):
         self._storage_driver.delete_table(context, table_info)
@@ -131,7 +121,7 @@ class SimpleStorageManager(StorageManager):
             table_info = self._table_info_repo.get(context,
                                                    table_name,
                                                    ['status'])
-        except TableNotExistsException as e:
+        except exception.TableNotExistsException as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
@@ -141,17 +131,17 @@ class SimpleStorageManager(StorageManager):
                 ))
             raise
 
-        if table_info.status == TableMeta.TABLE_STATUS_DELETING:
+        if table_info.status == models.TableMeta.TABLE_STATUS_DELETING:
             # table is already being deleted, just return immediately
             self._notifier.info(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_END,
                 table_name)
-            return TableMeta(table_info.id, table_info.schema,
-                             table_info.status,
-                             table_info.creation_date_time)
-        elif table_info.status != TableMeta.TABLE_STATUS_ACTIVE:
-            e = ResourceInUseException()
+            return models.TableMeta(table_info.id, table_info.schema,
+                                    table_info.status,
+                                    table_info.creation_date_time)
+        elif table_info.status != models.TableMeta.TABLE_STATUS_ACTIVE:
+            e = exception.ResourceInUseException()
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
@@ -161,14 +151,17 @@ class SimpleStorageManager(StorageManager):
                 ))
             raise e
 
-        table_info.status = TableMeta.TABLE_STATUS_DELETING
+        table_info.status = models.TableMeta.TABLE_STATUS_DELETING
 
         self._table_info_repo.update(context, table_info, ["status"])
 
         self._do_delete_table(context, table_info)
 
-        return TableMeta(table_info.id, table_info.schema, table_info.status,
-                         table_info.creation_date_time)
+        return models.TableMeta(
+            table_info.id,
+            table_info.schema,
+            table_info.status,
+            table_info.creation_date_time)
 
     def describe_table(self, context, table_name):
         table_info = self._table_info_repo.get(
@@ -178,16 +171,17 @@ class SimpleStorageManager(StorageManager):
             notifier.EVENT_TYPE_TABLE_DESCRIBE,
             table_name)
 
-        timedelta = datetime.now() - table_info.last_update_date_time
+        timedelta = datetime.datetime.now() - table_info.last_update_date_time
 
         if timedelta.total_seconds() > self._schema_operation_timeout:
-            if table_info.status == TableMeta.TABLE_STATUS_CREATING:
-                table_info.status = TableMeta.TABLE_STATUS_CREATE_FAILED
+            if table_info.status == models.TableMeta.TABLE_STATUS_CREATING:
+                table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
                 self._table_info_repo.update(context, table_info, ['status'])
                 LOG.debug(
                     "Table '{}' creation timed out."
                     " Setting status to {}".format(
-                        table_info.name, TableMeta.TABLE_STATUS_CREATE_FAILED)
+                        table_info.name,
+                        models.TableMeta.TABLE_STATUS_CREATE_FAILED)
                 )
                 self._notifier.error(
                     context,
@@ -198,13 +192,14 @@ class SimpleStorageManager(StorageManager):
                     )
                 )
 
-            if table_info.status == TableMeta.TABLE_STATUS_DELETING:
-                table_info.status = TableMeta.TABLE_STATUS_DELETE_FAILED
+            if table_info.status == models.TableMeta.TABLE_STATUS_DELETING:
+                table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
                 self._table_info_repo.update(context, table_info, ['status'])
                 LOG.debug(
                     "Table '{}' deletion timed out."
                     " Setting status to {}".format(
-                        table_info.name, TableMeta.TABLE_STATUS_DELETE_FAILED)
+                        table_info.name,
+                        models.TableMeta.TABLE_STATUS_DELETE_FAILED)
                 )
                 self._notifier.error(
                     context,
@@ -215,8 +210,11 @@ class SimpleStorageManager(StorageManager):
                     )
                 )
 
-        return TableMeta(table_info.id, table_info.schema, table_info.status,
-                         table_info.creation_date_time)
+        return models.TableMeta(
+            table_info.id,
+            table_info.schema,
+            table_info.status,
+            table_info.creation_date_time)
 
     def list_tables(self, context, exclusive_start_table_name=None,
                     limit=None):
@@ -247,13 +245,13 @@ class SimpleStorageManager(StorageManager):
 
     @staticmethod
     def _validate_table_is_active(table_info):
-        if table_info.status != TableMeta.TABLE_STATUS_ACTIVE:
-            raise ValidationError(
+        if table_info.status != models.TableMeta.TABLE_STATUS_ACTIVE:
+            raise exception.ValidationError(
                 _("Can't execute request: "
                   "Table '%(table_name)s' status '%(table_status)s' "
                   "isn't %(expected_status)s"),
                 table_name=table_info.name, table_status=table_info.status,
-                expected_status=TableMeta.TABLE_STATUS_ACTIVE
+                expected_status=models.TableMeta.TABLE_STATUS_ACTIVE
             )
 
     @staticmethod
@@ -270,7 +268,7 @@ class SimpleStorageManager(StorageManager):
 
         if keys_only and (
                 len(key_attribute_names_to_find) != len(attribute_map)):
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Specified key: %(key_attributes)s doesn't match expected "
                   "key attributes set: %(expected_key_attributes)s"),
                 key_attributes=attribute_map,
@@ -284,7 +282,7 @@ class SimpleStorageManager(StorageManager):
             key_attribute_names_to_find.discard(attr_name)
 
             if schema_attr_type != typed_attr_value.attr_type:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("Attribute: '%(attr_name)s' of type: '%(attr_type)s' "
                       "doesn't match table schema expected attribute type: "
                       "'%(expected_attr_type)s'"),
@@ -294,7 +292,7 @@ class SimpleStorageManager(StorageManager):
                 )
 
         if key_attribute_names_to_find:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Couldn't find expected key attributes: "
                   "'%(expected_key_attributes)s'"),
                 expected_key_attributes=key_attribute_names_to_find
@@ -475,7 +473,7 @@ class SimpleStorageManager(StorageManager):
                 keys = tuple(key_values)
 
                 if keys in requested_keys:
-                    raise ValidationError(
+                    raise exception.ValidationError(
                         _("Can't execute request: "
                           "More than one operation requested"
                           " for item with keys %(keys)s"
@@ -528,7 +526,7 @@ class SimpleStorageManager(StorageManager):
         return unprocessed_items
 
     def _batch_write_async(self, context, write_request_list):
-        future_result = Future()
+        future_result = futures.Future()
 
         batch_future = self._execute_async(
             self._storage_driver.batch_write,
@@ -555,7 +553,7 @@ class SimpleStorageManager(StorageManager):
     def _batch_write_in_emulation_mode(self, context, write_request_list):
         request_count = len(write_request_list)
         done_count = [0]
-        done_event = Event()
+        done_event = threading.Event()
         unprocessed_items = []
         for write_request in write_request_list:
             table_info, req = write_request
@@ -595,7 +593,7 @@ class SimpleStorageManager(StorageManager):
         request_count = len(read_request_list)
         done_count = [0]
 
-        done_event = Event()
+        done_event = threading.Event()
 
         prepared_batch = []
 
@@ -684,7 +682,7 @@ class SimpleStorageManager(StorageManager):
 
     @staticmethod
     def _raise_condition_schema_mismatch(condition_map, table_info):
-        raise ValidationError(
+        raise exception.ValidationError(
             _("Specified query conditions %(indexed_condition_map)s "
               "don't match table schema: %(table_schema)s"),
             indexed_condition_map=condition_map,
@@ -714,8 +712,8 @@ class SimpleStorageManager(StorageManager):
 
         if (len(hash_key_condition_list) != 1 or
             hash_key_condition_list[0].type !=
-                IndexedCondition.CONDITION_TYPE_EQUAL):
-            raise ValidationError(
+                models.IndexedCondition.CONDITION_TYPE_EQUAL):
+            raise exception.ValidationError(
                 _("Only equality condition is allowed for HASH key attribute "
                   "'%(hash_key_name)s'"),
                 hash_key_name=hash_key_name,
@@ -733,7 +731,7 @@ class SimpleStorageManager(StorageManager):
         if index_name is not None:
             index_def = table_info.schema.index_def_map.get(index_name)
             if index_def is None:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("Index '%(index_name)s' doesn't exist for table "
                       "'%(table_name)s'"),
                     index_name=index_name, table_name=table_name)
@@ -795,7 +793,7 @@ class SimpleStorageManager(StorageManager):
         hash_key_name = table_info.schema.hash_key_name
         hash_key_value = key_attribute_map[hash_key_name]
         hash_key_condition_list = [
-            IndexedCondition.eq(hash_key_value)]
+            models.IndexedCondition.eq(hash_key_value)]
 
         range_key_name = table_info.schema.range_key_name
 
@@ -805,7 +803,7 @@ class SimpleStorageManager(StorageManager):
         )
 
         range_condition_list = (
-            [IndexedCondition.eq(range_key_value)]
+            [models.IndexedCondition.eq(range_key_value)]
             if range_key_value else None
         )
 
@@ -841,12 +839,13 @@ class SimpleStorageManager(StorageManager):
             notifier.EVENT_TYPE_DATA_GETITEM_START,
             payload)
         select_type = (
-            SelectType.all() if attributes_to_get is None else
-            SelectType.specific_attributes(attributes_to_get)
+            models.SelectType.all() if attributes_to_get is None else
+            models.SelectType.specific_attributes(attributes_to_get)
         )
-        hash_key_condition_list = [IndexedCondition.eq(hash_key)]
+        hash_key_condition_list = [models.IndexedCondition.eq(hash_key)]
         range_key_condition_list = (
-            None if range_key is None else [IndexedCondition.eq(range_key)]
+            None if range_key is None
+            else [models.IndexedCondition.eq(range_key)]
         )
 
         result = self._execute_async(

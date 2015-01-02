@@ -14,10 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from webob.exc import HTTPException
+from webob import exc
 
 
-class AWSErrorResponseException(HTTPException):
+class AWSErrorResponseException(exc.HTTPException):
     """ Base Exception for rendering to AWS DynamoDB error
     JSON http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/
                                                             ErrorHandling.html

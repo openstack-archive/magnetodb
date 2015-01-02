@@ -14,8 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from copy import deepcopy
-
+import copy
 import mock
 import time
 import unittest
@@ -41,7 +40,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
         table_info_save_args_list = []
 
         def side_effect(*args):
-            table_info_save_args_list.append(deepcopy(args))
+            table_info_save_args_list.append(copy.deepcopy(args))
 
         mock_table_info_repo.save.side_effect = side_effect
 

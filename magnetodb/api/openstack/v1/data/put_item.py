@@ -14,20 +14,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb import storage
-from magnetodb.api import validation
-from magnetodb.api import enforce_policy
-
+from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api import validation
 from magnetodb.common import probe
-
-from magnetodb.storage.models import InsertReturnValuesType
+from magnetodb import storage
+from magnetodb.storage import models
 
 
 class PutItemController(object):
     """ Creates a new item, or replaces an old item. """
 
-    @enforce_policy("mdb:put_item")
+    @api.enforce_policy("mdb:put_item")
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):
         with probe.Probe(__name__ + '.validation'):
@@ -53,7 +51,7 @@ class PutItemController(object):
             validation.validate_string(return_values_json,
                                        parser.Props.RETURN_VALUES)
 
-            return_values = InsertReturnValuesType(return_values_json)
+            return_values = models.InsertReturnValuesType(return_values_json)
 
             # parse return_values param
             time_to_live = body.pop(

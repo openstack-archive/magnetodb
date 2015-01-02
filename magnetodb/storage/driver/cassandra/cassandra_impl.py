@@ -13,23 +13,20 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import json
 
-from collections import deque
+import json
+import collections
 
 from magnetodb.common import exception
-from magnetodb.common.exception import ConditionalCheckFailedException
-from magnetodb.common.exception import InvalidQueryParameter
 from magnetodb.common import probe
-
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
-from magnetodb.storage.driver import StorageDriver
+from magnetodb.storage import driver
 from magnetodb.storage.driver.cassandra import encoder as enc
 
-from cassandra.encoder import cql_quote
-from pyjolokia import Jolokia
+from cassandra import encoder as cas_encoder
 from oslo.config import cfg
+from pyjolokia import Jolokia
 
 LOG = logging.getLogger(__name__)
 
@@ -132,7 +129,7 @@ def _storage_to_cassandra_type(storage_type):
         )
 
 
-class CassandraStorageDriver(StorageDriver):
+class CassandraStorageDriver(driver.StorageDriver):
     def __init__(self, cluster_handler, default_keyspace_opts):
         self.__cluster_handler = cluster_handler
         self.__default_keyspace_opts = default_keyspace_opts
@@ -265,7 +262,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_types_system_attr_value(table_schema, attribute_map,
                                         query_builder=None, prefix=""):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
         query_builder.append(prefix)
         prefix = ""
         query_builder.append("{")
@@ -283,7 +280,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_exists_system_attr_value(attribute_map, query_builder=None,
                                          prefix=""):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
         query_builder.append(prefix)
         prefix = ""
         query_builder.append("{")
@@ -297,7 +294,7 @@ class CassandraStorageDriver(StorageDriver):
             self, table_info, attribute_map, query_builder=None,
             index_name=None, index_value=None, if_not_exists=False):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
 
         _encode_predefined_attr_value = enc.encode_predefined_attr_value
         _encode_dynamic_attr_value = enc.encode_dynamic_attr_value
@@ -360,7 +357,7 @@ class CassandraStorageDriver(StorageDriver):
             ]
 
             if index_name:
-                res_index_values[0] = cql_quote(index_name)
+                res_index_values[0] = cas_encoder.cql_quote(index_name)
 
                 res_index_values[INDEX_TYPE_TO_INDEX_POS_MAP[
                     index_value.type]
@@ -395,7 +392,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_update_query_with_basic_pk(self, table_info, attribute_map,
                                            query_builder=None, rewrite=False):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
 
         _encode_predefined_attr_value = enc.encode_predefined_attr_value
         _encode_dynamic_attr_value = enc.encode_dynamic_attr_value
@@ -523,7 +520,7 @@ class CassandraStorageDriver(StorageDriver):
                                        attribute_map, query_builder=None,
                                        separator=" ", rewrite=False):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
         base_update_query = None
         base_delete_query = None
 
@@ -643,7 +640,7 @@ class CassandraStorageDriver(StorageDriver):
                 )
             if self._put_item_if_not_exists(table_info, attribute_map):
                 return True, old_item
-            raise ConditionalCheckFailedException()
+            raise exception.ConditionalCheckFailedException()
         elif table_info.schema.index_def_map or return_old:
             _encode_predefined_attr_value = enc.encode_predefined_attr_value
             range_name = table_info.schema.range_key_name
@@ -655,7 +652,7 @@ class CassandraStorageDriver(StorageDriver):
                                                         attribute_map)
                     if not self._conditions_satisfied(
                             old_item, expected_condition_map):
-                        raise ConditionalCheckFailedException()
+                        raise exception.ConditionalCheckFailedException()
                     if old_item:
                         key_attributes = [hash_name]
                         if range_name:
@@ -677,7 +674,7 @@ class CassandraStorageDriver(StorageDriver):
                     if old_indexes is None:
                         if not self._conditions_satisfied(
                                 old_indexes, expected_condition_map):
-                            raise ConditionalCheckFailedException()
+                            raise exception.ConditionalCheckFailedException()
                         if self._put_item_if_not_exists(table_info,
                                                         attribute_map):
                             return True, old_item
@@ -739,7 +736,7 @@ class CassandraStorageDriver(StorageDriver):
                         # index consistency condition wasn't passed
                         break
                 else:
-                    raise ConditionalCheckFailedException()
+                    raise exception.ConditionalCheckFailedException()
         elif expected_condition_map:
             query_builder = self._append_update_query(
                 table_info, attribute_map,
@@ -750,7 +747,7 @@ class CassandraStorageDriver(StorageDriver):
             )
             if result[0]['[applied]']:
                 return True, old_item
-            raise ConditionalCheckFailedException()
+            raise exception.ConditionalCheckFailedException()
         else:
             query_builder = self._append_insert_query(
                 table_info, attribute_map
@@ -791,7 +788,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_delete_query_with_basic_pk(
             cls, table_info, attribute_map, query_builder=None):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
         query_builder += (
             'DELETE FROM ', table_info.internal_name
         )
@@ -897,10 +894,10 @@ class CassandraStorageDriver(StorageDriver):
                     # Nothing to delete
                     if not self._conditions_satisfied(
                             old_indexes, expected_condition_map):
-                        raise ConditionalCheckFailedException()
+                        raise exception.ConditionalCheckFailedException()
                     return True
 
-                query_builder = deque((delete_query,))
+                query_builder = collections.deque((delete_query,))
                 if_prefix = " AND " if expected_condition_map else " IF "
                 for index_name, index_def in (
                         table_info.schema.index_def_map.iteritems()):
@@ -941,12 +938,12 @@ class CassandraStorageDriver(StorageDriver):
                         break
                 else:
                     # expected condition wasn't passed
-                    raise ConditionalCheckFailedException()
+                    raise exception.ConditionalCheckFailedException()
         else:
             result = self.__cluster_handler.execute_query(delete_query,
                                                           consistent=True)
             if result and not result[0]['[applied]']:
-                raise ConditionalCheckFailedException()
+                raise exception.ConditionalCheckFailedException()
             return True
 
     @staticmethod
@@ -1029,7 +1026,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_indexed_condition(self, attr_name, condition, query_builder,
                                   column_prefix=USER_PREFIX):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
         op = CONDITION_TO_OP[condition.type]
         query_builder += (
             '"', column_prefix, attr_name, '"', op,
@@ -1047,7 +1044,7 @@ class CassandraStorageDriver(StorageDriver):
         else:
             op = CONDITION_TO_OP[condition.type]
             if query_builder is None:
-                query_builder = deque()
+                query_builder = collections.deque()
             query_builder += (
                 'token("', column_prefix, attr_name, '")', op, "token(",
                 enc.encode_predefined_attr_value(condition.arg), ")"
@@ -1058,7 +1055,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_expected_conditions(cls, expected_condition_map, schema,
                                     query_builder, prefix=" IF "):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
         for attr_name, cond_list in expected_condition_map.iteritems():
             for condition in cond_list:
                 query_builder.append(prefix)
@@ -1073,7 +1070,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_expected_condition(attr, condition, query_builder,
                                    is_predefined):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
 
         if condition.type == models.ExpectedCondition.CONDITION_TYPE_NOT_NULL:
             query_builder += (
@@ -1102,7 +1099,7 @@ class CassandraStorageDriver(StorageDriver):
     def _append_primary_key(table_schema, attribute_map, query_builder,
                             prefix=" WHERE "):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
 
         _encode_predefined_attr_value = enc.encode_predefined_attr_value
 
@@ -1120,7 +1117,7 @@ class CassandraStorageDriver(StorageDriver):
                                         index_name=None, index_value=None,
                                         prefix=" AND "):
         if query_builder is None:
-            query_builder = deque()
+            query_builder = collections.deque()
 
         res_index_values = [
             ENCODED_DEFAULT_STRING_VALUE,
@@ -1130,7 +1127,7 @@ class CassandraStorageDriver(StorageDriver):
         ]
 
         if index_name:
-            res_index_values[0] = cql_quote(index_name)
+            res_index_values[0] = cas_encoder.cql_quote(index_name)
 
             res_index_values[
                 INDEX_TYPE_TO_INDEX_POS_MAP[index_value.attr_type]
@@ -1169,7 +1166,7 @@ class CassandraStorageDriver(StorageDriver):
                                                 key_attribute_map)
             if not self._conditions_satisfied(old_item,
                                               expected_condition_map):
-                raise ConditionalCheckFailedException()
+                raise exception.ConditionalCheckFailedException()
 
             if not old_item:
                 # updating non-existent item
@@ -1236,7 +1233,7 @@ class CassandraStorageDriver(StorageDriver):
                 )
 
                 if result and not result[0]['[applied]']:
-                    raise ConditionalCheckFailedException()
+                    raise exception.ConditionalCheckFailedException()
                 return True, old_item
 
     def _get_item_to_update(self, context, table_info, key_attribute_map):
@@ -1269,7 +1266,9 @@ class CassandraStorageDriver(StorageDriver):
 
         if old_attr_value.is_set:
             if old_attr_value.attr_type != attr_value.attr_type:
-                raise InvalidQueryParameter("Wrong type for %s" % attr_name)
+                raise exception.InvalidQueryParameter(
+                    "Wrong type for %s" % attr_name
+                )
 
             return models.AttributeValue(
                 old_attr_value.attr_type,
@@ -1282,7 +1281,9 @@ class CassandraStorageDriver(StorageDriver):
             if (not attr_value.is_set or
                     attr_value.attr_type.element_type !=
                     old_attr_value.attr_type.key_type):
-                raise InvalidQueryParameter("Wrong type for %s" % attr_name)
+                raise exception.InvalidQueryParameter(
+                    "Wrong type for %s" % attr_name
+                )
             res = old_attr_value.decoded_value.copy()
             for key in attr_value.decoded_value:
                 res.pop(key, None)
@@ -1297,7 +1298,7 @@ class CassandraStorageDriver(StorageDriver):
 
         if (attr_value.attr_type.collection_type is None and
                 not attr_value.is_number):
-            raise InvalidQueryParameter(
+            raise exception.InvalidQueryParameter(
                 "ADD allows collections or numbers only"
             )
 
@@ -1305,7 +1306,9 @@ class CassandraStorageDriver(StorageDriver):
             return attr_value
 
         if old_item[attr_name].attr_type != attr_value.attr_type:
-            raise InvalidQueryParameter("Wrong type for %s" % attr_name)
+            raise exception.InvalidQueryParameter(
+                "Wrong type for %s" % attr_name
+            )
 
         if attr_name not in old_item:
             return attr_value
@@ -1376,7 +1379,7 @@ class CassandraStorageDriver(StorageDriver):
         :raises: BackendInteractionException
         """
 
-        query_builder = deque(
+        query_builder = collections.deque(
             (
                 "SELECT ", 'COUNT(*)' if select_type.is_count else '*',
                 ' FROM ', table_info.internal_name

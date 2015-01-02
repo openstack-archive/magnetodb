@@ -14,13 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb import storage
-from magnetodb.api import validation
-from magnetodb.api import enforce_policy
-from magnetodb.openstack.common.log import logging
-
+from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api import validation
 from magnetodb.common import probe
+from magnetodb.openstack.common import log as logging
+from magnetodb import storage
 
 
 LOG = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class ListTablesController():
     """Returns an array of table describing info associated
     with the current user in given tenant.
     """
-    @enforce_policy("mdb:list_tables")
+    @api.enforce_policy("mdb:list_tables")
     @probe.Probe(__name__)
     def list_tables(self, req, project_id):
         params = req.params.copy()
