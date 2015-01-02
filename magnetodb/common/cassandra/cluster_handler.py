@@ -70,7 +70,7 @@ def _monitor_control_connection(cluster_handler_ref):
         try:
             if not cluster_handler._is_connected():
                 cluster_handler._connect()
-        except:
+        except Exception:
             LOG.exception("Error during connecting to the cluster")
 
         # clean hardlink to give ability to remove object

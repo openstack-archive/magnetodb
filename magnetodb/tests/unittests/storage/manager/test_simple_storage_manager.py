@@ -13,20 +13,18 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from magnetodb.common.exception import ValidationError
-from magnetodb.storage.driver import StorageDriver
-from magnetodb.storage.models import WriteItemRequest, TableMeta
-from magnetodb.storage.table_info_repo import TableInfoRepository, TableInfo
 
+from concurrent import futures
+import datetime
 import mock
-from datetime import timedelta
-from datetime import datetime
 import unittest
 
-from concurrent.futures import Future
-
+from magnetodb.common import exception
+from magnetodb.storage import driver as storage_driver
 from magnetodb.storage import models
-from magnetodb.storage.manager.simple_impl import SimpleStorageManager
+from magnetodb.storage import table_info_repo
+
+from magnetodb.storage.manager import simple_impl
 
 
 class SimpleStorageManagerTestCase(unittest.TestCase):
@@ -45,7 +43,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
     def test_execute_write_batch(self, mock_put_item, mock_delete_item,
                                  mock_repo_get, mock_validate_table_is_active,
                                  mock_validate_table_schema, mock_batch_write):
-        future = Future()
+        future = futures.Future()
         future.set_result(True)
         mock_put_item.return_value = future
         mock_delete_item.return_value = future
@@ -61,21 +59,21 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         request_map = {
             table_name: [
-                WriteItemRequest.put(
+                models.WriteItemRequest.put(
                     {
                         'id': models.AttributeValue('N', 1),
                         'range': models.AttributeValue('S', '1'),
                         'str': models.AttributeValue('S', 'str1'),
                     }
                 ),
-                WriteItemRequest.put(
+                models.WriteItemRequest.put(
                     {
                         'id': models.AttributeValue('N', 2),
                         'range': models.AttributeValue('S', '1'),
                         'str': models.AttributeValue('S', 'str1')
                     }
                 ),
-                WriteItemRequest.delete(
+                models.WriteItemRequest.delete(
                     {
                         'id': models.AttributeValue('N', 3),
                         'range': models.AttributeValue('S', '3')
@@ -112,8 +110,10 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
             )
         ]
 
-        storage_manager = SimpleStorageManager(StorageDriver(),
-                                               TableInfoRepository())
+        storage_manager = simple_impl.SimpleStorageManager(
+            storage_driver.StorageDriver(),
+            table_info_repo.TableInfoRepository()
+        )
 
         unprocessed_items = storage_manager.execute_write_batch(
             context, request_map
@@ -135,7 +135,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
     def test_execute_get_batch(self, mock_get_item, mock_repo_get,
                                mock_validate_table_is_active,
                                mock_validate_table_schema):
-        future = Future()
+        future = futures.Future()
         future.set_result(True)
         mock_get_item.return_value = future
 
@@ -169,7 +169,9 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
                                   req.attributes_to_get, req.consistent)
                         for req in request_list]
 
-        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+        storage_manager = simple_impl.SimpleStorageManager(
+            None, table_info_repo.TableInfoRepository()
+        )
 
         result, unprocessed_items = storage_manager.execute_get_batch(
             context, request_list
@@ -184,18 +186,22 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
-        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+        storage_manager = simple_impl.SimpleStorageManager(
+            None, table_info_repo.TableInfoRepository()
+        )
 
-        table_info = TableInfo(
-            table_name, None, None, TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
+        table_info = table_info_repo.TableInfo(
+            table_name, None, None, models.TableMeta.TABLE_STATUS_CREATING)
+        table_info.last_update_date_time = (
+            datetime.datetime.now() - datetime.timedelta(0, 1000)
+        )
 
         mock_repo_get.return_value = table_info
 
         table_meta = storage_manager.describe_table(context, table_name)
 
         self.assertEqual(
-            table_meta.status, TableMeta.TABLE_STATUS_CREATE_FAILED)
+            table_meta.status, models.TableMeta.TABLE_STATUS_CREATE_FAILED)
 
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
@@ -204,18 +210,20 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
-        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+        storage_manager = simple_impl.SimpleStorageManager(
+            None, table_info_repo.TableInfoRepository()
+        )
 
-        table_info = TableInfo(
-            table_name, None, None, TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_update_date_time = datetime.now()
+        table_info = table_info_repo.TableInfo(
+            table_name, None, None, models.TableMeta.TABLE_STATUS_CREATING)
+        table_info.last_update_date_time = datetime.datetime.now()
 
         mock_repo_get.return_value = table_info
 
         table_meta = storage_manager.describe_table(context, table_name)
 
         self.assertEqual(
-            table_meta.status, TableMeta.TABLE_STATUS_CREATING)
+            table_meta.status, models.TableMeta.TABLE_STATUS_CREATING)
 
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
@@ -224,19 +232,23 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
-        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+        storage_manager = simple_impl.SimpleStorageManager(
+            None, table_info_repo.TableInfoRepository()
+        )
 
-        table_info = TableInfo(
-            table_name, None, None, TableMeta.TABLE_STATUS_DELETING)
+        table_info = table_info_repo.TableInfo(
+            table_name, None, None, models.TableMeta.TABLE_STATUS_DELETING)
 
-        table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
+        table_info.last_update_date_time = (
+            datetime.datetime.now() - datetime.timedelta(0, 1000)
+        )
 
         mock_repo_get.return_value = table_info
 
         table_meta = storage_manager.describe_table(context, table_name)
 
         self.assertEqual(
-            table_meta.status, TableMeta.TABLE_STATUS_DELETE_FAILED)
+            table_meta.status, models.TableMeta.TABLE_STATUS_DELETE_FAILED)
 
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.update')
     @mock.patch('magnetodb.storage.table_info_repo.TableInfoRepository.get')
@@ -245,18 +257,20 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         context = mock.Mock(tenant='fake_tenant')
         table_name = 'fake_table'
-        storage_manager = SimpleStorageManager(None, TableInfoRepository())
+        storage_manager = simple_impl.SimpleStorageManager(
+            None, table_info_repo.TableInfoRepository()
+        )
 
-        table_info = TableInfo(
-            table_name, None, None, TableMeta.TABLE_STATUS_DELETING)
-        table_info.last_update_date_time = datetime.now()
+        table_info = table_info_repo.TableInfo(
+            table_name, None, None, models.TableMeta.TABLE_STATUS_DELETING)
+        table_info.last_update_date_time = datetime.datetime.now()
 
         mock_repo_get.return_value = table_info
 
         table_meta = storage_manager.describe_table(context, table_name)
 
         self.assertEqual(
-            table_meta.status, TableMeta.TABLE_STATUS_DELETING)
+            table_meta.status, models.TableMeta.TABLE_STATUS_DELETING)
 
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'
                 '_validate_table_schema')
@@ -277,14 +291,14 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         request_map = {
             table_name: [
-                WriteItemRequest.put(
+                models.WriteItemRequest.put(
                     {
                         'id': models.AttributeValue('N', 1),
                         'range': models.AttributeValue('S', '1'),
                         'str': models.AttributeValue('S', 'str1'),
                     }
                 ),
-                WriteItemRequest.delete(
+                models.WriteItemRequest.delete(
                     {
                         'id': models.AttributeValue('N', 1),
                         'range': models.AttributeValue('S', '1')
@@ -293,13 +307,15 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
             ]
         }
 
-        storage_manager = SimpleStorageManager(StorageDriver(),
-                                               TableInfoRepository())
+        storage_manager = simple_impl.SimpleStorageManager(
+            storage_driver.StorageDriver(),
+            table_info_repo.TableInfoRepository()
+        )
 
-        with self.assertRaises(ValidationError) as raises_cm:
+        with self.assertRaises(exception.ValidationError) as raises_cm:
             storage_manager.execute_write_batch(
                 context, request_map
             )
 
-        exception = raises_cm.exception
-        self.assertIn("More than one", exception._error_string)
+        exc = raises_cm.exception
+        self.assertIn("More than one", exc._error_string)
