@@ -13,15 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb.api.amz.dynamodb import action
+from magnetodb.api.amz.dynamodb import parser
+from magnetodb.common import exception
 from magnetodb import storage
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb import parser
 
-from magnetodb.common import exception
-
-
-class ListTablesDynamoDBAction(DynamoDBAction):
+class ListTablesDynamoDBAction(action.DynamoDBAction):
     schema = {
         "type": "object",
         "properties": {

@@ -14,17 +14,13 @@
 #    under the License.
 
 import logging
-
-from threading import BoundedSemaphore
-from threading import RLock
-from threading import Thread
-
 import time
+import threading
 import weakref
 
+import cassandra
 from cassandra import cluster as cassandra_cluster
-from cassandra import ConsistencyLevel
-from cassandra.protocol import QueryMessage
+from cassandra import protocol as cassandra_protocol
 from magnetodb.common import exception
 from cassandra import query as cassandra_query
 
@@ -48,9 +44,9 @@ def wait_for_schema_agreement(control_con, connection=None,
 
         # refresh schema version if schema agreement was stuck somehow
 
-        query = QueryMessage(
+        query = cassandra_protocol.QueryMessage(
             "ALTER TABLE magnetodb.dummy WITH comment=''",
-            consistency_level=ConsistencyLevel.ONE
+            consistency_level=cassandra.ConsistencyLevel.ONE
         )
         connection.wait_for_response(query)
 
@@ -82,14 +78,14 @@ class ClusterHandler(object):
     def __init__(self, cluster_params, query_timeout=2,
                  concurrent_queries=100):
         self.__closed = False
-        self.__task_semaphore = BoundedSemaphore(concurrent_queries)
+        self.__task_semaphore = threading.BoundedSemaphore(concurrent_queries)
 
         self.__cluster_params = cluster_params
         self.__query_timeout = query_timeout
-        self.__connection_lock = RLock()
+        self.__connection_lock = threading.RLock()
         self.__cluster = None
         self.__session = None
-        self.__connection_monitor_thread = Thread(
+        self.__connection_monitor_thread = threading.Thread(
             target=_monitor_control_connection, args=(weakref.ref(self),)
         )
         self.__connection_monitor_thread.start()

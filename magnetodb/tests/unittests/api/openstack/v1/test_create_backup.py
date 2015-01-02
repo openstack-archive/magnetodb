@@ -18,7 +18,7 @@ import json
 import mock
 import uuid
 
-from magnetodb.storage.models import BackupMeta
+from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
@@ -41,11 +41,11 @@ class CreateBackupTest(test_base_testcase.APITestCase):
 
         the_uuid = uuid.uuid4()
 
-        create_backup_mock.return_value = BackupMeta(
+        create_backup_mock.return_value = models.BackupMeta(
             the_uuid,
             'the_backup',
             'default_table',
-            BackupMeta.BACKUP_STATUS_CREATING,
+            models.BackupMeta.BACKUP_STATUS_CREATING,
             'location'
         )
 

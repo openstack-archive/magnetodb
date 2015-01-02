@@ -15,7 +15,7 @@
 
 import httplib
 import json
-from magnetodb.common.exception import ResourceInUseException
+from magnetodb.common import exception
 
 import mock
 from magnetodb.storage import models
@@ -103,7 +103,7 @@ class DeleteTableTest(test_base_testcase.APITestCase):
     @mock.patch('magnetodb.storage.delete_table')
     def test_delete_table_when_table_in_use(self, mock_delete_table):
 
-        mock_delete_table.side_effect = ResourceInUseException()
+        mock_delete_table.side_effect = exception.ResourceInUseException()
 
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}

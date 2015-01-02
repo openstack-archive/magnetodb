@@ -13,14 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb import storage
-from magnetodb.api import validation
-from magnetodb.api import enforce_policy
-from magnetodb.openstack.common.log import logging
-
+from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
+from magnetodb.api import validation
 from magnetodb.common import probe
-
+from magnetodb.openstack.common import log as logging
+from magnetodb import storage
 
 LOG = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ LOG = logging.getLogger(__name__)
 class DeleteTableController(object):
     """The DeleteTable operation deletes a table and all of its items."""
 
-    @enforce_policy("mdb:delete_table")
+    @api.enforce_policy("mdb:delete_table")
     @probe.Probe(__name__)
     def delete_table(self, req, project_id, table_name):
         validation.validate_table_name(table_name)
