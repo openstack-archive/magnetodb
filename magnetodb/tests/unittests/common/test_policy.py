@@ -45,7 +45,7 @@ class PolicyFileTestCase(testtools.TestCase):
         with open(tmpfilename, "w") as policyfile:
             policyfile.write('{"example:test": ""}')
         f = open(tmpfilename, 'r')
-        print f.readline()
+        print(f.readline())
         policy.enforce(self.context, action, self.target)
         with open(tmpfilename, "w") as policyfile:
             policyfile.write('{"example:test": "!"}')

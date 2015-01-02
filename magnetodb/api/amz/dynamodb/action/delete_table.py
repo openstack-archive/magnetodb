@@ -14,59 +14,59 @@
 #    under the License.
 
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
+from magnetodb.api.amz.dynamodb import action
+from magnetodb.api.amz.dynamodb import parser
 from magnetodb import storage
 from magnetodb.common import exception
 
 
-class DeleteTableDynamoDBAction(DynamoDBAction):
+class DeleteTableDynamoDBAction(action.DynamoDBAction):
     schema = {
-        "required": [Props.TABLE_NAME],
+        "required": [parser.Props.TABLE_NAME],
         "properties": {
-            Props.TABLE_NAME: Types.TABLE_NAME
+            parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
         }
     }
 
     def __call__(self):
 
-        table_name = self.action_params.get(Props.TABLE_NAME, None)
+        table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
         try:
             table_meta = storage.describe_table(self.context, table_name)
 
             storage.delete_table(self.context, table_name)
 
-            # TODO (isviridov): fill ITEM_COUNT, TABLE_SIZE_BYTES,
+            # TODO(isviridov): fill ITEM_COUNT, TABLE_SIZE_BYTES,
             # CREATION_DATE_TIME with real data
             return {
-                Props.TABLE_DESCRIPTION: {
-                    Props.ATTRIBUTE_DEFINITIONS: (
-                        Parser.format_attribute_definitions(
+                parser.Props.TABLE_DESCRIPTION: {
+                    parser.Props.ATTRIBUTE_DEFINITIONS: (
+                        parser.Parser.format_attribute_definitions(
                             table_meta.schema.attribute_type_map
                         )
                     ),
-                    Props.CREATION_DATE_TIME: 0,
-                    Props.ITEM_COUNT: 0,
-                    Props.KEY_SCHEMA: (
-                        Parser.format_key_schema(
+                    parser.Props.CREATION_DATE_TIME: 0,
+                    parser.Props.ITEM_COUNT: 0,
+                    parser.Props.KEY_SCHEMA: (
+                        parser.Parser.format_key_schema(
                             table_meta.schema.key_attributes
                         )
                     ),
-                    Props.LOCAL_SECONDARY_INDEXES: (
-                        Parser.format_local_secondary_indexes(
+                    parser.Props.LOCAL_SECONDARY_INDEXES: (
+                        parser.Parser.format_local_secondary_indexes(
                             table_meta.schema.key_attributes[0],
                             table_meta.schema.index_def_map
                         )
                     ),
-                    Props.PROVISIONED_THROUGHPUT: (
-                        Values.PROVISIONED_THROUGHPUT_DUMMY
+                    parser.Props.PROVISIONED_THROUGHPUT: (
+                        parser.Values.PROVISIONED_THROUGHPUT_DUMMY
                     ),
-                    Props.TABLE_NAME: table_name,
-                    Props.TABLE_STATUS: Parser.format_table_status(
-                        table_meta.status
+                    parser.Props.TABLE_NAME: table_name,
+                    parser.Props.TABLE_STATUS: (
+                        parser.Parser.format_table_status(table_meta.status)
                     ),
-                    Props.TABLE_SIZE_BYTES: 0
+                    parser.Props.TABLE_SIZE_BYTES: 0
                 }
             }
         except exception.AWSErrorResponseException as e:

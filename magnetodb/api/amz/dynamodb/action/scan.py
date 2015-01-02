@@ -78,7 +78,7 @@ class ScanDynamoDBAction(DynamoDBAction):
 
     def __call__(self):
         try:
-            # TODO ikhudoshyn: table_name may be index name
+            # TODO(ikhudoshyn): table_name may be index name
             table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
             attrs_to_get = self.action_params.get(

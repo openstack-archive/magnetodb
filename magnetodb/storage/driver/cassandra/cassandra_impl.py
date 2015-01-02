@@ -25,9 +25,7 @@ from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
 from magnetodb.storage.driver import StorageDriver
-from magnetodb.storage.driver.cassandra.encoder import (
-    encode_predefined_attr_value, encode_dynamic_attr_value
-)
+from magnetodb.storage.driver.cassandra import encoder as enc
 
 from cassandra.encoder import cql_quote
 from pyjolokia import Jolokia
@@ -98,13 +96,13 @@ def _decode_dynamic_attr_value(value, storage_type):
     return models.AttributeValue(storage_type, encoded_value=value)
 
 
-ENCODED_DEFAULT_STRING_VALUE = encode_predefined_attr_value(
+ENCODED_DEFAULT_STRING_VALUE = enc.encode_predefined_attr_value(
     DEFAULT_STRING_VALUE
 )
-ENCODED_DEFAULT_NUMBER_VALUE = encode_predefined_attr_value(
+ENCODED_DEFAULT_NUMBER_VALUE = enc.encode_predefined_attr_value(
     DEFAULT_NUMBER_VALUE
 )
-ENCODED_DEFAULT_BLOB_VALUE = encode_predefined_attr_value(
+ENCODED_DEFAULT_BLOB_VALUE = enc.encode_predefined_attr_value(
     DEFAULT_BLOB_VALUE
 )
 
@@ -301,8 +299,8 @@ class CassandraStorageDriver(StorageDriver):
         if query_builder is None:
             query_builder = deque()
 
-        _encode_predefined_attr_value = encode_predefined_attr_value
-        _encode_dynamic_attr_value = encode_dynamic_attr_value
+        _encode_predefined_attr_value = enc.encode_predefined_attr_value
+        _encode_dynamic_attr_value = enc.encode_dynamic_attr_value
 
         query_builder += (
             'INSERT INTO ', table_info.internal_name, ' ('
@@ -399,8 +397,8 @@ class CassandraStorageDriver(StorageDriver):
         if query_builder is None:
             query_builder = deque()
 
-        _encode_predefined_attr_value = encode_predefined_attr_value
-        _encode_dynamic_attr_value = encode_dynamic_attr_value
+        _encode_predefined_attr_value = enc.encode_predefined_attr_value
+        _encode_dynamic_attr_value = enc.encode_dynamic_attr_value
 
         key_attr_names = table_info.schema.key_attributes
 
@@ -647,7 +645,7 @@ class CassandraStorageDriver(StorageDriver):
                 return True, old_item
             raise ConditionalCheckFailedException()
         elif table_info.schema.index_def_map or return_old:
-            _encode_predefined_attr_value = encode_predefined_attr_value
+            _encode_predefined_attr_value = enc.encode_predefined_attr_value
             range_name = table_info.schema.range_key_name
 
             while True:
@@ -888,7 +886,7 @@ class CassandraStorageDriver(StorageDriver):
         )
 
         if table_info.schema.index_def_map:
-            _encode_predefined_attr_value = encode_predefined_attr_value
+            _encode_predefined_attr_value = enc.encode_predefined_attr_value
 
             while True:
                 old_indexes = self._select_current_index_values(
@@ -1035,7 +1033,7 @@ class CassandraStorageDriver(StorageDriver):
         op = CONDITION_TO_OP[condition.type]
         query_builder += (
             '"', column_prefix, attr_name, '"', op,
-            encode_predefined_attr_value(condition.arg)
+            enc.encode_predefined_attr_value(condition.arg)
         )
         return query_builder
 
@@ -1052,7 +1050,7 @@ class CassandraStorageDriver(StorageDriver):
                 query_builder = deque()
             query_builder += (
                 'token("', column_prefix, attr_name, '")', op, "token(",
-                encode_predefined_attr_value(condition.arg), ")"
+                enc.encode_predefined_attr_value(condition.arg), ")"
             )
             return query_builder
 
@@ -1089,12 +1087,12 @@ class CassandraStorageDriver(StorageDriver):
             if is_predefined:
                 query_builder += (
                     '"', USER_PREFIX, attr, '"=',
-                    encode_predefined_attr_value(condition.arg)
+                    enc.encode_predefined_attr_value(condition.arg)
                 )
             else:
                 query_builder += (
                     SYSTEM_COLUMN_EXTRA_ATTR_DATA, "['", attr, "']=",
-                    encode_dynamic_attr_value(condition.arg)
+                    enc.encode_dynamic_attr_value(condition.arg)
                 )
         else:
             assert False
@@ -1106,7 +1104,7 @@ class CassandraStorageDriver(StorageDriver):
         if query_builder is None:
             query_builder = deque()
 
-        _encode_predefined_attr_value = encode_predefined_attr_value
+        _encode_predefined_attr_value = enc.encode_predefined_attr_value
 
         for key_attr in table_schema.key_attributes:
             if key_attr:
@@ -1136,7 +1134,7 @@ class CassandraStorageDriver(StorageDriver):
 
             res_index_values[
                 INDEX_TYPE_TO_INDEX_POS_MAP[index_value.attr_type]
-            ] = encode_predefined_attr_value(index_value)
+            ] = enc.encode_predefined_attr_value(index_value)
 
         for i in xrange(len(LOCAL_INDEX_FIELD_LIST)):
             query_builder += (
@@ -1592,7 +1590,7 @@ class CassandraStorageDriver(StorageDriver):
 
         result = []
 
-        # TODO ikhudoshyn: if select_type.is_all_projected,
+        # TODO(ikhudoshyn): if select_type.is_all_projected,
         # get list of projected attrs by index_name from metainfo
 
         attributes_to_get = select_type.attributes
