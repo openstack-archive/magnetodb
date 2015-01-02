@@ -26,9 +26,7 @@ from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
 from magnetodb.storage import models
 from magnetodb.storage.driver import StorageDriver
-from magnetodb.storage.driver.cassandra.encoder import (
-    encode_predefined_attr_value, encode_dynamic_attr_value
-)
+from magnetodb.storage.driver.cassandra import encoder as enc
 
 from pyjolokia import Jolokia
 from oslo.config import cfg
@@ -300,8 +298,8 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
         if query_builder is None:
             query_builder = deque()
 
-        _encode_predefined_attr_value = encode_predefined_attr_value
-        _encode_dynamic_attr_value = encode_dynamic_attr_value
+        _encode_predefined_attr_value = enc.encode_predefined_attr_value
+        _encode_dynamic_attr_value = enc.encode_dynamic_attr_value
 
         query_builder += (
             'INSERT INTO ', table_info.internal_name, ' ('
@@ -370,8 +368,8 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
         if query_builder is None:
             query_builder = deque()
 
-        _encode_predefined_attr_value = encode_predefined_attr_value
-        _encode_dynamic_attr_value = encode_dynamic_attr_value
+        _encode_predefined_attr_value = enc.encode_predefined_attr_value
+        _encode_dynamic_attr_value = enc.encode_dynamic_attr_value
 
         key_attr_names = table_info.schema.key_attributes
 
@@ -768,7 +766,7 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
         op = CONDITION_TO_OP[condition.type]
         query_builder += (
             '"', column_prefix, attr_name, '"', op,
-            encode_predefined_attr_value(condition.arg)
+            enc.encode_predefined_attr_value(condition.arg)
         )
         return query_builder
 
@@ -785,7 +783,7 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
                 query_builder = deque()
             query_builder += (
                 'token("', column_prefix, attr_name, '")', op, "token(",
-                encode_predefined_attr_value(condition.arg), ")"
+                enc.encode_predefined_attr_value(condition.arg), ")"
             )
             return query_builder
 
@@ -822,12 +820,12 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
             if is_predefined:
                 query_builder += (
                     '"', USER_PREFIX, attr, '"=',
-                    encode_predefined_attr_value(condition.arg)
+                    enc.encode_predefined_attr_value(condition.arg)
                 )
             else:
                 query_builder += (
                     SYSTEM_COLUMN_EXTRA_ATTR_DATA, "['", attr, "']=",
-                    encode_dynamic_attr_value(condition.arg)
+                    enc.encode_dynamic_attr_value(condition.arg)
                 )
         else:
             assert False
@@ -839,7 +837,7 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
         if query_builder is None:
             query_builder = deque()
 
-        _encode_predefined_attr_value = encode_predefined_attr_value
+        _encode_predefined_attr_value = enc.encode_predefined_attr_value
 
         for key_attr in table_schema.key_attributes:
             if key_attr:
@@ -1221,7 +1219,7 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
 
         result = []
 
-        # TODO ikhudoshyn: if select_type.is_all_projected,
+        # TODO(ikhudoshyn): if select_type.is_all_projected,
         # get list of projected attrs by index_name from metainfo
 
         attributes_to_get = select_type.attributes

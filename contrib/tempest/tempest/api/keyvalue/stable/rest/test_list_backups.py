@@ -42,14 +42,14 @@ class MagnetoDBListBackupsTest(MagnetoDBTestCase):
 
         headers, body = self.management_client.list_backups(
             self.tname, limit=2)
-        self.assertEquals(2, len(body['backups']))
+        self.assertEqual(2, len(body['backups']))
 
         last_eval_id = body['last_evaluated_backup_id']
         backups1 = body['backups']
 
         headers, body = self.management_client.list_backups(
             self.tname, exclusive_start_backup_id=last_eval_id, limit=2)
-        self.assertEquals(1, len(body['backups']))
+        self.assertEqual(1, len(body['backups']))
 
         backups2 = body['backups']
 

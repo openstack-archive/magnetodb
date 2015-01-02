@@ -15,70 +15,70 @@
 
 
 from magnetodb import storage
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
-from magnetodb.api.amz.dynamodb.exception import AWSValidationException
-from magnetodb.api.amz.dynamodb.exception import AWSResourceNotFoundException
-from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
-from magnetodb.api.amz.dynamodb.parser import Props, Parser, Types, Values
-from magnetodb.common.exception import TableNotExistsException
+from magnetodb.api.amz.dynamodb import action
+from magnetodb.api.amz.dynamodb import ddb_exception
+from magnetodb.api.amz.dynamodb import parser
+from magnetodb.common import exception
 
 
-class DescribeTableDynamoDBAction(DynamoDBAction):
+class DescribeTableDynamoDBAction(action.DynamoDBAction):
     schema = {
-        "required": [Props.TABLE_NAME],
+        "required": [parser.Props.TABLE_NAME],
         "properties": {
-            Props.TABLE_NAME: Types.TABLE_NAME
+            parser.Props.TABLE_NAME: parser.Types.TABLE_NAME
         }
     }
 
     def __call__(self):
 
-        table_name = self.action_params.get(Props.TABLE_NAME, None)
+        table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
         if not table_name:
-            raise AWSValidationException(message='Table name is not defined')
+            raise ddb_exception.AWSValidationException(
+                message='Table name is not defined'
+            )
 
         try:
             table_meta = storage.describe_table(self.context, table_name)
 
             result = {
-                Props.TABLE: {
-                    Props.ATTRIBUTE_DEFINITIONS: (
-                        Parser.format_attribute_definitions(
+                parser.Props.TABLE: {
+                    parser.Props.ATTRIBUTE_DEFINITIONS: (
+                        parser.Parser.format_attribute_definitions(
                             table_meta.schema.attribute_type_map
                         )
                     ),
-                    Props.CREATION_DATE_TIME: 0,
-                    Props.ITEM_COUNT: 0,
-                    Props.KEY_SCHEMA: (
-                        Parser.format_key_schema(
+                    parser.Props.CREATION_DATE_TIME: 0,
+                    parser.Props.ITEM_COUNT: 0,
+                    parser.Props.KEY_SCHEMA: (
+                        parser.Parser.format_key_schema(
                             table_meta.schema.key_attributes
                         )
                     ),
-                    Props.PROVISIONED_THROUGHPUT: (
-                        Values.PROVISIONED_THROUGHPUT_DUMMY
+                    parser.Props.PROVISIONED_THROUGHPUT: (
+                        parser.Values.PROVISIONED_THROUGHPUT_DUMMY
                     ),
-                    Props.TABLE_NAME: table_name,
-                    Props.TABLE_STATUS: (
-                        Parser.format_table_status(table_meta.status)
+                    parser.Props.TABLE_NAME: table_name,
+                    parser.Props.TABLE_STATUS: (
+                        parser.Parser.format_table_status(table_meta.status)
                     ),
-                    Props.TABLE_SIZE_BYTES: 0
+                    parser.Props.TABLE_SIZE_BYTES: 0
                 }
             }
 
             if table_meta.schema.index_def_map:
-                table_def = result[Props.TABLE]
-                table_def[Props.LOCAL_SECONDARY_INDEXES] = (
-                    Parser.format_local_secondary_indexes(
+                table_def = result[parser.Props.TABLE]
+                table_def[parser.Props.LOCAL_SECONDARY_INDEXES] = (
+                    parser.Parser.format_local_secondary_indexes(
                         table_meta.schema.key_attributes[0],
                         table_meta.schema.index_def_map
                     )
                 )
             return result
 
-        except TableNotExistsException:
-            raise AWSResourceNotFoundException()
-        except AWSErrorResponseException as e:
+        except exception.TableNotExistsException:
+            raise ddb_exception.AWSResourceNotFoundException()
+        except ddb_exception.AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise AWSErrorResponseException()
+            raise ddb_exception.AWSErrorResponseException()
