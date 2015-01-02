@@ -8,8 +8,8 @@ HealthCheck
 **Request Parameters**
 
     **fullcheck**
-       | If fullcheck is 'true' keystone and back-end availability will be checked
-       | Syntax: healthcheck?fullcheck={true, false}
+       | If fullcheck is 'true' subsystems availability will be checked
+       | Syntax: healthcheck?fullcheck={true,false}
        | default: false
 
 **Request Syntax**
@@ -23,4 +23,4 @@ HealthCheck
 
     **Response Body**
         | Content-Type: text/plain
-        | "OK" or "Cassanra: ERROR" or "Keystone: ERROR" or "Keystone: ERROR, Cassandra: ERROR"
+        | "API: {OK,ERROR}, Storage: {OK,ERROR}, Keystone: {OK,ERROR}, Messaging: {OK,ERROR}"
