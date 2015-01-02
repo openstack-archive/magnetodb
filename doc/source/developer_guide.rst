@@ -266,7 +266,7 @@ Integration and functional tests
 
 MagnetoDB contains a suite of integration tests (in the
 `/magnetodb/tests/storage` directory) and functional tests (in the
-`/tempest` directory).
+`/contrib/tempest` directory).
 
 Any proposed code change will be automatically rejected by the
 OpenStack Jenkins server if the change causes unit test failures.
