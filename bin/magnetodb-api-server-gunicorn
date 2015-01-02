@@ -49,9 +49,9 @@ common_opts = [
 CONF.register_opts(common_opts)
 
 if __name__ == '__main__':
-    from magnetodb.common import PROJECT_NAME
+    from magnetodb import common
     prog_name = os.path.basename(sys.argv[0])
-    CONF(project=PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
+    CONF(project=common.PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
 
     api_paste_config_file = CONF.find_file(CONF.api_paste_config)
 

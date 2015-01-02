@@ -14,25 +14,23 @@
 #    under the License.
 
 import json
-import re
-
-from threading import Event
 import Queue
+import re
+import threading
 
-from magnetodb.api import with_global_env
-from magnetodb.openstack.common import log as logging
+from magnetodb import api
 from magnetodb import notifier
-from magnetodb import storage
+from magnetodb.openstack.common import log as logging
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
-
+from magnetodb import storage
 
 LOG = logging.getLogger(__name__)
 
 MAX_FUTURES = 100
 
 
-@with_global_env(default_program='magnetodb-streaming-api')
+@api.with_global_env(default_program='magnetodb-streaming-api')
 def app_factory(global_conf, **local_conf):
     return bulk_load_app
 
@@ -92,7 +90,7 @@ def bulk_load_app(environ, start_response):
 
     dont_process = False
 
-    future_ready_event = Event()
+    future_ready_event = threading.Event()
     future_ready_queue = Queue.Queue()
 
     stream = environ['wsgi.input']

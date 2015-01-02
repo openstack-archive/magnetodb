@@ -17,7 +17,7 @@ import json
 import mock
 import uuid
 
-from magnetodb.storage.models import BackupMeta
+from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
@@ -36,11 +36,11 @@ class DeleteBackupTest(test_base_testcase.APITestCase):
         url = '/v1/management/default_tenant/default_table/backups/{}'.format(
             the_uuid.hex)
 
-        delete_backup_mock.return_value = BackupMeta(
+        delete_backup_mock.return_value = models.BackupMeta(
             the_uuid,
             'the_backup',
             'default_table',
-            BackupMeta.BACKUP_STATUS_CREATING,
+            models.BackupMeta.BACKUP_STATUS_CREATING,
             'location'
         )
 

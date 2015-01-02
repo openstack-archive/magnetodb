@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from boto.dynamodb2.layer1 import DynamoDBConnection
+from boto.dynamodb2 import layer1
 import urlparse
 
 from tempest import config_magnetodb as config
@@ -21,13 +21,13 @@ from tempest.services import botoclients
 
 
 CONF = config.CONF
-DynamoDBConnection.NumberRetries = 0
+layer1.DynamoDBConnection.NumberRetries = 0
 
 
 class APIClientDynamoDB(botoclients.BotoClientBase):
 
     def connect_method(self, *args, **kwargs):
-        return DynamoDBConnection(**kwargs)
+        return layer1.DynamoDBConnection(**kwargs)
 
     def __init__(self, *args, **kwargs):
         super(APIClientDynamoDB, self).__init__(*args, **kwargs)

@@ -13,15 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
+from magnetodb.api.amz.dynamodb import action
 from magnetodb.api.amz.dynamodb import parser
-
-from magnetodb import storage
 from magnetodb.common import exception
-from magnetodb.storage.models import ScanCondition
+from magnetodb import storage
+from magnetodb.storage import models
 
 
-class ScanDynamoDBAction(DynamoDBAction):
+class ScanDynamoDBAction(action.DynamoDBAction):
     schema = {
         "required": [parser.Props.TABLE_NAME],
         "properties": {
@@ -108,7 +107,7 @@ class ScanDynamoDBAction(DynamoDBAction):
             )
 
             condition_map = parser.Parser.parse_attribute_conditions(
-                scan_filter, condition_class=ScanCondition
+                scan_filter, condition_class=models.ScanCondition
             )
 
             segment = self.action_params.get(parser.Props.SEGMENT, 0)

@@ -17,18 +17,20 @@ import logging
 from magnetodb import notifier
 
 from magnetodb.storage import models
-from magnetodb.storage.manager.simple_impl import SimpleStorageManager
+from magnetodb.storage.manager import simple_impl
 
 LOG = logging.getLogger(__name__)
 
 
-class AsyncSimpleStorageManager(SimpleStorageManager):
+class AsyncSimpleStorageManager(simple_impl.SimpleStorageManager):
     def __init__(self, storage_driver, table_info_repo,
                  concurrent_tasks=1000, batch_chunk_size=25,
                  schema_operation_timeout=300):
-        SimpleStorageManager.__init__(self, storage_driver, table_info_repo,
-                                      concurrent_tasks, batch_chunk_size,
-                                      schema_operation_timeout)
+        simple_impl.SimpleStorageManager.__init__(
+            self, storage_driver, table_info_repo,
+            concurrent_tasks, batch_chunk_size,
+            schema_operation_timeout
+        )
 
     def _do_create_table(self, context, table_info):
         future = self._execute_async(self._storage_driver.create_table,

@@ -22,10 +22,10 @@ import urlparse
 
 from keystoneclient.generic import client
 
-from magnetodb.api import with_global_env
+from magnetodb import api
 from magnetodb.common import exception
+from magnetodb.openstack.common import log as logging
 from magnetodb import storage
-from magnetodb.openstack.common.log import logging
 
 LOG = logging.getLogger(__name__)
 
@@ -85,6 +85,6 @@ class HealthCheckApp(object):
         return resp
 
 
-@with_global_env(default_program='magnetodb-api')
+@api.with_global_env(default_program='magnetodb-api')
 def app_factory(global_conf, **local_conf):
     return HealthCheckApp(global_conf.get('auth_uri', ''))

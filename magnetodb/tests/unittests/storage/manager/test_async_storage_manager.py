@@ -14,16 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from copy import deepcopy
-
+import copy
 import mock
 import time
 import unittest
 
 from magnetodb.storage import models
-from magnetodb.storage.manager.async_simple_impl import (
-    AsyncSimpleStorageManager
-)
+from magnetodb.storage.manager import async_simple_impl
 
 
 class AsyncStorageManagerTestCase(unittest.TestCase):
@@ -41,12 +38,14 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
         table_info_save_args_list = []
 
         def side_effect(*args):
-            table_info_save_args_list.append(deepcopy(args))
+            table_info_save_args_list.append(copy.deepcopy(args))
 
         mock_table_info_repo.save.side_effect = side_effect
 
-        storage_manager = AsyncSimpleStorageManager(mock_storage_driver,
-                                                    mock_table_info_repo)
+        storage_manager = async_simple_impl.AsyncSimpleStorageManager(
+            mock_storage_driver,
+            mock_table_info_repo
+        )
         storage_manager.create_table(context, table_name, table_schema)
 
         # called once, length of call_args_list indicates number of calls
@@ -104,8 +103,10 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
         mock_table_info_repo = mock.Mock()
         mock_table_info_repo.get.return_value = FakeTableInfo()
 
-        storage_manager = AsyncSimpleStorageManager(mock_storage_driver,
-                                                    mock_table_info_repo)
+        storage_manager = async_simple_impl.AsyncSimpleStorageManager(
+            mock_storage_driver,
+            mock_table_info_repo
+        )
         storage_manager.delete_table(context, table_name)
 
         table_info_update_args_list = (

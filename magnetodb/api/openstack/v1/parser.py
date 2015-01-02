@@ -13,24 +13,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import json
-from magnetodb.api import validation
-from magnetodb.openstack.common.gettextutils import _
-from magnetodb.storage.models import IndexDefinition
-from magnetodb.storage.models import UpdateReturnValuesType
-from magnetodb.storage.models import WriteItemRequest
-from magnetodb.storage.models import UpdateItemAction
-from magnetodb.storage.models import TableMeta
-from magnetodb.storage.models import Condition
-from magnetodb.storage.models import IndexedCondition
-from magnetodb.storage.models import ScanCondition
-from magnetodb.storage.models import ExpectedCondition
-from magnetodb.storage.models import SelectType
-from magnetodb.storage.models import AttributeType
-from magnetodb.storage.models import AttributeValue
-from magnetodb.storage.models import GetItemRequest
 
-from magnetodb.common.exception import ValidationError
+import json
+
+from magnetodb.api import validation
+from magnetodb.common import exception
+from magnetodb.openstack.common.gettextutils import _
+from magnetodb.storage import models
 
 
 class Props():
@@ -132,45 +121,49 @@ class Values():
     PROJECTION_TYPE_INCLUDE = "INCLUDE"
     PROJECTION_TYPE_ALL = "ALL"
 
-    ACTION_TYPE_PUT = UpdateItemAction.UPDATE_ACTION_PUT
-    ACTION_TYPE_ADD = UpdateItemAction.UPDATE_ACTION_ADD
-    ACTION_TYPE_DELETE = UpdateItemAction.UPDATE_ACTION_DELETE
+    ACTION_TYPE_PUT = models.UpdateItemAction.UPDATE_ACTION_PUT
+    ACTION_TYPE_ADD = models.UpdateItemAction.UPDATE_ACTION_ADD
+    ACTION_TYPE_DELETE = models.UpdateItemAction.UPDATE_ACTION_DELETE
 
-    TABLE_STATUS_ACTIVE = TableMeta.TABLE_STATUS_ACTIVE
-    TABLE_STATUS_CREATING = TableMeta.TABLE_STATUS_CREATING
-    TABLE_STATUS_DELETING = TableMeta.TABLE_STATUS_DELETING
+    TABLE_STATUS_ACTIVE = models.TableMeta.TABLE_STATUS_ACTIVE
+    TABLE_STATUS_CREATING = models.TableMeta.TABLE_STATUS_CREATING
+    TABLE_STATUS_DELETING = models.TableMeta.TABLE_STATUS_DELETING
 
-    RETURN_VALUES_NONE = UpdateReturnValuesType.RETURN_VALUES_TYPE_NONE
-    RETURN_VALUES_ALL_OLD = UpdateReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD
+    RETURN_VALUES_NONE = models.UpdateReturnValuesType.RETURN_VALUES_TYPE_NONE
+    RETURN_VALUES_ALL_OLD = (
+        models.UpdateReturnValuesType.RETURN_VALUES_TYPE_ALL_OLD
+    )
     RETURN_VALUES_UPDATED_OLD = (
-        UpdateReturnValuesType.RETURN_VALUES_TYPE_UPDATED_OLD
+        models.UpdateReturnValuesType.RETURN_VALUES_TYPE_UPDATED_OLD
     )
-    RETURN_VALUES_ALL_NEW = UpdateReturnValuesType.RETURN_VALUES_TYPE_ALL_NEW
+    RETURN_VALUES_ALL_NEW = (
+        models.UpdateReturnValuesType.RETURN_VALUES_TYPE_ALL_NEW
+    )
     RETURN_VALUES_UPDATED_NEW = (
-        UpdateReturnValuesType.RETURN_VALUES_TYPE_UPDATED_NEW
+        models.UpdateReturnValuesType.RETURN_VALUES_TYPE_UPDATED_NEW
     )
 
-    ALL_ATTRIBUTES = SelectType.SELECT_TYPE_ALL
-    ALL_PROJECTED_ATTRIBUTES = SelectType.SELECT_TYPE_ALL_PROJECTED
-    SPECIFIC_ATTRIBUTES = SelectType.SELECT_TYPE_SPECIFIC
-    COUNT = SelectType.SELECT_TYPE_COUNT
+    ALL_ATTRIBUTES = models.SelectType.SELECT_TYPE_ALL
+    ALL_PROJECTED_ATTRIBUTES = models.SelectType.SELECT_TYPE_ALL_PROJECTED
+    SPECIFIC_ATTRIBUTES = models.SelectType.SELECT_TYPE_SPECIFIC
+    COUNT = models.SelectType.SELECT_TYPE_COUNT
 
-    EQ = Condition.CONDITION_TYPE_EQUAL
+    EQ = models.Condition.CONDITION_TYPE_EQUAL
 
-    LE = IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL
-    LT = IndexedCondition.CONDITION_TYPE_LESS
-    GE = IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL
-    GT = IndexedCondition.CONDITION_TYPE_GREATER
+    LE = models.IndexedCondition.CONDITION_TYPE_LESS_OR_EQUAL
+    LT = models.IndexedCondition.CONDITION_TYPE_LESS
+    GE = models.IndexedCondition.CONDITION_TYPE_GREATER_OR_EQUAL
+    GT = models.IndexedCondition.CONDITION_TYPE_GREATER
     BEGINS_WITH = "BEGINS_WITH"
     BETWEEN = "BETWEEN"
 
-    NE = ScanCondition.CONDITION_TYPE_NOT_EQUAL
-    CONTAINS = ScanCondition.CONDITION_TYPE_CONTAINS
-    NOT_CONTAINS = ScanCondition.CONDITION_TYPE_NOT_CONTAINS
-    IN = ScanCondition.CONDITION_TYPE_IN
+    NE = models.ScanCondition.CONDITION_TYPE_NOT_EQUAL
+    CONTAINS = models.ScanCondition.CONDITION_TYPE_CONTAINS
+    NOT_CONTAINS = models.ScanCondition.CONDITION_TYPE_NOT_CONTAINS
+    IN = models.ScanCondition.CONDITION_TYPE_IN
 
-    NOT_NULL = ScanCondition.CONDITION_TYPE_NOT_NULL
-    NULL = ScanCondition.CONDITION_TYPE_NULL
+    NOT_NULL = models.ScanCondition.CONDITION_TYPE_NOT_NULL
+    NULL = models.ScanCondition.CONDITION_TYPE_NULL
 
     BOOKMARK = "bookmark"
     SELF = "self"
@@ -188,7 +181,7 @@ class Parser():
         attr_type_json = attr_def_json.pop(Props.ATTRIBUTE_TYPE, None)
 
         validation.validate_attr_name(attr_name_json)
-        storage_type = AttributeType(attr_type_json)
+        storage_type = models.AttributeType(attr_type_json)
 
         validation.validate_unexpected_props(
             attr_def_json, "attribute_definition"
@@ -237,20 +230,22 @@ class Parser():
 
             if key_type_json == Values.KEY_TYPE_HASH:
                 if hash_key_attr_name is not None:
-                    raise ValidationError(_("Only one 'HASH' key is allowed"))
+                    raise exception.ValidationError(
+                        _("Only one 'HASH' key is allowed"))
                 hash_key_attr_name = key_attr_name_json
             elif key_type_json == Values.KEY_TYPE_RANGE:
                 if range_key_attr_name is not None:
-                    raise ValidationError(_("Only one 'RANGE' key is allowed"))
+                    raise exception.ValidationError(
+                        _("Only one 'RANGE' key is allowed"))
                 range_key_attr_name = key_attr_name_json
             else:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("Only 'RANGE' or 'HASH' key types are allowed, but "
                       "'%(key_type)s' is found"), key_type=key_type_json)
 
             validation.validate_unexpected_props(key_def, "key_definition")
         if hash_key_attr_name is None:
-            raise ValidationError(_("HASH key is missing"))
+            raise exception.ValidationError(_("HASH key is missing"))
         if range_key_attr_name:
             return (hash_key_attr_name, range_key_attr_name)
         return (hash_key_attr_name,)
@@ -290,7 +285,8 @@ class Parser():
         try:
             range_key = key_attrs_for_projection[1]
         except IndexError:
-            raise ValidationError(_("Range key in index wasn't specified"))
+            raise exception.ValidationError(
+                _("Range key in index wasn't specified"))
 
         index_name = local_secondary_index_json.pop(Props.INDEX_NAME, None)
         validation.validate_index_name(index_name)
@@ -316,7 +312,7 @@ class Parser():
                 Props.NON_KEY_ATTRIBUTES, None
             )
         else:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Only '%(pt_all)', '%(pt_ko)' of '%(pt_incl)' projection "
                   "types are allowed, but '%(projection_type)s' is found"),
                 pt_all=Values.PROJECTION_TYPE_ALL,
@@ -326,7 +322,7 @@ class Parser():
             )
         validation.validate_unexpected_props(projection_json, Props.PROJECTION)
 
-        return index_name, IndexDefinition(
+        return index_name, models.IndexDefinition(
             hash_key,
             range_key,
             projected_attrs
@@ -372,7 +368,8 @@ class Parser():
             res[index_name] = index_def
 
         if len(res) < len(local_secondary_index_list_json):
-            raise ValidationError(_("Two or more indexes with the same name"))
+            raise exception.ValidationError(
+                _("Two or more indexes with the same name"))
 
         return res
 
@@ -393,7 +390,7 @@ class Parser():
     @classmethod
     def parse_typed_attr_value(cls, typed_attr_value_json):
         if len(typed_attr_value_json) != 1:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Can't recognize attribute typed value format: '%(attr)s'"),
                 attr=json.dumps(typed_attr_value_json)
             )
@@ -401,7 +398,7 @@ class Parser():
             typed_attr_value_json.popitem()
         )
 
-        return AttributeValue(attr_type_json, attr_value_json)
+        return models.AttributeValue(attr_type_json, attr_value_json)
 
     @classmethod
     def parse_item_attributes(cls, item_attributes_json):
@@ -435,7 +432,7 @@ class Parser():
             validation.validate_object(condition_json, attr_name_json)
 
             if len(condition_json) != 1:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("Can't recognize attribute expected condition format: "
                       "'%(attr)s'"),
                     attr=json.dumps(condition_json)
@@ -448,18 +445,18 @@ class Parser():
             if condition_type == Props.VALUE:
                 validation.validate_object(condition_value, Props.VALUE)
                 expected_attribute_conditions[attr_name_json] = [
-                    ExpectedCondition.eq(
+                    models.ExpectedCondition.eq(
                         cls.parse_typed_attr_value(condition_value)
                     )
                 ]
             elif condition_type == Props.EXISTS:
                 validation.validate_boolean(condition_value, Props.EXISTS)
                 expected_attribute_conditions[attr_name_json] = [
-                    ExpectedCondition.not_null() if condition_value else
-                    ExpectedCondition.null()
+                    models.ExpectedCondition.not_null() if condition_value else
+                    models.ExpectedCondition.null()
                 ]
             else:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("Unsupported condition type found: %(condition_type)s"),
                     condition_type=condition_type
                 )
@@ -471,30 +468,30 @@ class Parser():
                           select_on_index=False):
         if select is None:
             if attributes_to_get:
-                return SelectType.specific_attributes(
+                return models.SelectType.specific_attributes(
                     attributes_to_get
                 )
             else:
                 if select_on_index:
-                    return SelectType.all_projected()
+                    return models.SelectType.all_projected()
                 else:
-                    return SelectType.all()
+                    return models.SelectType.all()
 
         if select == Values.SPECIFIC_ATTRIBUTES:
             assert attributes_to_get
-            return SelectType.specific_attributes(attributes_to_get)
+            return models.SelectType.specific_attributes(attributes_to_get)
 
         assert not attributes_to_get
 
         if select == Values.ALL_ATTRIBUTES:
-            return SelectType.all()
+            return models.SelectType.all()
 
         if select == Values.ALL_PROJECTED_ATTRIBUTES:
             assert select_on_index
-            return SelectType.all_projected()
+            return models.SelectType.all_projected()
 
         if select == Values.COUNT:
-            return SelectType.count()
+            return models.SelectType.count()
 
         assert False, "Select type wasn't recognized"
 
@@ -505,21 +502,21 @@ class Parser():
 
     @classmethod
     def parse_attribute_condition(cls, condition_type, condition_args,
-                                  condition_class=IndexedCondition):
+                                  condition_class=models.IndexedCondition):
 
         actual_args_count = (
             len(condition_args) if condition_args is not None else 0
         )
         if condition_type == Values.BETWEEN:
             if actual_args_count != 2:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("%(type)s condition type requires exactly 2 arguments, "
                       "but %(actual_args_count)s given"),
                     type=condition_type,
                     actual_args_count=actual_args_count
                 )
             if condition_args[0].attr_type != condition_args[1].attr_type:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("%(type)s condition type requires arguments of the "
                       "same type, but different types given"),
                     type=condition_type,
@@ -538,7 +535,7 @@ class Parser():
             condition_arg = first_condition.arg
 
             if condition_arg.is_number:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("%(condition_type)s condition type is not allowed for"
                       "argument of the %(argument_type)s type"),
                     condition_type=condition_type,
@@ -550,7 +547,7 @@ class Parser():
             second_value = first_value[:-1] + chr_fun(ord(first_value[-1]) + 1)
 
             second_condition = condition_class.le(
-                AttributeValue(
+                models.AttributeValue(
                     condition_arg.attr_type, decoded_value=second_value
                 )
             )
@@ -561,7 +558,7 @@ class Parser():
 
     @classmethod
     def parse_attribute_conditions(cls, attribute_conditions_json,
-                                   condition_class=IndexedCondition):
+                                   condition_class=models.IndexedCondition):
         attribute_conditions = {}
 
         for (attr_name, condition_json) in (
@@ -613,7 +610,7 @@ class Parser():
             else:
                 value = None
 
-            update_action = UpdateItemAction(action_type_json, value)
+            update_action = models.UpdateItemAction(action_type_json, value)
 
             validation.validate_unexpected_props(attr_update_json, attr)
 
@@ -639,7 +636,7 @@ class Parser():
                         validation.validate_unexpected_props(request_body,
                                                              request_type)
                         request_list_for_table.append(
-                            WriteItemRequest.put(
+                            models.WriteItemRequest.put(
                                 cls.parse_item_attributes(item)
                             )
                         )
@@ -650,12 +647,12 @@ class Parser():
                         validation.validate_unexpected_props(request_body,
                                                              request_type)
                         request_list_for_table.append(
-                            WriteItemRequest.delete(
+                            models.WriteItemRequest.delete(
                                 cls.parse_item_attributes(key)
                             )
                         )
                     else:
-                        raise ValidationError(
+                        raise exception.ValidationError(
                             _("Unsupported request type found: "
                               "%(request_type)s"),
                             request_type=request_type
@@ -694,7 +691,7 @@ class Parser():
             for key in keys:
                 key_attribute_map = cls.parse_item_attributes(key)
                 request_list.append(
-                    GetItemRequest(
+                    models.GetItemRequest(
                         table_name, key_attribute_map, attributes_to_get,
                         consistent=consistent
                     )

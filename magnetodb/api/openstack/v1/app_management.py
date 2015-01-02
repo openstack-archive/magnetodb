@@ -15,11 +15,8 @@
 
 import routes
 
-from magnetodb.api import with_global_env
-from magnetodb.common import wsgi
-
-from magnetodb.api.openstack.v1 import create_resource
-
+from magnetodb import api
+from magnetodb.api.openstack import v1
 from magnetodb.api.openstack.v1.management import create_backup
 from magnetodb.api.openstack.v1.management import delete_backup
 from magnetodb.api.openstack.v1.management import describe_backup
@@ -27,6 +24,7 @@ from magnetodb.api.openstack.v1.management import list_backups
 from magnetodb.api.openstack.v1.management import create_restore_job
 from magnetodb.api.openstack.v1.management import describe_restore_job
 from magnetodb.api.openstack.v1.management import list_restore_jobs
+from magnetodb.common import wsgi
 
 
 class ManagementApplication(wsgi.Router):
@@ -40,7 +38,7 @@ class ManagementApplication(wsgi.Router):
             "create_backup",
             "/{project_id}/{table_name}/backups",
             conditions={'method': 'POST'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 create_backup.CreateBackupController()),
             action="process_request"
         )
@@ -49,7 +47,7 @@ class ManagementApplication(wsgi.Router):
             "list_backups",
             "/{project_id}/{table_name}/backups",
             conditions={'method': 'GET'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 list_backups.ListBackupsController()),
             action="process_request"
         )
@@ -58,7 +56,7 @@ class ManagementApplication(wsgi.Router):
             "describe_backup",
             "/{project_id}/{table_name}/backups/{backup_id}",
             conditions={'method': 'GET'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 describe_backup.DescribeBackupController()),
             action="process_request"
         )
@@ -67,7 +65,7 @@ class ManagementApplication(wsgi.Router):
             "delete_backup",
             "/{project_id}/{table_name}/backups/{backup_id}",
             conditions={'method': 'DELETE'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 delete_backup.DeleteBackupController()),
             action="process_request"
         )
@@ -76,7 +74,7 @@ class ManagementApplication(wsgi.Router):
             "create_restore_job",
             "/{project_id}/{table_name}/restores",
             conditions={'method': 'POST'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 create_restore_job.CreateRestoreJobController()),
             action="process_request"
         )
@@ -85,7 +83,7 @@ class ManagementApplication(wsgi.Router):
             "list_restore_jobs",
             "/{project_id}/{table_name}/restores",
             conditions={'method': 'GET'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 list_restore_jobs.ListRestoreJobsController()),
             action="process_request"
         )
@@ -94,12 +92,12 @@ class ManagementApplication(wsgi.Router):
             "describe_restore_job",
             "/{project_id}/{table_name}/restores/{restore_job_id}",
             conditions={'method': 'GET'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 describe_restore_job.DescribeRestoreJobController()),
             action="process_request"
         )
 
 
-@with_global_env(default_program='management-api')
+@api.with_global_env(default_program='management-api')
 def app_factory(global_conf, **local_conf):
     return ManagementApplication()

@@ -13,11 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from boto import exception
 import re
 import time
-
-import boto.exception
-from testtools import TestCase
+import testtools
 
 from tempest import config_magnetodb as config
 from tempest.openstack.common import log as logging
@@ -49,10 +48,12 @@ def state_wait(lfunction, final_set=set(), valid_set=None):
             return status
         dtime = time.time() - start_time
         if dtime > default_timeout:
-            raise TestCase.failureException("State change timeout exceeded!"
-                                            '(%ds) While waiting'
-                                            'for %s at "%s"' %
-                                            (dtime, final_set, status))
+            raise testtools.TestCase.failureException(
+                "State change timeout exceeded!"
+                '(%ds) While waiting'
+                'for %s at "%s"' %
+                (dtime, final_set, status)
+            )
         time.sleep(default_check_interval)
         old_status = status
         status = lfunction()
@@ -72,10 +73,12 @@ def re_search_wait(lfunction, regexp):
             return result
         dtime = time.time() - start_time
         if dtime > default_timeout:
-            raise TestCase.failureException('Pattern find timeout exceeded!'
-                                            '(%ds) While waiting for'
-                                            '"%s" pattern in "%s"' %
-                                            (dtime, regexp, text))
+            raise testtools.TestCase.failureException(
+                'Pattern find timeout exceeded!'
+                '(%ds) While waiting for'
+                '"%s" pattern in "%s"' %
+                (dtime, regexp, text)
+            )
         time.sleep(default_check_interval)
 
 
@@ -83,7 +86,7 @@ def wait_no_exception(lfunction, exc_class=None, exc_matcher=None):
     """Stops waiting on success."""
     start_time = time.time()
     if exc_matcher is not None:
-        exc_class = boto.exception.BotoServerError
+        exc_class = exception.BotoServerError
 
     if exc_class is None:
         exc_class = BaseException
@@ -103,8 +106,9 @@ def wait_no_exception(lfunction, exc_class=None, exc_matcher=None):
         # Let the other exceptions propagate
         dtime = time.time() - start_time
         if dtime > default_timeout:
-            raise TestCase.failureException("Wait timeout exceeded! (%ds)" %
-                                            dtime)
+            raise testtools.TestCase.failureException(
+                "Wait timeout exceeded! (%ds)" % dtime
+            )
         time.sleep(default_check_interval)
 
 
@@ -121,8 +125,9 @@ def wait_exception(lfunction):
             return exc
         dtime = time.time() - start_time
         if dtime > default_timeout:
-            raise TestCase.failureException("Wait timeout exceeded! (%ds)" %
-                                            dtime)
+            raise testtools.TestCase.failureException(
+                "Wait timeout exceeded! (%ds)" % dtime
+            )
         time.sleep(default_check_interval)
 
 # TODO(afazekas): consider strategy design pattern..

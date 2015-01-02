@@ -16,10 +16,8 @@
 
 import routes
 
-from magnetodb.api import with_global_env
-from magnetodb.common import wsgi
-
-from magnetodb.api.openstack.v1 import create_resource
+from magnetodb import api
+from magnetodb.api.openstack import v1
 from magnetodb.api.openstack.v1.data import get_item
 from magnetodb.api.openstack.v1.data import batch_get_item
 from magnetodb.api.openstack.v1.data import batch_write_item
@@ -32,6 +30,7 @@ from magnetodb.api.openstack.v1.data import describe_table
 from magnetodb.api.openstack.v1.data import scan
 from magnetodb.api.openstack.v1.data import query
 from magnetodb.api.openstack.v1.data import delete_table
+from magnetodb.common import wsgi
 
 
 class MagnetoDBApplication(wsgi.Router):
@@ -44,82 +43,84 @@ class MagnetoDBApplication(wsgi.Router):
         mapper.connect(
             "batch_write_item", "/{project_id}/batch_write_item",
             conditions={'method': 'POST'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 batch_write_item.BatchWriteItemController()),
             action="process_request"
         )
         mapper.connect(
             "put_item", "/{project_id}/tables/{table_name}/put_item",
             conditions={'method': 'POST'},
-            controller=create_resource(put_item.PutItemController()),
+            controller=v1.create_resource(put_item.PutItemController()),
             action="process_request"
         )
         mapper.connect(
             "get_item", "/{project_id}/tables/{table_name}/get_item",
             conditions={'method': 'POST'},
-            controller=create_resource(get_item.GetItemController()),
+            controller=v1.create_resource(get_item.GetItemController()),
             action="process_request"
         )
         mapper.connect(
             "delete_item",
             "/{project_id}/tables/{table_name}/delete_item",
             conditions={'method': 'POST'},
-            controller=create_resource(delete_item.DeleteItemController()),
+            controller=v1.create_resource(delete_item.DeleteItemController()),
             action="process_request"
         )
         mapper.connect(
             "update_item",
             "/{project_id}/tables/{table_name}/update_item",
             conditions={'method': 'POST'},
-            controller=create_resource(update_item.UpdateItemController()),
+            controller=v1.create_resource(update_item.UpdateItemController()),
             action="process_request"
         )
         mapper.connect(
             "batch_get_item", "/{project_id}/batch_get_item",
             conditions={'method': 'POST'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 batch_get_item.BatchGetItemController()),
             action="process_request"
         )
         mapper.connect(
             "list_tables", "/{project_id}/tables",
             conditions={'method': 'GET'},
-            controller=create_resource(list_tables.ListTablesController()),
+            controller=v1.create_resource(list_tables.ListTablesController()),
             action="list_tables"
         )
         mapper.connect(
             "create_table", "/{project_id}/tables",
             conditions={'method': 'POST'},
-            controller=create_resource(create_table.CreateTableController()),
+            controller=v1.create_resource(
+                create_table.CreateTableController()),
             action="create_table"
         )
         mapper.connect(
             "describe_table", "/{project_id}/tables/{table_name}",
             conditions={'method': 'GET'},
-            controller=create_resource(
+            controller=v1.create_resource(
                 describe_table.DescribeTableController()),
             action="describe_table"
         )
         mapper.connect(
             "scan", "/{project_id}/tables/{table_name}/scan",
             conditions={'method': 'POST'},
-            controller=create_resource(scan.ScanController()),
+            controller=v1.create_resource(scan.ScanController()),
             action="scan"
         )
         mapper.connect(
             "query", "/{project_id}/tables/{table_name}/query",
             conditions={'method': 'POST'},
-            controller=create_resource(query.QueryController()),
+            controller=v1.create_resource(query.QueryController()),
             action="query"
         )
         mapper.connect(
             "delete_table", "/{project_id}/tables/{table_name}",
             conditions={'method': 'DELETE'},
-            controller=create_resource(delete_table.DeleteTableController()),
+            controller=v1.create_resource(
+                delete_table.DeleteTableController()),
             action="delete_table"
         )
 
 
-@with_global_env(default_program='magnetodb-api')
+@api.with_global_env(default_program='magnetodb-api')
 def app_factory(global_conf, **local_conf):
     return MagnetoDBApplication()
