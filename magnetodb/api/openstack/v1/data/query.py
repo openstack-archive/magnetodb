@@ -28,7 +28,7 @@ LOG = logging.getLogger(__name__)
 
 
 class QueryController(object):
-    """ Query for an items by primary or index key. """
+    """Query for an items by primary or index key. """
 
     @enforce_policy("mdb:query")
     @probe.Probe(__name__)

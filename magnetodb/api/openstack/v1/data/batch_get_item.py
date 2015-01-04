@@ -22,7 +22,7 @@ from magnetodb.common import probe
 
 
 class BatchGetItemController(object):
-    """ The BatchGetitem operation returns the attributes
+    """The BatchGetitem operation returns the attributes
     of one or more items from one or more tables.
     """
 

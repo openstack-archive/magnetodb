@@ -168,7 +168,7 @@ def to_primitive(value, convert_instances=False, convert_datetime=True,
 
 
 def dumps(value, default=to_primitive, cls=DecimalEncoder, **kwargs):
-    """ Dump as JSON. Added DecimalEncoder to handle Decimal data type in
+    """Dump as JSON. Added DecimalEncoder to handle Decimal data type in
     JSONEncoder.
     :param value: input value
     :param default:

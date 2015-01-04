@@ -20,7 +20,7 @@ from magnetodb.common import probe
 
 
 class CreateRestoreJobController(object):
-    """ Creates a restore job. """
+    """Creates a restore job."""
 
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):

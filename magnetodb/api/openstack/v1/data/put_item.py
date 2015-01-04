@@ -25,7 +25,7 @@ from magnetodb.storage.models import InsertReturnValuesType
 
 
 class PutItemController(object):
-    """ Creates a new item, or replaces an old item. """
+    """Creates a new item, or replaces an old item. """
 
     @enforce_policy("mdb:put_item")
     @probe.Probe(__name__)
