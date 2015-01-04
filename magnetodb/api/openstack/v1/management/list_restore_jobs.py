@@ -20,7 +20,7 @@ from magnetodb.common import probe
 
 
 class ListRestoreJobsController(object):
-    """ List restore jobs. """
+    """List restore jobs."""
 
     @probe.Probe(__name__)
     def process_request(self, req, project_id, table_name):

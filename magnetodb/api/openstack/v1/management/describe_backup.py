@@ -23,7 +23,7 @@ from magnetodb.common import probe
 
 
 class DescribeBackupController(object):
-    """ Describes a backup. """
+    """Describes a backup."""
 
     @probe.Probe(__name__)
     def process_request(self, req, project_id, table_name, backup_id):

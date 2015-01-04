@@ -51,7 +51,7 @@ def checkpoint(name, id, elapsed, status, *args, **kwargs):
 
 
 class Probe(object):
-    """ Probe can be used to instrument code to get execution time
+    """Probe can be used to instrument code to get execution time
     in miliseconds. It should be used with context manager.
 
     Usage example:

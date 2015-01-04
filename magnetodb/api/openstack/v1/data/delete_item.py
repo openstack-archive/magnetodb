@@ -22,7 +22,7 @@ from magnetodb.storage.models import DeleteReturnValuesType
 
 
 class DeleteItemController(object):
-    """ Deletes a single item in a table by primary key. """
+    """Deletes a single item in a table by primary key. """
 
     @enforce_policy("mdb:delete_item")
     @probe.Probe(__name__)
