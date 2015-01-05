@@ -24,10 +24,6 @@ rest_client.CONF = CONF
 
 class MagnetoDBMonitoringClientJSON(rest_client.RestClient):
 
-    def __init__(self, *args, **kwargs):
-        super(MagnetoDBMonitoringClientJSON, self).__init__(*args, **kwargs)
-        self.service = CONF.magnetodb_monitoring.catalog_type
-
     def get_all_metrics(self, table_name):
         url = '/'.join([self.tenant_id, 'tables', table_name])
         resp, body = self.get(url)

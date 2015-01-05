@@ -24,10 +24,6 @@ rest_client.CONF = CONF
 
 class MagnetoDBStreamingClientJSON(rest_client.RestClient):
 
-    def __init__(self, *args, **kwargs):
-        super(MagnetoDBStreamingClientJSON, self).__init__(*args, **kwargs)
-        self.service = CONF.magnetodb_streaming.catalog_type
-
     def upload_items(self, table_name, items):
         post_body = ''.join([json.dumps(item) + '\n' for item in items])
         return self.upload_raw_stream(table_name, post_body)

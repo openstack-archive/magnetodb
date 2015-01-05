@@ -25,10 +25,6 @@ rest_client.CONF = CONF
 
 class MagnetoDBClientJSON(rest_client.RestClient):
 
-    def __init__(self, *args, **kwargs):
-        super(MagnetoDBClientJSON, self).__init__(*args, **kwargs)
-        self.service = CONF.magnetodb.catalog_type
-
     def create_table(self, attr_def, table_name, schema, lsi_indexes=None):
         post_body = {'attribute_definitions': attr_def,
                      'table_name': table_name,

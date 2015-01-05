@@ -40,29 +40,32 @@ class Manager(clients.Manager):
         self.dynamodb_client = dynamodb_client.APIClientDynamoDB(*ks_creds)
         if interface == 'json':
             self.magnetodb_client = (
-                magnetodb_client.MagnetoDBClientJSON(auth_provider)
+                magnetodb_client.MagnetoDBClientJSON(
+                    auth_provider, CONF.magnetodb.catalog_type)
             )
             self.magnetodb_streaming_client = (
                 magnetodb_streaming_client.MagnetoDBStreamingClientJSON(
-                    auth_provider)
+                    auth_provider, CONF.magnetodb_streaming.catalog_type)
             )
             self.magnetodb_management_client = (
                 magnetodb_management_client.MagnetoDBManagementClientJSON(
-                    auth_provider)
+                    auth_provider, CONF.magnetodb_management.catalog_type)
             )
             self.magnetodb_monitoring_client = (
                 magnetodb_monitoring_client.MagnetoDBMonitoringClientJSON(
-                    auth_provider)
+                    auth_provider, CONF.magnetodb_monitoring.catalog_type)
             )
 
 
 class AltManager(Manager):
+
     def __init__(self, interface='json', service=None):
         self.credentials = auth.get_credentials('alt_user')
         super(AltManager, self).__init__(self.credentials, interface, service)
 
 
 class AdminManager(Manager):
+
     def __init__(self, interface='json', service=None):
         self.credentials = auth.get_credentials('identity_admin')
         super(AdminManager, self).__init__(

@@ -24,10 +24,6 @@ rest_client.CONF = CONF
 
 class MagnetoDBManagementClientJSON(rest_client.RestClient):
 
-    def __init__(self, *args, **kwargs):
-        super(MagnetoDBManagementClientJSON, self).__init__(*args, **kwargs)
-        self.service = CONF.magnetodb_management.catalog_type
-
     def create_backup(self, table_name, backup_name, strategy={}):
         url = '/'.join([self.tenant_id, table_name, 'backups'])
         request_body = (
