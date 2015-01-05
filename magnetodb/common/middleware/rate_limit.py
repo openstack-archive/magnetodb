@@ -24,6 +24,9 @@ from magnetodb.common import wsgi
 from magnetodb import notifier
 from magnetodb.openstack.common import log as logging
 
+MDB_DATA_API_URL_PREFIX = "/v1/data/"
+MDB_DATA_API_URL_PATTERN = "^" + MDB_DATA_API_URL_PREFIX + "(\w+)/"
+
 LOG = logging.getLogger(__name__)
 
 
@@ -42,7 +45,7 @@ class RateLimitMiddleware(wsgi.Middleware):
         super(RateLimitMiddleware, self).__init__(app)
 
     def process_request(self, req):
-        tenant_id = self._get_tenant_id(req)
+        tenant_id = self._get_tenant_id_from_request(req)
 
         now = time.time()
         prev = self.last_time.get(tenant_id, 0)
@@ -62,17 +65,25 @@ class RateLimitMiddleware(wsgi.Middleware):
         return lambda application: cls(application, local_config)
 
     @staticmethod
-    def _get_tenant_id(req):
+    def _get_tenant_id_from_request(req):
         path = req.path
 
         LOG.debug('Request path: %s', path)
 
-        tenant_id = None
-
-        if re.match("^/v1/\w+", path):
-            url_comp = path.split('/')
-            tenant_id = url_comp[2]
-        else:
-            tenant_id = req.headers.get('X-Tenant-Id', None)
+        tenant_id = (get_tenant_id(path) or
+                     req.headers.get('X-Tenant-Id', None))
 
         return tenant_id
+
+
+def get_tenant_id(path):
+    if not path:
+        return None
+
+    tenant_id = None
+
+    matcher = re.match(MDB_DATA_API_URL_PATTERN, path)
+    if matcher:
+        tenant_id = matcher.group(1)
+
+    return tenant_id
