@@ -16,7 +16,6 @@
 import json
 
 from collections import deque
-import uuid
 
 from magnetodb.common import exception
 from magnetodb.common.exception import ConditionalCheckFailedException
@@ -112,10 +111,6 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
         self.__cluster_handler = cluster_handler
         self.__default_keyspace_opts = default_keyspace_opts
 
-    @staticmethod
-    def _get_internal_name(name):
-        return uuid.uuid1().hex
-
     @probe.Probe(__name__)
     def create_table(self, context, table_info):
         """
@@ -131,8 +126,7 @@ class CassandraStorageDriverWithCustomLSI(StorageDriver):
 
         table_schema = table_info.schema
 
-        cas_table_name = USER_PREFIX + self._get_internal_name(
-            table_info.name)
+        cas_table_name = USER_PREFIX + table_info.id.hex
         cas_keyspace = USER_PREFIX + context.tenant
         cas_full_table_name = '"{}"."{}"'.format(cas_keyspace, cas_table_name)
 
