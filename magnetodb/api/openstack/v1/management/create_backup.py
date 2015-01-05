@@ -21,7 +21,7 @@ from magnetodb.common import probe
 
 
 class CreateBackupController(object):
-    """ Creates a backup for a table."""
+    """Creates a backup for a table."""
 
     @probe.Probe(__name__)
     def process_request(self, req, body, project_id, table_name):

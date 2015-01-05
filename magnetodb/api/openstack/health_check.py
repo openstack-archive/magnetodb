@@ -39,7 +39,7 @@ CONF = config.CONF
 
 
 class HealthCheckApp(object):
-    """ Controller for health check request. """
+    """Controller for health check request."""
 
     def __init__(self, auth_uri=''):
         super(HealthCheckApp, self).__init__()

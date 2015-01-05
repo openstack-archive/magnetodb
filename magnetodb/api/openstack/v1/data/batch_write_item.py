@@ -23,7 +23,7 @@ from magnetodb.common import probe
 
 
 class BatchWriteItemController(object):
-    """ The BatchWriteItem operation puts or deletes
+    """The BatchWriteItem operation puts or deletes
     multiple items in one or more tables.
     """
 

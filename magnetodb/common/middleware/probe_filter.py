@@ -24,7 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 class ProbeFilter(wsgi.Middleware):
-    """ Middleware that measures request proccessing time.
+    """Middleware that measures request proccessing time.
 
     Put this filter to api-paste.ini before the filter you want to probe
     to turn on time measuring. Can be used several times with

@@ -18,7 +18,7 @@ from webob.exc import HTTPException
 
 
 class AWSErrorResponseException(HTTPException):
-    """ Base Exception for rendering to AWS DynamoDB error
+    """Base Exception for rendering to AWS DynamoDB error
     JSON http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/
                                                             ErrorHandling.html
     """
@@ -47,7 +47,7 @@ class AWSErrorResponseException(HTTPException):
 
 
 class AWSBadRequestException(AWSErrorResponseException):
-    """ Base class for all errors with HTTP status code 400"""
+    """Base class for all errors with HTTP status code 400"""
     status = '400'
 
 
@@ -84,7 +84,7 @@ class AWSIncompleteSignatureError(AWSBadRequestException):
 
 
 class AWSAccessDeniedError(AWSErrorResponseException):
-    """ Base class for all errors with HTTP status code 403"""
+    """Base class for all errors with HTTP status code 403"""
     status = '403'
     response_message = 'User is not authorized to perform action'
     error_code = 'AccessDenied'
