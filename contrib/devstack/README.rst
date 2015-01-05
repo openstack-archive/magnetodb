@@ -11,6 +11,10 @@ To configure devstack to run Magnetodb::
     $ cd ${DEVSTACK_DIR}
     $ echo "enable_service magnetodb" >> local.conf
 
+To have an ability to run functional tests::
+
+    $ echo "enable_service tempest" >> local.conf
+
 Also for disabling Cassandra backend and install only Magnetodb::
 
     $ echo "MAGNETODB_BACKEND=none" >> local.conf
