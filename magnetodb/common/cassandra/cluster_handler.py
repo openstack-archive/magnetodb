@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import atexit
+
 import logging
 
 from threading import BoundedSemaphore
@@ -118,8 +120,15 @@ class ClusterHandler(object):
         with self.__connection_lock:
             if self.__cluster is not None:
                 self._disconnect()
-            cluster = cassandra_cluster.Cluster(**self.__cluster_params)
-            session = cluster.connect()
+
+            count = len(atexit._exithandlers)
+            try:
+                cluster = cassandra_cluster.Cluster(**self.__cluster_params)
+                session = cluster.connect()
+            finally:
+                while len(atexit._exithandlers) > count:
+                    atexit._exithandlers.pop()
+
             session.row_factory = cassandra_query.dict_factory
             session.default_timeout = self.__query_timeout
             self.__cluster = cluster
