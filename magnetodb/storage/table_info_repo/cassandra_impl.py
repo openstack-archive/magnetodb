@@ -15,21 +15,19 @@
 #    under the License.
 
 import collections
-from copy import copy
-from datetime import datetime
-
-from threading import Lock
-
-from cassandra import encoder
+import copy
+import datetime
+import threading
 
 from magnetodb.common import exception
 from magnetodb.common import probe
 from magnetodb.storage import models
-from magnetodb.storage.table_info_repo import TableInfo
-from magnetodb.storage.table_info_repo import TableInfoRepository
+from magnetodb.storage import table_info_repo
+
+from cassandra import encoder
 
 
-class CassandraTableInfoRepository(TableInfoRepository):
+class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
     SYSTEM_TABLE_TABLE_INFO = 'magnetodb.table_info'
     __field_list = ("id", "schema", "internal_name", "status",
                     "last_update_date_time", "creation_date_time")
@@ -51,7 +49,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
         if table_info_cached is None:
             return table_info_cached
 
-        return copy(table_info_cached)
+        return copy.copy(table_info_cached)
 
     def _remove_table_info_from_cache(self, context, table_name):
         tenant_tables_cache = self.__table_info_cache.get(context.tenant)
@@ -63,7 +61,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
     def __init__(self, cluster_handler):
         self.__cluster_handler = cluster_handler
         self.__table_info_cache = {}
-        self.__table_cache_lock = Lock()
+        self.__table_cache_lock = threading.Lock()
 
     def get(self, context, table_name, fields_to_refresh=tuple()):
         table_info = self._get_table_info_from_cache(context, table_name)
@@ -72,7 +70,9 @@ class CassandraTableInfoRepository(TableInfoRepository):
                 table_info = self._get_table_info_from_cache(context,
                                                              table_name)
                 if table_info is None:
-                    table_info = TableInfo(table_name, None, None, None)
+                    table_info = table_info_repo.TableInfo(
+                        table_name, None, None, None
+                    )
                     self.__refresh(context, table_info)
                     self._save_table_info_to_cache(context, table_info)
                     return table_info
@@ -144,7 +144,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
 
         if 'last_update_date_time' not in field_list:
             field_list.append('last_update_date_time')
-        table_info.last_update_date_time = datetime.now()
+        table_info.last_update_date_time = datetime.datetime.now()
 
         enc = encoder.Encoder()
 
@@ -215,7 +215,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
         else:
             query_builder.append(",null")
 
-        table_info.last_update_date_time = datetime.now()
+        table_info.last_update_date_time = datetime.datetime.now()
         query_builder.append(", {}".format(
             enc.cql_encode_datetime(table_info.last_update_date_time)))
 
@@ -234,7 +234,7 @@ class CassandraTableInfoRepository(TableInfoRepository):
                 "Table {} already exists".format(table_info.name)
             )
 
-        self._save_table_info_to_cache(context, copy(table_info))
+        self._save_table_info_to_cache(context, copy.copy(table_info))
         return True
 
     def delete(self, context, table_name):

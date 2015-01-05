@@ -12,20 +12,20 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import collections
 import logging
 
-from cassandra import encoder
-
 from magnetodb.common import exception
+from magnetodb.storage import backup_info_repo
+from magnetodb.storage import models
 
-from magnetodb.storage.models import BackupMeta
-from magnetodb.storage.backup_info_repo import BackupInfoRepository
+from cassandra import encoder
 
 LOG = logging.getLogger(__name__)
 
 
-class CassandraBackupInfoRepository(BackupInfoRepository):
+class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
     SYSTEM_TABLE_BACKUP_INFO = 'magnetodb.backup_info'
     __set_field_list = (
         'name', 'status', 'start_date_time',
@@ -107,7 +107,7 @@ class CassandraBackupInfoRepository(BackupInfoRepository):
 
         LOG.debug("Got backup '{}' for table '{}'".format(
             backup_id, table_name))
-        return BackupMeta(**backup_info_attrs)
+        return models.BackupMeta(**backup_info_attrs)
 
     def list(self, context, table_name,
              exclusive_start_backup_id=None, limit=None):
@@ -137,7 +137,7 @@ class CassandraBackupInfoRepository(BackupInfoRepository):
         )
 
         return [
-            BackupMeta(
+            models.BackupMeta(
                 **{name: row[name] for name in self.__get_field_list}
             )
             for row in rows

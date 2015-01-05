@@ -14,10 +14,10 @@
 #    under the License.
 
 import base64
+import blist
+import datetime
+import decimal
 import json
-from datetime import datetime
-from decimal import Decimal
-from blist import sortedset
 
 import mock
 import unittest
@@ -28,14 +28,13 @@ from magnetodb.common import exception
 from cassandra import cluster
 from cassandra import query
 from cassandra import encoder
-from magnetodb.common.cassandra.cluster_handler import ClusterHandler
+from magnetodb.common.cassandra import cluster_handler
 from magnetodb.storage import models
-from magnetodb.storage.driver.cassandra import cassandra_impl
-from magnetodb.storage.manager.simple_impl import SimpleStorageManager
-from magnetodb.storage.table_info_repo.cassandra_impl import (
-    CassandraTableInfoRepository
+from magnetodb.storage.driver.cassandra import cassandra_impl as driver
+from magnetodb.storage.manager import simple_impl as manager
+from magnetodb.storage.table_info_repo import (
+    cassandra_impl as repo
 )
-from magnetodb.common.exception import TableAlreadyExistsException
 
 TEST_CONNECTION = {
     'contact_points': ("localhost",),
@@ -67,13 +66,14 @@ class TestCassandraBase(unittest.TestCase):
         'str': ('text', "'str'", 'S', 'str'),
         'numbr': ('decimal', '1', 'N', 1),
         'blb': ('blob', '0x{}'.format(binascii.hexlify('blob')), 'B', 'blob'),
-        'set_number': ('set<decimal>', '{1,2,3}', 'NS', sortedset((1, 2, 3))),
+        'set_number': ('set<decimal>', '{1,2,3}', 'NS',
+                       blist.sortedset((1, 2, 3))),
         'set_string': ('set<text>', "{'a','b','c'}", 'SS',
-                       sortedset(('a', 'b', 'c'))),
+                       blist.sortedset(('a', 'b', 'c'))),
         'set_blob': (
             'set<blob>', '{{0x{}, 0x{}}}'.format(
                 binascii.hexlify('blob1'), binascii.hexlify('blob2')),
-            'BS', sortedset(('blob1', 'blob2'))
+            'BS', blist.sortedset(('blob1', 'blob2'))
         ),
         'map_string_string': (
             'map<text,text>', "{'k1':'v1','k2':'v2'}", 'SSM',
@@ -145,9 +145,9 @@ class TestCassandraBase(unittest.TestCase):
     )
 
     test_data_system_fields = {
-        cassandra_impl.SYSTEM_COLUMN_EXTRA_ATTR_DATA: 'map<text,blob>',
-        cassandra_impl.SYSTEM_COLUMN_EXTRA_ATTR_TYPES: 'map<text,text>',
-        cassandra_impl.SYSTEM_COLUMN_ATTR_EXIST: 'map<text,int>'
+        driver.SYSTEM_COLUMN_EXTRA_ATTR_DATA: 'map<text,blob>',
+        driver.SYSTEM_COLUMN_EXTRA_ATTR_TYPES: 'map<text,text>',
+        driver.SYSTEM_COLUMN_ATTR_EXIST: 'map<text,int>'
     }
 
     test_data_dynamic_fields = {
@@ -163,12 +163,12 @@ class TestCassandraBase(unittest.TestCase):
         ),
         'fsnum': (
             None, binascii.hexlify(json.dumps(['1', '2', '3'])),
-            'NS', sortedset((1, 2, 3))
+            'NS', blist.sortedset((1, 2, 3))
         ),
         'fsstr': (
             None, binascii.hexlify(
                 json.dumps(['fa', 'fb', 'fc'])), 'SS',
-            sortedset(('fa', 'fb', 'fc'))
+            blist.sortedset(('fa', 'fb', 'fc'))
         ),
         'fsblob': (
             None,
@@ -177,7 +177,7 @@ class TestCassandraBase(unittest.TestCase):
                             base64.b64encode('fblob2')])
             ),
             'BS',
-            sortedset(('fblob1', 'fblob2'))
+            blist.sortedset(('fblob1', 'fblob2'))
         ),
         'fm_str_str': (
             None,
@@ -289,9 +289,11 @@ class TestCassandraBase(unittest.TestCase):
         cls.notifier_patcher.start()
 
         cls.CLUSTER = cluster.Cluster(**TEST_CONNECTION)
-        cls.CLUSTER_HANDLER = ClusterHandler(TEST_CONNECTION,
-                                             query_timeout=300)
-        table_info_repo = CassandraTableInfoRepository(cls.CLUSTER_HANDLER)
+        cls.CLUSTER_HANDLER = cluster_handler.ClusterHandler(TEST_CONNECTION,
+                                                             query_timeout=300)
+        table_info_repo = repo.CassandraTableInfoRepository(
+            cls.CLUSTER_HANDLER
+        )
 
         default_keyspace_opts = {
             "replication": {
@@ -300,11 +302,12 @@ class TestCassandraBase(unittest.TestCase):
             }
         }
 
-        storage_driver = cassandra_impl.CassandraStorageDriver(
+        storage_driver = driver.CassandraStorageDriver(
             cls.CLUSTER_HANDLER, default_keyspace_opts
         )
-        cls.CASANDRA_STORAGE_IMPL = SimpleStorageManager(storage_driver,
-                                                         table_info_repo)
+        cls.CASANDRA_STORAGE_IMPL = manager.SimpleStorageManager(
+            storage_driver, table_info_repo
+        )
 
         cls.SESSION = cls.CLUSTER.connect()
         cls.SESSION.row_factory = query.dict_factory
@@ -352,7 +355,7 @@ class TestCassandraBase(unittest.TestCase):
     @classmethod
     def _create_tenant(cls, tenant):
         query = "CREATE KEYSPACE {}{} WITH replication".format(
-            cassandra_impl.USER_PREFIX, tenant)
+            driver.USER_PREFIX, tenant)
         query += " = {'class':'SimpleStrategy', 'replication_factor':1}"
 
         cls.SESSION.execute(query)
@@ -360,7 +363,7 @@ class TestCassandraBase(unittest.TestCase):
     @classmethod
     def _drop_tenant(cls, tenant):
         query = (
-            "DROP KEYSPACE {}{}".format(cassandra_impl.USER_PREFIX, tenant)
+            "DROP KEYSPACE {}{}".format(driver.USER_PREFIX, tenant)
         )
 
         cls.SESSION.execute(query)
@@ -381,7 +384,7 @@ class TestCassandraBase(unittest.TestCase):
         table_name = table_name or self.table_name
 
         internal_table_name = '"{}{}"."{}{}"'.format(
-            cassandra_impl.USER_PREFIX, tenant, cassandra_impl.USER_PREFIX,
+            driver.USER_PREFIX, tenant, driver.USER_PREFIX,
             self._get_unique_name()
         )
 
@@ -396,8 +399,8 @@ class TestCassandraBase(unittest.TestCase):
             self.test_table_schema_with_index.to_json() if indexed else
             self.test_table_schema.to_json(),
             internal_table_name,
-            encoder.Encoder().cql_encode_datetime(datetime.now()),
-            encoder.Encoder().cql_encode_datetime(datetime.now())
+            encoder.Encoder().cql_encode_datetime(datetime.datetime.now()),
+            encoder.Encoder().cql_encode_datetime(datetime.datetime.now())
         )
         result = self.SESSION.execute(query)
         self.assertTrue(result[0]['[applied]'])
@@ -406,11 +409,11 @@ class TestCassandraBase(unittest.TestCase):
 
         for name, field in self.test_data_keys.iteritems():
             typ, _, _, _ = field
-            query += '{}{} {},'.format(cassandra_impl.USER_PREFIX, name, typ)
+            query += '{}{} {},'.format(driver.USER_PREFIX, name, typ)
 
         for name, field in self.test_data_predefined_fields.iteritems():
             typ, _, _, _ = field
-            query += '{}{} {},'.format(cassandra_impl.USER_PREFIX, name, typ)
+            query += '{}{} {},'.format(driver.USER_PREFIX, name, typ)
 
         for name, field in self.test_data_system_fields.iteritems():
             query += '{} {},'.format(name, field)
@@ -419,21 +422,21 @@ class TestCassandraBase(unittest.TestCase):
             query += (
                 "{} text, {} text, {} decimal, {} blob,"
                 " PRIMARY KEY({}id, {}, {}, {}, {}, {}range))".format(
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_NAME,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
-                    cassandra_impl.USER_PREFIX,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_NAME,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
-                    cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
-                    cassandra_impl.USER_PREFIX
+                    driver.SYSTEM_COLUMN_INDEX_NAME,
+                    driver.SYSTEM_COLUMN_INDEX_VALUE_STRING,
+                    driver.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                    driver.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
+                    driver.USER_PREFIX,
+                    driver.SYSTEM_COLUMN_INDEX_NAME,
+                    driver.SYSTEM_COLUMN_INDEX_VALUE_STRING,
+                    driver.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                    driver.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
+                    driver.USER_PREFIX
                 )
             )
         else:
             query += " PRIMARY KEY({}id, {}range))".format(
-                cassandra_impl.USER_PREFIX, cassandra_impl.USER_PREFIX
+                driver.USER_PREFIX, driver.USER_PREFIX
             )
         self.SESSION.execute(query)
 
@@ -473,8 +476,8 @@ class TestCassandraBase(unittest.TestCase):
 
         if schema.index_def_map:
             query += " WHERE {}={}".format(
-                cassandra_impl.SYSTEM_COLUMN_INDEX_NAME,
-                cassandra_impl.ENCODED_DEFAULT_STRING_VALUE
+                driver.SYSTEM_COLUMN_INDEX_NAME,
+                driver.ENCODED_DEFAULT_STRING_VALUE
             )
 
         query += " ALLOW FILTERING"
@@ -506,16 +509,16 @@ class TestCassandraBase(unittest.TestCase):
         for name, field in predefined_fields.iteritems():
             _, sval, _, _ = field
             set_items.append(
-                '{}{}={}'.format(cassandra_impl.USER_PREFIX, name, sval)
+                '{}{}={}'.format(driver.USER_PREFIX, name, sval)
             )
 
         for name, field in dynamic_fields.iteritems():
             _, sval, typ, _ = field
             set_items.append("{}['{}'] = 0x{}".format(
-                cassandra_impl.SYSTEM_COLUMN_EXTRA_ATTR_DATA, name, sval)
+                driver.SYSTEM_COLUMN_EXTRA_ATTR_DATA, name, sval)
             )
             set_items.append("{}['{}'] ='{}'".format(
-                cassandra_impl.SYSTEM_COLUMN_EXTRA_ATTR_TYPES, name, typ)
+                driver.SYSTEM_COLUMN_EXTRA_ATTR_TYPES, name, typ)
             )
 
         for name, field in dict(self.test_data_keys.items() +
@@ -525,7 +528,7 @@ class TestCassandraBase(unittest.TestCase):
 
             set_items.append(
                 "{}['{}']=1".format(
-                    cassandra_impl.SYSTEM_COLUMN_ATTR_EXIST,
+                    driver.SYSTEM_COLUMN_ATTR_EXIST,
                     name
                 )
             )
@@ -533,20 +536,20 @@ class TestCassandraBase(unittest.TestCase):
         query += ",".join(set_items)
 
         query += " WHERE {}id = {} AND {}range='{}'".format(
-            cassandra_impl.USER_PREFIX, id_value, cassandra_impl.USER_PREFIX,
+            driver.USER_PREFIX, id_value, driver.USER_PREFIX,
             range_value
         )
 
         if schema.index_def_map:
             default_index_cond_params = (
-                cassandra_impl.SYSTEM_COLUMN_INDEX_NAME,
-                cassandra_impl.ENCODED_DEFAULT_STRING_VALUE,
-                cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
-                cassandra_impl.ENCODED_DEFAULT_BLOB_VALUE,
-                cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_STRING,
-                cassandra_impl.ENCODED_DEFAULT_STRING_VALUE,
-                cassandra_impl.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
-                cassandra_impl.ENCODED_DEFAULT_NUMBER_VALUE
+                driver.SYSTEM_COLUMN_INDEX_NAME,
+                driver.ENCODED_DEFAULT_STRING_VALUE,
+                driver.SYSTEM_COLUMN_INDEX_VALUE_BLOB,
+                driver.ENCODED_DEFAULT_BLOB_VALUE,
+                driver.SYSTEM_COLUMN_INDEX_VALUE_STRING,
+                driver.ENCODED_DEFAULT_STRING_VALUE,
+                driver.SYSTEM_COLUMN_INDEX_VALUE_NUMBER,
+                driver.ENCODED_DEFAULT_NUMBER_VALUE
             )
 
             queries = [
@@ -635,7 +638,7 @@ class TestCassandraTableCrud(TestCassandraBase):
         schema = models.TableSchema(attrs, ['id', 'range'],
                                     index_def_map)
 
-        with self.assertRaises(TableAlreadyExistsException):
+        with self.assertRaises(exception.TableAlreadyExistsException):
             self.CASANDRA_STORAGE_IMPL.create_table(
                 self.context, self.table_name, schema
             )
@@ -1579,7 +1582,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
         actions = {
             'set_blob': models.UpdateItemAction(
                 models.UpdateItemAction.UPDATE_ACTION_PUT,
-                models.AttributeValue('BS', decoded_value=sortedset(('new',)))
+                models.AttributeValue('BS',
+                                      decoded_value=blist.sortedset(('new',)))
             )
         }
 
@@ -1589,7 +1593,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected = self.expected_data.copy()
 
         expected['set_blob'] = models.AttributeValue(
-            'BS', decoded_value=sortedset(('new',))
+            'BS', decoded_value=blist.sortedset(('new',))
         )
 
         keys_condition = {
@@ -1797,7 +1801,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'map_number_blob': models.UpdateItemAction(
                 models.UpdateItemAction.UPDATE_ACTION_PUT,
                 models.AttributeValue(
-                    'NBM', decoded_value={Decimal("324.54353"): 'blob1'}
+                    'NBM',
+                    decoded_value={decimal.Decimal("324.54353"): 'blob1'}
                 )
             )
         }
@@ -1808,7 +1813,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected = self.expected_data.copy()
 
         expected['map_number_blob'] = models.AttributeValue(
-            'NBM', decoded_value={Decimal("324.54353"): 'blob1'}
+            'NBM', decoded_value={decimal.Decimal("324.54353"): 'blob1'}
         )
 
         keys_condition = {
@@ -1872,7 +1877,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'map_blob_number': models.UpdateItemAction(
                 models.UpdateItemAction.UPDATE_ACTION_PUT,
                 models.AttributeValue(
-                    'BNM', decoded_value={'blob': Decimal("32.345")})
+                    'BNM', decoded_value={'blob': decimal.Decimal("32.345")})
             )
         }
 
@@ -1882,7 +1887,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected = self.expected_data.copy()
 
         expected['map_blob_number'] = models.AttributeValue(
-            'BNM', decoded_value={'blob': Decimal("32.345")}
+            'BNM', decoded_value={'blob': decimal.Decimal("32.345")}
         )
 
         keys_condition = {
@@ -2121,7 +2126,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'fsblb': models.UpdateItemAction(
                 models.UpdateItemAction.UPDATE_ACTION_PUT,
                 models.AttributeValue(
-                    'BS', decoded_value=sortedset(('new1', 'new2'))
+                    'BS', decoded_value=blist.sortedset(('new1', 'new2'))
                 )
             ),
         }
@@ -2132,7 +2137,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected = self.expected_data.copy()
 
         expected['fsblb'] = models.AttributeValue(
-            'BS', decoded_value=sortedset(('new1', 'new2'))
+            'BS', decoded_value=blist.sortedset(('new1', 'new2'))
         )
 
         keys_condition = {
@@ -2340,7 +2345,8 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'fm_num_blb': models.UpdateItemAction(
                 models.UpdateItemAction.UPDATE_ACTION_PUT,
                 models.AttributeValue(
-                    'NBM', decoded_value={Decimal("324.54353"): 'blob1'}
+                    'NBM',
+                    decoded_value={decimal.Decimal("324.54353"): 'blob1'}
                 )
             )
         }
@@ -2351,7 +2357,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected = self.expected_data.copy()
 
         expected['fm_num_blb'] = models.AttributeValue(
-            'NBM', decoded_value={Decimal("324.54353"): 'blob1'}
+            'NBM', decoded_value={decimal.Decimal("324.54353"): 'blob1'}
         )
 
         keys_condition = {
@@ -2415,7 +2421,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
             'fm_blb_num': models.UpdateItemAction(
                 models.UpdateItemAction.UPDATE_ACTION_PUT,
                 models.AttributeValue(
-                    'BNM', decoded_value={'blob': Decimal("32.345")})
+                    'BNM', decoded_value={'blob': decimal.Decimal("32.345")})
             )
         }
 
@@ -2425,7 +2431,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         expected = self.expected_data.copy()
 
         expected['fm_blb_num'] = models.AttributeValue(
-            'BNM', decoded_value={'blob': Decimal("32.345")}
+            'BNM', decoded_value={'blob': decimal.Decimal("32.345")}
         )
 
         keys_condition = {
@@ -2639,7 +2645,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1'),
             'set_blob': models.AttributeValue(
-                'BS', decoded_value=sortedset(('blob1', 'blob2'))
+                'BS', decoded_value=blist.sortedset(('blob1', 'blob2'))
             ),
         }
 
@@ -2739,7 +2745,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1'),
             'map_number_string': models.AttributeValue(
-                'NSM', {Decimal('568.42'): 'value213'}
+                'NSM', {decimal.Decimal('568.42'): 'value213'}
             )
         }
 
@@ -2764,7 +2770,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1'),
             'map_number_number': models.AttributeValue(
-                'NNM', {Decimal('345.234'): 234}
+                'NNM', {decimal.Decimal('345.234'): 234}
             )
         }
 
@@ -3004,7 +3010,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1'),
             'fsblb': models.AttributeValue(
-                'BS', decoded_value=sortedset(('blob1', 'blob2'))
+                'BS', decoded_value=blist.sortedset(('blob1', 'blob2'))
             ),
         }
 
@@ -3104,7 +3110,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1'),
             'fm_num_str': models.AttributeValue(
-                'NSM', {Decimal('568.42'): 'value213'}
+                'NSM', {decimal.Decimal('568.42'): 'value213'}
             )
         }
 
@@ -3129,7 +3135,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1'),
             'fm_num_num': models.AttributeValue(
-                'NNM', {Decimal('345.234'): 234}
+                'NNM', {decimal.Decimal('345.234'): 234}
             )
         }
 
@@ -3430,7 +3436,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1'),
             'set_blob': models.AttributeValue(
-                'BS', decoded_value=sortedset(('blob1', 'blob2'))
+                'BS', decoded_value=blist.sortedset(('blob1', 'blob2'))
             ),
         }
 
@@ -3438,7 +3444,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'set_blob': [
                 models.ExpectedCondition.eq(
                     models.AttributeValue(
-                        'BS', decoded_value=sortedset(('blob1', 'blob2'))
+                        'BS', decoded_value=blist.sortedset(('blob1', 'blob2'))
                     )
                 )
             ]
@@ -3646,7 +3652,7 @@ class TestCassandraPutItem(TestCassandraBase):
             'id': models.AttributeValue('N', 1),
             'range': models.AttributeValue('S', '1'),
             'fsblb': models.AttributeValue(
-                'BS', decoded_value=sortedset(('blob1', 'blob2'))
+                'BS', decoded_value=blist.sortedset(('blob1', 'blob2'))
             ),
         }
 
@@ -3654,7 +3660,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'fsblob': [
                 models.ExpectedCondition.eq(
                     models.AttributeValue(
-                        'BS', decoded_value=sortedset(('fblob1', 'fblob2'))
+                        'BS',
+                        decoded_value=blist.sortedset(('fblob1', 'fblob2'))
                     )
                 )
             ]

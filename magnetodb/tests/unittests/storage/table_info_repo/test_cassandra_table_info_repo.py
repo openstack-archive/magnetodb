@@ -14,17 +14,16 @@
 #    under the License.
 
 import mock
-from datetime import timedelta
-from datetime import datetime
+import datetime
 import unittest
 
 from magnetodb.common import exception
 
-from magnetodb.storage.models import TableMeta
-from magnetodb.storage.table_info_repo import TableInfo
-from magnetodb.storage.table_info_repo.cassandra_impl import (
-    CassandraTableInfoRepository
-)
+from magnetodb.storage import models
+from magnetodb.storage import table_info_repo
+from magnetodb.storage.table_info_repo import cassandra_impl
+
+CassandraTableInfoRepository = cassandra_impl.CassandraTableInfoRepository
 
 
 class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
@@ -52,13 +51,16 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
         table_schema = mock.Mock()
         table_schema.to_json.return_value = ''
 
-        table_info = TableInfo(
+        table_info = table_info_repo.TableInfo(
             'fake_table', '00000000-0000-0000-0000-000000000000', table_schema,
-            TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
+            models.TableMeta.TABLE_STATUS_CREATING
+        )
+        table_info.last_update_date_time = (
+            datetime.datetime.now() - datetime.timedelta(0, 1000)
+        )
         table_repo.save(context, table_info)
 
-        seconds = (datetime.now() -
+        seconds = (datetime.datetime.now() -
                    table_info.last_update_date_time).total_seconds()
         self.assertLess(seconds, 30)
 
@@ -71,12 +73,14 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
         table_schema = mock.Mock()
         table_schema.to_json.return_value = ''
 
-        table_info = TableInfo(
+        table_info = table_info_repo.TableInfo(
             'fake_table', '00000000-0000-0000-0000-000000000000', table_schema,
-            TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_update_date_time = datetime.now() - timedelta(0, 1000)
+            models.TableMeta.TABLE_STATUS_CREATING)
+        table_info.last_update_date_time = (
+            datetime.datetime.now() - datetime.timedelta(0, 1000)
+        )
         table_repo.update(context, table_info)
 
-        seconds = (datetime.now() -
+        seconds = (datetime.datetime.now() -
                    table_info.last_update_date_time).total_seconds()
         self.assertLess(seconds, 30)

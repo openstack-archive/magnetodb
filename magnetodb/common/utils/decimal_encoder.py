@@ -15,11 +15,11 @@
 #
 #
 
-from json import JSONEncoder
-from decimal import Decimal
+import decimal
+import json
 
 
-class DecimalEncoder(JSONEncoder):
+class DecimalEncoder(json.JSONEncoder):
     """
     DecimalEncoder extends the original Extensible JSONEncoder
     to handle Decimal data type, which is used for holding MagnetoDB
@@ -47,20 +47,22 @@ class DecimalEncoder(JSONEncoder):
                  separators=None,
                  encoding='utf-8',
                  default=None):
-        JSONEncoder.__init__(self, skipkeys=skipkeys,
-                             ensure_ascii=ensure_ascii,
-                             check_circular=check_circular,
-                             allow_nan=allow_nan,
-                             sort_keys=sort_keys,
-                             indent=indent,
-                             separators=separators,
-                             encoding=encoding,
-                             default=default)
+        json.JSONEncoder.__init__(
+            self, skipkeys=skipkeys,
+            ensure_ascii=ensure_ascii,
+            check_circular=check_circular,
+            allow_nan=allow_nan,
+            sort_keys=sort_keys,
+            indent=indent,
+            separators=separators,
+            encoding=encoding,
+            default=default
+        )
         if self.default is not None:
             self.old_default = self.default
 
             def new_default(o):
-                if isinstance(o, Decimal):
+                if isinstance(o, decimal.Decimal):
                     return str(o)
                 return self.old_default(o)
         else:

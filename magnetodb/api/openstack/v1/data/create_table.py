@@ -14,15 +14,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb import storage
+from magnetodb import api
+from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
-from magnetodb.api import enforce_policy
+from magnetodb.common import probe
+from magnetodb.openstack.common import log as logging
+from magnetodb import storage
 from magnetodb.storage import models
 
-from magnetodb.openstack.common.log import logging
-
-from magnetodb.api.openstack.v1 import parser
-from magnetodb.common import probe
 LOG = logging.getLogger(__name__)
 
 
@@ -32,7 +31,7 @@ class CreateTableController():
     Table names must be unique within each tenant.
     """
 
-    @enforce_policy("mdb:create_table")
+    @api.enforce_policy("mdb:create_table")
     @probe.Probe(__name__)
     def create_table(self, req, body, project_id):
         with probe.Probe(__name__ + '.validate'):

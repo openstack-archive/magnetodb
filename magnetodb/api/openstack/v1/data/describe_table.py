@@ -14,14 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb import storage
+from magnetodb import api
 from magnetodb.api import validation
-from magnetodb.api import enforce_policy
-from magnetodb.openstack.common.log import logging
-
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.common import probe
-
+from magnetodb.openstack.common import log as logging
+from magnetodb import storage
 
 LOG = logging.getLogger(__name__)
 
@@ -29,7 +27,7 @@ LOG = logging.getLogger(__name__)
 class DescribeTableController(object):
     """Returns information about the table."""
 
-    @enforce_policy("mdb:describe_table")
+    @api.enforce_policy("mdb:describe_table")
     @probe.Probe(__name__)
     def describe_table(self, req, project_id, table_name):
         validation.validate_table_name(table_name)

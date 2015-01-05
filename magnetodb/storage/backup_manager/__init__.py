@@ -12,9 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import uuid
+
 import datetime
-from magnetodb.storage.models import BackupMeta
+import uuid
+
+from magnetodb.storage import models
 
 
 class BackupManager(object):
@@ -36,11 +38,11 @@ class BackupManager(object):
         :raises: BackendInteractionException
         """
 
-        backup_meta = BackupMeta(
+        backup_meta = models.BackupMeta(
             id=uuid.uuid4(),
             name=backup_name,
             table_name=table_name,
-            status=BackupMeta.BACKUP_STATUS_CREATING,
+            status=models.BackupMeta.BACKUP_STATUS_CREATING,
             location='location',
             strategy=strategy,
             start_date_time=datetime.datetime.now())

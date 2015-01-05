@@ -15,8 +15,8 @@
 
 import routes
 
+from magnetodb import api
 from magnetodb.api import amz
-from magnetodb.api import with_global_env
 from magnetodb.common import wsgi
 
 
@@ -37,6 +37,6 @@ class DynamoDBApiApplication(wsgi.Router):
                        action="process_request")
 
 
-@with_global_env(default_program='magnetodb-api')
+@api.with_global_env(default_program='magnetodb-api')
 def app_factory(global_conf, **local_conf):
     return DynamoDBApiApplication()

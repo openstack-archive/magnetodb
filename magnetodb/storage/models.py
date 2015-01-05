@@ -13,13 +13,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import base64
+import blist
 import decimal
 import json
 import sys
-from blist import sortedset
 
-from magnetodb.common.exception import ValidationError
+from magnetodb.common import exception
 from magnetodb.openstack.common.gettextutils import _
 
 DECIMAL_CONTEXT = decimal.Context(
@@ -120,38 +121,38 @@ class AttributeType(ModelBase):
 
     def validate(self, attr_type):
         if not isinstance(attr_type, basestring):
-            raise ValidationError(self.VALIDATION_ERROR_PATTERN,
-                                  type=attr_type)
+            raise exception.ValidationError(self.VALIDATION_ERROR_PATTERN,
+                                            type=attr_type)
 
         if len(attr_type) == 1:
             if attr_type not in self._allowed_primitive_types:
-                raise ValidationError(self.VALIDATION_ERROR_PATTERN,
-                                      type=attr_type)
+                raise exception.ValidationError(self.VALIDATION_ERROR_PATTERN,
+                                                type=attr_type)
             return
 
         collection_type = attr_type[-1]
         if collection_type not in self._allowed_collection_types:
-            raise ValidationError(self.VALIDATION_ERROR_PATTERN,
-                                  type=attr_type)
+            raise exception.ValidationError(self.VALIDATION_ERROR_PATTERN,
+                                            type=attr_type)
 
         if collection_type == self.COLLECTION_TYPE_MAP:
             if len(attr_type) != 3:
-                raise ValidationError(self.VALIDATION_ERROR_PATTERN,
-                                      type=attr_type)
+                raise exception.ValidationError(self.VALIDATION_ERROR_PATTERN,
+                                                type=attr_type)
             key_type = attr_type[0]
             value_type = attr_type[1]
             if (key_type not in self._allowed_primitive_types or
                     value_type not in self._allowed_primitive_types):
-                raise ValidationError(self.VALIDATION_ERROR_PATTERN,
-                                      type=attr_type)
+                raise exception.ValidationError(self.VALIDATION_ERROR_PATTERN,
+                                                type=attr_type)
             return
         if len(attr_type) != 2:
-            raise ValidationError(self.VALIDATION_ERROR_PATTERN,
-                                  type=attr_type)
+            raise exception.ValidationError(self.VALIDATION_ERROR_PATTERN,
+                                            type=attr_type)
         element_type = attr_type[0]
         if element_type not in self._allowed_primitive_types:
-            raise ValidationError(self.VALIDATION_ERROR_PATTERN,
-                                  type=attr_type)
+            raise exception.ValidationError(self.VALIDATION_ERROR_PATTERN,
+                                            type=attr_type)
 
     def __new__(cls, type):
         attr_type = cls.__cache.get(type, None)
@@ -266,13 +267,13 @@ class AttributeValue(ModelBase):
                 decoded_value = res_dict
         elif collection_type == AttributeType.COLLECTION_TYPE_SET:
             element_type = attr_type.element_type
-            res = sortedset()
+            res = blist.sortedset()
             for val in encoded_value:
                 res.add(cls.__decode_single_value(element_type, val))
             decoded_value = res
 
         if decoded_value is None:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Can't recognize attribute value '%(value)s'"
                   "of type %(type)s"),
                 type=attr_type, value=json.dumps(encoded_value)
@@ -369,7 +370,7 @@ class Condition(ModelBase):
         allowed_arg_count = self._allowed_types_to_arg_count_map.get(type,
                                                                      None)
         if allowed_arg_count is None:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("%(condition_class)s of type['%(type)s'] is not allowed"),
                 condition_class=self.__class__.__name__, type=type)
 
@@ -378,7 +379,7 @@ class Condition(ModelBase):
         if (actual_arg_count < allowed_arg_count[0] or
                 actual_arg_count > allowed_arg_count[1]):
             if allowed_arg_count[0] == allowed_arg_count[1]:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("%(condition_class)s of type['%(type)s'] requires "
                       "exactly %(allowed_arg_count)s arguments, "
                       "but %(actual_arg_count)s found"),
@@ -387,7 +388,7 @@ class Condition(ModelBase):
                     actual_arg_count=actual_arg_count
                 )
             else:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("%(condition_class)s of type['%(type)s'] requires from "
                       "%(min_args_allowed)s to %(max_args_allowed)s arguments "
                       "provided, but %(actual_arg_count)s found"),
@@ -400,7 +401,7 @@ class Condition(ModelBase):
         if args is not None and type in self._types_with_only_primitive_arg:
             for arg in args:
                 if arg.attr_type.collection_type is not None:
-                    raise ValidationError(
+                    raise exception.ValidationError(
                         _("%(condition_class)s of type['%(type)s'] allows "
                           "only primitive arguments"),
                         condition_class=self.__class__.__name__, type=type
@@ -543,14 +544,14 @@ class SelectType(ModelBase):
 
     def __init__(self, select_type, attributes=None):
         if select_type not in self._allowed_types:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Select type '%(select_type)s' isn't allowed"),
                 select_type=select_type
             )
 
         if attributes is not None:
             if select_type != self.SELECT_TYPE_SPECIFIC:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("Attribute list is only expected with select_type "
                       "'%(select_type)s'"),
                     select_type=self.SELECT_TYPE_SPECIFIC
@@ -606,7 +607,7 @@ class WriteItemRequest(ModelBase):
         """
 
         if type not in self._allowed_types:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Write request_type '%(type)s' isn't allowed"),
                 type=type
             )
@@ -662,7 +663,7 @@ class UpdateItemAction(ModelBase):
         """
 
         if action not in self._allowed_actions:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Update action '%(action)s' isn't allowed"),
                 action=action
             )
@@ -682,7 +683,7 @@ class DeleteReturnValuesType(ModelBase):
         :param type: one of available return values type
         """
         if type not in self._allowed_types:
-            raise ValidationError(
+            raise exception.ValidationError(
                 _("Return values type '%(type)s' isn't allowed"),
                 type=type
             )
@@ -781,7 +782,7 @@ class TableSchema(ModelBase):
 
         for key_attr in key_attributes:
             if key_attr not in attribute_type_map:
-                raise ValidationError(
+                raise exception.ValidationError(
                     "Definition for attribute['%(attr_name)s'] wasn't found",
                     attr_name=key_attr
                 )
@@ -789,22 +790,23 @@ class TableSchema(ModelBase):
             # scalar types
             attr_type = attribute_type_map.get(key_attr, None)
             if attr_type is not None and attr_type.collection_type is not None:
-                raise ValidationError(
+                raise exception.ValidationError(
                     _("Type '%(prop_value)s' is not a scalar type"),
                     prop_value=attr_type['type'])
 
         if len(key_attr) < 2 and index_def_map:
-            raise ValidationError("Local secondary indexes are not allowed "
-                                  "for tables with hash key only")
+            raise exception.ValidationError("Local secondary indexes are not "
+                                            "allowed for tables with hash "
+                                            "key only")
 
         for index_name, index_def in index_def_map.iteritems():
             if index_def.alt_hash_key_attr != key_attributes[0]:
                 msg = _("Hash key of index '%(index_name)s' must "
                         "be the same as primary key's hash key.")
-                raise ValidationError(msg, index_name=index_name)
+                raise exception.ValidationError(msg, index_name=index_name)
 
             if index_def.alt_range_key_attr not in attribute_type_map:
-                raise ValidationError(
+                raise exception.ValidationError(
                     "Definition for attribute['%(attr_name)s'] wasn't found",
                     attr_name=index_def.alt_range_key_attr
                 )

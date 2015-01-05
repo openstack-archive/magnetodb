@@ -25,13 +25,11 @@ import eventlet
 eventlet.patcher.monkey_patch(all=True)
 
 from magnetodb import notifier
-from magnetodb.openstack.common.context import RequestContext
-from magnetodb.openstack.common import log
-from magnetodb.openstack.common.log import logging
-from magnetodb.common.exception import ResourceInUseException
-from magnetodb.common.exception import TableNotExistsException
+from magnetodb.openstack.common import context as ctxt
+from magnetodb.openstack.common import log as logging
+from magnetodb.common import exception
+from magnetodb import storage
 from magnetodb.storage import models
-from magnetodb.storage import load_context
 
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
@@ -54,7 +52,7 @@ class SchemaEndpoint(object):
 
         LOG.debug('Creating endpoint...')
 
-        context = load_context(CONF)
+        context = storage.load_context(CONF)
         self._storage_driver = context["storage_driver"]
         self._table_info_repo = context["table_info_repo"]
 
@@ -63,11 +61,11 @@ class SchemaEndpoint(object):
     def create(self, ctx, table_name):
         LOG.debug("Start creating table '%s'", table_name)
 
-        context = RequestContext(**ctx)
+        context = ctxt.RequestContext(**ctx)
 
         try:
             table_info = self._table_info_repo.get(context, table_name)
-        except TableNotExistsException as e:
+        except exception.TableNotExistsException as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
@@ -82,7 +80,7 @@ class SchemaEndpoint(object):
             return
 
         if table_info.status != models.TableMeta.TABLE_STATUS_CREATING:
-            e = ResourceInUseException()
+            e = exception.ResourceInUseException()
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
@@ -138,11 +136,11 @@ class SchemaEndpoint(object):
     def delete(self, ctx, table_name):
         LOG.debug("Start deleting table '%s'", table_name)
 
-        context = RequestContext(**ctx)
+        context = ctxt.RequestContext(**ctx)
 
         try:
             table_info = self._table_info_repo.get(context, table_name)
-        except TableNotExistsException as e:
+        except exception.TableNotExistsException as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
@@ -158,7 +156,7 @@ class SchemaEndpoint(object):
             return
 
         if table_info.status != models.TableMeta.TABLE_STATUS_DELETING:
-            e = ResourceInUseException()
+            e = exception.ResourceInUseException()
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
@@ -208,11 +206,11 @@ class SchemaEndpoint(object):
 
 
 if __name__ == '__main__':
-    from magnetodb.common import PROJECT_NAME
+    from magnetodb import common as mdb_common
     prog_name = os.path.basename(sys.argv[0])
-    CONF(project=PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
+    CONF(project=mdb_common.PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
 
-    log.setup(PROJECT_NAME)
+    logging.setup(mdb_common.PROJECT_NAME)
     notifier.setup()
 
     LOG.debug('Magnetodb schema processor started')

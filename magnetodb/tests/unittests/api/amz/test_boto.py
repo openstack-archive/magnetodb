@@ -18,13 +18,13 @@ import logging
 import mox
 import unittest
 
-from boto.exception import JSONResponseError
+from boto import exception as boto_exc
+from boto import dynamodb2
 from boto.dynamodb import types
-from boto.dynamodb2 import RegionInfo
-from boto.dynamodb2.layer1 import DynamoDBConnection
+from boto.dynamodb2 import layer1
 from boto.dynamodb2 import types as schema_types
 from boto.dynamodb2 import fields
-from boto.dynamodb2.table import Table
+from boto.dynamodb2 import table as ddb_table
 from magnetodb.common import exception
 from magnetodb.storage import models
 from magnetodb import storage
@@ -33,7 +33,7 @@ from magnetodb.tests.fake import magnetodb_api_fake
 from magnetodb.common import config
 
 CONF = config.CONF
-DynamoDBConnection.NumberRetries = 0
+layer1.DynamoDBConnection.NumberRetries = 0
 
 
 class BotoIntegrationTest(unittest.TestCase):
@@ -64,8 +64,10 @@ class BotoIntegrationTest(unittest.TestCase):
     @staticmethod
     def connect_boto_dynamodb(host="localhost", port=8080):
         endpoint = '{}:{}'.format(host, port)
-        region = RegionInfo(name='test_server', endpoint=endpoint,
-                            connection_cls=DynamoDBConnection)
+        region = dynamodb2.RegionInfo(
+            name='test_server', endpoint=endpoint,
+            connection_cls=layer1.DynamoDBConnection
+        )
 
         return region.connect(aws_access_key_id="asd",
                               aws_secret_access_key="asd",
@@ -107,7 +109,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table',
+            connection=self.DYNAMODB_CON
+        )
 
         table_description = table.describe()
 
@@ -141,11 +146,14 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table1', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table1',
+            connection=self.DYNAMODB_CON
+        )
 
         try:
             table.describe()
-        except JSONResponseError as e:
+        except boto_exc.JSONResponseError as e:
             self.assertEqual(
                 e.body['__type'],
                 'com.amazonaws.dynamodb.v20111205#ResourceNotFoundException')
@@ -178,7 +186,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table',
+            connection=self.DYNAMODB_CON
+        )
 
         self.assertTrue(table.delete())
 
@@ -209,7 +220,7 @@ class BotoIntegrationTest(unittest.TestCase):
         )
         self.storage_mocker.ReplayAll()
 
-        Table.create(
+        ddb_table.Table.create(
             "test",
             schema=[
                 fields.HashKey('hash', data_type=schema_types.NUMBER),
@@ -262,7 +273,7 @@ class BotoIntegrationTest(unittest.TestCase):
         ).AndRaise(exception.TableAlreadyExistsException)
         self.storage_mocker.ReplayAll()
 
-        Table.create(
+        ddb_table.Table.create(
             "test",
             schema=[
                 fields.HashKey('hash', data_type=schema_types.NUMBER),
@@ -286,7 +297,7 @@ class BotoIntegrationTest(unittest.TestCase):
         )
 
         try:
-            Table.create(
+            ddb_table.Table.create(
                 "test",
                 schema=[
                     fields.HashKey('hash', data_type=schema_types.NUMBER),
@@ -311,7 +322,7 @@ class BotoIntegrationTest(unittest.TestCase):
             )
 
             self.fail()
-        except JSONResponseError as e:
+        except boto_exc.JSONResponseError as e:
             self.assertEqual('ResourceInUseException', e.error_code)
             self.assertEqual('Table already exists: test', e.body['message'])
             self.storage_mocker.VerifyAll()
@@ -342,7 +353,7 @@ class BotoIntegrationTest(unittest.TestCase):
         )
         self.storage_mocker.ReplayAll()
 
-        Table.create(
+        ddb_table.Table.create(
             "test",
             schema=[
                 fields.HashKey('hash', data_type=schema_types.NUMBER),
@@ -374,7 +385,10 @@ class BotoIntegrationTest(unittest.TestCase):
             expected_condition_map=mox.IgnoreArg()).AndReturn((True, None))
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table',
+            connection=self.DYNAMODB_CON
+        )
 
         blob_data1 = bytes(bytearray([1, 2, 3, 4, 5]))
         blob_data2 = bytes(bytearray([5, 4, 3, 2, 1]))
@@ -399,7 +413,10 @@ class BotoIntegrationTest(unittest.TestCase):
         ).AndReturn(True)
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table',
+            connection=self.DYNAMODB_CON
+        )
 
         table.delete_item(hash_key=1, range_key="range")
 
@@ -437,7 +454,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table',
+            connection=self.DYNAMODB_CON
+        )
 
         item = table.get_item(consistent=False, hash_key=1, range_key="range")
 
@@ -486,7 +506,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table',
+            connection=self.DYNAMODB_CON
+        )
 
         items = list(table.query(consistent=False, hash_key__eq=1))
 
@@ -520,7 +543,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table',
+            connection=self.DYNAMODB_CON
+        )
 
         count = table.query_count(consistent=False, hash_key__eq=1)
 
@@ -576,7 +602,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.ReplayAll()
 
-        table = Table('test_table', connection=self.DYNAMODB_CON)
+        table = ddb_table.Table(
+            'test_table',
+            connection=self.DYNAMODB_CON
+        )
 
         item = table.get_item(consistent=False, hash_key=1, range_key="range")
 
