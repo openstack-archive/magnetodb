@@ -15,25 +15,24 @@
 
 import decimal
 import logging
+import mox
 import unittest
-from boto.exception import JSONResponseError
 
+from boto.exception import JSONResponseError
 from boto.dynamodb import types
 from boto.dynamodb2 import RegionInfo
 from boto.dynamodb2.layer1 import DynamoDBConnection
 from boto.dynamodb2 import types as schema_types
 from boto.dynamodb2 import fields
 from boto.dynamodb2.table import Table
-from magnetodb.common.exception import TableNotExistsException
-from magnetodb.common.exception import TableAlreadyExistsException
+from magnetodb.common import exception
 from magnetodb.storage import models
 from magnetodb import storage
-from magnetodb.storage.models import SelectType
 from magnetodb.tests.fake import magnetodb_api_fake
-from mox import Mox, IgnoreArg
 
-from magnetodb.common.config import CONF
+from magnetodb.common import config
 
+CONF = config.CONF
 DynamoDBConnection.NumberRetries = 0
 
 
@@ -57,7 +56,7 @@ class BotoIntegrationTest(unittest.TestCase):
         magnetodb_api_fake.stop_fake_magnetodb_api()
 
     def setUp(self):
-        self.storage_mocker = Mox()
+        self.storage_mocker = mox.Mox()
 
     def tearDown(self):
         self.storage_mocker.UnsetStubs()
@@ -76,7 +75,7 @@ class BotoIntegrationTest(unittest.TestCase):
     def test_list_table(self):
         self.storage_mocker.StubOutWithMock(storage, "list_tables")
         storage.list_tables(
-            IgnoreArg(), exclusive_start_table_name=None, limit=None
+            mox.IgnoreArg(), exclusive_start_table_name=None, limit=None
         ).AndReturn(['table1', 'table2'])
 
         self.storage_mocker.ReplayAll()
@@ -89,7 +88,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
-        storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
+        storage.describe_table(mox.IgnoreArg(), 'test_table').AndReturn(
             models.TableMeta(
                 '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
@@ -137,8 +136,8 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
         storage.describe_table(
-            IgnoreArg(), 'test_table1'
-        ).AndRaise(TableNotExistsException)
+            mox.IgnoreArg(), 'test_table1'
+        ).AndRaise(exception.TableNotExistsException)
 
         self.storage_mocker.ReplayAll()
 
@@ -158,9 +157,9 @@ class BotoIntegrationTest(unittest.TestCase):
     def test_delete_table(self):
         self.storage_mocker.StubOutWithMock(storage, 'delete_table')
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
-        storage.delete_table(IgnoreArg(), 'test_table')
+        storage.delete_table(mox.IgnoreArg(), 'test_table')
 
-        storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
+        storage.describe_table(mox.IgnoreArg(), 'test_table').AndReturn(
             models.TableMeta(
                 '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
@@ -187,7 +186,9 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def test_create_table(self):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
-        storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
+        storage.create_table(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg()
+        ).AndReturn(
             models.TableMeta(
                 '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
@@ -235,7 +236,9 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def test_create_table_duplicate(self):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
-        storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
+        storage.create_table(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg()
+        ).AndReturn(
             models.TableMeta(
                 '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
@@ -255,8 +258,8 @@ class BotoIntegrationTest(unittest.TestCase):
             )
         )
         storage.create_table(
-            IgnoreArg(), IgnoreArg(), IgnoreArg()
-        ).AndRaise(TableAlreadyExistsException)
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg()
+        ).AndRaise(exception.TableAlreadyExistsException)
         self.storage_mocker.ReplayAll()
 
         Table.create(
@@ -317,7 +320,9 @@ class BotoIntegrationTest(unittest.TestCase):
 
     def test_create_table_no_range(self):
         self.storage_mocker.StubOutWithMock(storage, 'create_table')
-        storage.create_table(IgnoreArg(), IgnoreArg(), IgnoreArg()).AndReturn(
+        storage.create_table(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg()
+        ).AndReturn(
             models.TableMeta(
                 '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
@@ -364,9 +369,9 @@ class BotoIntegrationTest(unittest.TestCase):
     def test_put_item(self):
         self.storage_mocker.StubOutWithMock(storage, 'put_item')
         storage.put_item(
-            IgnoreArg(), IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            if_not_exist=IgnoreArg(),
-            expected_condition_map=IgnoreArg()).AndReturn((True, None))
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(),
+            if_not_exist=mox.IgnoreArg(),
+            expected_condition_map=mox.IgnoreArg()).AndReturn((True, None))
         self.storage_mocker.ReplayAll()
 
         table = Table('test_table', connection=self.DYNAMODB_CON)
@@ -389,8 +394,8 @@ class BotoIntegrationTest(unittest.TestCase):
     def test_delete_item(self):
         self.storage_mocker.StubOutWithMock(storage, 'delete_item')
         storage.delete_item(
-            IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            expected_condition_map=IgnoreArg()
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(),
+            expected_condition_map=mox.IgnoreArg()
         ).AndReturn(True)
         self.storage_mocker.ReplayAll()
 
@@ -410,9 +415,9 @@ class BotoIntegrationTest(unittest.TestCase):
         range_key = "range"
 
         storage.get_item(
-            IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            select_type=IgnoreArg(),
-            consistent=IgnoreArg()
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(),
+            select_type=mox.IgnoreArg(),
+            consistent=mox.IgnoreArg()
         ).AndReturn(
             models.SelectResult(
                 items=[
@@ -458,10 +463,10 @@ class BotoIntegrationTest(unittest.TestCase):
         range_key = "range"
 
         storage.query(
-            IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            select_type=IgnoreArg(), index_name=IgnoreArg(), limit=IgnoreArg(),
-            exclusive_start_key=IgnoreArg(), consistent=IgnoreArg(),
-            order_type=IgnoreArg(),
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(),
+            select_type=mox.IgnoreArg(), index_name=mox.IgnoreArg(),
+            limit=mox.IgnoreArg(), exclusive_start_key=mox.IgnoreArg(),
+            consistent=mox.IgnoreArg(), order_type=mox.IgnoreArg(),
         ).AndReturn(
             models.SelectResult(
                 items=[
@@ -503,10 +508,10 @@ class BotoIntegrationTest(unittest.TestCase):
         self.storage_mocker.StubOutWithMock(storage, 'query')
 
         storage.query(
-            IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            select_type=SelectType.count(), index_name=IgnoreArg(),
-            limit=IgnoreArg(), exclusive_start_key=IgnoreArg(),
-            consistent=IgnoreArg(), order_type=IgnoreArg()
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(),
+            select_type=models.SelectType.count(), index_name=mox.IgnoreArg(),
+            limit=mox.IgnoreArg(), exclusive_start_key=mox.IgnoreArg(),
+            consistent=mox.IgnoreArg(), order_type=mox.IgnoreArg()
         ).AndReturn(
             models.SelectResult(
                 count=100500
@@ -530,9 +535,9 @@ class BotoIntegrationTest(unittest.TestCase):
         range_key = "range"
 
         storage.get_item(
-            IgnoreArg(), IgnoreArg(), IgnoreArg(),
-            select_type=IgnoreArg(),
-            consistent=IgnoreArg()
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(),
+            select_type=mox.IgnoreArg(),
+            consistent=mox.IgnoreArg()
         ).AndReturn(
             models.SelectResult(
                 items=[
@@ -547,7 +552,7 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.StubOutWithMock(storage, 'describe_table')
 
-        storage.describe_table(IgnoreArg(), 'test_table').AndReturn(
+        storage.describe_table(mox.IgnoreArg(), 'test_table').AndReturn(
             models.TableMeta(
                 '00000000-0000-0000-0000-000000000000',
                 models.TableSchema(
@@ -564,10 +569,10 @@ class BotoIntegrationTest(unittest.TestCase):
 
         self.storage_mocker.StubOutWithMock(storage, 'update_item')
         storage.update_item(
-            IgnoreArg(), IgnoreArg(),
-            key_attribute_map=IgnoreArg(),
-            attribute_action_map=IgnoreArg(),
-            expected_condition_map=IgnoreArg()).AndReturn((True, None))
+            mox.IgnoreArg(), mox.IgnoreArg(),
+            key_attribute_map=mox.IgnoreArg(),
+            attribute_action_map=mox.IgnoreArg(),
+            expected_condition_map=mox.IgnoreArg()).AndReturn((True, None))
 
         self.storage_mocker.ReplayAll()
 

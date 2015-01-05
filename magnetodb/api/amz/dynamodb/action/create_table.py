@@ -13,18 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.api.amz.dynamodb.action import DynamoDBAction
+from magnetodb.api.amz.dynamodb import action
 from magnetodb.api.amz.dynamodb import parser
 
 from magnetodb import storage
-from magnetodb.api.amz.dynamodb.exception import AWSDuplicateTableError, \
-    AWSValidationException
-from magnetodb.api.amz.dynamodb.exception import AWSErrorResponseException
-from magnetodb.common.exception import TableAlreadyExistsException
+from magnetodb.api.amz.dynamodb import exception as ddb_exception
+from magnetodb.common import exception
 from magnetodb.storage import models
 
 
-class CreateTableDynamoDBAction(DynamoDBAction):
+class CreateTableDynamoDBAction(action.DynamoDBAction):
     schema = {
         "required": [parser.Props.ATTRIBUTE_DEFINITIONS,
                      parser.Props.KEY_SCHEMA,
@@ -85,7 +83,7 @@ class CreateTableDynamoDBAction(DynamoDBAction):
             )
 
         except Exception:
-            raise AWSValidationException()
+            raise ddb_exception.AWSValidationException()
 
         try:
             # creating table
@@ -128,9 +126,9 @@ class CreateTableDynamoDBAction(DynamoDBAction):
                 )
 
             return result
-        except TableAlreadyExistsException:
-            raise AWSDuplicateTableError(table_name)
-        except AWSErrorResponseException as e:
+        except exception.TableAlreadyExistsException:
+            raise ddb_exception.AWSDuplicateTableError(table_name)
+        except ddb_exception.AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise AWSErrorResponseException()
+            raise ddb_exception.AWSErrorResponseException()

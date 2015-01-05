@@ -29,4 +29,4 @@ class MagnetoDBListRestoresTest(MagnetoDBTestCase):
                                 wait_for_active=True)
 
         headers, body = self.management_client.list_restore_jobs(self.tname)
-        self.assertEquals([], body['restore_jobs'])
+        self.assertEqual([], body['restore_jobs'])
