@@ -68,6 +68,9 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
+    def list_tenants(self):
+        raise NotImplementedError()
+
     def put_item(self, context, table_name, attribute_map, return_values=None,
                  if_not_exist=False, expected_condition_map=None):
         """
