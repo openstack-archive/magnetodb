@@ -20,6 +20,7 @@ from magnetodb.common import wsgi
 from magnetodb.api.openstack import v1 as api_v1
 from magnetodb.api.openstack.v1.monitoring import table_usage_details
 from magnetodb.api.openstack.v1.monitoring import monitoring_list_tables
+from magnetodb.api.openstack.v1.monitoring import project_usage_details
 
 
 class MonitoringApplication(wsgi.Router):
@@ -44,6 +45,14 @@ class MonitoringApplication(wsgi.Router):
                 table_usage_details.TableUsageController()),
             conditions={'method': 'GET'},
             action="table_usage_details"
+        )
+        mapper.connect(
+            "monitor_project",
+            "/projects/{project_id}",
+            controller=api_v1.create_resource(
+                project_usage_details.ProjectUsageController()),
+            conditions={'method': 'GET'},
+            action="project_usage_details"
         )
 
 
