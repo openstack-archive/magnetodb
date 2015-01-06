@@ -111,6 +111,21 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
         return [row['name'] for row in tables]
 
+    @probe.Probe(__name__)
+    def get_tenant_names(self):
+        query_builder = collections.deque()
+        query_builder.append(
+            "SELECT tenant FROM {}".format(
+                self.SYSTEM_TABLE_TABLE_INFO
+            )
+        )
+
+        tenants = self.__cluster_handler.execute_query(
+            "".join(query_builder), consistent=True
+        )
+
+        return [row['tenant'] for row in tenants]
+
     def __refresh(self, context, table_info, field_list=__field_list):
         query_builder = collections.deque()
         query_builder.append("SELECT ")
