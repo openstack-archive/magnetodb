@@ -1,0 +1,11 @@
+[
+    {
+        "tenant": "12345678",
+        "name": "my_table",
+        "status": "ACTIVE",
+        "usage_detailes": {
+            "size": 1003432,
+            "item_count": 3000
+        }
+    }
+]

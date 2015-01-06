@@ -1,0 +1,9 @@
+[
+    {
+        "table_name": "my_table",
+        "usage_detailes": {
+            "size": 1003432,
+            "item_count": 3000
+        }
+    }
+]
