@@ -232,6 +232,11 @@ class SimpleStorageManager(manager.StorageManager):
 
         return tnames
 
+    def list_tenants(self, last_evaluated_project=None,
+                     last_evaluated_table=None, limit=None)
+        return self._table_info_repo.list_tenants(last_evaluated_project,
+            last_evaluated_table, limit)
+
     def _execute_async(self, func, *args, **kwargs):
         weak_self = weakref.proxy(self)
 

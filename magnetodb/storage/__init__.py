@@ -160,6 +160,15 @@ def list_tables(context, exclusive_start_table_name=None, limit=None):
     )
 
 
+def list_tenants():
+    """
+    :returns: list of tenant names
+
+    :raises: BackendInteractionException
+    """
+    return __STORAGE_MANAGER_IMPL.list_tenants()
+
+
 def put_item(context, table_name, attribute_map, return_values=None,
              if_not_exist=False, expected_condition_map=None):
     """

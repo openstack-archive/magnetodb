@@ -1,4 +1,4 @@
-# Copyright 2014 Mirantis Inc.
+# Copyright 2015 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,29 +20,37 @@ from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 import mock
 
 
-class TableUsageTest(test_base_testcase.APITestCase):
-    """The test for v1 ReST API TableUsageController."""
+class AllProjectsUsageTest(test_base_testcase.APITestCase):
+    """The test for v1 ReST API ProjectUsageController."""
 
+    @mock.patch('magnetodb.storage.list_tenants')
+    @mock.patch('magnetodb.storage.list_tables')
     @mock.patch('magnetodb.storage.get_table_statistics')
-    def test_table_usage_details(self, mock_get_table_statistics):
+    def test_table_usage_details(self, mock_get_table_statistics,
+                                 mock_list_tables, mock_list_tenants):
         mock_get_table_statistics.return_value = {
             'size': 500,
             'item_count': 100
         }
+        mock_list_tables.return_value = ['Thread']
+        mock_list_tenants.return_value = ['default_tenant']
+
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/monitoring/projects/default_tenant/tables/the_table?' \
-              'metrics=size,item_count'
+        url = '/v1/monitoring/projects?metrics=size,item_count'
         conn.request("GET", url, headers=headers)
 
         response = conn.getresponse()
 
+        self.assertTrue(mock_list_tenants.called)
+        self.assertTrue(mock_list_tables.called)
         self.assertTrue(mock_get_table_statistics.called)
 
         json_response = response.read()
-        response_model = json.loads(json_response)
+        response_model = json.loads(json_response)[0]
+        tables_data = response_model['tables'][0]
 
-        self.assertEqual(100, response_model['item_count'])
-        self.assertEqual(500, response_model['size'])
+        self.assertEqual(100, tables_data['usage_detailes']['item_count'])
+        self.assertEqual(500, tables_data['usage_detailes']['size'])
