@@ -25,7 +25,17 @@ rest_client.CONF = CONF
 class MagnetoDBMonitoringClientJSON(rest_client.RestClient):
 
     def get_all_metrics(self, table_name):
-        url = '/'.join([self.tenant_id, 'tables', table_name])
+        url = '/'.join(['projects', self.tenant_id, 'tables', table_name])
+        resp, body = self.get(url)
+        return resp, self._parse_resp(body)
+
+    def get_all_project_metrics(self):
+        url = '/'.join(['projects', self.tenant_id])
+        resp, body = self.get(url)
+        return resp, self._parse_resp(body)
+
+    def get_all_project_tables_metrics(self):
+        url = 'projects'
         resp, body = self.get(url)
         return resp, self._parse_resp(body)
 
