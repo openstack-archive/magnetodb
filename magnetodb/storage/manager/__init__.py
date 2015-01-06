@@ -68,6 +68,18 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
+    def list_tenant_tables(self, last_evaluated_project=None,
+                           last_evaluated_table=None, limit=None):
+        """
+        :param last_evaluated_project: last evaluated project id
+        :param last_evaluated_table: last evaluated table name
+        :param limit: limit of returned list size
+        :returns: list of tenant names and tables 
+
+        :raises: BackendInteractionException
+        """
+        raise NotImplementedError()
+
     def put_item(self, context, table_name, attribute_map, return_values=None,
                  if_not_exist=False, expected_condition_map=None):
         """
