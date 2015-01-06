@@ -39,3 +39,40 @@ class MagnetoDBMonitoringTest(MagnetoDBTestCase):
         mon_resp = self.monitoring_client.get_all_metrics(table_name)
         self.assertEqual(mon_resp[1]['size'], 0)
         self.assertEqual(mon_resp[1]['item_count'], 0)
+
+    def test_project_monitoring_response(self):
+        table_name = rand_name(self.table_prefix).replace('-', '')
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema,
+                                wait_for_active=True)
+
+        mon_resp = self.monitoring_client.get_all_project_metrics()
+
+        table = None
+        for t in mon_resp[1]:
+            if t['table_name'] == table_name:
+                table = t
+
+        self.assertIsNotNone(table)
+        self.assertEqual(table['usage_detailes']['item_count'], 0)
+        self.assertEqual(table['usage_detailes']['size'], 0)
+
+    def test_project_tables_monitoring_response(self):
+        table_name = rand_name(self.table_prefix).replace('-', '')
+        self._create_test_table(self.smoke_attrs + self.index_attrs,
+                                table_name,
+                                self.smoke_schema,
+                                wait_for_active=True)
+
+        mon_resp = self.monitoring_client.get_all_project_tables_metrics()
+
+        table = None
+        for t in mon_resp[1]:
+            if (t['name'] == table_name and 
+                t['tenant'] == self.monitoring_client.tenant_id):
+                table = t
+
+        self.assertIsNotNone(table)
+        self.assertEqual(table['usage_detailes']['item_count'], 0)
+        self.assertEqual(table['usage_detailes']['size'], 0)
