@@ -1,0 +1,9 @@
+[
+    {
+        "table_name": "string",
+        "usage_detailes": {
+            "size": "number",
+            "item_count": "number"
+        }
+    }
+]

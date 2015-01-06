@@ -165,6 +165,21 @@ def list_tables(context, exclusive_start_table_name=None, limit=None):
     )
 
 
+def list_tenant_tables(last_evaluated_project=None,
+                       last_evaluated_table=None, limit=None):
+    """
+    :param last_evaluated_project: last evaluated project id
+    :param last_evaluated_table: last evaluated table name
+    :param limit: limit of returned list size
+    :returns: list of tenant id and table list
+
+    :raises: BackendInteractionException
+    """
+    return __STORAGE_MANAGER_IMPL.list_tenant_tables(
+        last_evaluated_project, last_evaluated_table, limit
+    )
+
+
 def put_item(context, table_name, attribute_map, return_values=None,
              if_not_exist=False, expected_condition_map=None):
     """
