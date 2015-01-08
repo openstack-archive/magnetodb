@@ -21,8 +21,9 @@ from magnetodb.storage import models
 
 class BackupManager(object):
 
-    def __init__(self, backup_info_repo):
+    def __init__(self, backup_info_repo, external_storage):
         self.backup_info_repo = backup_info_repo
+        self.external_storage = external_storage
 
     def create_backup(self, context, table_name, backup_name, strategy):
         """
