@@ -26,10 +26,10 @@ from magnetodb.openstack.common import context as ctxt
 
 extra_notifier_opts = [
     cfg.StrOpt('notification_service',
-               default=mdb_common.PROJECT_NAME,
+               default='magnetodb_notify',
                help='Service publisher_id for outgoing notifications'),
     cfg.StrOpt('default_publisher_id',
-               default=None,
+               default='magnetodb_notify',
                help='Default publisher_id for outgoing notifications'),
 
 ]
