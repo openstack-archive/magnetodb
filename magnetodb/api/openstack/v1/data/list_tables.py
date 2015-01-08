@@ -21,7 +21,6 @@ from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
 
-
 LOG = logging.getLogger(__name__)
 
 

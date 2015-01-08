@@ -92,3 +92,30 @@ class ConfigNotFound(MagnetoException):
 
 class BackupNotExists(BackendInteractionException):
     pass
+
+
+class ContainerNotExists(MagnetoException):
+    def __init__(self, **kwargs):
+        message = "Container '%(container_name)s' not exists" % kwargs
+        super(ConfigNotFound, self).__init__(message, **kwargs)
+
+
+class ContainerDeletionError(MagnetoException):
+    def __init__(self, **kwargs):
+        message = ("Error while deleting container '%(container_name)s'" %
+                   kwargs)
+        super(ContainerDeletionError, self).__init__(message, **kwargs)
+
+
+class DataDownloadError(MagnetoException):
+    def __init__(self, **kwargs):
+        message = ("Error while trying to retrieve data from container"
+                   "'%(container_name)s' object '%(object_name)s'" % kwargs)
+        super(DataDownloadError, self).__init__(message, **kwargs)
+
+
+class DataUploadError(MagnetoException):
+    def __init__(self, **kwargs):
+        message = ("Error while trying to upload data to container"
+                   "'%(container_name)s' object '%(object_name)s'" % kwargs)
+        super(DataUploadError, self).__init__(message, **kwargs)
