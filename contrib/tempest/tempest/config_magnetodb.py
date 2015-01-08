@@ -31,6 +31,12 @@ MagnetoDBGroup = [
     cfg.StrOpt('catalog_type',
                default="kv-storage",
                help="The name of the MagnetoDB service type"),
+    cfg.StrOpt('region',
+               default='',
+               help="The magnetodb region name to use. If empty, the value "
+                    "of identity.region is used instead. If no such region "
+                    "is found in the service catalog, the first found one is "
+                    "used."),
 ]
 
 magnetodb_streaming_group = cfg.OptGroup(
@@ -41,6 +47,12 @@ MagnetoDBStreamingGroup = [
     cfg.StrOpt('catalog_type',
                default="kv-streaming",
                help="The name of the MagnetoDB streaming API service type"),
+    cfg.StrOpt('region',
+               default='',
+               help="The magnetodb-streaming region name to use. If empty, "
+                    "the value of identity.region is used instead. If no such "
+                    "region is found in the service catalog, the first found "
+                    "one is used."),
 ]
 
 magnetodb_monitoring_group = cfg.OptGroup(
@@ -51,6 +63,12 @@ MagnetoDBMonitoringGroup = [
     cfg.StrOpt('catalog_type',
                default="kv-monitoring",
                help="The name of the MagnetoDB monitoring API service type"),
+    cfg.StrOpt('region',
+               default='',
+               help="The magnetodb-monitoring region name to use. If empty, "
+                    "the value of identity.region is used instead. If no such "
+                    "region is found in the service catalog, the first found "
+                    "one is used."),
 ]
 
 magnetodb_management_group = cfg.OptGroup(
@@ -61,6 +79,12 @@ MagnetoDBManagementGroup = [
     cfg.StrOpt('catalog_type',
                default="kv-management",
                help="The name of the MagnetoDB management API service type"),
+    cfg.StrOpt('region',
+               default='',
+               help="The magnetodb-management region name to use. If empty, "
+                    "the value of identity.region is used instead. If no such "
+                    "region is found in the service catalog, the first found "
+                    "one is used."),
 ]
 
 

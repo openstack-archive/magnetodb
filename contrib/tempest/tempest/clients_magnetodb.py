@@ -41,19 +41,31 @@ class Manager(clients.Manager):
         if interface == 'json':
             self.magnetodb_client = (
                 magnetodb_client.MagnetoDBClientJSON(
-                    auth_provider, CONF.magnetodb.catalog_type)
+                    auth_provider,
+                    CONF.magnetodb.catalog_type,
+                    CONF.magnetodb.region
+                )
             )
             self.magnetodb_streaming_client = (
                 magnetodb_streaming_client.MagnetoDBStreamingClientJSON(
-                    auth_provider, CONF.magnetodb_streaming.catalog_type)
+                    auth_provider,
+                    CONF.magnetodb_streaming.catalog_type,
+                    CONF.magnetodb_streaming.region
+                )
             )
             self.magnetodb_management_client = (
                 magnetodb_management_client.MagnetoDBManagementClientJSON(
-                    auth_provider, CONF.magnetodb_management.catalog_type)
+                    auth_provider,
+                    CONF.magnetodb_management.catalog_type,
+                    CONF.magnetodb_management.region
+                )
             )
             self.magnetodb_monitoring_client = (
                 magnetodb_monitoring_client.MagnetoDBMonitoringClientJSON(
-                    auth_provider, CONF.magnetodb_monitoring.catalog_type)
+                    auth_provider,
+                    CONF.magnetodb_monitoring.catalog_type,
+                    CONF.magnetodb_monitoring.region
+                )
             )
 
 
