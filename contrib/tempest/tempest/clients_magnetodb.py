@@ -38,22 +38,35 @@ class Manager(clients.Manager):
             auth_url = CONF.identity.uri_v3
         ks_creds = creds.username, creds.password, auth_url, creds.tenant_name
         self.dynamodb_client = dynamodb_client.APIClientDynamoDB(*ks_creds)
+        region = CONF.region
         if interface == 'json':
             self.magnetodb_client = (
                 magnetodb_client.MagnetoDBClientJSON(
-                    auth_provider, CONF.magnetodb.catalog_type)
+                    auth_provider,
+                    CONF.magnetodb.catalog_type,
+                    region
+                )
             )
             self.magnetodb_streaming_client = (
                 magnetodb_streaming_client.MagnetoDBStreamingClientJSON(
-                    auth_provider, CONF.magnetodb_streaming.catalog_type)
+                    auth_provider,
+                    CONF.magnetodb_streaming.catalog_type,
+                    region
+                )
             )
             self.magnetodb_management_client = (
                 magnetodb_management_client.MagnetoDBManagementClientJSON(
-                    auth_provider, CONF.magnetodb_management.catalog_type)
+                    auth_provider,
+                    CONF.magnetodb_management.catalog_type,
+                    region
+                )
             )
             self.magnetodb_monitoring_client = (
                 magnetodb_monitoring_client.MagnetoDBMonitoringClientJSON(
-                    auth_provider, CONF.magnetodb_monitoring.catalog_type)
+                    auth_provider,
+                    CONF.magnetodb_monitoring.catalog_type,
+                    region
+                )
             )
 
 
