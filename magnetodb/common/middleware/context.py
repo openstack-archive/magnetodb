@@ -30,7 +30,8 @@ class ContextMiddleware(wsgi.Middleware):
         tenant_id = kwargs.get('tenant_id', None)
         tenant_id = tenant_id or self.options.get('tenant_id', None)
         tenant_name = self.tenant_id_to_keyspace_name(tenant_id)
-        auth_token = self.options.get('auth_token', None)
+        auth_token = kwargs.get('auth_token', None)
+        auth_token = auth_token or self.options.get('auth_token', None)
         user_id = kwargs.get('user_id', None)
         user_id = user_id or self.options.get('user_id', None)
 
@@ -39,11 +40,12 @@ class ContextMiddleware(wsgi.Middleware):
         if roles:
             roles = roles.split(',')
 
-        return context.RequestContext(auth_token=auth_token,
+        ctxt = context.RequestContext(auth_token=auth_token,
                                       user=user_id,
                                       tenant=tenant_name,
                                       is_admin=is_admin,
                                       roles=roles)
+        return ctxt
 
     def process_request(self, req):
         """
@@ -55,10 +57,13 @@ class ContextMiddleware(wsgi.Middleware):
         user_id = req.headers.get('X-User-Id', None)
         tenant_id = req.headers.get('X-Tenant-Id', None)
         roles = req.headers.get('X-Roles', None)
+        auth_token = req.headers.get('X-Auth-Token', None)
         req.context = self.make_context(is_admin=True,
+                                        auth_token=auth_token,
                                         user_id=user_id,
                                         tenant_id=tenant_id,
                                         roles=roles)
+        req.context.token_info = req.environ['keystone.token_info']
 
     @classmethod
     def factory_method(cls, global_config, **local_config):
