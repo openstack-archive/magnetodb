@@ -206,6 +206,8 @@ function install_cassandra() {
 # install_magnetodb() - Collect source and prepare
 function install_magnetodb() {
 
+    sudo rabbitmqctl list_exchanges
+    sudo rabbitmqctl list_queues
     if [ "$MAGNETODB_BACKEND" == "cassandra" ]; then
         install_cassandra
     fi
