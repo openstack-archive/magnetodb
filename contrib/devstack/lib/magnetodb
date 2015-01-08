@@ -206,6 +206,8 @@ function install_cassandra() {
 # install_magnetodb() - Collect source and prepare
 function install_magnetodb() {
 
+    sudo rabbitmqctl list_exchanges
+    sudo rabbitmqctl list_queues
     if [ "$MAGNETODB_BACKEND" == "cassandra" ]; then
         install_cassandra
     fi
@@ -376,6 +378,9 @@ function start_cassandra() {
 }
 
 function start_magnetodb_streaming() {
+    sudo rabbitmqctl list_exchanges
+    sudo rabbitmqctl list_queues
+    sleep 3
     if is_ubuntu; then
         use_Python="python"
     elif is_fedora; then
@@ -389,6 +394,10 @@ function start_magnetodb_streaming() {
 }
 
 function start_magnetodb_async_task_executor() {
+    sleep 120
+    sudo rabbitmqctl list_exchanges
+    sudo rabbitmqctl list_queues
+    sleep 10
     if is_ubuntu; then
         use_Python="python"
     elif is_fedora; then
@@ -403,6 +412,9 @@ function start_magnetodb_async_task_executor() {
 
 # start_magnetodb() - Start running processes, including screen
 function start_magnetodb() {
+    sudo rabbitmqctl list_exchanges
+    sudo rabbitmqctl list_queues
+    sleep 3
 
     if [ "$MAGNETODB_BACKEND" == "cassandra" ]; then
         start_cassandra

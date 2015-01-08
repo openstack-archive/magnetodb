@@ -31,6 +31,12 @@ MagnetoDBGroup = [
     cfg.StrOpt('catalog_type',
                default="kv-storage",
                help="The name of the MagnetoDB service type"),
+    cfg.StrOpt('region',
+               default='RegionOne',
+               help="The magnetodb region name to use. If empty, the value "
+                    "of identity.region is used instead. If no such region "
+                    "is found in the service catalog, the first found one is "
+                    "used."),
 ]
 
 magnetodb_streaming_group = cfg.OptGroup(
