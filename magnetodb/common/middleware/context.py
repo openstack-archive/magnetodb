@@ -33,7 +33,8 @@ class ContextMiddleware(wsgi.Middleware):
         tenant_id = kwargs.get('tenant_id', None)
         tenant_id = tenant_id or self.options.get('tenant_id', None)
         tenant_name = self.tenant_id_to_keyspace_name(tenant_id)
-        auth_token = self.options.get('auth_token', None)
+        auth_token = kwargs.get('auth_token', None)
+        auth_token = auth_token or self.options.get('auth_token', None)
         user_id = kwargs.get('user_id', None)
         user_id = user_id or self.options.get('user_id', None)
         service_catalog = kwargs.get('service_catalog', None)
@@ -70,7 +71,9 @@ class ContextMiddleware(wsgi.Middleware):
                 raise webob.exc.HTTPInternalServerError(
                     explanation=_('Invalid service catalog json.'))
 
+        auth_token = req.headers.get('X-Auth-Token', None)
         req.context = self.make_context(is_admin=True,
+                                        auth_token=auth_token,
                                         user_id=user_id,
                                         tenant_id=tenant_id,
                                         roles=roles,
