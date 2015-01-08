@@ -304,6 +304,9 @@ function configure_magnetodb() {
     iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_user $MAGNETODB_USER
     iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_password $SERVICE_PASSWORD
 
+    iniset $MAGNETODB_CONF_DIR/magnetodb-api.conf DEFAULT amqp_durable_queues False
+    iniset $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf DEFAULT amqp_durable_queues False
+
     sed -i -e "s|^[# ^t]*rabbit_password =.*|rabbit_password = $RABBIT_PASSWORD|g" $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf
     sed -i -e "s|^[# ^t]*rabbit_password =.*|rabbit_password = $RABBIT_PASSWORD|g" $MAGNETODB_CONF_DIR/magnetodb-api.conf
 }
