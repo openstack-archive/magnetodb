@@ -21,6 +21,7 @@ from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
 
+from magnetodb.common.external_storage import swift_api
 
 LOG = logging.getLogger(__name__)
 
