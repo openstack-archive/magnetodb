@@ -7,7 +7,7 @@ jsonschema>=2.0.0,<3.0.0
 keystonemiddleware>=1.0.0
 kombu>=2.5.0
 oslo.config>=1.4.0
-oslo.messaging>=1.4.0,!=1.5.0
+oslo.messaging>=1.4.0,!=1.5.0,!=1.5.1
 oslo.serialization>=1.0.0
 pbr>=0.6,!=0.7,<1.0
 pyjolokia
