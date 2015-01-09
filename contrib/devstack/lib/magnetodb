@@ -66,6 +66,8 @@ MAGNETODB_SERVICE_PORT=${MAGNETODB_SERVICE_PORT:-8480}
 MAGNETODB_STREAMING_SERVICE_PORT=${MAGNETODB_STREAMING_SERVICE_PORT:-8481}
 MAGNETODB_SERVICE_PROTOCOL=${MAGNETODB_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
 
+#Fixed tempest commit
+TEMPEST_FIXED_COMMIT=4ad49d0b
 
 # Functions
 # ---------
@@ -312,6 +314,8 @@ function configure_magnetodb() {
 function configure_magnetodb_tempest_plugin() {
     echo -e nose >> $TEMPEST_DIR/test-requirements.txt
     echo -e nose-subunit >> $TEMPEST_DIR/test-requirements.txt
+    cd $TEMPEST_DIR
+    git checkout $TEMPEST_FIXED_COMMIT
     iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/stable/"
     iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/in_progress/"
     iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/not_ready/"
