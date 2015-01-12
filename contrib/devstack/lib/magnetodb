@@ -66,6 +66,7 @@ MAGNETODB_SERVICE_PORT=${MAGNETODB_SERVICE_PORT:-8480}
 MAGNETODB_STREAMING_SERVICE_PORT=${MAGNETODB_STREAMING_SERVICE_PORT:-8481}
 MAGNETODB_SERVICE_PROTOCOL=${MAGNETODB_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
 
+TEMPEST_FIXED_COMMIT='b8df55e3db1c'
 
 # Functions
 # ---------
@@ -313,6 +314,8 @@ function configure_magnetodb() {
 
 # configure_magnetodb_tempest_plugin() - copies magnetodb tempest plugin to tempest dir
 function configure_magnetodb_tempest_plugin() {
+    cd $TEMPEST_DIR
+    git checkout $TEMPEST_FIXED_COMMIT
     echo -e nose >> $TEMPEST_DIR/test-requirements.txt
     echo -e nose-subunit >> $TEMPEST_DIR/test-requirements.txt
     iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/stable/"
