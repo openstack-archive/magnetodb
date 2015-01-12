@@ -245,9 +245,9 @@ function configure_cassandra() {
     sed -i -e 's/^#HEAP_NEWSIZE="800M"$/HEAP_NEWSIZE="'${CASSANDRA_HEAP_NEWSIZE}'"/' ~/.ccm/repository/${CASSANDRA_VER}/conf/cassandra-env.sh
 
     # Build cassandra custom index
-    wget -q $GRADLE_REPO -O $DEST/gradle.zip
+    wget -c $GRADLE_REPO -O $DEST/gradle.zip
     cd $DEST
-    unzip gradle.zip
+    unzip -o gradle.zip
     PATH=$PATH:$DEST/gradle-$GRADLE_VER/bin
     cd $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices
     gradle build
