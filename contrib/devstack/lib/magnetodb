@@ -245,7 +245,7 @@ function configure_cassandra() {
     sed -i -e 's/^#HEAP_NEWSIZE="800M"$/HEAP_NEWSIZE="'${CASSANDRA_HEAP_NEWSIZE}'"/' ~/.ccm/repository/${CASSANDRA_VER}/conf/cassandra-env.sh
 
     # Build cassandra custom index
-    wget -q $GRADLE_REPO -O $DEST/gradle.zip
+    wget $GRADLE_REPO -O $DEST/gradle.zip
     cd $DEST
     unzip gradle.zip
     PATH=$PATH:$DEST/gradle-$GRADLE_VER/bin
@@ -307,8 +307,8 @@ function configure_magnetodb() {
     iniset $MAGNETODB_CONF_DIR/magnetodb-api.conf DEFAULT amqp_durable_queues False
     iniset $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf DEFAULT amqp_durable_queues False
 
-    sed -i -e "s|^[# ^t]*rabbit_password =.*|rabbit_password = $RABBIT_PASSWORD|g" $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf
-    sed -i -e "s|^[# ^t]*rabbit_password =.*|rabbit_password = $RABBIT_PASSWORD|g" $MAGNETODB_CONF_DIR/magnetodb-api.conf
+    iniset $MAGNETODB_CONF_DIR/magnetodb-api.conf DEFAULT rabbit_password $RABBIT_PASSWORD
+    iniset $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf DEFAULT rabbit_password $RABBIT_PASSWORD
 }
 
 # configure_magnetodb_tempest_plugin() - copies magnetodb tempest plugin to tempest dir
@@ -451,6 +451,8 @@ function clean_magnetodb() {
         do
             sudo ip addr del $i dev lo
         done
+    rm $DEST/gradle.zip
+    rm -rf $DEST/gradle-$GRADLE_VER
     sudo rm -rf $MAGNETODB_CONF_DIR
 }
 
