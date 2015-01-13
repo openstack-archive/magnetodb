@@ -92,3 +92,7 @@ class ConfigNotFound(MagnetoException):
 
 class BackupNotExists(BackendInteractionException):
     pass
+
+
+class RestoreJobNotExists(BackendInteractionException):
+    pass
