@@ -94,6 +94,10 @@ class BackupNotExists(BackendInteractionException):
     pass
 
 
+class RestoreJobNotExists(BackendInteractionException):
+    pass
+
+
 class ContainerNotExists(MagnetoException):
     def __init__(self, **kwargs):
         message = "Container '%(container_name)s' not exists" % kwargs
@@ -119,3 +123,4 @@ class DataUploadError(MagnetoException):
         message = ("Error while trying to upload data to container"
                    "'%(container_name)s' object '%(object_name)s'" % kwargs)
         super(DataUploadError, self).__init__(message, **kwargs)
+
