@@ -14,18 +14,23 @@
 #    under the License.
 import httplib
 import json
+import mock
 
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class ListRestoreJobsTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API ListRestoreJobsController."""
-    def test_list_restores(self):
+    @mock.patch('magnetodb.storage.list_restore_jobs')
+    def test_list_restores(self, list_restore_jobs_mock):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
         url = '/v1/management/default_tenant/default_table/restores'
+
+        list_restore_jobs_mock.return_value = []
+
         conn.request("GET", url, headers=headers)
 
         response = conn.getresponse()
