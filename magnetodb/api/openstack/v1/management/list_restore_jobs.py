@@ -13,10 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb import storage
 from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
+from magnetodb.openstack.common import log as logging
+
+LOG = logging.getLogger(__name__)
 
 
 class ListRestoreJobsController(object):
@@ -31,21 +35,23 @@ class ListRestoreJobsController(object):
 
         params = req.params.copy()
 
-        # exclusive_start_restore_job_id = params.pop(
-        #     parser.Props.EXCLUSIVE_START_RESTORE_JOB_ID, None)
+        exclusive_start_restore_job_id = params.pop(
+            parser.Props.EXCLUSIVE_START_RESTORE_JOB_ID, None)
 
         limit = params.pop(parser.Props.LIMIT, None)
         if limit:
             limit = validation.validate_integer(limit, parser.Props.LIMIT,
                                                 min_val=0)
 
-        restore_jobs = []
+        restore_jobs = storage.list_restore_jobs(
+            req.context, table_name, exclusive_start_restore_job_id, limit)
+
         response = {}
 
         if restore_jobs and str(limit) == str(len(restore_jobs)):
             response[
                 parser.Props.LAST_EVALUATED_RESTORE_JOB_ID
-            ] = restore_jobs[-1].id
+            ] = restore_jobs[-1].id.hex
 
         self_link_prefix = req.path_url
 
