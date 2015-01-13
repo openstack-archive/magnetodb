@@ -790,7 +790,7 @@ class Parser():
 
     @classmethod
     def format_backup_href(cls, backup, self_link_prefix):
-        return '{}/{}'.format(self_link_prefix, backup.id)
+        return '{}/{}'.format(self_link_prefix, backup.id.hex)
 
     @classmethod
     def format_restore_job(cls, restore_job, self_link_prefix):
@@ -798,15 +798,19 @@ class Parser():
             return {}
 
         res = {
-            Props.RESTORE_JOB_ID: restore_job.id,
-            Props.BACKUP_ID: restore_job.backup_id,
+            Props.RESTORE_JOB_ID: restore_job.id.hex,
             Props.TABLE_NAME: restore_job.table_name,
             Props.STATUS: restore_job.status,
-            Props.STRATEGY: restore_job.strategy,
             Props.START_DATE_TIME: restore_job.start_date_time,
         }
 
-        if restore_job.finish_datetime:
+        if restore_job.backup_id:
+            res[Props.BACKUP_ID] = restore_job.backup_id.hex
+
+        if restore_job.source:
+            res[Props.SOURCE] = restore_job.source
+
+        if restore_job.finish_date_time:
             res[Props.FINISH_DATE_TIME] = restore_job.finish_date_time
 
         links = [
@@ -827,4 +831,4 @@ class Parser():
 
     @classmethod
     def format_restore_job_href(cls, restore_job, self_link_prefix):
-        return '{}/{}'.format(self_link_prefix, restore_job.id)
+        return '{}/{}'.format(self_link_prefix, restore_job.id.hex)

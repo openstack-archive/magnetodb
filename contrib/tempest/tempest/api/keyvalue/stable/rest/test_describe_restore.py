@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import uuid
+
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
 
@@ -22,11 +24,14 @@ class MagnetoDBDescribeRestoreTest(MagnetoDBTestCase):
         super(MagnetoDBDescribeRestoreTest, self).setUp()
         self.tname = rand_name(self.table_prefix).replace('-', '')
 
-    def test_create_backup(self):
+    def test_describe_restore(self):
         self._create_test_table(self.smoke_attrs,
                                 self.tname,
                                 self.smoke_schema,
                                 wait_for_active=True)
+
+
+
 
         headers, body = self.management_client.describe_restore_job(
             self.tname, 'restore_job_id')

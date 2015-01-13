@@ -26,6 +26,7 @@ LOG = logging.getLogger(__name__)
 
 __STORAGE_MANAGER_IMPL = None
 __BACKUP_MANAGER_IMPL = None
+__RESTORE_MANAGER_IMPL = None
 
 
 def process_object_spec(obj_name, obj_spec_map, context):
@@ -96,10 +97,14 @@ def setup():
     global __BACKUP_MANAGER_IMPL
     assert __BACKUP_MANAGER_IMPL is None
 
+    global __RESTORE_MANAGER_IMPL
+    assert __RESTORE_MANAGER_IMPL is None
+
     context = load_context(config.CONF)
 
     __STORAGE_MANAGER_IMPL = context["storage_manager"]
     __BACKUP_MANAGER_IMPL = context["backup_manager"]
+    __RESTORE_MANAGER_IMPL = context["restore_manager"]
 
 
 def create_table(context, table_name, table_schema):
@@ -422,7 +427,7 @@ def create_backup(context, table_name, backup_name, strategy):
     :param backup_name: String, name of the backup to create
     :param strategy: Dict, strategy used for the backup
 
-    :returns:
+    :returns: BackupMeta
 
     :raises: BackendInteractionException
     """
@@ -445,3 +450,33 @@ def list_backups(context, table_name,
                  exclusive_start_backup_id, limit):
     return __BACKUP_MANAGER_IMPL.list_backups(
         context, table_name, exclusive_start_backup_id, limit)
+
+
+def create_restore_job(context, table_name, backup_id, source):
+    """
+    Create restore job
+
+    :param context: current request context
+    :param table_name: String, name of the table to restore
+    :param backup_id: String, id of the backup to restore from
+    :param source: String, source of the backup to restore from
+
+    :returns: RestoreJobMeta
+
+    :raises: BackendInteractionException
+    """
+
+    return __RESTORE_MANAGER_IMPL.create_restore_job(
+        context, table_name, backup_id, source)
+
+
+def describe_restore_job(context, table_name, restore_job_id):
+    return __RESTORE_MANAGER_IMPL.describe_restore_job(
+        context, table_name, restore_job_id)
+
+
+def list_restore_jobs(context, table_name,
+                      exclusive_start_restore_job_id, limit):
+
+    return __RESTORE_MANAGER_IMPL.list_restore_jobs(
+        context, table_name, exclusive_start_restore_job_id, limit)
