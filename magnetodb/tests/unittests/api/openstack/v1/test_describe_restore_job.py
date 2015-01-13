@@ -14,18 +14,34 @@
 #    under the License.
 import httplib
 import json
+import mock
+import uuid
 
+from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class DescribeRestoreJobTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API DescribeRestoreJobController."""
-    def test_describe_restore_job(self):
+    @mock.patch('magnetodb.storage.describe_restore_job')
+    def test_describe_restore_job(self, describe_restore_job_mock):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/management/default_tenant/the_table/restores/the_restore'
+
+        the_uuid = uuid.uuid4()
+
+        url = '/v1/management/default_tenant/the_table/restores/{}'.format(
+            the_uuid.hex)
+
+        describe_restore_job_mock.return_value = models.RestoreJobMeta(
+            the_uuid,
+            'default_table',
+            models.RestoreJobMeta.RESTORE_STATUS_RESTORING,
+            'the_backup',
+            'source'
+        )
 
         conn.request("GET", url, headers=headers)
 
@@ -33,4 +49,5 @@ class DescribeRestoreJobTest(test_base_testcase.APITestCase):
 
         json_response = response.read()
         response_model = json.loads(json_response)
-        self.assertEqual({}, response_model)
+        self.assertEqual('default_table', response_model['table_name'])
+        self.assertEqual('the_backup', response_model['backup_id'])

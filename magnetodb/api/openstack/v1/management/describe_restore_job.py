@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import uuid
+
+from magnetodb import storage
 from magnetodb.api import validation
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
@@ -29,7 +32,9 @@ class DescribeRestoreJobController(object):
 
         validation.validate_table_name(table_name)
 
-        restore_job = None
+        restore_job = storage.describe_restore_job(
+            req.context, table_name, uuid.UUID(restore_job_id)
+        )
         href_prefix = req.path_url
         response = parser.Parser.format_restore_job(restore_job, href_prefix)
 

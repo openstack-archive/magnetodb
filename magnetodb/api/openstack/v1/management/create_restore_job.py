@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb import storage
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api.openstack.v1 import utils
 from magnetodb.api import validation
@@ -28,16 +29,18 @@ class CreateRestoreJobController(object):
         req.context.tenant = project_id
 
         with probe.Probe(__name__ + '.validation'):
+            validation.validate_table_name(table_name)
             validation.validate_object(body, "body")
 
-            # backup_id =
-            body.pop(parser.Props.BACKUP_ID, None)
-            # source =
-            body.pop(parser.Props.SOURCE, None)
+            backup_id = body.pop(parser.Props.BACKUP_ID, None)
+            source = body.pop(parser.Props.SOURCE, None)
 
             validation.validate_unexpected_props(body, "body")
 
-        restore_job = None
+        restore_job = storage.create_restore_job(
+            req.context, table_name, backup_id, source
+        )
+
         href_prefix = req.path_url
         response = parser.Parser.format_restore_job(restore_job, href_prefix)
 

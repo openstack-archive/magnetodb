@@ -802,7 +802,7 @@ class Parser():
             Props.BACKUP_ID: restore_job.backup_id,
             Props.TABLE_NAME: restore_job.table_name,
             Props.STATUS: restore_job.status,
-            Props.STRATEGY: restore_job.strategy,
+            Props.SOURCE: restore_job.source,
             Props.START_DATE_TIME: restore_job.start_date_time,
         }
 
