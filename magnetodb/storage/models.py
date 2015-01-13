@@ -884,3 +884,29 @@ class BackupMeta(ModelBase):
             location=location,
             strategy=strategy
         )
+
+
+class RestoreJobMeta(ModelBase):
+    RESTORE_STATUS_RESTORING = "RESTORING"
+    RESTORE_STATUS_RESTORED = "RESTORED"
+    RESTORE_STATUS_RESTORE_FAILED = "RESTORE_FAILED"
+
+    _allowed_statuses = set([RESTORE_STATUS_RESTORING,
+                             RESTORE_STATUS_RESTORED,
+                             RESTORE_STATUS_RESTORE_FAILED])
+
+    def __init__(self, id, table_name, status, backup_id=None, source=None,
+                 start_date_time=None, finish_date_time=None):
+
+        assert status in self._allowed_statuses, (
+            "Backup status '%s' is not allowed" % status
+        )
+        super(RestoreJobMeta, self).__init__(
+            id=id,
+            table_name=table_name,
+            status=status,
+            backup_id=backup_id,
+            source=source,
+            start_date_time=start_date_time,
+            finish_date_time=finish_date_time
+        )

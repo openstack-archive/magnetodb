@@ -15,23 +15,37 @@
 
 import httplib
 import json
+import mock
+import uuid
 
+from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class CreateRestoreJobTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API CreateRestoreJobController."""
-    def test_create_restore_job(self):
+    @mock.patch('magnetodb.storage.create_restore_job')
+    def test_create_restore_job(self, create_restore_job_mock):
         headers = {'Content-Type': 'application/json',
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
         url = '/v1/management/default_tenant/default_table/restores'
-        body = """
-            {
-                "backup_id": "the_backup"
-            }
-        """
+
+        backup_uuid = uuid.uuid4()
+
+        body = '{{ "backup_id": "{}", "source": "the_source"}}'.format(
+            backup_uuid.hex)
+
+        the_uuid = uuid.uuid4()
+
+        create_restore_job_mock.return_value = models.RestoreJobMeta(
+            the_uuid,
+            'default_table',
+            models.RestoreJobMeta.RESTORE_STATUS_RESTORING,
+            backup_uuid,
+            'the_source'
+        )
 
         conn.request("POST", url, headers=headers, body=body)
 
@@ -39,4 +53,7 @@ class CreateRestoreJobTest(test_base_testcase.APITestCase):
 
         json_response = response.read()
         response_model = json.loads(json_response)
-        self.assertEqual({}, response_model)
+
+        self.assertEqual('default_table', response_model['table_name'])
+        self.assertEqual(backup_uuid.hex, response_model['backup_id'])
+        self.assertEqual('the_source', response_model['source'])
