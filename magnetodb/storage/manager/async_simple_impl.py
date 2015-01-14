@@ -60,9 +60,9 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
 
         future.add_done_callback(callback)
 
-    def _do_delete_table(self, context, table_info):
+    def _do_delete_table(self, context, table_info, cleanup):
         future = self._execute_async(self._storage_driver.delete_table,
-                                     context, table_info)
+                                     context, table_info, cleanup)
 
         def callback(future):
             if not future.exception():
