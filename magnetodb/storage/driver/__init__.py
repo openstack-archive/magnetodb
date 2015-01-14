@@ -28,12 +28,14 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def delete_table(self, context, table_info):
+    def delete_table(self, context, table_info, cleanup):
         """
         Delete table from the backend side
 
         :param context: current request context
         :param table_info: TableInfo instance with table's meta information
+        :param cleanup: if True - try delete table from error state
+                        and suppress exception
 
         :raises: BackendInteractionException
         """

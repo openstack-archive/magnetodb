@@ -91,7 +91,7 @@ class SchemaEndpoint(object):
                 ))
 
             LOG.error("Create table failed. Table '%s' with uuid '%s' is in "
-                      "%s state but %s is expexcted",
+                      "%s state but %s is expected",
                       table_name,
                       str(table_info.id),
                       table_info.status,
@@ -133,7 +133,7 @@ class SchemaEndpoint(object):
             LOG.error("Create table '%s' with uuid %s failed. %s",
                       table_name, str(table_info.id), str(e))
 
-    def delete(self, ctx, table_name):
+    def delete(self, ctx, table_name, cleanup):
         LOG.debug("Start deleting table '%s'", table_name)
 
         context = ctxt.RequestContext(**ctx)
@@ -176,7 +176,7 @@ class SchemaEndpoint(object):
             return
 
         try:
-            self._storage_driver.delete_table(context, table_info)
+            self._storage_driver.delete_table(context, table_info, cleanup)
             self._table_info_repo.delete(context, table_name)
             self._notifier.info(
                 context,
