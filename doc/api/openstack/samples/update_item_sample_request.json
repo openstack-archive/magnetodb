@@ -17,13 +17,13 @@
     },
     "expected": {
         "LastPostedBy": {
-            "comparison_operator": "EQ",
-            "attribute_value_list": [
-                {
-                    "S": "fred@example.com"
-                }
-            ]
+            "value": {
+                "S": "fred@example.com"
+            }
+        },
+         "Replies": {
+            "exists": false
         }
-    },
+   },
     "return_values": "ALL_NEW"
 }
