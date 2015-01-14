@@ -219,16 +219,30 @@ class CassandraStorageDriver(driver.StorageDriver):
         return '"{}"."{}"'.format(cas_keyspace, cas_table_name)
 
     @probe.Probe(__name__)
-    def delete_table(self, context, table_info):
+    def delete_table(self, context, table_info, cleanup):
         """
         Delete table from the backend side
 
         :param context: current request context
         :param table_info: TableInfo instance with table's meta information
+        :param cleanup: if True - try delete table from error state
+                        with suppress exception
 
         :raises: BackendInteractionException
         """
 
+        if cleanup:
+            try:
+                LOG.debug("Deleting table with cleanup on backend side...")
+                self._delete_and_check(table_info)
+            except Exception as ex:
+                LOG.warn("Suppressed exception during delete table "
+                         "with cleanup.")
+                LOG.warn(ex.message)
+        else:
+            self._delete_and_check(table_info)
+
+    def _delete_and_check(self, table_info):
         query = 'DROP TABLE ' + table_info.internal_name
 
         self.__cluster_handler.execute_query(query)

@@ -842,7 +842,7 @@ class TableMeta(ModelBase):
     def __init__(self, id, schema, status, creation_date_time):
         """
         :param id: table id
-        :param table_schema: TableSchema instance
+        :param schema: TableSchema instance
         :param status: table status
         :param creation_date_time: table creation timestamp
         """
