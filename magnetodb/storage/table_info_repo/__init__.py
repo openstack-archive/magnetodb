@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from magnetodb.storage import models
 
 
 class TableInfo(object):
@@ -24,6 +25,14 @@ class TableInfo(object):
         self.internal_name = internal_name
         self.creation_date_time = creation_date_time
         self.last_update_date_time = last_update_date_time
+
+    @property
+    def in_use(self):
+        return (
+            self.status != models.TableMeta.TABLE_STATUS_ACTIVE and
+            self.status != models.TableMeta.TABLE_STATUS_CREATE_FAILED and
+            self.status != models.TableMeta.TABLE_STATUS_DELETE_FAILED
+        )
 
     @property
     def name(self):

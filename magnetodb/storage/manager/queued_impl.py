@@ -43,6 +43,9 @@ class QueuedStorageManager(manager.SimpleStorageManager):
         self._rpc_client.cast(
             context.to_dict(), 'create', table_name=table_info.name)
 
-    def _do_delete_table(self, context, table_info):
+    def _do_delete_table(self, context, table_info, cleanup):
         self._rpc_client.cast(
-            context.to_dict(), 'delete', table_name=table_info.name)
+            context.to_dict(),
+            'delete',
+            table_name=table_info.name,
+            cleanup=cleanup)

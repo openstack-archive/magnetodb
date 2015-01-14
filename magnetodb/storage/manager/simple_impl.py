@@ -102,8 +102,17 @@ class SimpleStorageManager(manager.StorageManager):
             table_info.status,
             table_info.creation_date_time)
 
-    def _do_delete_table(self, context, table_info):
-        self._storage_driver.delete_table(context, table_info)
+    def _do_delete_table(self, context, table_info, cleanup):
+        if cleanup:
+            try:
+                LOG.debug("Deleting table with cleanup...")
+                self._storage_driver.delete_table(context, table_info)
+            except Exception as ex:
+                LOG.warn("Suppressed exception during delete table "
+                         "with cleanup.")
+                LOG.warn(ex.message)
+        else:
+            self._storage_driver.delete_table(context, table_info)
 
         self._table_info_repo.delete(context, table_info.name)
 
@@ -140,7 +149,7 @@ class SimpleStorageManager(manager.StorageManager):
             return models.TableMeta(table_info.id, table_info.schema,
                                     table_info.status,
                                     table_info.creation_date_time)
-        elif table_info.status != models.TableMeta.TABLE_STATUS_ACTIVE:
+        elif table_info.in_use:
             e = exception.ResourceInUseException()
             self._notifier.error(
                 context,
@@ -151,11 +160,16 @@ class SimpleStorageManager(manager.StorageManager):
                 ))
             raise e
 
+        if table_info.status == models.TableMeta.TABLE_STATUS_ACTIVE:
+            cleanup = False
+        else:
+            cleanup = True
+
         table_info.status = models.TableMeta.TABLE_STATUS_DELETING
 
         self._table_info_repo.update(context, table_info, ["status"])
 
-        self._do_delete_table(context, table_info)
+        self._do_delete_table(context, table_info, cleanup)
 
         return models.TableMeta(
             table_info.id,

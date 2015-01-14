@@ -60,7 +60,9 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
 
         future.add_done_callback(callback)
 
-    def _do_delete_table(self, context, table_info):
+    def _do_delete_table(self, context, table_info, cleanup):
+        if cleanup:
+                LOG.debug("Deleting table with cleanup...")
         future = self._execute_async(self._storage_driver.delete_table,
                                      context, table_info)
 
@@ -73,13 +75,23 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
                     context, notifier.EVENT_TYPE_TABLE_DELETE_END,
                     table_info.name)
             else:
-                table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
-                self._table_info_repo.update(
-                    context, table_info, ["status"]
-                )
-                self._notifier.error(
-                    context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                    future.exception(), priority=notifier.PRIORITY_ERROR
-                )
+                if cleanup:
+                    LOG.warn("Suppressed exception during delete table "
+                             "with cleanup.")
+                    self._table_info_repo.delete(context, table_info.name)
+                    self._notifier.info(
+                        context, notifier.EVENT_TYPE_TABLE_DELETE_END,
+                        table_info.name)
+                else:
+                    table_info.status = (
+                        models.TableMeta.TABLE_STATUS_DELETE_FAILED
+                    )
+                    self._table_info_repo.update(
+                        context, table_info, ["status"]
+                    )
+                    self._notifier.error(
+                        context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                        future.exception()
+                    )
 
         future.add_done_callback(callback)
