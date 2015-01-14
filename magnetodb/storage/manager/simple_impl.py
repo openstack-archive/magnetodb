@@ -140,7 +140,7 @@ class SimpleStorageManager(manager.StorageManager):
             return models.TableMeta(table_info.id, table_info.schema,
                                     table_info.status,
                                     table_info.creation_date_time)
-        elif table_info.status != models.TableMeta.TABLE_STATUS_ACTIVE:
+        elif table_info.in_use:
             e = exception.ResourceInUseException()
             self._notifier.error(
                 context,
