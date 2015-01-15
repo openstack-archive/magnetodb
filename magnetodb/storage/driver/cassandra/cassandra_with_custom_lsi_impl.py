@@ -1462,8 +1462,10 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         query = "SELECT * FROM {} LIMIT 1".format(SYSTEM_TABLE_TABLE_INFO)
         try:
             self.__cluster_handler.execute_query(query, consistent=True)
-        except Exception:
-            raise exception.BackendInteractionException()
+        except Exception as ex:
+            LOG.debug(ex)
+            raise exception.BackendInteractionError(
+                "Can't perform healthcheck query. Error: " + ex.message)
         return True
 
     def get_table_statistics(self, context, table_info, keys):

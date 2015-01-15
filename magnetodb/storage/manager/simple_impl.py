@@ -52,7 +52,7 @@ class SimpleStorageManager(manager.StorageManager):
             self._table_info_repo.update(
                 context, table_info, ["status", "internal_name"]
             )
-        except exception.BackendInteractionException as ex:
+        except exception.BackendInteractionError as ex:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,

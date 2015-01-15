@@ -20,31 +20,41 @@ from magnetodb.openstack.common import log as logging
 LOG = logging.getLogger(__name__)
 
 
-class MagnetoError(openstack_exception.OpenstackException):
-    """Base exception that all custom MagnetoDB app exceptions inherit from."""
+class MagnetoException(openstack_exception.OpenstackException):
+    """Base exception that all custom MagnetoDB app exceptions inherit from.
+    MagnetoError should be handled on controller level
+    """
 
     def __init__(self, message=None, **kwargs):
         if message is not None:
             self.message = message
-        super(MagnetoError, self).__init__(**kwargs)
+        super(MagnetoException, self).__init__(**kwargs)
 
 
-class BackendInteractionException(MagnetoError):
+class BackendInteractionException(MagnetoException):
+    """Base class for backend exceptions what should be
+    rendered in response and handled by client
+    """
     pass
 
 
-class ValidationError(MagnetoError):
+class BackendInteractionError(MagnetoException):
+    """Base exception class for indicating internal errors"""
     pass
 
 
-class Forbidden(MagnetoError):
+class ValidationError(MagnetoException):
+    pass
+
+
+class Forbidden(MagnetoException):
     """Caller is not authorized for operation.
     HTTP Status Code: 403
     """
     pass
 
 
-class RequestQuotaExceeded(MagnetoError):
+class RequestQuotaExceeded(MagnetoException):
     """Server is overloaded or caller has exceeded request quota.
     HTTP Status Code: 429
     """
@@ -74,7 +84,7 @@ class ConditionalCheckFailedException(BackendInteractionException):
         )
 
 
-class ConfigNotFound(MagnetoError):
+class ConfigNotFound(MagnetoException):
     def __init__(self, **kwargs):
         message = "Could not find config at %s" % kwargs.get('path')
         super(ConfigNotFound, self).__init__(message, **kwargs)
