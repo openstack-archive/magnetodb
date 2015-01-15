@@ -24,17 +24,6 @@ cd $DEST_DIR/magnetodb/functionaltests
 sudo ./run_tests.sh
 RETVAL=$?
 
-# Convert to html
-FILES=`ls $LOGS_DIR/tempest-[ins]*`
-echo "$FILES"
-
-if [ -n "$FILES" ]; then
-    for i in $FILES; do
-        echo $i
-        sudo python /usr/local/jenkins/slave_scripts/subunit2html.py $i $i.html
-    done
-fi
-
 # Preparing artifacts for publishing
 
 cd $DEST_DIR/magnetodb/contrib/
