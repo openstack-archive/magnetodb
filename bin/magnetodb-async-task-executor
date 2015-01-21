@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
 import os
 import sys
 
@@ -30,6 +31,8 @@ from magnetodb.openstack.common import log as logging
 from magnetodb.common import exception
 from magnetodb import storage
 from magnetodb.storage import models
+from magnetodb.swift import api as swift_api
+
 
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
@@ -205,9 +208,75 @@ class SchemaEndpoint(object):
                       str(e))
 
 
+class BackupEndpoint(object):
+    def __init__(self):
+        self._notifier = notifier.get_notifier()
+
+        LOG.debug('Creating endpoint...')
+
+        context = storage.load_context(CONF)
+        self._storage_manager = context["storage_manager"]
+        self._backup_info_repo = context["backup_info_repo"]
+        self._object_store = swift_api.SwiftAPI()
+
+        LOG.debug('Endpoint created')
+
+    def backup_create(self, ctx, table_name, backup_id):
+        LOG.debug("Start creating table '%s'", table_name)
+
+        context = ctxt.RequestContext(**ctx)
+
+        container_name = table_name + '_' + backup_id
+
+        table_schema_json = self._storage_manager.describe_table(
+            context, table_name
+        ).schema.to_json()
+
+        self._object_store.put_data(
+            context,
+            container_name,
+            'schema',
+            table_schema_json)
+
+        chunk_no = 0
+        limit = 10000
+        last_eval_key = None
+        cont = True
+        while cont:
+            scan_result = self._storage_manager.scan(
+                context,
+                table_name,
+                limit=limit,
+                exclusive_start_key=last_eval_key
+            )
+
+            if scan_result.count < limit:
+                cont = False
+
+            last_eval_key = scan_result.last_evaluated_key
+
+            self._object_store.put_data(
+                context,
+                container_name,
+                'chunk_{}'.format(chunk_no),
+                (item.to_json() + '\n' for item in scan_result.items))
+
+            chunk_no += 1
+
+        self._backup_info_repo.update(
+            context,
+            table_name,
+            backup_id,
+            status=models.BackupMeta.BACKUP_STATUS_CREATED,
+            finish_date_time=datetime.datetime.now(),
+            location='swift'
+        )
+
+
 if __name__ == '__main__':
     from magnetodb import common as mdb_common
     prog_name = os.path.basename(sys.argv[0])
+    topic = sys.argv[1] or 'schema'
     CONF(project=mdb_common.PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
 
     logging.setup(mdb_common.PROJECT_NAME)
@@ -216,10 +285,11 @@ if __name__ == '__main__':
     LOG.debug('Magnetodb schema processor started')
 
     transport = messaging.get_transport(cfg.CONF)
-    target = messaging.Target(topic='schema',
+    target = messaging.Target(topic=topic,
                               server='magnetodb-async-task-executor')
     endpoints = [
         SchemaEndpoint(),
+        BackupEndpoint()
     ]
     LOG.debug('Creating PRC server..')
     server = messaging.get_rpc_server(transport, target, endpoints,

@@ -13,16 +13,30 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import datetime
 import uuid
 
+from oslo import messaging
+
+from magnetodb.common import config
 from magnetodb.storage import models
+
+LOG = logging.getLogger(__name__)
+CONF = config.CONF
 
 
 class BackupManager(object):
 
     def __init__(self, backup_info_repo):
         self.backup_info_repo = backup_info_repo
+
+        transport = messaging.get_transport(CONF)
+        # TODO(ikhudoshyn): use proper topic
+        target = messaging.Target(topic='schema')
+        # target = messaging.Target(topic='backup')
+
+        self._rpc_client = messaging.RPCClient(transport, target)
 
     def create_backup(self, context, table_name, backup_name, strategy):
         """
@@ -43,11 +57,17 @@ class BackupManager(object):
             name=backup_name,
             table_name=table_name,
             status=models.BackupMeta.BACKUP_STATUS_CREATING,
-            location='location',
+            location='',
             strategy=strategy,
             start_date_time=datetime.datetime.now())
 
-        return self.backup_info_repo.save(context, backup_meta)
+        meta = self.backup_info_repo.save(context, backup_meta)
+
+        self._rpc_client.cast(
+            context.to_dict(), 'backup_create',
+            table_name=table_name,
+            backup_id=meta.id
+        )
 
     def describe_backup(self, context, table_name, backup_id):
         return self.backup_info_repo.get(context, table_name, backup_id)
