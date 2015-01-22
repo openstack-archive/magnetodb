@@ -14,8 +14,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
+import webob.exc
+
 from magnetodb.common import wsgi
-from magnetodb.openstack.common import context
+from magnetodb import context
 
 
 class ContextMiddleware(wsgi.Middleware):
@@ -33,6 +36,7 @@ class ContextMiddleware(wsgi.Middleware):
         auth_token = self.options.get('auth_token', None)
         user_id = kwargs.get('user_id', None)
         user_id = user_id or self.options.get('user_id', None)
+        service_catalog = kwargs.get('service_catalog', None)
 
         is_admin = self.options.get('is_admin', False)
         roles = kwargs.get('roles', None)
@@ -43,7 +47,8 @@ class ContextMiddleware(wsgi.Middleware):
                                       user=user_id,
                                       tenant=tenant_name,
                                       is_admin=is_admin,
-                                      roles=roles)
+                                      roles=roles,
+                                      service_catalog=service_catalog)
 
     def process_request(self, req):
         """
@@ -55,10 +60,21 @@ class ContextMiddleware(wsgi.Middleware):
         user_id = req.headers.get('X-User-Id', None)
         tenant_id = req.headers.get('X-Tenant-Id', None)
         roles = req.headers.get('X-Roles', None)
+
+        service_catalog = None
+        if req.headers.get('X_SERVICE_CATALOG') is not None:
+            try:
+                catalog_header = req.headers.get('X_SERVICE_CATALOG')
+                service_catalog = json.loads(catalog_header)
+            except ValueError:
+                raise webob.exc.HTTPInternalServerError(
+                    explanation=_('Invalid service catalog json.'))
+
         req.context = self.make_context(is_admin=True,
                                         user_id=user_id,
                                         tenant_id=tenant_id,
-                                        roles=roles)
+                                        roles=roles,
+                                        service_catalog=service_catalog)
 
     @classmethod
     def factory_method(cls, global_config, **local_config):

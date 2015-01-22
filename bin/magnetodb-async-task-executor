@@ -24,8 +24,8 @@ from oslo import messaging
 import eventlet
 eventlet.patcher.monkey_patch(all=True)
 
+from magnetodb import context as ctxt
 from magnetodb import notifier
-from magnetodb.openstack.common import context as ctxt
 from magnetodb.openstack.common import log as logging
 from magnetodb.common import exception
 from magnetodb import storage
@@ -61,7 +61,7 @@ class SchemaEndpoint(object):
     def create(self, ctx, table_name):
         LOG.debug("Start creating table '%s'", table_name)
 
-        context = ctxt.RequestContext(**ctx)
+        context = ctxt.RequestContext.from_dict(ctx)
 
         try:
             table_info = self._table_info_repo.get(context, table_name)
@@ -136,7 +136,7 @@ class SchemaEndpoint(object):
     def delete(self, ctx, table_name):
         LOG.debug("Start deleting table '%s'", table_name)
 
-        context = ctxt.RequestContext(**ctx)
+        context = ctxt.RequestContext.from_dict(ctx)
 
         try:
             table_info = self._table_info_repo.get(context, table_name)
