@@ -30,13 +30,15 @@ class MagnetoDBListTableTestCase(MagnetoDBTestCase):
         self.tables = []
 
     def tearDown(self):
-        for tname in self.tables:
+        tables = self.tables[:]
+        for tname in tables:
             try:
                 self.client.delete_table(tname)
             except (exceptions.BadRequest, exceptions.NotFound):
                 self.tables.remove(tname)
         while True:
-            for tname in self.tables:
+            tables = self.tables[:]
+            for tname in tables:
                 try:
                     self.client.describe_table(tname)
                 except exceptions.NotFound:
