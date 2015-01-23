@@ -143,13 +143,15 @@ class ClusterHandler(object):
         if consistent:
             query = cassandra_cluster.SimpleStatement(
                 query,
-                consistency_level=cassandra_cluster.ConsistencyLevel.QUORUM
+                consistency_level=cassandra_cluster.ConsistencyLevel.ALL
             )
         LOG.debug("Executing query {}".format(query))
         for x in range(3):
             try:
                 with self.__task_semaphore:
-                    return self.__session.execute(query)
+                    result = self.__session.execute(query)
+                    LOG.debug("Query result: {}".format(str(result)))
+                    return result
             except cassandra_cluster.NoHostAvailable as e:
                 LOG.warning("It seems connection was lost. Retrying...",
                             exc_info=1)
