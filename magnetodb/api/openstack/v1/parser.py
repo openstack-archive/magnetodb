@@ -361,11 +361,22 @@ class Parser():
     @classmethod
     def parse_local_secondary_indexes(cls, local_secondary_index_list_json):
         res = {}
+        key_schema_set = {}
         for index_json in local_secondary_index_list_json:
             index_name, index_def = (
                 cls.parse_local_secondary_index(index_json)
             )
             res[index_name] = index_def
+            hash = index_def.alt_hash_key_attr
+            range = index_def.alt_range_key_attr
+            if key_schema_set.has_key(hash):
+                if range in key_schema_set[hash]:
+                    raise exception.ValidationError(
+                        _("Each index must have a unique key schema"))
+                else:
+                    key_schema_set[hash].append(range)
+            else:
+                key_schema_set[hash] = [range]
 
         if len(res) < len(local_secondary_index_list_json):
             raise exception.ValidationError(
