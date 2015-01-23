@@ -182,6 +182,38 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                     self.tname, self.smoke_schema,
                                     request_lsi)
 
+    @test.attr(type=['CreT-72', 'negative'])
+    def test_create_table_two_indexes_with_same_key(self):
+        index_attrs = [{'attribute_name': 'attr_name',
+                        'attribute_type': 'S'}]
+        request_lsi = [
+            {
+                'index_name': 'index_name1',
+                'key_schema': [
+                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                    {'attribute_name': 'attr_name', 'key_type': 'RANGE'}
+                ],
+                'projection': {'projection_type': 'ALL'}
+            },
+            {
+                'index_name': 'index_name2',
+                'key_schema': [
+                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                    {'attribute_name': 'attr_name', 'key_type': 'RANGE'}
+                ],
+                'projection': {'projection_type': 'ALL'}
+            },
+        ]
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self._create_test_table(self.smoke_attrs + index_attrs,
+                                    self.tname,
+                                    self.smoke_schema,
+                                    request_lsi)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Table and its indices must have unique key schema",
+                      error_msg)
+
     @test.attr(type=['CreT-73', 'negative'])
     def test_create_table_index_schema_only_hash(self):
         request_lsi = []
@@ -202,6 +234,25 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
         error_msg = raises_cm.exception._error_string
         self.assertIn("Bad Request", error_msg)
         self.assertIn("Range key in index wasn\'t specified", error_msg)
+
+    @test.attr(type=['CreT-74', 'negative'])
+    def test_create_table_index_schema_repeats_table_schema(self):
+        request_lsi = [
+            {
+                'index_name': 'index_name',
+                'key_schema': self.smoke_schema,
+                'projection': {'projection_type': 'ALL'}
+            }
+        ]
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self._create_test_table(self.smoke_attrs,
+                                    self.tname,
+                                    self.smoke_schema,
+                                    request_lsi)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Table and its indices must have unique key schema",
+                      error_msg)
 
     @test.attr(type=['CreT-8_1', 'negative'])
     def test_create_table_malformed_01(self):

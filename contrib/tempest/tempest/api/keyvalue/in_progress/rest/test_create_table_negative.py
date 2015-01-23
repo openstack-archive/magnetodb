@@ -144,34 +144,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                     self.smoke_schema,
                                     request_lsi)
 
-    @test.attr(type=['CreT-72', 'negative'])
-    def test_create_table_two_indexes_with_same_key(self):
-        index_attrs = [{'attribute_name': 'attr_name',
-                        'attribute_type': 'S'}]
-        request_lsi = [
-            {
-                'index_name': 'index_name1',
-                'key_schema': [
-                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
-                    {'attribute_name': 'attr_name', 'key_type': 'RANGE'}
-                ],
-                'projection': {'projection_type': 'ALL'}
-            },
-            {
-                'index_name': 'index_name2',
-                'key_schema': [
-                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
-                    {'attribute_name': 'attr_name', 'key_type': 'RANGE'}
-                ],
-                'projection': {'projection_type': 'ALL'}
-            },
-        ]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs + index_attrs,
-                                    self.tname,
-                                    self.smoke_schema,
-                                    request_lsi)
-
     @test.attr(type=['CreT-71', 'negative'])
     def test_create_table_schema_hash_only_with_index(self):
         index_attrs = [{'attribute_name': 'attr_name1',
@@ -191,21 +163,6 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
             self._create_test_table(self.one_attr + index_attrs,
                                     self.tname,
                                     self.schema_hash_only,
-                                    request_lsi)
-
-    @test.attr(type=['CreT-74', 'negative'])
-    def test_create_table_index_schema_repeats_table_schema(self):
-        request_lsi = [
-            {
-                'index_name': 'index_name',
-                'key_schema': self.smoke_schema,
-                'projection': {'projection_type': 'ALL'}
-            }
-        ]
-        with self.assertRaises(exceptions.BadRequest):
-            self._create_test_table(self.smoke_attrs,
-                                    self.tname,
-                                    self.smoke_schema,
                                     request_lsi)
 
     @test.attr(type=['CreT-80', 'negative'])
