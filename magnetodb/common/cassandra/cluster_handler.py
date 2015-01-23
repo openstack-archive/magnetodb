@@ -149,7 +149,9 @@ class ClusterHandler(object):
         for x in range(3):
             try:
                 with self.__task_semaphore:
-                    return self.__session.execute(query)
+                    result = self.__session.execute(query)
+                    LOG.debug("Query result: {}".format(str(result)))
+                    return result
             except cassandra_cluster.NoHostAvailable as e:
                 LOG.warning("It seems connection was lost. Retrying...",
                             exc_info=1)
