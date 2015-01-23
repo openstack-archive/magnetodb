@@ -29,20 +29,20 @@ MAGNETODB_BRANCH=${MAGNETODB_BRANCH:-master}
 CCM_REPO=${CCM_REPO:-'https://github.com/pcmanus/ccm.git'}
 CCM_BRANCH=${CCM_BRANCH:-master}
 CCM_DIR=${CCM_DIR:-$DEST/ccm}
-CASSANDRA_VER=${CASSANDRA_VER:-2.0.11}
+CASSANDRA_VER=${CASSANDRA_VER:-2.1.2}
 CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-test}
 # By default CASSANDRA_AMOUNT_NODES = 3
 # If you need more, then you need to change the number of loopback network interface aliases below
-CASSANDRA_AMOUNT_NODES=${CASSANDRA_AMOUNT_NODES:-3}
-CASSANDRA_REPL_FACTOR=${CASSANDRA_REPL_FACTOR:-3}
+CASSANDRA_AMOUNT_NODES=${CASSANDRA_AMOUNT_NODES:-1}
+CASSANDRA_REPL_FACTOR=${CASSANDRA_REPL_FACTOR:-1}
 
 CASSANDRA_MAX_HEAP_SIZE=${CASSANDRA_MAX_HEAP_SIZE:-300M}
 CASSANDRA_HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-100M}
 
 CASSANDRA_JOLOKIA_URL=${CASSANDRA_JOLOKIA_URL:-'http://labs.consol.de/maven/repository/org/jolokia/jolokia-jvm/1.2.2/jolokia-jvm-1.2.2-agent.jar'}
 
-GRADLE_VER=${GRADLE_VER:-2.2.1}
-GRADLE_REPO=${GRADLE_REPO:-"https://services.gradle.org/distributions/gradle-$GRADLE_VER-bin.zip"}
+#GRADLE_VER=${GRADLE_VER:-2.2.1}
+#GRADLE_REPO=${GRADLE_REPO:-"https://services.gradle.org/distributions/gradle-$GRADLE_VER-bin.zip"}
 
 # Set up default directories
 MAGNETODB_CONF_DIR=${MAGNETODB_CONF_DIR:-/etc/magnetodb}
@@ -246,14 +246,14 @@ function configure_cassandra() {
     sed -i -e 's/^#HEAP_NEWSIZE="800M"$/HEAP_NEWSIZE="'${CASSANDRA_HEAP_NEWSIZE}'"/' ~/.ccm/repository/${CASSANDRA_VER}/conf/cassandra-env.sh
 
     # Build cassandra custom index
-    wget $GRADLE_REPO -O $DEST/gradle.zip
-    cd $DEST
-    unzip gradle.zip
-    PATH=$PATH:$DEST/gradle-$GRADLE_VER/bin
-    cd $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices
-    gradle build
-    CCIV=`grep '^version' build.gradle | cut -d"'" -f2`
-    cp $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices/build/libs/magnetodb-cassandra-custom-indices-$CCIV.jar ~/.ccm/repository/${CASSANDRA_VER}/lib/
+    # wget $GRADLE_REPO -O $DEST/gradle.zip
+    # cd $DEST
+    # unzip gradle.zip
+    # PATH=$PATH:$DEST/gradle-$GRADLE_VER/bin
+    # cd $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices
+    # gradle build
+    # CCIV=`grep '^version' build.gradle | cut -d"'" -f2`
+    # cp $MAGNETODB_DIR/contrib/cassandra/magnetodb-cassandra-custom-indices/build/libs/magnetodb-cassandra-custom-indices-$CCIV.jar ~/.ccm/repository/${CASSANDRA_VER}/lib/
 
     # Populate cassandra nodes
 
@@ -262,10 +262,8 @@ function configure_cassandra() {
     wget -q $CASSANDRA_JOLOKIA_URL -O ~/.ccm/jolokia-jvm-agent.jar
 
     create_keyspace_cassandra magnetodb
-    create_keyspace_cassandra user_default_tenant
-    create_keyspace_cassandra user_$DEMO_TENANT
 
-    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, id uuid, exists int, "schema" text, status text, internal_name text, last_update_date_time timestamp, creation_date_time timestamp, PRIMARY KEY(tenant, name));' >> ~/.ccm/cql.txt
+    echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, id uuid, exists int, "schema" text, status text, internal_name text, last_update_date_time timestamp, creation_date_time timestamp, PRIMARY KEY(tenant, name)) WITH caching = { 'keys' : 'NONE', 'rows_per_partition' : 'NONE' };' >> ~/.ccm/cql.txt
     echo 'CREATE TABLE magnetodb.backup_info(tenant text, table_name text, id uuid, name text, status text, start_date_time timestamp, finish_date_time timestamp, location text, strategy map<text, text>, PRIMARY KEY((tenant, table_name), id));' >> ~/.ccm/cql.txt
     echo 'CREATE TABLE magnetodb.restore_info(tenant text, table_name text, id uuid, status text, backup_id uuid, start_date_time timestamp, finish_date_time timestamp, source text, PRIMARY KEY((tenant, table_name), id));' >> ~/.ccm/cql.txt
     echo 'CREATE TABLE magnetodb.dummy(id int PRIMARY KEY);' >> ~/.ccm/cql.txt
