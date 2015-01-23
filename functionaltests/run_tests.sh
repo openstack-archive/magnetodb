@@ -5,10 +5,10 @@ LOGS_DIR=/opt/stack/logs
 cd $TEMPEST_DIR
 
 echo '============== Start stable tests ==============='
-tox -e all tempest.api.keyvalue.stable -- --parallel --concurrency=2 2>&1 | tee $LOGS_DIR/tempest-stable.txt
+tox -e all tempest.api.keyvalue.stable.rest.test_list_table:test_list_tables_exclusive_3_symb -- --parallel --concurrency=1 2>&1 | tee $LOGS_DIR/tempest-stable.txt
 RETVAL=${PIPESTATUS[0]}
-echo '============ Start in_progress tests ============'
-tox -e all tempest.api.keyvalue.in_progress -- --parallel --concurrency=2 2>&1 | tee $LOGS_DIR/tempest-in-progress.txt
-echo '============ Start not_ready tests =============='
-tox -e all tempest.api.keyvalue.not_ready -- --parallel --concurrency=2 2>&1 | tee $LOGS_DIR/tempest-not-ready.txt
+#echo '============ Start in_progress tests ============'
+#tox -e all tempest.api.keyvalue.in_progress -- --parallel --concurrency=1 2>&1 | tee $LOGS_DIR/tempest-in-progress.txt
+#echo '============ Start not_ready tests =============='
+#tox -e all tempest.api.keyvalue.not_ready -- --parallel --concurrency=1 2>&1 | tee $LOGS_DIR/tempest-not-ready.txt
 exit $RETVAL
