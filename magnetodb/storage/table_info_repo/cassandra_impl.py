@@ -291,5 +291,12 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
             )
         )
         self.__cluster_handler.execute_query(query, consistent=True)
+        query = (
+            "SELECT * FROM {}"
+            " WHERE tenant='{}' AND name='{}'".format(
+                self.SYSTEM_TABLE_TABLE_INFO, context.tenant, table_name
+            )
+        )
+        self.__cluster_handler.execute_query(query, consistent=True)
         self._remove_table_info_from_cache(context, table_name)
         return True

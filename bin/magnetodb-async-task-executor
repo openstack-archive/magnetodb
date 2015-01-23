@@ -39,6 +39,7 @@ from magnetodb.openstack.common import log as logging
 from magnetodb.common import exception
 from magnetodb import storage
 from magnetodb.storage import models
+import time
 
 
 CONF = cfg.CONF
@@ -104,6 +105,7 @@ class SchemaEndpoint(object):
             table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
 
             table_info.internal_name = internal_name
+            time.sleep(10)
             self._table_info_repo.update(
                 context, table_info, ["status", "internal_name"])
             self._notifier.info(
@@ -176,6 +178,7 @@ class SchemaEndpoint(object):
 
         try:
             self._storage_driver.delete_table(context, table_info)
+            time.sleep(10)
             self._table_info_repo.delete(context, table_name)
             self._notifier.info(
                 context,
