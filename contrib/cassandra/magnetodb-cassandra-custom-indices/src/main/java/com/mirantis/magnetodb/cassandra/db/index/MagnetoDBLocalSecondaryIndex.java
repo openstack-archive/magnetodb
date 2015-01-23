@@ -21,11 +21,12 @@ package com.mirantis.magnetodb.cassandra.db.index;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.Future;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.cql3.ColumnNameBuilder;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.index.PerColumnSecondaryIndex;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
@@ -33,6 +34,8 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 
 
 public class MagnetoDBLocalSecondaryIndex extends PerColumnSecondaryIndex
@@ -47,38 +50,11 @@ public class MagnetoDBLocalSecondaryIndex extends PerColumnSecondaryIndex
     // an iterator each time we need to access it.
     // TODO: we should fix SecondaryIndex API
     protected ColumnDefinition columnDef;
+    protected CellNameType indexComparator;
     protected boolean isQueryPropertiesField;
 
-
-    private static CompositeType buildIndexComparator(CFMetaData baseMetadata, ColumnDefinition columnDef)
-    {
-        List<AbstractType<?>> types = new ArrayList<AbstractType<?>>(((CompositeType)baseMetadata.comparator).types);
-        types.add(0, columnDef.getValidator());
-        return CompositeType.getInstance(types);
-    }
-
-    private static CFMetaData buildIndexMetadata(CFMetaData parent, ColumnDefinition info)
-    {
-        // Depends on parent's cache setting, turn on its index CF's cache.
-        // Row caching is never enabled; see CASSANDRA-5732
-        CFMetaData.Caching indexCaching =
-                parent.getCaching() == CFMetaData.Caching.ALL || parent.getCaching() == CFMetaData.Caching.KEYS_ONLY
-                        ? CFMetaData.Caching.KEYS_ONLY
-                        : CFMetaData.Caching.NONE;
-
-        AbstractType<?> columnComparator = buildIndexComparator(parent, info);
-
-        return new CFMetaData(parent.ksName, parent.indexColumnFamilyName(info), ColumnFamilyType.Standard, columnComparator, (AbstractType)null)
-                .keyValidator(parent.getKeyValidator())
-                .readRepairChance(0.0)
-                .dcLocalReadRepairChance(0.0)
-                .gcGraceSeconds(0)
-                .caching(indexCaching)
-                .speculativeRetry(parent.getSpeculativeRetry())
-                .compactionStrategyClass(parent.compactionStrategyClass)
-                .compactionStrategyOptions(parent.compactionStrategyOptions)
-                .reloadSecondaryIndexMetadata(parent)
-                .rebuild();
+    public CellNameType getIndexComparator() {
+        return indexComparator;
     }
 
     public void init()
@@ -90,80 +66,103 @@ public class MagnetoDBLocalSecondaryIndex extends PerColumnSecondaryIndex
         isQueryPropertiesField = Boolean.parseBoolean(columnDef.getIndexOptions().get(QUERY_PROPERTIES_FIELD));
 
         if (!isQueryPropertiesField) {
-            CFMetaData indexedCfMetadata = buildIndexMetadata(baseCfs.metadata, columnDef);
+            int prefixSize = columnDef.position();
+            List<AbstractType<?>> types = new ArrayList<AbstractType<?>>(prefixSize + 1);
+            types.add(columnDef.type);
+            for (int i = 0; i < prefixSize; i++)
+                types.add(baseCfs.metadata.comparator.subtype(i));
+            indexComparator = new CompoundDenseCellNameType(types);
+
+            AbstractType<?> keyType = baseCfs.metadata.getKeyValidator();
+            CFMetaData indexedCfMetadata = CFMetaData.newIndexMetadata(baseCfs.metadata, columnDef, indexComparator)
+                    .keyValidator(keyType)
+                    .rebuild();
             indexCfs = ColumnFamilyStore.createColumnFamilyStore(baseCfs.keyspace,
-                    indexedCfMetadata.cfName, new LocalPartitioner(keyComparator),
+                    indexedCfMetadata.cfName, new LocalPartitioner(keyType),
                     indexedCfMetadata);
         }
     }
 
-    protected ByteBuffer makeIndexColumnName(ByteBuffer rowKey, Column column) {
-        ColumnNameBuilder builder = makeIndexColumnNameBuilder(column.value(), column.name());
-        return builder.build();
+    protected CellName makeIndexColumnName(ByteBuffer rowKey, Cell cell) {
+        CBuilder builder = getIndexComparator().prefixBuilder();
+        builder.add(cell.value());
+        CellName cellName = cell.name();
+        for (int i = 0; i < Math.min(columnDef.position(), cellName.size()); i++)
+            builder.add(cellName.get(i));
+
+        return getIndexComparator().create(builder.build(), columnDef);
     }
 
-    protected ColumnNameBuilder makeIndexColumnNameBuilder(ByteBuffer column_value, ByteBuffer column_name) {
-        CompositeType baseComparator = (CompositeType)baseCfs.getComparator();
-        CompositeType indexComparator = (CompositeType)indexCfs.getComparator();
-
-        ByteBuffer[] components = baseComparator.split(column_name);
-
-        CompositeType.Builder builder = indexComparator.builder();
-        builder.add(column_value);
-
-        for (int i = 0; i < Math.min(columnDef.componentIndex, components.length); i++)
-            builder.add(components[i]);
-        return builder;
+    public void delete(ByteBuffer rowKey, Cell cell, OpOrder.Group opGroup)
+    {
+        deleteForCleanup(rowKey, cell, opGroup);
     }
 
-    public void delete(ByteBuffer rowKey, Column column)
+    public void deleteForCleanup(ByteBuffer rowKey, Cell cell, OpOrder.Group opGroup)
     {
         if (isQueryPropertiesField)
             throw new UnsupportedOperationException();
 
-        if (column.isMarkedForDelete(System.currentTimeMillis()))
+        if (!cell.isLive())
             return;
 
-        DecoratedKey valueKey = new DecoratedKey(indexCfs.partitioner.getToken(rowKey), rowKey);
+        DecoratedKey valueKey = new BufferDecoratedKey(indexCfs.partitioner.getToken(rowKey), rowKey);;
         int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata);
-        ByteBuffer name = makeIndexColumnName(rowKey, column);
-        assert name.remaining() > 0 && name.remaining() <= Column.MAX_NAME_LENGTH : name.remaining();
-        cfi.addTombstone(name, localDeletionTime, column.timestamp());
-        indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, false, 1);
+        cfi.addTombstone(makeIndexColumnName(rowKey, cell), localDeletionTime, cell.timestamp());
+        indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater, opGroup, null);
         if (logger.isDebugEnabled())
             logger.debug("removed index entry for cleaned-up value {}:{}", valueKey, cfi);
     }
 
-    public void insert(ByteBuffer rowKey, Column column)
+    public void insert(ByteBuffer rowKey, Cell cell, OpOrder.Group opGroup)
     {
         if (isQueryPropertiesField)
             return;
 
-        DecoratedKey valueKey = new DecoratedKey(indexCfs.partitioner.getToken(rowKey), rowKey);
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata);
-        ByteBuffer name = makeIndexColumnName(rowKey, column);
-        assert name.remaining() > 0 && name.remaining() <= Column.MAX_NAME_LENGTH : name.remaining();
-        if (column instanceof ExpiringColumn)
+        DecoratedKey valueKey = new BufferDecoratedKey(indexCfs.partitioner.getToken(rowKey), rowKey);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, false, 1);
+        CellName name = makeIndexColumnName(rowKey, cell);
+        if (cell instanceof ExpiringCell)
         {
-            ExpiringColumn ec = (ExpiringColumn)column;
-            cfi.addColumn(new ExpiringColumn(name, ByteBufferUtil.EMPTY_BYTE_BUFFER, ec.timestamp(), ec.getTimeToLive(), ec.getLocalDeletionTime()));
+            ExpiringCell ec = (ExpiringCell) cell;
+            cfi.addColumn(new BufferExpiringCell(name, ByteBufferUtil.EMPTY_BYTE_BUFFER, ec.timestamp(), ec.getTimeToLive(), ec.getLocalDeletionTime()));
         }
         else
         {
-            cfi.addColumn(new Column(name, ByteBufferUtil.EMPTY_BYTE_BUFFER, column.timestamp()));
+            cfi.addColumn(new BufferCell(name, ByteBufferUtil.EMPTY_BYTE_BUFFER, cell.timestamp()));
         }
         if (logger.isDebugEnabled())
-            logger.debug("applying index row {} in {}", indexCfs.metadata.getKeyValidator().getString(valueKey.key), cfi);
+            logger.debug("applying index row {} in {}", indexCfs.metadata.getKeyValidator().getString(valueKey.getKey()), cfi);
 
-        indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater);
+        indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater, opGroup, null);
     }
 
-    public void update(ByteBuffer rowKey, Column col)
+    static boolean shouldCleanupOldValue(Cell oldCell, Cell newCell) {
+        // If any one of name/value/timestamp are different, then we
+        // should delete from the index. If not, then we can infer that
+        // at least one of the cells is an ExpiringColumn and that the
+        // difference is in the expiry time. In this case, we don't want to
+        // delete the old value from the index as the tombstone we insert
+        // will just hide the inserted value.
+        // Completely identical cells (including expiring columns with
+        // identical ttl & localExpirationTime) will not get this far due
+        // to the oldCell.equals(newColumn) in StandardUpdater.update
+        return !oldCell.name().equals(newCell.name())
+                || !oldCell.value().equals(newCell.value())
+                || oldCell.timestamp() != newCell.timestamp();
+    }
+
+    public void update(ByteBuffer rowKey, Cell oldCol, Cell col, OpOrder.Group opGroup)
     {
         if (isQueryPropertiesField)
             return;
-        insert(rowKey, col);
+
+        // insert the new value before removing the old one, so we never have a period
+        // where the row is invisible to both queries (the opposite seems preferable); see CASSANDRA-5540
+        insert(rowKey, col, opGroup);
+        if (shouldCleanupOldValue(oldCol, col))
+            delete(rowKey, oldCol, opGroup);
     }
 
     public void removeIndex(ByteBuffer columnName)
@@ -177,7 +176,14 @@ public class MagnetoDBLocalSecondaryIndex extends PerColumnSecondaryIndex
     {
         if (isQueryPropertiesField)
             return;
-        indexCfs.forceBlockingFlush();
+
+        Future<?> wait;
+        // we synchronise on the baseCfs to make sure we are ordered correctly with other flushes to the base CFS
+        synchronized (baseCfs.getDataTracker())
+        {
+            wait = indexCfs.forceFlush();
+        }
+        FBUtilities.waitOnFuture(wait);
     }
 
     public void invalidate()
@@ -206,11 +212,11 @@ public class MagnetoDBLocalSecondaryIndex extends PerColumnSecondaryIndex
         return baseCfs.metadata.indexColumnFamilyName(columnDef);
     }
 
-    public long getLiveSize()
+    public long estimateResultRows()
     {
         if (isQueryPropertiesField)
             return 0;
-        return indexCfs.getMemtableDataSize();
+        return getIndexCfs().getMeanColumns();
     }
 
     public void reload()
@@ -232,77 +238,41 @@ public class MagnetoDBLocalSecondaryIndex extends PerColumnSecondaryIndex
     }
 
     @Override
-    public boolean indexes(ByteBuffer name)
+    public boolean indexes(CellName name)
     {
-        CompositeType baseComparator = (CompositeType)baseCfs.getComparator();
-        ByteBuffer[] components = baseComparator.split(name);
         AbstractType<?> comp = baseCfs.metadata.getColumnDefinitionComparator(columnDef);
-        return components.length > columnDef.componentIndex
-                && comp.compare(components[columnDef.componentIndex], columnDef.name) == 0;
+        return name.size() > columnDef.position()
+                && comp.compare(name.get(columnDef.position()), columnDef.name.bytes) == 0;
     }
-
     public boolean isStale(IndexedEntry entry, ColumnFamily data, long now)
     {
         if (isQueryPropertiesField)
             throw new UnsupportedOperationException();
 
-        ByteBuffer bb = entry.originalColumnNameBuilder.copy().add(columnDef.name).build();
-        Column liveColumn = data.getColumn(bb);
-        if (liveColumn == null || liveColumn.isMarkedForDelete(now))
-            return true;
-
-        ByteBuffer liveValue = liveColumn.value();
-        return columnDef.getValidator().compare(entry.indexValue, liveValue) != 0;
+        CellName name = data.getComparator().create(entry.originalColumnNameBuilder.build(), columnDef);
+        Cell cell = data.getColumn(name);
+        return cell == null || !cell.isLive(now) || columnDef.type.compare(entry.indexValue, cell.value()) != 0;
     }
 
-    public IndexedEntry decodeEntry(DecoratedKey partition_key, Column indexEntry)
+    public IndexedEntry decodeEntry(Cell indexEntry)
     {
         if (isQueryPropertiesField)
             throw new UnsupportedOperationException();
 
-        CompositeType baseComparator = (CompositeType)baseCfs.getComparator();
-        CompositeType indexComparator = (CompositeType)indexCfs.getComparator();
-        ByteBuffer[] components = indexComparator.split(indexEntry.name());
-
-        CompositeType.Builder builder = baseComparator.builder();
-        for (int i = 0; i < columnDef.componentIndex; i++)
-            builder.add(components[i + 1]);
-        return new IndexedEntry(builder, components[0]);
-    }
-
-    public void deleteIndexColumn(DecoratedKey partition_key, Column indexColumn)
-    {
-        if (isQueryPropertiesField)
-            throw new UnsupportedOperationException();
-
-        logger.error("!!!!!!!!!!!!!!!!!! deleteIndexColumn called");
-        int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata);
-        cfi.addTombstone(indexColumn.name(), localDeletionTime, indexColumn.timestamp());
-        indexCfs.apply(partition_key, cfi, SecondaryIndexManager.nullUpdater);
-        if (logger.isDebugEnabled())
-            logger.debug("removed index entry for cleaned-up value {}", cfi);
-
+        CBuilder builder = baseCfs.getComparator().builder();
+        for (int i = 0; i < columnDef.position(); i++)
+            builder.add(indexEntry.name().get(i + 1));
+        return new IndexedEntry(builder, indexEntry.name().get(0));
     }
 
     public static class IndexedEntry {
         public final ByteBuffer indexValue;
-        public final ColumnNameBuilder originalColumnNameBuilder;
+        public final CBuilder originalColumnNameBuilder;
 
-        public IndexedEntry(ColumnNameBuilder originalColumnNameBuilder, ByteBuffer indexValue)
+        public IndexedEntry(CBuilder originalColumnNameBuilder, ByteBuffer indexValue)
         {
             this.indexValue = indexValue;
             this.originalColumnNameBuilder = originalColumnNameBuilder;
-        }
-
-        public ByteBuffer originalColumnNameStart()
-        {
-            return originalColumnNameBuilder.build();
-        }
-
-        public ByteBuffer originalColumnNameEnd()
-        {
-            return originalColumnNameBuilder.buildAsEndOfRange();
         }
     }
 
