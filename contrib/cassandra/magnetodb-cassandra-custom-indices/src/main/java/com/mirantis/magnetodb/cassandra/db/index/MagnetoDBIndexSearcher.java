@@ -1,18 +1,17 @@
 package com.mirantis.magnetodb.cassandra.db.index;
 
-import org.apache.cassandra.cql.SelectExpression;
-import org.apache.cassandra.cql3.ColumnNameBuilder;
-import org.apache.cassandra.cql3.Relation;
+import org.apache.cassandra.cql3.Operator;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CBuilder;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
+import org.apache.cassandra.db.composites.Composites;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
-import org.apache.cassandra.db.marshal.CompositeType;
-import org.apache.cassandra.io.util.DataOutputBuffer;
-import org.apache.cassandra.thrift.IndexExpression;
-import org.apache.cassandra.thrift.IndexOperator;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,16 +24,16 @@ public class MagnetoDBIndexSearcher extends SecondaryIndexSearcher
 {
     private static final Logger logger = LoggerFactory.getLogger(MagnetoDBIndexSearcher.class);
 
-    private static Set<IndexOperator> leftSideOperators = new HashSet<IndexOperator>(Arrays.asList(new IndexOperator[]{
-        IndexOperator.EQ, IndexOperator.GT, IndexOperator.GTE
+    private static Set<Operator> leftSideOperators = new HashSet<Operator>(Arrays.asList(new Operator[]{
+            Operator.EQ, Operator.GT, Operator.GTE
     }));
 
-    private static Set<IndexOperator> rightSideOperators = new HashSet<IndexOperator>(Arrays.asList(new IndexOperator[]{
-            IndexOperator.EQ, IndexOperator.LT, IndexOperator.LTE
+    private static Set<Operator> rightSideOperators = new HashSet<Operator>(Arrays.asList(new Operator[]{
+            Operator.EQ, Operator.LT, Operator.LTE
     }));
 
-    private static Set<IndexOperator> strictOperators = new HashSet<IndexOperator>(Arrays.asList(new IndexOperator[]{
-            IndexOperator.GT, IndexOperator.LT
+    private static Set<Operator> strictOperators = new HashSet<Operator>(Arrays.asList(new Operator[]{
+            Operator.GT, Operator.LT
     }));
 
     public MagnetoDBIndexSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns)
@@ -48,10 +47,10 @@ public class MagnetoDBIndexSearcher extends SecondaryIndexSearcher
         for (IndexExpression expression : clause)
         {
             // skip columns belonging to a different index type
-            if (!columns.contains(expression.column_name))
+            if (!columns.contains(expression.column))
                 continue;
 
-            SecondaryIndex index = indexManager.getIndexForColumn(expression.column_name);
+            SecondaryIndex index = indexManager.getIndexForColumn(expression.column);
             if (index != null)
                 return  expression;
 
@@ -61,58 +60,18 @@ public class MagnetoDBIndexSearcher extends SecondaryIndexSearcher
     }
 
     @Override
+    public boolean canHandleIndexClause(List<IndexExpression> clause) {
+        return true;
+    }
+
+    @Override
     public List<Row> search(ExtendedFilter filter)
     {
         assert filter.getClause() != null && !filter.getClause().isEmpty();
-        return baseCfs.filter(getIndexedIterator(filter), filter);
-    }
+        // TODO: this should perhaps not open and maintain a writeOp for the full duration, but instead only *try* to delete stale entries, without blocking if there's no room
+        // as it stands, we open a writeOp and keep it open for the duration to ensure that should this CF get flushed to make room we don't block the reclamation of any room being made
 
-    private ByteBuffer makePrefix(MagnetoDBLocalSecondaryIndex index, DecoratedKey partition_key,
-                                  List<IndexExpression> indexRestrictionList, ExtendedFilter filter, boolean isStart)
-    {
-        SliceQueryFilter columnFilter = (SliceQueryFilter) filter.columnFilter(partition_key.key);
-        ByteBuffer base_column_name = isStart ? columnFilter.start() : columnFilter.finish();
-
-        for (IndexExpression indexRestriction : indexRestrictionList) {
-            if (isStart && !leftSideOperators.contains(indexRestriction.op)) {
-                continue;
-            }
-            if (!isStart && !rightSideOperators.contains(indexRestriction.op)) {
-                continue;
-            }
-
-            ColumnNameBuilder builder = ((CompositeType)index.indexCfs.getComparator()).builder().
-                    add(indexRestriction.value);
-
-            if (strictOperators.contains(indexRestriction.op) ||
-                    base_column_name.equals(ByteBufferUtil.EMPTY_BYTE_BUFFER)) {
-                switch (indexRestriction.op){
-                    case GT:    return builder.buildForRelation(Relation.Type.GT);
-                    case GTE:   return builder.buildForRelation(Relation.Type.GTE);
-                    case EQ:    return builder.buildForRelation(isStart ? Relation.Type.GTE : Relation.Type.LTE);
-                    case LT:    return builder.buildForRelation(Relation.Type.LT);
-                    case LTE:   return builder.buildForRelation(Relation.Type.LTE);
-                }
-            } else {
-                ByteBuffer prefix = builder.build();
-                DataOutputBuffer out = new DataOutputBuffer();
-                try {
-                    ByteBufferUtil.write(prefix, out);
-                    ByteBufferUtil.write(base_column_name, out);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
-                return ByteBuffer.wrap(out.getData(), 0, out.getLength());
-            }
-        }
-
-        return ByteBufferUtil.EMPTY_BYTE_BUFFER;
-    }
-
-    private ColumnFamilyStore.AbstractScanIterator getIndexedIterator(final ExtendedFilter filter) {
         Map<String, Object> query_options = null;
-        List<IndexExpression> indexValueRestrictionList = new ArrayList<IndexExpression>();
         MagnetoDBLocalSecondaryIndex indexToSearch = null;
 
         ByteBuffer indexedColumnName = null;
@@ -121,7 +80,7 @@ public class MagnetoDBIndexSearcher extends SecondaryIndexSearcher
         while (iter.hasNext()) {
             IndexExpression expr = iter.next();
             MagnetoDBLocalSecondaryIndex index =
-                    (MagnetoDBLocalSecondaryIndex) indexManager.getIndexForColumn(expr.column_name);
+                    (MagnetoDBLocalSecondaryIndex) indexManager.getIndexForColumn(expr.column);
             if (index.isQueryPropertiesField) {
                 assert query_options == null;
                 try {
@@ -132,42 +91,89 @@ public class MagnetoDBIndexSearcher extends SecondaryIndexSearcher
                 }
                 iter.remove();
             } else {
-                assert (indexedColumnName == null) || (indexedColumnName == expr.column_name);
-                indexedColumnName = expr.column_name;
+                assert (indexedColumnName == null) || (indexedColumnName == expr.column);
+                indexedColumnName = expr.column;
                 indexToSearch = index;
-                indexValueRestrictionList.add(expr);
             }
         }
 
-        final MagnetoDBLocalSecondaryIndex index = indexToSearch;
+        try (OpOrder.Group writeOp = baseCfs.keyspace.writeOrder.start(); OpOrder.Group baseOp = baseCfs.readOrdering.start(); OpOrder.Group indexOp = indexToSearch.getIndexCfs().readOrdering.start())
+        {
+            return baseCfs.filter(getIndexedIterator(writeOp, filter, indexToSearch, query_options), filter);
+        }
+    }
+
+    private Composite makePrefix(MagnetoDBLocalSecondaryIndex index, ByteBuffer partition_key,
+                                 ExtendedFilter filter, boolean isStart)
+    {
+        SliceQueryFilter columnFilter = (SliceQueryFilter) filter.columnFilter(partition_key);
+        Composite baseColumnName = isStart ? columnFilter.start() : columnFilter.finish();
+        for (IndexExpression indexRestriction : filter.getClause()) {
+            if (!index.columnDef.name.bytes.equals(indexRestriction.column)) {
+                continue;
+            }
+            if (isStart && !leftSideOperators.contains(indexRestriction.operator)) {
+                continue;
+            }
+            if (!isStart && !rightSideOperators.contains(indexRestriction.operator)) {
+                continue;
+            }
+            CBuilder prefixBuilder = index.getIndexComparator().prefixBuilder().add(indexRestriction.value);
+            if (strictOperators.contains(indexRestriction.operator) ||
+                    baseColumnName.equals(Composites.EMPTY)) {
+                Composite prefix = prefixBuilder.build();
+                Operator op = indexRestriction.operator;
+                switch (indexRestriction.operator){
+                    case GT: return prefix.start();
+                    case GTE: return prefix;
+                    case EQ: return isStart ? prefix : prefix.end();
+                    case LT: return prefix.end();
+                    case LTE: return prefix.start();
+                }
+            } else {
+                for (int i=0; i < baseColumnName.size(); i++) {
+                    prefixBuilder.add(baseColumnName.get(i));
+                }
+                return prefixBuilder.build().withEOC(baseColumnName.eoc());
+            }
+        }
+        return Composites.EMPTY;
+    }
+
+    private ColumnFamilyStore.AbstractScanIterator getIndexedIterator(final OpOrder.Group writeOp, final ExtendedFilter filter, final MagnetoDBLocalSecondaryIndex index, Map<String, Object> query_options)
+    {
         MagnetoDBLocalSecondaryIndex.QueryOptions.OrderType order =
                 (MagnetoDBLocalSecondaryIndex.QueryOptions.OrderType)query_options.get(
                         MagnetoDBLocalSecondaryIndex.QueryOptions.ORDER);
         final boolean reversed = (order == MagnetoDBLocalSecondaryIndex.QueryOptions.OrderType.DESC);
 
-        final CompositeType indexComparator = (CompositeType) index.getIndexCfs().getComparator();
+        final CellNameType indexComparator = index.getIndexCfs().getComparator();
 
         final DecoratedKey basicCFPartitionKey = (DecoratedKey) filter.dataRange.keyRange().left;
-        final DecoratedKey indexCFPartitionKey = index.getIndexCfs().partitioner.decorateKey(basicCFPartitionKey.key);
+        final DecoratedKey indexCFPartitionKey = index.getIndexCfs().partitioner.decorateKey(basicCFPartitionKey.getKey());
 
-        final ByteBuffer startPrefix = makePrefix(index, basicCFPartitionKey,
-                indexValueRestrictionList, filter, !reversed);
-        final ByteBuffer endPrefix = makePrefix(index, basicCFPartitionKey,
-                indexValueRestrictionList, filter, reversed);
+        final Composite startPrefix = makePrefix(index, basicCFPartitionKey.getKey(), filter, !reversed);
+        final Composite endPrefix = makePrefix(index, basicCFPartitionKey.getKey(), filter, reversed);
 
-        final int limit = Math.min(filter.currentLimit(), SelectExpression.MAX_COLUMNS_DEFAULT);
+        return new ColumnFamilyStore.AbstractScanIterator()
+        {
+            private Composite lastSeenPrefix = startPrefix;
+            private Deque<Cell> indexCells;
+            private int columnsRead = Integer.MAX_VALUE;
+            private int limit = filter.currentLimit();
+            private int columnsCount = 0;
 
-        return new ColumnFamilyStore.AbstractScanIterator() {
-            private int columnCount = 0;
-            int columnToFetchCount = 0;
-            int fetchedColumnCount = 0;
-            private ByteBuffer lastPrefixSeen = startPrefix;
+            private int meanColumns = Math.max(index.getIndexCfs().getMeanColumns(), 1);
+            // We shouldn't fetch only 1 row as this provides buggy paging in case the first row doesn't satisfy all clauses
+            private int rowsPerQuery = Math.max(Math.min(filter.maxRows(), filter.maxColumns() / meanColumns), 2);
 
-            public boolean needsFiltering() {
+            public boolean needsFiltering()
+            {
                 return false;
             }
 
-            private Row makeReturn(DecoratedKey key, ColumnFamily data) {
+            private Row makeReturn(DecoratedKey key, ColumnFamily data)
+            {
                 if (data == null)
                     return endOfData();
 
@@ -175,101 +181,100 @@ public class MagnetoDBIndexSearcher extends SecondaryIndexSearcher
                 return new Row(key, data);
             }
 
-            protected Row computeNext() {
-            /*
-             * Our internal index code is wired toward internal rows. So we need to accumulate all results for a given
-             * row before returning from this method. Which unfortunately means that this method has to do what
-             * CFS.filter does for KeysIndex.
-             */
+            protected Row computeNext()
+            {
                 ColumnFamily data = null;
 
-MAIN_LOOP:      while (fetchedColumnCount >= columnToFetchCount) {
-                    columnToFetchCount = (limit - columnCount);
-                    columnToFetchCount += Math.max(columnToFetchCount / 10, 2);
+                while (true)
+                {
+                    // Did we get more columns that needed to respect the user limit?
+                    // (but we still need to return what has been fetched already)
+                    if (columnsCount >= limit)
+                        return makeReturn(basicCFPartitionKey, data);
 
-                    QueryFilter indexFilter = QueryFilter.getSliceFilter(indexCFPartitionKey,
-                            index.getIndexCfs().name,
-                            lastPrefixSeen,
-                            endPrefix,
-                            reversed,
-                            columnToFetchCount,
-                            filter.timestamp);
+                    if (indexCells == null || indexCells.isEmpty())
+                    {
+                        if (columnsRead < rowsPerQuery)
+                        {
+                            logger.trace("Read only {} (< {}) last page through, must be done", columnsRead, rowsPerQuery);
+                            return makeReturn(basicCFPartitionKey, data);
+                        }
 
-                    if (indexFilter == null)
-                        break MAIN_LOOP;
+                        QueryFilter indexFilter = QueryFilter.getSliceFilter(indexCFPartitionKey,
+                                index.getIndexCfs().name,
+                                lastSeenPrefix,
+                                endPrefix,
+                                reversed,
+                                rowsPerQuery,
+                                filter.timestamp);
+                        ColumnFamily indexRow = index.getIndexCfs().getColumnFamily(indexFilter);
+                        if (indexRow == null || !indexRow.hasColumns())
+                            return makeReturn(basicCFPartitionKey, data);
 
-                    ColumnFamily indexRow = index.getIndexCfs().getColumnFamily(indexFilter);
-                    if (indexRow == null || indexRow.getColumnCount() == 0)
-                        break MAIN_LOOP;
+                        Collection<Cell> sortedCells =
+                                reversed ? indexRow.getReverseSortedColumns() : indexRow.getSortedColumns();
 
-                    fetchedColumnCount = indexRow.getColumnCount();
+                        columnsRead = sortedCells.size();
+                        indexCells = new ArrayDeque<>(sortedCells);
+                    }
 
-                    Collection<Column> sortedColumns =
-                            reversed ? indexRow.getReverseSortedColumns() : indexRow.getSortedColumns();
-
-                    for (Column column : sortedColumns) {
-                        lastPrefixSeen = column.name();
-                        if (column.isMarkedForDelete(filter.timestamp)) {
-                            logger.trace("skipping {}", column.name());
+                    while (!indexCells.isEmpty() && columnsCount <= limit)
+                    {
+                        Cell cell = indexCells.poll();
+                        lastSeenPrefix = cell.name();
+                        if (!cell.isLive(filter.timestamp))
+                        {
+                            logger.trace("skipping {}", cell.name());
                             continue;
                         }
 
-                        MagnetoDBLocalSecondaryIndex.IndexedEntry entry = index.decodeEntry(basicCFPartitionKey, column);
+                        MagnetoDBLocalSecondaryIndex.IndexedEntry entry = index.decodeEntry(cell);
+                        Composite originalPrefix = entry.originalColumnNameBuilder.build();
 
-                        ByteBuffer start = entry.originalColumnNameStart();
-
-                        logger.trace("Adding index hit to current row for {}", indexComparator.getString(column.name()));
+                        logger.trace("Adding index hit to current row for {}", indexComparator.getString(cell.name()));
 
                         // We always query the whole CQL3 row. In the case where the original filter was a name filter this might be
                         // slightly wasteful, but this probably doesn't matter in practice and it simplify things.
-                        ColumnSlice dataSlice = new ColumnSlice(start, entry.originalColumnNameEnd());
-                        ColumnSlice[] slices;
-                        if (baseCfs.metadata.hasStaticColumns()) {
-                            // If the table has static columns, we must fetch them too as they may need to be returned too.
-                            // Note that this is potentially wasteful for 2 reasons:
-                            //  1) we will retrieve the static parts for each indexed row, even if we have more than one row in
-                            //     the same partition. If we were to group data queries to rows on the same slice, which would
-                            //     speed up things in general, we would also optimize here since we would fetch static columns only
-                            //     once for each group.
-                            //  2) at this point we don't know if the user asked for static columns or not, so we might be fetching
-                            //     them for nothing. We would however need to ship the list of "CQL3 columns selected" with getRangeSlice
-                            //     to be able to know that.
-                            // TODO: we should improve both point above
-                            ColumnSlice staticSlice = new ColumnSlice(ByteBufferUtil.EMPTY_BYTE_BUFFER, baseCfs.metadata.getStaticColumnNameBuilder().buildAsEndOfRange());
-                            slices = new ColumnSlice[]{staticSlice, dataSlice};
-                        } else {
-                            slices = new ColumnSlice[]{dataSlice};
-                        }
-                        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringKeyColumns().size());
+                        ColumnSlice dataSlice = new ColumnSlice(originalPrefix, originalPrefix.end());
+                        // If the table has static columns, we must fetch them too as they may need to be returned too.
+                        // Note that this is potentially wasteful for 2 reasons:
+                        //  1) we will retrieve the static parts for each indexed row, even if we have more than one row in
+                        //     the same partition. If we were to group data queries to rows on the same slice, which would
+                        //     speed up things in general, we would also optimize here since we would fetch static columns only
+                        //     once for each group.
+                        //  2) at this point we don't know if the user asked for static columns or not, so we might be fetching
+                        //     them for nothing. We would however need to ship the list of "CQL3 columns selected" with getRangeSlice
+                        //     to be able to know that.
+                        // TODO: we should improve both point above
+                        ColumnSlice[] slices = baseCfs.metadata.hasStaticColumns()
+                                ? new ColumnSlice[]{ baseCfs.metadata.comparator.staticPrefix().slice(), dataSlice }
+                                : new ColumnSlice[]{ dataSlice };
+                        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size());
                         ColumnFamily newData = baseCfs.getColumnFamily(new QueryFilter(basicCFPartitionKey, baseCfs.name, dataFilter, filter.timestamp));
-                        if (newData == null || index.isStale(entry, newData, filter.timestamp)) {
-                            index.delete(indexCFPartitionKey.key, column);
+                        if (newData == null || index.isStale(entry, newData, filter.timestamp))
+                        {
+                            index.delete(indexCFPartitionKey.getKey(), cell, writeOp);
                             continue;
                         }
 
-                        assert newData != null : "An entry with not data should have been considered stale";
+                        assert newData != null : "An entry with no data should have been considered stale";
 
-                        if (!filter.isSatisfiedBy(basicCFPartitionKey, newData, entry.originalColumnNameBuilder))
+                        // We know the entry is not stale and so the entry satisfy the primary clause. So whether
+                        // or not the data satisfies the other clauses, there will be no point to re-check the
+                        // same CQL3 row if we run into another collection value entry for this row.
+                        if (!filter.isSatisfiedBy(basicCFPartitionKey, newData, originalPrefix, null))
                             continue;
 
-                        if (data == null) {
-                            data = UnsortedColumns.factory.create(baseCfs.metadata);
-                        }
-                        data.resolve(newData);
-                        columnCount++;
-                        if (columnCount >= limit) {
-                            break MAIN_LOOP;
-                        }
+                        if (data == null)
+                            data = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+                        data.addAll(newData);
+                        columnsCount += dataFilter.lastCounted();
                     }
-                    lastPrefixSeen = ByteBufferUtil.clone(lastPrefixSeen);
-                    lastPrefixSeen.put(lastPrefixSeen.remaining() - 1, (byte)(reversed ? -1 : 1));
+                    lastSeenPrefix = reversed ? lastSeenPrefix.end() : lastSeenPrefix.start();
                 }
-
-                return makeReturn(basicCFPartitionKey, data);
             }
 
-            public void close() throws IOException {
-            }
+            public void close() throws IOException {}
         };
     }
 }
