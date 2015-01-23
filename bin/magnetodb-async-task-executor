@@ -52,7 +52,7 @@ class SchemaEndpoint(object):
         LOG.debug('Creating endpoint...')
 
         context = storage.load_context(CONF)
-        self._storage_driver = context["storage_driver"]
+        # self._storage_driver = context["storage_driver"]
         self._table_info_repo = context["table_info_repo"]
 
         LOG.debug('Endpoint created')
@@ -98,12 +98,13 @@ class SchemaEndpoint(object):
             return
 
         try:
-            internal_name = self._storage_driver.create_table(
-                context, table_info)
+            # internal_name = self._storage_driver.create_table(
+            #    context, table_info)
 
             table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
 
-            table_info.internal_name = internal_name
+            table_info.internal_name = "internal_name"
+            # table_info.internal_name = internal_name
             self._table_info_repo.update(
                 context, table_info, ["status", "internal_name"])
             self._notifier.info(
@@ -175,7 +176,7 @@ class SchemaEndpoint(object):
             return
 
         try:
-            self._storage_driver.delete_table(context, table_info)
+            # self._storage_driver.delete_table(context, table_info)
             self._table_info_repo.delete(context, table_name)
             self._notifier.info(
                 context,
