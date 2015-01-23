@@ -17,8 +17,10 @@
 from magnetodb import api
 from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
+from magnetodb.common import exception
 from magnetodb.common import probe
 from magnetodb.openstack.common import log as logging
+from magnetodb.openstack.common.gettextutils import _
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -73,6 +75,18 @@ class CreateTableController():
                 )
             else:
                 index_def_map = {}
+
+            # validate the uniqueness of table and its indices' key schema
+            range_keys = []
+            if len(key_attrs) > 1:
+                range_keys.append(key_attrs[1])
+            for index in index_def_map.values():
+                range_keys.append(index.alt_range_key_attr)
+            try:
+                validation.validate_set(range_keys, "key_schema")
+            except exception.ValidationError:
+                raise exception.ValidationError(
+                    _("Table and its indices must have unique key schema"))
 
             validation.validate_unexpected_props(body, "body")
         # prepare table_schema structure
