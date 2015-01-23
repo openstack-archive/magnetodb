@@ -57,23 +57,6 @@ cassandra_cluster.ControlConnection.wait_for_schema_agreement = (
 )
 
 
-def _monitor_control_connection(cluster_handler_ref):
-    while True:
-        cluster_handler = cluster_handler_ref()
-        if cluster_handler is None or cluster_handler._is_closed():
-            return
-
-        try:
-            if not cluster_handler._is_connected():
-                cluster_handler._connect()
-        except Exception:
-            LOG.exception("Error during connecting to the cluster")
-
-        # clean hardlink to give ability to remove object
-        cluster_handler = None
-        time.sleep(1)
-
-
 class ClusterHandler(object):
     def __init__(self, cluster_params, query_timeout=2,
                  concurrent_queries=100):
@@ -85,19 +68,12 @@ class ClusterHandler(object):
         self.__connection_lock = threading.RLock()
         self.__cluster = None
         self.__session = None
-        self.__connection_monitor_thread = threading.Thread(
-            target=_monitor_control_connection, args=(weakref.ref(self),)
-        )
-        self.__connection_monitor_thread.start()
 
     def __del__(self):
         self.shutdown()
 
     def shutdown(self):
-        self.__closed = True
-        self.__connection_monitor_thread.join()
-        if self.__cluster:
-            self.__cluster.shutdown()
+        self._disconnect()
 
     def _is_connected(self):
         return (
@@ -137,19 +113,22 @@ class ClusterHandler(object):
             self.__session = None
 
     def execute_query(self, query, consistent=False):
+        self._connect()
         if self.__cluster is None:
             raise ClusterIsNotConnectedException()
         ex = None
         if consistent:
             query = cassandra_cluster.SimpleStatement(
                 query,
-                consistency_level=cassandra_cluster.ConsistencyLevel.QUORUM
+                consistency_level=cassandra_cluster.ConsistencyLevel.ALL
             )
         LOG.debug("Executing query {}".format(query))
         for x in range(3):
             try:
                 with self.__task_semaphore:
-                    return self.__session.execute(query)
+                    result = self.__session.execute(query)
+                    LOG.debug("Query result: {}".format(str(result)))
+                    return result
             except cassandra_cluster.NoHostAvailable as e:
                 LOG.warning("It seems connection was lost. Retrying...",
                             exc_info=1)

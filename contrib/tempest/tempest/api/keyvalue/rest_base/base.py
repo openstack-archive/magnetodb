@@ -102,6 +102,7 @@ class MagnetoDBTestCase(test.BaseTestCase):
         def check():
             client = self.client if not alt else self.alt_client
             headers, body = client.describe_table(table_name)
+            LOG.info("Describe table result: {}".format(str(body)))
             if "table" in body and "table_status" in body["table"]:
                 status = body["table"]["table_status"]
                 if status == TABLE_STATUS_CREATE_FAILED:
@@ -116,6 +117,7 @@ class MagnetoDBTestCase(test.BaseTestCase):
             client = self.client if not alt else self.alt_client
             try:
                 headers, body = client.describe_table(table_name)
+                LOG.info("Describe table result: {}".format(str(body)))
                 if "table" in body and "table_status" in body["table"]:
                     status = body["table"]["table_status"]
                     if status == TABLE_STATUS_DELETE_FAILED:

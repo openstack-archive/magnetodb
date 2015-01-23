@@ -159,11 +159,9 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
     def __refresh(self, context, table_info, field_list=__field_list):
         query_builder = collections.deque()
-        query_builder.append("SELECT ")
-        query_builder.append(",".join(map('"{}"'.format, field_list)))
 
         query_builder.append(
-            " FROM {} WHERE tenant='{}' AND name='{}'".format(
+            "SELECT * FROM {} WHERE tenant='{}' AND name='{}'".format(
                 self.SYSTEM_TABLE_TABLE_INFO,
                 context.tenant, table_info.name
             )
@@ -179,6 +177,8 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
                 "Table '{}' does not exist".format(table_info.name)
             )
         for name, value in result[0].iteritems():
+            if name not in self.__field_list:
+                continue
             if name == "schema":
                 value = models.ModelBase.from_json(value)
             setattr(table_info, name, value)
@@ -291,5 +291,14 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
             )
         )
         self.__cluster_handler.execute_query(query, consistent=True)
+        query = (
+            "SELECT * FROM {}"
+            " WHERE tenant='{}' AND name='{}'".format(
+                self.SYSTEM_TABLE_TABLE_INFO, context.tenant, table_name
+            )
+        )
+        self.__cluster_handler.execute_query(query, consistent=True)
+
         self._remove_table_info_from_cache(context, table_name)
+        self.__cluster_handler.execute_query(query, consistent=True)
         return True
