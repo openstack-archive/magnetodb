@@ -31,12 +31,10 @@ wait_for_schema_agreement_origin = (
 )
 
 
-def wait_for_schema_agreement(control_con, connection=None,
-                              preloaded_results=None):
+def wait_for_schema_agreement(control_con, connection=None, **kwargs):
     for i in xrange(3):
         matched = wait_for_schema_agreement_origin(
-            control_con, connection=connection,
-            preloaded_results=preloaded_results
+            control_con, connection=connection, **kwargs
         )
 
         if matched:
