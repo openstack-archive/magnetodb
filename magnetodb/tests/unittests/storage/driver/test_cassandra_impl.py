@@ -32,7 +32,7 @@ class CassandraDriverTestCase(unittest.TestCase):
     @mock.patch('magnetodb.storage.driver.cassandra.'
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_delete_no_val(self, mock_select_item):
-        mock_execute_query = mock.Mock(return_value=None)
+        mock_execute_query = mock.Mock(return_value=[{'[applied]': True}])
         mock_table_schema = models.TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
@@ -76,7 +76,7 @@ class CassandraDriverTestCase(unittest.TestCase):
     @mock.patch('magnetodb.storage.driver.cassandra.'
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_delete_set(self, mock_select_item):
-        mock_execute_query = mock.Mock(return_value=None)
+        mock_execute_query = mock.Mock(return_value=[{'[applied]': True}])
         mock_table_schema = models.TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
@@ -120,7 +120,7 @@ class CassandraDriverTestCase(unittest.TestCase):
     @mock.patch('magnetodb.storage.driver.cassandra.'
                 'cassandra_impl.CassandraStorageDriver.select_item')
     def test_update_item_add_number(self, mock_select_item):
-        mock_execute_query = mock.Mock(return_value=None)
+        mock_execute_query = mock.Mock(return_value=[{'[applied]': True}])
         mock_table_schema = models.TableSchema(
             key_attributes=['hash_key', 'range_key'],
             attribute_type_map={'hash_key': None,
