@@ -24,13 +24,6 @@ from oslo import messaging
 import eventlet
 eventlet.patcher.monkey_patch(all=True)
 
-from magnetodb import context as ctxt
-from magnetodb import notifier
-from magnetodb.openstack.common import log as logging
-from magnetodb.common import exception
-from magnetodb import storage
-from magnetodb.storage import models
-
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
 possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
@@ -41,6 +34,14 @@ if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
+from magnetodb import context as ctxt
+from magnetodb import notifier
+from magnetodb.openstack.common import log as logging
+from magnetodb.common import exception
+from magnetodb import storage
+from magnetodb.storage import models
+
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
