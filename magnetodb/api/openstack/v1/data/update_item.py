@@ -92,6 +92,7 @@ class UpdateItemController(object):
         if return_values.type != parser.Values.RETURN_VALUES_NONE:
             response[parser.Props.ATTRIBUTES] = (
                 parser.Parser.format_item_attributes(old_item)
+                if old_item else {}
             )
 
         return response
