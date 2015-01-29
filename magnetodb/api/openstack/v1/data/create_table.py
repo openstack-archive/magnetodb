@@ -80,6 +80,12 @@ class CreateTableController():
             range_keys = []
             if len(key_attrs) > 1:
                 range_keys.append(key_attrs[1])
+            else:
+                # table has hash type primary key
+                if len(index_def_map) > 0:
+                    raise exception.ValidationError(
+                        _("Table without range key in primary key schema "
+                          "can not have indices"))
             for index in index_def_map.values():
                 range_keys.append(index.alt_range_key_attr)
             try:
