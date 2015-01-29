@@ -53,7 +53,7 @@ class ListBackupsController(object):
 
         response = {}
 
-        if backups and str(limit) == str(len(backups)):
+        if backups and limit == len(backups):
             response[parser.Props.LAST_EVALUATED_BACKUP_ID] = (
                 backups[-1].id.hex)
 

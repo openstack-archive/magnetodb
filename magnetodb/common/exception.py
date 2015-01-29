@@ -94,6 +94,10 @@ class BackupNotExists(BackendInteractionException):
     pass
 
 
+class RestoreJobNotExists(BackendInteractionException):
+    pass
+
+
 class ContainerNotExists(MagnetoException):
     def __init__(self, **kwargs):
         message = "Container '%(container_name)s' not exists" % kwargs
