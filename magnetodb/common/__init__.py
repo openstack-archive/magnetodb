@@ -39,6 +39,10 @@ def is_global_env_ready():
 
 def setup_global_env(program=None, args=None):
     if not is_global_env_ready():
+        if sys.version_info[0] < 3:
+            reload(sys)
+            sys.setdefaultencoding('utf-8')
+
         from magnetodb import notifier
         from magnetodb import storage
         from magnetodb.common import config
