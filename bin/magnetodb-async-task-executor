@@ -39,9 +39,6 @@ possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
 if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
-reload(sys)
-sys.setdefaultencoding('utf-8')
-
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
