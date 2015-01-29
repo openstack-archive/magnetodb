@@ -95,7 +95,10 @@ class ModelBase(object):
             return dct
 
         res = json.loads(jsn, object_hook=as_model)
-        assert isinstance(res, cls)
+        if isinstance(res, dict):
+            res = cls(**res)
+        else:
+            assert isinstance(res, cls)
         return res
 
 

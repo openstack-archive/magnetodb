@@ -105,6 +105,10 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
             for name in self.__get_field_list
         }
 
+        strategy = backup_info_attrs.pop("strategy", None)
+        if strategy is not None:
+            backup_info_attrs["strategy"] = dict(strategy)
+
         LOG.debug("Got backup '{}' for table '{}'".format(
             backup_id, table_name))
         return models.BackupMeta(**backup_info_attrs)
