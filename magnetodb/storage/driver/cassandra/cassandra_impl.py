@@ -1235,7 +1235,7 @@ class CassandraStorageDriver(driver.StorageDriver):
                     "".join(query_builder), consistent=True
                 )
 
-                if result[0]['[applied]']:
+                if not result or result[0]['[applied]']:
                     return True, old_item
 
     def _get_item_to_update(self, context, table_info, key_attribute_map):

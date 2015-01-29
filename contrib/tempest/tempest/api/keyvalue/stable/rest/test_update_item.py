@@ -207,3 +207,29 @@ class MagnetoDBUpdateItemTest(MagnetoDBTestCase):
         self.assertEqual(set(get_resp[1]['item']['Tags']['SS']),
                          {"tag set value 1", "tag set value 2",
                           "tag set value 3", "tag set new value 1"})
+
+    def test_update_item_existing_item_with_only_key_attrs(self):
+        self.table_name = rand_name(self.table_prefix).replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'ForumName', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'ForumName', 'key_type': 'HASH'}],
+            wait_for_active=True)
+        key = {
+            "ForumName": {
+                "S": "forum name"
+            }
+        }
+        attribute_updates = {
+            "Subject": {
+                "action": "PUT",
+                "value": {
+                    "S": "subject"
+                }
+            }
+        }
+
+        self.client.put_item(self.table_name, key)
+        headers, body = self.client.update_item(
+            self.table_name, key, attribute_updates=attribute_updates)
+        self.assertEqual({}, body)
