@@ -262,16 +262,73 @@ class CreateTableTest(test_base_testcase.APITestCase):
                     "Subject": models.AttributeType('S'),
                     "LastPostDateTime": models.AttributeType('S')
                 },
-                key_attributes=["ForumName"],
-                index_def_map={
-                    "LastPostIndex": models.IndexDefinition("ForumName",
-                                                            "LastPostDateTime")
-                }
+                key_attributes=["ForumName"]
             ),
             models.TableMeta.TABLE_STATUS_ACTIVE,
             123
         )
         conn = httplib.HTTPConnection('localhost:8080')
+        body = """
+            {
+                "attribute_definitions": [
+                    {
+                        "attribute_name": "ForumName",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "Subject",
+                        "attribute_type": "S"
+                    },
+                    {
+                        "attribute_name": "LastPostDateTime",
+                        "attribute_type": "S"
+                    }
+                ],
+                "table_name": "Thread",
+                "key_schema": [
+                    {
+                        "attribute_name": "ForumName",
+                        "key_type": "HASH"
+                    }
+                ]
+            }
+        """
+
+        expected_response = {'table_description': {
+            'attribute_definitions': [
+                {'attribute_name': 'Subject', 'attribute_type': 'S'},
+                {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
+                {'attribute_name': 'ForumName', 'attribute_type': 'S'}
+            ],
+            'creation_date_time': 123,
+            'item_count': 0,
+            'key_schema': [
+                {'attribute_name': 'ForumName', 'key_type': 'HASH'}
+            ],
+            'table_id': '00000000-0000-0000-0000-000000000000',
+            'table_name': 'Thread',
+            'table_size_bytes': 0,
+            'table_status': 'ACTIVE',
+            'links': [
+                {'href': self.table_url, 'rel': 'self'},
+                {'href': self.table_url, 'rel': 'bookmark'}
+            ]}}
+
+        conn.request("POST", self.url, headers=self.headers, body=body)
+
+        response = conn.getresponse()
+        self.assertEqual(200, response.status)
+
+        self.assertTrue(mock_create_table.called)
+
+        json_response = response.read()
+        response_payload = json.loads(json_response)
+
+        self.assertEqual(expected_response, response_payload)
+
+    def test_create_table_index_invalid_key_type(self):
+        conn = httplib.HTTPConnection('localhost:8080')
+
         body = """
             {
                 "attribute_definitions": [
@@ -316,49 +373,23 @@ class CreateTableTest(test_base_testcase.APITestCase):
             }
         """
 
-        expected_response = {'table_description': {
-            'attribute_definitions': [
-                {'attribute_name': 'Subject', 'attribute_type': 'S'},
-                {'attribute_name': 'LastPostDateTime', 'attribute_type': 'S'},
-                {'attribute_name': 'ForumName', 'attribute_type': 'S'}
-            ],
-            'creation_date_time': 123,
-            'item_count': 0,
-            'key_schema': [
-                {'attribute_name': 'ForumName', 'key_type': 'HASH'}
-            ],
-            'local_secondary_indexes': [
-                {'index_name': 'LastPostIndex',
-                 'index_size_bytes': 0,
-                 'item_count': 0,
-                 'key_schema': [
-                     {'attribute_name': 'ForumName',
-                      'key_type': 'HASH'},
-                     {'attribute_name': 'LastPostDateTime',
-                      'key_type': 'RANGE'}
-                 ],
-                 'projection': {'projection_type': 'ALL'}}
-            ],
-            'table_id': '00000000-0000-0000-0000-000000000000',
-            'table_name': 'Thread',
-            'table_size_bytes': 0,
-            'table_status': 'ACTIVE',
-            'links': [
-                {'href': self.table_url, 'rel': 'self'},
-                {'href': self.table_url, 'rel': 'bookmark'}
-            ]}}
-
         conn.request("POST", self.url, headers=self.headers, body=body)
 
         response = conn.getresponse()
-        self.assertEqual(200, response.status)
 
-        self.assertTrue(mock_create_table.called)
+        self.assertEqual(400, response.status)
 
         json_response = response.read()
         response_payload = json.loads(json_response)
 
-        self.assertEqual(expected_response, response_payload)
+        expected_error = {
+            'message': "Table without range key in primary key schema "
+                       "can not have indices",
+            'traceback': None,
+            'type': 'ValidationError',
+        }
+
+        self.assertEqual(expected_error, response_payload['error'])
 
     def test_create_table_invalid_name_character(self):
         conn = httplib.HTTPConnection('localhost:8080')
