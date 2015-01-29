@@ -262,11 +262,7 @@ class CreateTableTest(test_base_testcase.APITestCase):
                     "Subject": models.AttributeType('S'),
                     "LastPostDateTime": models.AttributeType('S')
                 },
-                key_attributes=["ForumName"],
-                index_def_map={
-                    "LastPostIndex": models.IndexDefinition("ForumName",
-                                                            "LastPostDateTime")
-                }
+                key_attributes=["ForumName"]
             ),
             models.TableMeta.TABLE_STATUS_ACTIVE,
             123
@@ -294,24 +290,6 @@ class CreateTableTest(test_base_testcase.APITestCase):
                         "attribute_name": "ForumName",
                         "key_type": "HASH"
                     }
-                ],
-                "local_secondary_indexes": [
-                    {
-                        "index_name": "LastPostIndex",
-                        "key_schema": [
-                            {
-                                "attribute_name": "ForumName",
-                                "key_type": "HASH"
-                            },
-                            {
-                                "attribute_name": "LastPostDateTime",
-                                "key_type": "RANGE"
-                            }
-                        ],
-                        "projection": {
-                            "projection_type": "KEYS_ONLY"
-                        }
-                    }
                 ]
             }
         """
@@ -326,18 +304,6 @@ class CreateTableTest(test_base_testcase.APITestCase):
             'item_count': 0,
             'key_schema': [
                 {'attribute_name': 'ForumName', 'key_type': 'HASH'}
-            ],
-            'local_secondary_indexes': [
-                {'index_name': 'LastPostIndex',
-                 'index_size_bytes': 0,
-                 'item_count': 0,
-                 'key_schema': [
-                     {'attribute_name': 'ForumName',
-                      'key_type': 'HASH'},
-                     {'attribute_name': 'LastPostDateTime',
-                      'key_type': 'RANGE'}
-                 ],
-                 'projection': {'projection_type': 'ALL'}}
             ],
             'table_id': '00000000-0000-0000-0000-000000000000',
             'table_name': 'Thread',
