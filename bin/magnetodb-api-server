@@ -35,9 +35,6 @@ if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
 
 from oslo.config import cfg
 
-reload(sys)
-sys.setdefaultencoding('utf-8')
-
 CONF = cfg.ConfigOpts()
 common_opts = [
     cfg.StrOpt('api_paste_config',
