@@ -16,9 +16,11 @@
 
 import base64
 import blist
+import datetime
 import decimal
 import json
 import sys
+import uuid
 
 from magnetodb.common import exception
 from magnetodb.openstack.common.gettextutils import _
@@ -30,6 +32,8 @@ DECIMAL_CONTEXT = decimal.Context(
     Emax=126,
     Emin=-128
 )
+
+ISO_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 
 
 class ModelBase(object):
@@ -80,8 +84,10 @@ class ModelBase(object):
                 return data
             if hasattr(obj, "__iter__"):
                 return list(obj)
-            if isinstance(obj, decimal.Decimal):
+            if isinstance(obj, (decimal.Decimal, uuid.UUID)):
                 return str(obj)
+            if isinstance(obj, datetime.datetime):
+                return datetime.datetime.strftime(obj, ISO_DATETIME_FORMAT)
             raise TypeError(repr(obj) + " is not JSON serializable")
 
         return json.dumps(self, default=encode_model, sort_keys=True)
@@ -850,6 +856,12 @@ class TableMeta(ModelBase):
         assert status in self._allowed_statuses, (
             "Table status '%s' isn't allowed" % status
         )
+        if isinstance(id, basestring):
+            id = uuid.UUID(id)
+        if isinstance(creation_date_time, basestring):
+            creation_date_time = datetime.datetime.strptime(
+                creation_date_time, ISO_DATETIME_FORMAT
+            )
         super(TableMeta, self).__init__(id=id, schema=schema,
                                         status=status,
                                         creation_date_time=creation_date_time)
@@ -874,6 +886,16 @@ class BackupMeta(ModelBase):
         assert status in self._allowed_statuses, (
             "Backup status '%s' is not allowed" % status
         )
+        if isinstance(id, basestring):
+            id = uuid.UUID(id)
+        if isinstance(start_date_time, basestring):
+            start_date_time = datetime.datetime.strptime(
+                start_date_time, ISO_DATETIME_FORMAT
+            )
+        if isinstance(finish_date_time, basestring):
+            finish_date_time = datetime.datetime.strptime(
+                finish_date_time, ISO_DATETIME_FORMAT
+            )
         super(BackupMeta, self).__init__(
             id=id,
             name=name,
@@ -901,6 +923,18 @@ class RestoreJobMeta(ModelBase):
         assert status in self._allowed_statuses, (
             "Restore job  status '%s' is not allowed" % status
         )
+        if isinstance(id, basestring):
+            id = uuid.UUID(id)
+        if isinstance(backup_id, basestring):
+            backup_id = uuid.UUID(backup_id)
+        if isinstance(start_date_time, basestring):
+            start_date_time = datetime.datetime.strptime(
+                start_date_time, ISO_DATETIME_FORMAT
+            )
+        if isinstance(finish_date_time, basestring):
+            finish_date_time = datetime.datetime.strptime(
+                finish_date_time, ISO_DATETIME_FORMAT
+            )
         super(RestoreJobMeta, self).__init__(
             id=id,
             table_name=table_name,
