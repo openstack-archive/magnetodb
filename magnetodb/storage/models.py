@@ -16,9 +16,11 @@
 
 import base64
 import blist
+import datetime
 import decimal
 import json
 import sys
+import uuid
 
 from magnetodb.common import exception
 from magnetodb.openstack.common.gettextutils import _
@@ -80,7 +82,8 @@ class ModelBase(object):
                 return data
             if hasattr(obj, "__iter__"):
                 return list(obj)
-            if isinstance(obj, decimal.Decimal):
+            if isinstance(obj, (decimal.Decimal, datetime.datetime,
+                                uuid.UUID)):
                 return str(obj)
             raise TypeError(repr(obj) + " is not JSON serializable")
 
