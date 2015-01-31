@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from concurrent import futures
 from unittest import case as unittest_case
 
 from tempest import test
@@ -254,6 +255,20 @@ class MagnetoDBMultitenancyTestCase(MagnetoDBTestCase):
         super(MagnetoDBMultitenancyTestCase, cls).resource_setup()
         cls.alt_os = clients.Manager(cls.isolated_creds.get_alt_creds())
         cls.alt_client = cls.alt_os.magnetodb_client
+
+
+class MagnetoDBConcurrentTestCase(MagnetoDBTestCase):
+
+    def setUp(self):
+        super(MagnetoDBConcurrentTestCase, self).setUp()
+        self.executor = futures.ThreadPoolExecutor(1000)
+
+    def _async_request(self, operation, *args, **kwargs):
+        os = self.get_client_manager()
+        client = os.magnetodb_client
+        func = getattr(client, operation)
+        future = self.executor.submit(func, *args, **kwargs)
+        return future
 
 
 def friendly_function_name_simple(call_able):
