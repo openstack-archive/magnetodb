@@ -288,3 +288,53 @@ class MagnetoDBConcurrentUpdateTestCase(rest_base.MagnetoDBConcurrentTestCase):
             v = attribute_updates[k]["value"]
             expected_item.update({k: v})
         self.assertEqual(expected_item, body["item"])
+
+    def test_concurrent_writes_atomic_counter(self):
+        self.table_name = rand_name(self.table_prefix).replace('-', '')
+        self._create_test_table(
+            [{'attribute_name': 'hash_attr', 'attribute_type': 'S'},
+             {'attribute_name': 'range_attr', 'attribute_type': 'S'}],
+            self.table_name,
+            [{'attribute_name': 'hash_attr', 'key_type': 'HASH'},
+             {'attribute_name': 'range_attr', 'key_type': 'RANGE'}],
+            wait_for_active=True)
+
+        key = {
+            "hash_attr": {
+                "S": "hash_value",
+            },
+            "range_attr": {
+                "S": "range_value",
+            }
+        }
+        updates_count = 50
+        attribute_updates = {
+            "counter": {
+                "action": "ADD",
+                "value": {
+                    "N": 1
+                }
+            }
+        }
+        done_count = [0]
+        done_event = threading.Event()
+
+        def callback(future):
+            try:
+                future.result()
+            finally:
+                done_count[0] += 1
+                if done_count[0] >= updates_count:
+                    done_event.set()
+
+        for i in xrange(0, updates_count):
+            future = self._async_request(
+                'update_item',
+                self.table_name,
+                key,
+                attribute_updates=attribute_updates
+            )
+            future.add_done_callback(callback)
+        done_event.wait()
+        headers, body = self.client.get_item(self.table_name, key)
+        self.assertEqual(str(updates_count), body['item']['counter']['N'])
