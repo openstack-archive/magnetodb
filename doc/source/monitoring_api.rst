@@ -13,8 +13,9 @@ MagnetoDB monitoring actions
 .. toctree::
    :maxdepth: 1
 
-   list_tables_monitoring.rst
    table_usage_details.rst
+   project_usage_details.rst
+   all_projects_usage_details.rst
 
 
 Monitoring API metric list
@@ -34,15 +35,24 @@ Monitoring API metric list
 Examples
 --------
 
-All metrics:
+All metrics for all tables in all projects:
 
-http://{host}:8480/v1/monitoring/{project_id}/tables/table_name
+http://{host}:8480/v1/monitoring/projects
 
-One metric:
+All metrics for all tables in specified project:
 
-http://{host}:8480/v1/monitoring/{project_id}/tables/table_name?metrics=size
+http://{host}:8480/v1/monitoring/projects/{project_id}
 
-Few metrics:
+All metrics for specified table:
 
-http://{host}:8480/v1/monitoring/{project_id}/
+http://{host}:8480/v1/monitoring/projects/{project_id}/tables/table_name
+
+One metric for specified table:
+
+http://{host}:8480/v1/monitoring/projects/{project_id}/
+tables/table_name?metrics=size
+
+Few metrics for specified table:
+
+http://{host}:8480/v1/monitoring/projects/{project_id}/
 tables/table_name?metrics=size,item_count

@@ -51,6 +51,10 @@ class TableInfoRepository(object):
                                limit=None):
         raise NotImplementedError()
 
+    def list_tenant_tables(self, last_evaluated_project=None,
+                           last_evaluated_table=None, limit=None):
+        raise NotImplementedError()
+
     def update(self, table_info, field_list=None):
         raise NotImplementedError()
 

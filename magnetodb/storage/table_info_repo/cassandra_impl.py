@@ -111,6 +111,52 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
         return [row['name'] for row in tables]
 
+    def _list_tenant_tables_no_paging(self, limit):
+        query_builder = collections.deque()
+        query_builder.append(
+            "SELECT tenant, name, status FROM {}".format(
+                self.SYSTEM_TABLE_TABLE_INFO)
+        )
+
+        if limit:
+            query_builder.append(" LIMIT {}".format(limit))
+
+        return self.__cluster_handler.execute_query("".join(query_builder),
+                                                    consistent=True)
+
+    @probe.Probe(__name__)
+    def list_tenant_tables(self, last_evaluated_project=None,
+                           last_evaluated_table=None, limit=None):
+        if last_evaluated_project is None:
+            return self._list_tenant_tables_no_paging(limit)
+
+        query_builder = collections.deque()
+        query_builder.append(
+            "SELECT tenant, name, status FROM {} "
+            "WHERE tenant = '{}'".format(
+                self.SYSTEM_TABLE_TABLE_INFO, last_evaluated_project)
+        )
+
+        if last_evaluated_table:
+            query_builder.append(
+                " AND name = '{}'".format(last_evaluated_table)
+            )
+
+        head = self.__cluster_handler.execute_query("".join(query_builder),
+                                                    consistent=True)
+
+        if limit is None or len(head) >= limit:
+            return head
+
+        query = ("SELECT tenant, name, status FROM {} WHERE "
+                 "TOKEN(tenant) > TOKEN('{}') LIMIT {}".format(
+                     self.SYSTEM_TABLE_TABLE_INFO, last_evaluated_project,
+                     limit - len(head)))
+
+        tail = self.__cluster_handler.execute_query(query, consistent=True)
+
+        return head + tail
+
     def __refresh(self, context, table_info, field_list=__field_list):
         query_builder = collections.deque()
         query_builder.append("SELECT ")
