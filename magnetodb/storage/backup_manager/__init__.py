@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import datetime
+from oslo_utils import timeutils
 import uuid
 
 from magnetodb.storage import models
@@ -45,7 +45,7 @@ class BackupManager(object):
             status=models.BackupMeta.BACKUP_STATUS_CREATING,
             location='location',
             strategy=strategy,
-            start_date_time=datetime.datetime.now())
+            start_date_time=timeutils.utcnow())
 
         return self.backup_info_repo.save(context, backup_meta)
 

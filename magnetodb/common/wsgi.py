@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import timeutils
 import datetime
 import sys
 import routes
@@ -316,8 +317,7 @@ class JSONDictSerializer(DictSerializer):
     def default(self, data):
         def sanitizer(obj):
             if isinstance(obj, datetime.datetime):
-                _dtime = obj - datetime.timedelta(microseconds=obj.microsecond)
-                return _dtime.isoformat()
+                return timeutils.isotime(obj, subsecond=False)
             return obj
 
         #            return six.text_type(obj)
