@@ -14,7 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import json
+from oslo_serialization import jsonutils as json
 
 from tempest.common import rest_client
 from tempest import config_magnetodb as config

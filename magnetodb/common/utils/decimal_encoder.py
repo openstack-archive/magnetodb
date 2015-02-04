@@ -16,7 +16,8 @@
 #
 
 import decimal
-import json
+
+from oslo_serialization import jsonutils as json
 
 
 class DecimalEncoder(json.JSONEncoder):

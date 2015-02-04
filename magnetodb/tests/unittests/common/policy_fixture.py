@@ -12,11 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import json
 import os
-
 import fixtures
-from oslo.config import cfg
+
+from oslo_config import cfg
+from oslo_serialization import jsonutils as json
 
 from magnetodb.openstack.common import policy as common_policy
 import magnetodb.policy

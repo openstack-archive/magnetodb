@@ -14,12 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
+from oslo_serialization import jsonutils as json
 
 from magnetodb.common import config
-
 from magnetodb.openstack.common import importutils
-
 from magnetodb.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
