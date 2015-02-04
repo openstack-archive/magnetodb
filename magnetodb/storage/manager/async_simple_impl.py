@@ -79,7 +79,7 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
                 )
                 self._notifier.error(
                     context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
-                    future.exception(), priority=notifier.PRIORITY_ERROR
+                    future.exception()
                 )
 
         future.add_done_callback(callback)

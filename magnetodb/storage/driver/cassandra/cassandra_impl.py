@@ -229,7 +229,7 @@ class CassandraStorageDriver(driver.StorageDriver):
         :raises: BackendInteractionException
         """
 
-        query = 'DROP TABLE ' + table_info.internal_name
+        query = 'DROP TABLE IF EXISTS ' + table_info.internal_name
 
         self.__cluster_handler.execute_query(query)
 

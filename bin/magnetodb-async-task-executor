@@ -90,7 +90,7 @@ class SchemaEndpoint(object):
                 ))
 
             LOG.error("Create table failed. Table '%s' with uuid '%s' is in "
-                      "%s state but %s is expexcted",
+                      "%s state but %s is expected",
                       table_name,
                       str(table_info.id),
                       table_info.status,
