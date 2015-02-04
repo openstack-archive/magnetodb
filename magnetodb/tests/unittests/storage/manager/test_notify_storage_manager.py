@@ -14,11 +14,10 @@
 #    under the License.
 
 from concurrent import futures
-import datetime
 import mock
 import time
 
-from magnetodb.tests.unittests.common.notifier import test_notification
+from oslo_utils import timeutils
 
 from magnetodb import notifier
 from magnetodb.storage import driver
@@ -26,6 +25,7 @@ from magnetodb.storage.manager import simple_impl
 from magnetodb.storage.manager import async_simple_impl
 from magnetodb.storage import models
 from magnetodb.storage import table_info_repo
+from magnetodb.tests.unittests.common.notifier import test_notification
 
 DATETIMEFORMAT = test_notification.DATETIMEFORMAT
 
@@ -77,9 +77,9 @@ class TestNotifyStorageManager(test_notification.TestNotify):
                          notifier.EVENT_TYPE_TABLE_CREATE_END)
         self.assertEqual(end_event['payload'], table_schema)
 
-        time_start = datetime.datetime.strptime(
+        time_start = timeutils.parse_strtime(
             start_event['timestamp'], DATETIMEFORMAT)
-        time_end = datetime.datetime.strptime(
+        time_end = timeutils.parse_strtime(
             end_event['timestamp'], DATETIMEFORMAT)
         self.assertTrue(time_start < time_end,
                         "start event is later than end event")
@@ -138,9 +138,9 @@ class TestNotifyStorageManager(test_notification.TestNotify):
                          notifier.EVENT_TYPE_TABLE_DELETE_END)
         self.assertEqual(end_event['payload'], table_name)
 
-        time_start = datetime.datetime.strptime(
+        time_start = timeutils.parse_strtime(
             start_event['timestamp'], DATETIMEFORMAT)
-        time_end = datetime.datetime.strptime(
+        time_end = timeutils.parse_strtime(
             end_event['timestamp'], DATETIMEFORMAT)
         self.assertTrue(time_start < time_end,
                         "start event is later than end event")
@@ -223,9 +223,9 @@ class TestNotifyStorageManager(test_notification.TestNotify):
                          len(request_map))
         self.assertEqual(len(end_event['payload']['unprocessed_items']), 0)
 
-        time_start = datetime.datetime.strptime(
+        time_start = timeutils.parse_strtime(
             start_event['timestamp'], DATETIMEFORMAT)
-        time_end = datetime.datetime.strptime(
+        time_end = timeutils.parse_strtime(
             end_event['timestamp'], DATETIMEFORMAT)
         self.assertTrue(time_start < time_end,
                         "start event is later than end event")

@@ -15,7 +15,7 @@
 
 import base64
 import blist
-import datetime
+from oslo_utils import timeutils
 import decimal
 import mock
 import unittest
@@ -399,8 +399,8 @@ class TestCassandraBase(unittest.TestCase):
             self.test_table_schema_with_index.to_json() if indexed else
             self.test_table_schema.to_json(),
             internal_table_name,
-            encoder.Encoder().cql_encode_datetime(datetime.datetime.now()),
-            encoder.Encoder().cql_encode_datetime(datetime.datetime.now())
+            encoder.Encoder().cql_encode_datetime(timeutils.utcnow()),
+            encoder.Encoder().cql_encode_datetime(timeutils.utcnow())
         )
         result = self.SESSION.execute(query)
         self.assertTrue(result[0]['[applied]'])

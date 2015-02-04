@@ -14,10 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from concurrent import futures
 import datetime
+from concurrent import futures
 import mock
 import unittest
+
+from oslo_utils import timeutils
 
 from magnetodb.common import exception
 from magnetodb.storage import driver as storage_driver
@@ -193,7 +195,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
         table_info = table_info_repo.TableInfo(
             table_name, None, None, models.TableMeta.TABLE_STATUS_CREATING)
         table_info.last_update_date_time = (
-            datetime.datetime.now() - datetime.timedelta(0, 1000)
+            timeutils.utcnow() - datetime.timedelta(0, 1000)
         )
 
         mock_repo_get.return_value = table_info
@@ -216,7 +218,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         table_info = table_info_repo.TableInfo(
             table_name, None, None, models.TableMeta.TABLE_STATUS_CREATING)
-        table_info.last_update_date_time = datetime.datetime.now()
+        table_info.last_update_date_time = timeutils.utcnow()
 
         mock_repo_get.return_value = table_info
 
@@ -240,7 +242,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
             table_name, None, None, models.TableMeta.TABLE_STATUS_DELETING)
 
         table_info.last_update_date_time = (
-            datetime.datetime.now() - datetime.timedelta(0, 1000)
+            timeutils.utcnow() - datetime.timedelta(0, 1000)
         )
 
         mock_repo_get.return_value = table_info
@@ -263,7 +265,7 @@ class SimpleStorageManagerTestCase(unittest.TestCase):
 
         table_info = table_info_repo.TableInfo(
             table_name, None, None, models.TableMeta.TABLE_STATUS_DELETING)
-        table_info.last_update_date_time = datetime.datetime.now()
+        table_info.last_update_date_time = timeutils.utcnow()
 
         mock_repo_get.return_value = table_info
 

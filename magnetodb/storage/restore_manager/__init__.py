@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import datetime
+from oslo_utils import timeutils
 import uuid
 
 from magnetodb.storage import models
@@ -43,7 +43,7 @@ class RestoreManager(object):
             status=models.RestoreJobMeta.RESTORE_STATUS_RESTORING,
             backup_id=backup_id,
             source=source,
-            start_date_time=datetime.datetime.now())
+            start_date_time=timeutils.utcnow())
 
         return self.restore_info_repo.save(context, restore_meta)
 

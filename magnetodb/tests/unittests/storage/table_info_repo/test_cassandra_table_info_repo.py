@@ -13,12 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import datetime
+import mock
 import unittest
 
-from magnetodb.common import exception
+from oslo_utils import timeutils
 
+from magnetodb.common import exception
 from magnetodb.storage import models
 from magnetodb.storage import table_info_repo
 from magnetodb.storage.table_info_repo import cassandra_impl
@@ -56,11 +57,11 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
             models.TableMeta.TABLE_STATUS_CREATING
         )
         table_info.last_update_date_time = (
-            datetime.datetime.now() - datetime.timedelta(0, 1000)
+            timeutils.utcnow() - datetime.timedelta(0, 1000)
         )
         table_repo.save(context, table_info)
 
-        seconds = (datetime.datetime.now() -
+        seconds = (timeutils.utcnow() -
                    table_info.last_update_date_time).total_seconds()
         self.assertLess(seconds, 30)
 
@@ -77,10 +78,10 @@ class CassandraTableInfoRepositoryTestCase(unittest.TestCase):
             'fake_table', '00000000-0000-0000-0000-000000000000', table_schema,
             models.TableMeta.TABLE_STATUS_CREATING)
         table_info.last_update_date_time = (
-            datetime.datetime.now() - datetime.timedelta(0, 1000)
+            timeutils.utcnow() - datetime.timedelta(0, 1000)
         )
         table_repo.update(context, table_info)
 
-        seconds = (datetime.datetime.now() -
+        seconds = (timeutils.utcnow() -
                    table_info.last_update_date_time).total_seconds()
         self.assertLess(seconds, 30)
