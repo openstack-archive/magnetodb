@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
 import random
 import string
+
+from oslo_serialization import jsonutils as json
 
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.test import attr

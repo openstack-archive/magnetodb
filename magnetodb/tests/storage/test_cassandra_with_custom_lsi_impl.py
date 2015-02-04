@@ -14,26 +14,26 @@
 #    under the License.
 
 import base64
+import binascii
 import blist
-import json
 import datetime
 import decimal
-
 import mock
 import unittest
 import uuid
-import binascii
 
 from cassandra import cluster
 from cassandra import query
 from cassandra import encoder
+from oslo_serialization import jsonutils as json
+
 from magnetodb.common.cassandra import cluster_handler
 from magnetodb.common import exception
-from magnetodb.storage import models
 from magnetodb.storage.driver.cassandra import (
     cassandra_with_custom_lsi_impl as driver
 )
 from magnetodb.storage.manager import simple_impl as manager
+from magnetodb.storage import models
 from magnetodb.storage.table_info_repo import cassandra_impl as repo
 
 TEST_CONNECTION = {

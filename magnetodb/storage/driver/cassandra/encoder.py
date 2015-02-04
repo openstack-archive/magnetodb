@@ -16,9 +16,9 @@
 
 import binascii
 import collections
-import json
 
 from cassandra import encoder
+from oslo_serialization import jsonutils as json
 
 
 def _encode_b(value):

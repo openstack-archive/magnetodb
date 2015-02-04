@@ -14,9 +14,10 @@
 #    under the License.
 
 import httplib
-import json
 import mox
 import unittest
+
+from oslo_serialization import jsonutils as json
 
 from magnetodb import storage
 from magnetodb.common import exception

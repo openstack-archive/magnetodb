@@ -14,10 +14,11 @@
 #    under the License.
 
 import httplib
-import json
-from magnetodb.storage import models
-
 import mock
+
+from oslo_serialization import jsonutils as json
+
+from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
