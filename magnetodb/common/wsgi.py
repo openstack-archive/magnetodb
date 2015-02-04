@@ -20,9 +20,10 @@ import routes.middleware
 import webob.dec
 import webob.exc
 
+from oslo_serialization import jsonutils as json
+
 from magnetodb.openstack.common import exception
 from magnetodb.openstack.common.gettextutils import _
-from magnetodb.openstack.common import jsonutils
 from magnetodb.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -320,7 +321,7 @@ class JSONDictSerializer(DictSerializer):
             return obj
 
         #            return six.text_type(obj)
-        return jsonutils.dumps(data, default=sanitizer)
+        return json.dumps(data, default=sanitizer)
 
 
 class ResponseHeadersSerializer(ActionDispatcher):
@@ -486,7 +487,7 @@ class TextDeserializer(ActionDispatcher):
 class JSONDeserializer(TextDeserializer):
     def _from_json(self, datastring):
         try:
-            return jsonutils.loads(datastring)
+            return json.loads(datastring)
         except ValueError:
             msg = _("cannot understand JSON")
             raise exception.MalformedRequestBody(reason=msg)

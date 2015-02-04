@@ -18,11 +18,11 @@ import hashlib
 import requests
 import webob
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_serialization import jsonutils as json
 
 from magnetodb.api.amz.dynamodb import exception
 from magnetodb.common import wsgi
-from magnetodb.openstack.common import jsonutils as json
 from magnetodb.openstack.common import log as logging
 from magnetodb.openstack.common import gettextutils
 from magnetodb.openstack.common.gettextutils import _

@@ -56,13 +56,13 @@ as it allows particular rules to be explicitly disabled.
 
 import abc
 import re
-import urllib
-
 import six
+import urllib
 import urllib2
 
+from oslo_serialization import jsonutils as json
+
 from magnetodb.openstack.common.gettextutils import _
-from magnetodb.openstack.common import jsonutils
 from magnetodb.openstack.common import log as logging
 
 
@@ -85,8 +85,7 @@ class Rules(dict):
         """
 
         # Suck in the JSON data and parse the rules
-        rules = dict((k, parse_rule(v)) for k, v in
-                     jsonutils.loads(data).items())
+        rules = dict((k, parse_rule(v)) for k, v in json.loads(data).items())
 
         return cls(rules, default_rule)
 
@@ -119,7 +118,7 @@ class Rules(dict):
                 out_rules[key] = str(value)
 
         # Dump a pretty-printed JSON representation
-        return jsonutils.dumps(out_rules, indent=4)
+        return json.dumps(out_rules, indent=4)
 
 
 # Really have to figure out a way to deprecate this
@@ -749,8 +748,8 @@ class HttpCheck(Check):
         """
 
         url = ('http:' + self.match) % target
-        data = {'target': jsonutils.dumps(target),
-                'credentials': jsonutils.dumps(creds)}
+        data = {'target': json.dumps(target),
+                'credentials': json.dumps(creds)}
         post_data = urllib.urlencode(data)
         f = urllib2.urlopen(url, post_data)
         return f.read() == "True"

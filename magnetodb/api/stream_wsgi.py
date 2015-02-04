@@ -13,10 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
 import Queue
 import re
 import threading
+
+from oslo_serialization import jsonutils as json
 
 from magnetodb import api
 from magnetodb import notifier

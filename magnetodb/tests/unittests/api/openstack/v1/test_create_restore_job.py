@@ -14,9 +14,10 @@
 #    under the License.
 
 import httplib
-import json
 import mock
 import uuid
+
+from oslo_serialization import jsonutils as json
 
 from magnetodb.storage import models
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
