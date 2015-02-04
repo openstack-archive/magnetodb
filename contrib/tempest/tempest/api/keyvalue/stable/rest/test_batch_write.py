@@ -401,3 +401,33 @@ class MagnetoDBBatchWriteTest(MagnetoDBTestCase):
         error_msg = raises_cm.exception._error_string
         self.assertIn("Bad Request", error_msg)
         self.assertIn("Wrong attribute name '' found", error_msg)
+
+    @attr(type=['negative'])
+    def test_batch_write_two_tables_one_nonexistent(self):
+        non_existent_table = rand_name(self.table_prefix).replace('-', '')
+        self._create_test_table(self.build_x_attrs('S'),
+                                self.tname,
+                                self.smoke_schema,
+                                wait_for_active=True)
+        item = self.build_x_item('S', 'forum1', 'subject2',
+                                 ('message', 'S', 'message text'))
+        request_body = {'request_items': {
+            self.tname: [{
+                'put_request': {'item': item}}],
+            non_existent_table: [{
+                'put_request': {'item': item}}],
+        }}
+        with self.assertRaises(exceptions.NotFound) as raises_cm:
+            self.client.batch_write_item(request_body)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("TableNotExistsException", error_msg)
+        key_conditions = {
+            self.hashkey: {
+                'attribute_value_list': [{'S': 'forum1'}],
+                'comparison_operator': 'EQ'
+            }
+        }
+        headers, body = self.client.query(self.tname,
+                                          key_conditions=key_conditions,
+                                          consistent_read=True)
+        self.assertEqual([], body['items'])
