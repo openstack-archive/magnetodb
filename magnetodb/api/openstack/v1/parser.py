@@ -18,7 +18,7 @@ from oslo_serialization import jsonutils as json
 
 from magnetodb.api import validation
 from magnetodb.common import exception
-from magnetodb.openstack.common.gettextutils import _
+from magnetodb.i18n import _
 from magnetodb.storage import models
 
 

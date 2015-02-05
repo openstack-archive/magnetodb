@@ -62,7 +62,7 @@ import urllib2
 
 from oslo_serialization import jsonutils as json
 
-from magnetodb.openstack.common.gettextutils import _
+from magnetodb.i18n import _
 from magnetodb.openstack.common import log as logging
 
 

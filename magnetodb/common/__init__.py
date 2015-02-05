@@ -47,9 +47,6 @@ def setup_global_env(program=None, args=None):
         from magnetodb import storage
         from magnetodb.common import config
         from magnetodb.openstack.common import log
-        from magnetodb.openstack.common import gettextutils
-
-        gettextutils.install(PROJECT_NAME, lazy=False)
 
         config.parse_args(
             prog=program,

@@ -18,7 +18,7 @@ import re
 from oslo_serialization import jsonutils as json
 
 from magnetodb.common import exception
-from magnetodb.openstack.common.gettextutils import _
+from magnetodb.i18n import _
 from magnetodb.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
