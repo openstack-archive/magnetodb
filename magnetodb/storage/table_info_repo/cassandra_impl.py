@@ -16,7 +16,7 @@
 
 import collections
 import copy
-import datetime
+from oslo_utils import timeutils
 import threading
 
 from magnetodb.common import exception
@@ -190,7 +190,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
         if 'last_update_date_time' not in field_list:
             field_list.append('last_update_date_time')
-        table_info.last_update_date_time = datetime.datetime.now()
+        table_info.last_update_date_time = timeutils.utcnow()
 
         enc = encoder.Encoder()
 
@@ -261,7 +261,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
         else:
             query_builder.append(",null")
 
-        table_info.last_update_date_time = datetime.datetime.now()
+        table_info.last_update_date_time = timeutils.utcnow()
         query_builder.append(", {}".format(
             enc.cql_encode_datetime(table_info.last_update_date_time)))
 

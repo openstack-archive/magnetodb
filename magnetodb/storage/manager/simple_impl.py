@@ -16,10 +16,11 @@
 
 from concurrent import futures
 import logging
-import datetime
 import threading
 import weakref
 import uuid
+
+from oslo_utils import timeutils
 
 from magnetodb.common import exception
 from magnetodb import notifier
@@ -171,9 +172,8 @@ class SimpleStorageManager(manager.StorageManager):
             notifier.EVENT_TYPE_TABLE_DESCRIBE,
             table_name)
 
-        timedelta = datetime.datetime.now() - table_info.last_update_date_time
-
-        if timedelta.total_seconds() > self._schema_operation_timeout:
+        if timeutils.is_older_than(table_info.last_update_date_time,
+                                   self._schema_operation_timeout):
             if table_info.status == models.TableMeta.TABLE_STATUS_CREATING:
                 table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
                 self._table_info_repo.update(context, table_info, ['status'])

@@ -19,7 +19,7 @@ from oslo.config import cfg
 from oslo import messaging
 from oslo.messaging import notify
 from oslo.messaging import serializer
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 
 from magnetodb import common as mdb_common
 from magnetodb import context as ctxt
