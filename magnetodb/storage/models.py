@@ -16,10 +16,13 @@
 
 import base64
 import blist
+import datetime
 import decimal
 import sys
+import uuid
 
 from oslo_serialization import jsonutils as json
+from oslo_utils import timeutils
 
 from magnetodb.common import exception
 from magnetodb.openstack.common.gettextutils import _
@@ -81,8 +84,10 @@ class ModelBase(object):
                 return data
             if hasattr(obj, "__iter__"):
                 return list(obj)
-            if isinstance(obj, decimal.Decimal):
+            if isinstance(obj, (decimal.Decimal, uuid.UUID)):
                 return str(obj)
+            if isinstance(obj, datetime.datetime):
+                return timeutils.isotime(obj, subsecond=True)
             raise TypeError(repr(obj) + " is not JSON serializable")
 
         return json.dumps(self, default=encode_model, sort_keys=True)
@@ -851,6 +856,10 @@ class TableMeta(ModelBase):
         assert status in self._allowed_statuses, (
             "Table status '%s' isn't allowed" % status
         )
+        if isinstance(id, basestring):
+            id = uuid.UUID(id)
+        if isinstance(creation_date_time, basestring):
+            creation_date_time = timeutils.parse_isotime(creation_date_time)
         super(TableMeta, self).__init__(id=id, schema=schema,
                                         status=status,
                                         creation_date_time=creation_date_time)
@@ -875,6 +884,13 @@ class BackupMeta(ModelBase):
         assert status in self._allowed_statuses, (
             "Backup status '%s' is not allowed" % status
         )
+        if isinstance(id, basestring):
+            id = uuid.UUID(id)
+        if isinstance(start_date_time, basestring):
+            start_date_time = timeutils.parse_isotime(start_date_time)
+        if isinstance(finish_date_time, basestring):
+            finish_date_time = timeutils.parse_isotime(finish_date_time)
+
         super(BackupMeta, self).__init__(
             id=id,
             name=name,
@@ -902,6 +918,15 @@ class RestoreJobMeta(ModelBase):
         assert status in self._allowed_statuses, (
             "Restore job  status '%s' is not allowed" % status
         )
+        if isinstance(id, basestring):
+            id = uuid.UUID(id)
+        if isinstance(backup_id, basestring):
+            backup_id = uuid.UUID(backup_id)
+        if isinstance(start_date_time, basestring):
+            start_date_time = timeutils.parse_isotime(start_date_time)
+        if isinstance(finish_date_time, basestring):
+            finish_date_time = timeutils.parse_isotime(finish_date_time)
+
         super(RestoreJobMeta, self).__init__(
             id=id,
             table_name=table_name,
