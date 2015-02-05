@@ -15,14 +15,14 @@
 
 from oslo_serialization import jsonutils as json
 
-from tempest.common import rest_client
+from tempest.common import service_client
 from tempest import config_magnetodb as config
 
 CONF = config.CONF
-rest_client.CONF = CONF
+service_client.CONF = CONF
 
 
-class MagnetoDBManagementClientJSON(rest_client.RestClient):
+class MagnetoDBManagementClientJSON(service_client.ServiceClient):
 
     def create_backup(self, table_name, backup_name, strategy={}):
         url = '/'.join([self.tenant_id, table_name, 'backups'])

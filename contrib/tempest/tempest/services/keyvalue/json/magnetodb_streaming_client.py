@@ -15,14 +15,14 @@
 
 from oslo_serialization import jsonutils as json
 
-from tempest.common import rest_client
+from tempest.common import service_client
 from tempest import config_magnetodb as config
 
 CONF = config.CONF
-rest_client.CONF = CONF
+service_client.CONF = CONF
 
 
-class MagnetoDBStreamingClientJSON(rest_client.RestClient):
+class MagnetoDBStreamingClientJSON(service_client.ServiceClient):
 
     def upload_items(self, table_name, items):
         post_body = ''.join([json.dumps(item) + '\n' for item in items])

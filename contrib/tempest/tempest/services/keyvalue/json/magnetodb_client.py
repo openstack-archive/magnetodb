@@ -16,14 +16,14 @@
 
 from oslo_serialization import jsonutils as json
 
-from tempest.common import rest_client
+from tempest.common import service_client
 from tempest import config_magnetodb as config
 
 CONF = config.CONF
-rest_client.CONF = CONF
+service_client.CONF = CONF
 
 
-class MagnetoDBClientJSON(rest_client.RestClient):
+class MagnetoDBClientJSON(service_client.ServiceClient):
 
     def create_table(self, attr_def, table_name, schema, lsi_indexes=None):
         post_body = {'attribute_definitions': attr_def,

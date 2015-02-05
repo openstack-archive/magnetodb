@@ -15,14 +15,14 @@
 
 from oslo_serialization import jsonutils as json
 
-from tempest.common import rest_client
+from tempest.common import service_client
 from tempest import config_magnetodb as config
 
 CONF = config.CONF
-rest_client.CONF = CONF
+service_client.CONF = CONF
 
 
-class MagnetoDBMonitoringClientJSON(rest_client.RestClient):
+class MagnetoDBMonitoringClientJSON(service_client.ServiceClient):
 
     def get_all_metrics(self, table_name):
         url = '/'.join(['projects', self.tenant_id, 'tables', table_name])
