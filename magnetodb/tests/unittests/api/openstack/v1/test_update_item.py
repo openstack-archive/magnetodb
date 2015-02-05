@@ -14,9 +14,9 @@
 #    under the License.
 
 import httplib
-import json
-
 import mock
+
+from oslo_serialization import jsonutils as json
 
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 

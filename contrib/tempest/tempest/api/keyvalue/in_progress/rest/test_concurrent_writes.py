@@ -13,10 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
 import random
 import string
 import threading
+
+from oslo_serialization import jsonutils as json
 
 from tempest.api.keyvalue.rest_base import base as rest_base
 from tempest.common.utils.data_utils import rand_name

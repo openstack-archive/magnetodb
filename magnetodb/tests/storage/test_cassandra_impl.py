@@ -17,21 +17,21 @@ import base64
 import blist
 import datetime
 import decimal
-import json
-
 import mock
 import unittest
 import uuid
 import binascii
-from magnetodb.common import exception
 
 from cassandra import cluster
 from cassandra import query
 from cassandra import encoder
+from oslo_serialization import jsonutils as json
+
 from magnetodb.common.cassandra import cluster_handler
-from magnetodb.storage import models
+from magnetodb.common import exception
 from magnetodb.storage.driver.cassandra import cassandra_impl as driver
 from magnetodb.storage.manager import simple_impl as manager
+from magnetodb.storage import models
 from magnetodb.storage.table_info_repo import (
     cassandra_impl as repo
 )

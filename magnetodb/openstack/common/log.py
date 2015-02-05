@@ -37,12 +37,12 @@ import os
 import sys
 import traceback
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_serialization import jsonutils as json
 from six import moves
 
 from magnetodb.openstack.common.gettextutils import _  # noqa
 from magnetodb.openstack.common import importutils
-from magnetodb.openstack.common import jsonutils
 from magnetodb.openstack.common import local
 
 
@@ -318,7 +318,7 @@ class JSONFormatter(logging.Formatter):
         if record.exc_info:
             message['traceback'] = self.formatException(record.exc_info)
 
-        return jsonutils.dumps(message)
+        return json.dumps(message)
 
 
 def _create_logging_excepthook(product_name):

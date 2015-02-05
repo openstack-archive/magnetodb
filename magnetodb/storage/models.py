@@ -17,8 +17,9 @@
 import base64
 import blist
 import decimal
-import json
 import sys
+
+from oslo_serialization import jsonutils as json
 
 from magnetodb.common import exception
 from magnetodb.openstack.common.gettextutils import _
