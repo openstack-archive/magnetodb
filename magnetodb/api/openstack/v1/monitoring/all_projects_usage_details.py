@@ -37,16 +37,24 @@ class AllProjectsUsageController():
             limit=req.GET.get('limit', 1000)
         )
 
+        result = []
         for row in tables:
             req.context.tenant = row["tenant"]
             try:
                 row["usage_detailes"] = storage.get_table_statistics(
                     req.context, row["name"], keys
                 )
+                result.append(row)
             except exception.ValidationError:
-                table_meta = storage.describe_table(req.context,
-                                                    row["name"])
-                row["status"] = table_meta.status
-                row["usage_detailes"] = {}
+                try:
+                    table_meta = storage.describe_table(req.context,
+                                                        row["name"])
+                    row["status"] = table_meta.status
+                    row["usage_detailes"] = {}
+                    result.append(row)
+                except exception.TableNotExistsException:
+                    pass
+            except exception.TableNotExistsException:
+                pass
 
-        return tables
+        return result
