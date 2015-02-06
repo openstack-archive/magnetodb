@@ -25,7 +25,7 @@ from oslo_serialization import jsonutils as json
 from oslo_utils import timeutils
 
 from magnetodb.common import exception
-from magnetodb.openstack.common.gettextutils import _
+from magnetodb.i18n import _
 
 DECIMAL_CONTEXT = decimal.Context(
     prec=38, rounding=None,

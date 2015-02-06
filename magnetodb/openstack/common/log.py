@@ -41,7 +41,7 @@ from oslo_config import cfg
 from oslo_serialization import jsonutils as json
 from six import moves
 
-from magnetodb.openstack.common.gettextutils import _  # noqa
+from magnetodb.i18n import _, _LC, _LW
 from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import local
 
@@ -240,12 +240,12 @@ class ContextAdapter(BaseLoggerAdapter):
         return self.logger.handlers
 
     def deprecated(self, msg, *args, **kwargs):
-        stdmsg = _("Deprecated: %s") % msg
+        stdmsg = "Deprecated: %s"
         if CONF.fatal_deprecations:
-            self.critical(stdmsg, *args, **kwargs)
-            raise DeprecatedConfig(msg=stdmsg)
+            self.critical(_LC(stdmsg) % msg, *args, **kwargs)
+            raise DeprecatedConfig(msg=_(stdmsg))
         else:
-            self.warn(stdmsg, *args, **kwargs)
+            self.warn(_LW(stdmsg) % msg, *args, **kwargs)
 
     def process(self, msg, kwargs):
         if 'extra' not in kwargs:

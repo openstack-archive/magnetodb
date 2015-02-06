@@ -24,7 +24,7 @@ import unicodedata
 
 import six
 
-from magnetodb.openstack.common.gettextutils import _
+from magnetodb.i18n import _
 
 
 UNIT_PREFIX_EXPONENT = {

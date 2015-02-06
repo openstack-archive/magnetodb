@@ -19,8 +19,8 @@ from magnetodb.api.openstack.v1 import parser
 from magnetodb.api import validation
 from magnetodb.common import exception
 from magnetodb.common import probe
+from magnetodb.i18n import _
 from magnetodb.openstack.common import log as logging
-from magnetodb.openstack.common.gettextutils import _
 from magnetodb import storage
 from magnetodb.storage import models
 

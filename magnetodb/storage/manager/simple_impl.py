@@ -23,8 +23,8 @@ import uuid
 from oslo_utils import timeutils
 
 from magnetodb.common import exception
+from magnetodb.i18n import _
 from magnetodb import notifier
-from magnetodb.openstack.common.gettextutils import _
 from magnetodb.storage import manager
 from magnetodb.storage import models
 from magnetodb.storage import table_info_repo

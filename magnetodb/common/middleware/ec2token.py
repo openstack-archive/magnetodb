@@ -23,11 +23,9 @@ from oslo_serialization import jsonutils as json
 
 from magnetodb.api.amz.dynamodb import exception
 from magnetodb.common import wsgi
+from magnetodb.i18n import _, _LE, _LI
 from magnetodb.openstack.common import log as logging
-from magnetodb.openstack.common import gettextutils
-from magnetodb.openstack.common.gettextutils import _
 
-gettextutils.install('magnetodb')
 
 LOG = logging.getLogger(__name__)
 
@@ -135,7 +133,7 @@ class EC2Token(wsgi.Middleware):
         # here so that we can use both authentication methods.
         # Returning here just means the user didn't supply AWS
         # authentication and we'll let the app try native keystone next.
-        LOG.info(_("Checking AWS credentials.."))
+        LOG.info(_LI("Checking AWS credentials.."))
 
         signature = self._get_signature(req)
         if not signature:
@@ -144,7 +142,7 @@ class EC2Token(wsgi.Middleware):
             elif 'X-Auth-Token' in req.headers:
                 return self.application
             else:
-                LOG.info(_("No AWS Signature found."))
+                LOG.info(_LI("No AWS Signature found."))
                 raise exception.AWSIncompleteSignatureError()
 
         access = self._get_access(req)
@@ -152,16 +150,16 @@ class EC2Token(wsgi.Middleware):
             if 'X-Auth-User' in req.headers:
                 return self.application
             else:
-                LOG.info(_("No AWSAccessKeyId/Authorization Credential"))
+                LOG.info(_LI("No AWSAccessKeyId/Authorization Credential"))
                 raise exception.AWSIncompleteSignatureError()
 
-        LOG.info(_("AWS credentials found, checking against keystone."))
+        LOG.info(_LI("AWS credentials found, checking against keystone."))
 
         if not auth_uri:
-            LOG.error(_("Ec2Token authorization failed, no auth_uri "
-                        "specified in config file"))
+            LOG.error(_LE("Ec2Token authorization failed, no auth_uri "
+                          "specified in config file"))
             raise exception.AWSErrorResponseException(
-                _('Service misconfigured')
+                _LI('Service misconfigured')
             )
         # Make a copy of args for authentication and signature verification.
         auth_params = dict(req.params)
@@ -184,7 +182,7 @@ class EC2Token(wsgi.Middleware):
         headers = {'Content-Type': 'application/json'}
 
         keystone_ec2_uri = self._conf_get_keystone_ec2_uri(auth_uri)
-        LOG.info(_('Authenticating with %s'), keystone_ec2_uri)
+        LOG.info(_LI('Authenticating with %s'), keystone_ec2_uri)
         response = requests.post(keystone_ec2_uri, data=creds_json,
                                  headers=headers)
         result = response.json()
@@ -203,9 +201,9 @@ class EC2Token(wsgi.Middleware):
                 roles = [r['name'] for r in metadata]
             else:
                 raise exception.AWSInvalidClientTokenIdError()
-            LOG.info(_("AWS authentication successful."))
+            LOG.info(_LI("AWS authentication successful."))
         except (AttributeError, KeyError):
-            LOG.info(_("AWS authentication failure."))
+            LOG.info(_LI("AWS authentication failure."))
             # Try to extract the reason for failure so we can return the
             # appropriate AWS error via raising an exception
             try:

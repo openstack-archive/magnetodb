@@ -20,7 +20,7 @@ import os.path
 from oslo.config import cfg
 
 from magnetodb.common import exception
-from magnetodb.openstack.common.gettextutils import _
+from magnetodb.i18n import _
 from magnetodb.openstack.common import policy
 from magnetodb.common.utils import fileutil
 
