@@ -17,6 +17,7 @@ import httplib
 import json
 
 from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
+from magnetodb.common import exception
 import mock
 
 
@@ -48,5 +49,30 @@ class ProjectUsageTest(test_base_testcase.APITestCase):
         json_response = response.read()
         response_model = json.loads(json_response)[0]
 
-        self.assertEqual(100, response_model['usage_detailes']['item_count'])
-        self.assertEqual(500, response_model['usage_detailes']['size'])
+        self.assertEqual(100, response_model['usage_details']['item_count'])
+        self.assertEqual(500, response_model['usage_details']['size'])
+
+    @mock.patch('magnetodb.storage.list_tables')
+    @mock.patch('magnetodb.storage.get_table_statistics')
+    def test_table_usage_details_error(self, mock_get_table_statistics,
+                                       mock_list_tables):
+        side_effect = exception.TableNotExistsException()
+        mock_get_table_statistics.side_effect = side_effect
+        mock_list_tables.return_value = ['Thread']
+
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+
+        conn = httplib.HTTPConnection('localhost:8080')
+        url = '/v1/monitoring/projects/default_tenant?metrics=size,item_count'
+        conn.request("GET", url, headers=headers)
+
+        response = conn.getresponse()
+
+        self.assertTrue(mock_list_tables.called)
+        self.assertTrue(mock_get_table_statistics.called)
+
+        json_response = response.read()
+        response_model = json.loads(json_response)
+
+        self.assertEqual([], response_model)

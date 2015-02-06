@@ -40,11 +40,12 @@ class ProjectUsageController():
             try:
                 result.append({
                     "table_name": table_name,
-                    "usage_detailes": storage.get_table_statistics(req.context,
-                                                                   table_name,
-                                                                   keys)
+                    "usage_details": storage.get_table_statistics(req.context,
+                                                                  table_name,
+                                                                  keys)
                 })
-            except exception.ValidationError:
+            except (exception.ValidationError,
+                    exception.TableNotExistsException):
                 pass
 
         return result

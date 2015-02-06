@@ -14,9 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb.api.openstack.v1 import parser
+from magnetodb.api import validation
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
-from magnetodb.common import exception
 
 LOG = logging.getLogger(__name__)
 
@@ -31,22 +32,29 @@ class AllProjectsUsageController():
         else:
             keys = req.GET['metrics'].split(',')
 
+        limit = req.GET.get('limit', 1000)
+        limit = validation.validate_integer(limit, parser.Props.LIMIT,
+                                            min_val=0)
+        last_evaluated_table = req.GET.get('last_evaluated_table')
+        if last_evaluated_table:
+            validation.validate_table_name(last_evaluated_table)
+
         tables = storage.list_tenant_tables(
             last_evaluated_project=req.GET.get('last_evaluated_project'),
-            last_evaluated_table=req.GET.get('last_evaluated_table'),
-            limit=req.GET.get('limit', 1000)
+            last_evaluated_table=last_evaluated_table
         )
 
+        success_count = 0
+        result = []
         for row in tables:
             req.context.tenant = row["tenant"]
-            try:
-                row["usage_detailes"] = storage.get_table_statistics(
-                    req.context, row["name"], keys
-                )
-            except exception.ValidationError:
-                table_meta = storage.describe_table(req.context,
-                                                    row["name"])
-                row["status"] = table_meta.status
-                row["usage_detailes"] = {}
+            row["usage_details"] = storage.get_table_statistics(
+                req.context, row["name"], keys
+            )
+            if row["usage_details"]:
+                result.append(row)
+                success_count += 1
+            if success_count == limit:
+                break
 
-        return tables
+        return result
