@@ -48,5 +48,5 @@ class ProjectUsageTest(test_base_testcase.APITestCase):
         json_response = response.read()
         response_model = json.loads(json_response)[0]
 
-        self.assertEqual(100, response_model['usage_detailes']['item_count'])
-        self.assertEqual(500, response_model['usage_detailes']['size'])
+        self.assertEqual(100, response_model['usage_details']['item_count'])
+        self.assertEqual(500, response_model['usage_details']['size'])

@@ -55,8 +55,8 @@ class MagnetoDBMonitoringTest(MagnetoDBTestCase):
                 table = t
 
         self.assertIsNotNone(table)
-        self.assertEqual(table['usage_detailes']['item_count'], 0)
-        self.assertEqual(table['usage_detailes']['size'], 0)
+        self.assertEqual(table['usage_details']['item_count'], 0)
+        self.assertEqual(table['usage_details']['size'], 0)
 
     def test_project_tables_monitoring_response(self):
         table_name = rand_name(self.table_prefix).replace('-', '')
@@ -75,5 +75,5 @@ class MagnetoDBMonitoringTest(MagnetoDBTestCase):
 
         self.assertIsNotNone(table)
         self.assertEqual(table['status'], 'ACTIVE')
-        self.assertEqual(table['usage_detailes']['item_count'], 0)
-        self.assertEqual(table['usage_detailes']['size'], 0)
+        self.assertEqual(table['usage_details']['item_count'], 0)
+        self.assertEqual(table['usage_details']['size'], 0)

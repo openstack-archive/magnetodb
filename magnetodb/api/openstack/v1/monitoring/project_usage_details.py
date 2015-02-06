@@ -14,9 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from magnetodb.api import validation
 from magnetodb.openstack.common import log as logging
 from magnetodb import storage
-from magnetodb.common import exception
 
 LOG = logging.getLogger(__name__)
 
@@ -28,23 +28,24 @@ class ProjectUsageController():
     def project_usage_details(self, req, project_id):
         req.context.tenant = project_id
 
+        allowed_keys = ['size', 'item_count']
         if 'metrics' not in req.GET:
-            keys = ['size', 'item_count']
+            keys = allowed_keys
         else:
             keys = req.GET['metrics'].split(',')
+            validation.validate_metrics(keys, allowed_keys)
 
         table_names = storage.list_tables(req.context)
 
         result = []
         for table_name in table_names:
-            try:
-                result.append({
-                    "table_name": table_name,
-                    "usage_detailes": storage.get_table_statistics(req.context,
-                                                                   table_name,
-                                                                   keys)
-                })
-            except exception.ValidationError:
-                pass
+            table = {
+                'table_name': table_name,
+                'usage_details': storage.get_table_statistics(req.context,
+                                                              table_name,
+                                                              keys)
+            }
+            if table['usage_details']:
+                result.append(table)
 
         return result
