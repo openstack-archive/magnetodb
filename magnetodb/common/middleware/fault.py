@@ -118,8 +118,11 @@ class FaultWrapper(wsgi.Middleware):
             LOG.debug(ex)
             return req.get_response(Fault(self._error(ex)))
         except Exception as ex:
-            # some lower lever exception. It is better to know about it
+            # some lower level exception. It is better to know about it
+            # so, log the original message
             LOG.exception(ex)
+            # but don't propagate internal details beyond here
+            ex.args = (u'message="An Internal Error Occurred"',)
             return req.get_response(Fault(self._error(ex)))
 
     @classmethod
