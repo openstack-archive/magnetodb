@@ -44,7 +44,8 @@ class ProjectUsageController():
                                                                    table_name,
                                                                    keys)
                 })
-            except exception.ValidationError:
+            except (exception.ValidationError,
+                    exception.TableNotExistsException):
                 pass
 
         return result
