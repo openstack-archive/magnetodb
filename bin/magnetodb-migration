@@ -1,0 +1,226 @@
+#!/usr/bin/env python
+
+# Copyright 2015 Symantec Corporation
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+"""CLI tool for backup/restore data between different versions of MagnetoDB.
+
+Usage :
+    magnetodb-migration -a (or --action) <backup> or <restore>
+
+For help:
+    magnetodb-migration -h (or --help)
+
+"""
+
+import json
+import logging
+import os
+
+import eventlet
+import time
+from magnetodb.api.openstack.v1 import parser
+
+try:
+    from magnetodb.openstack.common import context
+except ImportError:
+    from magnetodb import context
+
+from magnetodb.storage import models
+
+eventlet.patcher.monkey_patch(all=True)
+
+from magnetodb import storage
+from magnetodb.common import config
+from magnetodb.common import setup_global_env
+
+LOG = logging.getLogger(__name__)
+CONF = config.CONF
+
+tenants = ["12345678901234567890123456789012",
+           "12345678901234567890123456789012",
+           "12345678901234567890123456789012"]
+
+
+def _parse_describe(table_name, table_meta):
+    result = {
+        table_name: {
+            parser.Props.ATTRIBUTE_DEFINITIONS: (
+                parser.Parser.format_attribute_definitions(
+                    table_meta.schema.attribute_type_map)),
+
+            parser.Props.KEY_SCHEMA: (
+                parser.Parser.format_key_schema(
+                    table_meta.schema.key_attributes)),
+
+            parser.Props.TABLE_NAME: table_name,
+
+            parser.Props.TABLE_STATUS: (
+                parser.Parser.format_table_status(table_meta.status)),
+        }
+    }
+
+    if table_meta.schema.index_def_map:
+        table_def = result[table_name]
+        table_def[parser.Props.LOCAL_SECONDARY_INDEXES] = (
+            parser.Parser.format_local_secondary_indexes(
+                table_meta.schema.key_attributes[0],
+                table_meta.schema.index_def_map
+            )
+        )
+    return result
+
+
+def backup(ctx, tenant):
+    LOG.debug(
+        "Start backup for tenant <{}>".format(tenant)
+    )
+    tables = storage.list_tables(ctx)
+    with open(tenant + '/all_tables', 'w') as outfile:
+        for name in tables:
+            outfile.write(name + '\n')
+
+    params = {}
+
+    with open(tenant + '/all_tables', 'r') as a, \
+            open(tenant + '/parameters.json', 'w') as b, \
+            open(tenant + '/active_tables', 'w') as c:
+        start = time.time()
+        count = 0
+        for name in a.readlines():
+            name = name.rstrip('\r\n')
+            table_meta = storage.describe_table(ctx, name)
+            result = _parse_describe(name, table_meta)
+            if result[name][parser.Props.TABLE_STATUS] == 'ACTIVE':
+                c.write(name + '\n')
+                if parser.Props.LOCAL_SECONDARY_INDEXES in result[name]:
+                    for index in (
+                            result
+                            [name]
+                            [parser.Props.LOCAL_SECONDARY_INDEXES]):
+                        del (
+                            index
+                            [parser.Props.INDEX_SIZE_BYTES]
+                        )
+                        del (
+                            index
+                            [parser.Props.ITEM_COUNT]
+                        )
+                count += 1
+                params.update(result)
+        b.write(json.dumps(params))
+        LOG.debug("List and describe tables done")
+        LOG.debug("Time === <{}>".format(time.time() - start))
+        LOG.debug("Count of ACTIVE tables === <{}>".format(count))
+
+    with open(tenant + '/active_tables', 'r') as a:
+        for name in a.readlines():
+            start = time.time()
+            name = name.rstrip('\r\n')
+            items = storage.scan(ctx,
+                                 name,
+                                 condition_map=None,
+                                 limit=100000,
+                                 consistent=True)
+            LOG.debug("Scanned <{}> items in table <{}>".format(
+                items.count, name))
+
+            result = {parser.Props.ITEMS: [
+                parser.Parser.format_item_attributes(row)
+                for row in items.items]}
+            with open(tenant + '/' + str(name) + '.json', 'w') as outfile:
+                outfile.write(json.dumps(result))
+            LOG.debug("Backup done for table -> <{}>".format(name))
+            LOG.debug("Time for table <{}> === <{}>".format(
+                name, (time.time() - start)))
+
+
+def _insert_put(ctx, tenant, table_name):
+    filename = table_name + '.json'
+    with open(tenant + '/' + filename, 'r') as infile:
+        items = json.load(infile)
+        for item in items[parser.Props.ITEMS]:
+            item_attributes = parser.Parser.parse_item_attributes(item)
+            storage.put_item(ctx, table_name, item_attributes)
+
+
+def restore(ctx, tenant):
+    LOG.debug(
+        "Start restore for tenant <{}>".format(tenant)
+    )
+    with open(tenant + '/active_tables', 'r') as a, \
+            open(tenant + '/parameters.json', 'r') as b:
+        params = json.load(b)
+        for name in a.readlines():
+            name = name.rstrip('\r\n')
+            param = params[name]
+            attribute_definitions = parser.Parser.parse_attribute_definitions(
+                param[parser.Props.ATTRIBUTE_DEFINITIONS])
+            key_attrs = parser.Parser.parse_key_schema(
+                param[parser.Props.KEY_SCHEMA])
+            index_def_map = {}
+            if parser.Props.LOCAL_SECONDARY_INDEXES in param:
+                index_def_map = parser.Parser.parse_local_secondary_indexes(
+                    param[parser.Props.LOCAL_SECONDARY_INDEXES]
+                )
+
+            table_schema = models.TableSchema(attribute_definitions,
+                                              key_attrs,
+                                              index_def_map)
+            storage.create_table(ctx, name, table_schema)
+
+            status = models.TableMeta.TABLE_STATUS_CREATING
+            while status == models.TableMeta.TABLE_STATUS_CREATING:
+                resp = storage.describe_table(ctx, name)
+                result = _parse_describe(name, resp)
+                status = result[name][parser.Props.TABLE_STATUS]
+                time.sleep(3)
+
+            _insert_put(ctx, tenant, name)
+
+
+def main():
+    CONF.register_cli_opt(
+        config.cfg.Opt(
+            name="action", short="a", type=str, dest='action',
+            required=True,
+            help='Backup or restore action ( -a backup or -a restore)'
+        )
+    )
+    CONF(default_config_files=['../etc/magnetodb-api.conf'])
+    if CONF.action not in ["backup", "restore"]:
+        print (
+            "You have not specified correct action. Use '-h' or '--help'"
+        )
+        return
+
+    setup_global_env(program="magnetodb-migration", args=[
+        "--config-file", "../etc/magnetodb-api.conf",
+        "--action", CONF.action])
+
+    for tenant in tenants:
+        if not os.path.exists(tenant):
+            os.makedirs(tenant)
+        ctx = context.RequestContext(user='admin', tenant=tenant)
+        LOG.debug("Wait for connection to cluster.")
+        time.sleep(5)
+
+        if CONF.action == "backup":
+            backup(ctx, tenant)
+        elif CONF.action == "restore":
+            restore(ctx, tenant)
+
+if __name__ == '__main__':
+    main()
