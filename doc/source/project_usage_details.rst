@@ -31,8 +31,8 @@ ProjectUsageDetails
       | Table name
       | Type: String
 
-   **usage_detailes**
-      | Table usage detailes
+   **usage_details**
+      | Table usage details
       | Type: Object
 
    **size**
