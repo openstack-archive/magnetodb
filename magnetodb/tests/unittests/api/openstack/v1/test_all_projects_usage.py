@@ -16,8 +16,9 @@
 import httplib
 import json
 
-from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 import mock
+
+from magnetodb.tests.unittests.api.openstack.v1 import test_base_testcase
 
 
 class AllProjectsUsageTest(test_base_testcase.APITestCase):
@@ -50,5 +51,5 @@ class AllProjectsUsageTest(test_base_testcase.APITestCase):
         json_response = response.read()
         response_model = json.loads(json_response)[0]
 
-        self.assertEqual(100, response_model['usage_detailes']['item_count'])
-        self.assertEqual(500, response_model['usage_detailes']['size'])
+        self.assertEqual(100, response_model['usage_details']['item_count'])
+        self.assertEqual(500, response_model['usage_details']['size'])
