@@ -27,6 +27,7 @@ LOG = logging.getLogger(__name__)
 ATTRIBUTE_NAME_PATTERN = re.compile("^[a-zA-Z0-9_\.\-]{1,255}$")
 TABLE_NAME_PATTERN = re.compile("^[a-zA-Z0-9_\.\-]{3,255}$")
 INDEX_NAME_PATTERN = re.compile("^[a-zA-Z0-9_\.\-]{3,255}$")
+PROJECT_ID_PATTERN = re.compile("^[a-f0-9]{32}$")
 
 WRONG_TYPE_MSG = _(
     "Wrong '%(property_name)s' type. %(json_type)s is expected, "
@@ -160,6 +161,17 @@ def validate_table_name(value):
     return value
 
 
+def validate_project_id(value):
+    validate_string(value, "project id")
+
+    if not PROJECT_ID_PATTERN.match(value):
+        raise exception.ValidationError(
+            _("Wrong project id '%(prop_value)s' found"),
+            prop_value=value
+        )
+    return value
+
+
 def validate_index_name(value):
     validate_string(value, "index name")
 
@@ -169,3 +181,10 @@ def validate_index_name(value):
             prop_value=value
         )
     return value
+
+
+def validate_metrics(keys, allowed_keys):
+    if set(keys) - set(allowed_keys):
+        raise exception.ValidationError(
+            _("Metrics can be only: %s") % ", ".join(allowed_keys)
+        )
