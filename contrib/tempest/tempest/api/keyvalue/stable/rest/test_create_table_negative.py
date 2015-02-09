@@ -182,6 +182,32 @@ class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
                                     self.tname, self.smoke_schema,
                                     request_lsi)
 
+    @test.attr(type=['CreT-71', 'negative'])
+    def test_create_table_schema_hash_only_with_index(self):
+        index_attrs = [{'attribute_name': 'attr_name1',
+                        'attribute_type': 'S'},
+                       ]
+        request_lsi = [
+            {
+                'index_name': 'index_name',
+                'key_schema': [
+                    {'attribute_name': self.hashkey, 'key_type': 'HASH'},
+                    {'attribute_name': 'attr_name1', 'key_type': 'RANGE'}
+                ],
+                'projection': {'projection_type': 'ALL'}
+            }
+        ]
+        with self.assertRaises(exceptions.BadRequest) as raises_cm:
+            self._create_test_table(self.one_attr + index_attrs,
+                                    self.tname,
+                                    self.schema_hash_only,
+                                    request_lsi)
+        error_msg = raises_cm.exception._error_string
+        self.assertIn("Bad Request", error_msg)
+        self.assertIn("Table without range key in primary key schema "
+                      "can not have indices",
+                      error_msg)
+
     @test.attr(type=['CreT-72', 'negative'])
     def test_create_table_two_indexes_with_same_key(self):
         index_attrs = [{'attribute_name': 'attr_name',
