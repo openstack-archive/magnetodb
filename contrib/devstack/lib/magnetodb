@@ -306,9 +306,6 @@ function configure_magnetodb() {
     iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_user $MAGNETODB_USER
     iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_password $SERVICE_PASSWORD
 
-    iniset $MAGNETODB_CONF_DIR/magnetodb-api.conf DEFAULT control_exchange mdb
-    iniset $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf DEFAULT control_exchange mdb
-
     iniset $MAGNETODB_CONF_DIR/magnetodb-api.conf DEFAULT rabbit_password $RABBIT_PASSWORD
     iniset $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf DEFAULT rabbit_password $RABBIT_PASSWORD
 }
