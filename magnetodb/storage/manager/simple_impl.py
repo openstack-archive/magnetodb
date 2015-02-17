@@ -156,7 +156,21 @@ class SimpleStorageManager(manager.StorageManager):
 
         self._table_info_repo.update(context, table_info, ["status"])
 
-        self._do_delete_table(context, table_info)
+        if not table_info.internal_name:
+            # if table internal name is missing, table is not actually created
+            # just remove the table_info entry for the table and
+            # send notification
+            LOG.info(("Table '{}' with tenant id '{}', id '{}' does not have "
+                      "valid internal name. Unable or no need to delete.").
+                     format(table_info.name, context.tenant, table_info.id))
+            self._table_info_repo.delete(context, table_info.name)
+
+            self._notifier.info(
+                context,
+                notifier.EVENT_TYPE_TABLE_DELETE_END,
+                table_info.name)
+        else:
+            self._do_delete_table(context, table_info)
 
         return models.TableMeta(
             table_info.id,
