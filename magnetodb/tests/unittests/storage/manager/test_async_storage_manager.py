@@ -100,6 +100,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
             id = None
             schema = None
             creation_date_time = None
+            internal_name = 'fake'
 
         mock_table_info_repo = mock.Mock()
         mock_table_info_repo.get.return_value = FakeTableInfo()
@@ -129,6 +130,154 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
         for i in range(10):
             if mock_table_info_repo.delete.called:
                 # delete_table method of mock_storage_driver has been called
+                self.assertTrue(mock_storage_driver.delete_table.called)
+                break
+            else:
+                time.sleep(1)
+
+        # delete method of mock_table_info_repo has been called
+        self.assertTrue(mock_table_info_repo.delete.called)
+
+    @mock.patch('magnetodb.storage.table_info_repo')
+    def test_delete_table_create_or_delete_failed(self, mock_table_info_repo):
+        context = mock.Mock(tenant='fake_tenant')
+        table_name = 'fake_table'
+
+        mock_storage_driver = mock.Mock()
+        mock_storage_driver.delete_table.return_value = True
+
+        class FakeTableInfoCreateFailed:
+            status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
+            name = table_name
+            in_use = False
+            id = None
+            schema = None
+            creation_date_time = None
+            internal_name = None
+
+        mock_table_info_repo = mock.Mock()
+        mock_table_info_repo.get.return_value = FakeTableInfoCreateFailed()
+
+        storage_manager = async_simple_impl.AsyncSimpleStorageManager(
+            mock_storage_driver,
+            mock_table_info_repo
+        )
+        storage_manager.delete_table(context, table_name)
+
+        table_info_update_args_list = (
+            mock_table_info_repo.update.call_args_list
+        )
+
+        # called once, length of call_args_list indicates number of calls
+        self.assertEqual(1, len(table_info_update_args_list))
+
+        self.assertEqual(2, len(table_info_update_args_list[0]))
+
+        # tuple of Mock, TableInfo, and status list
+        self.assertEqual(3, len(table_info_update_args_list[0][0]))
+
+        # TableInfo status should be deleting
+        self.assertEqual(models.TableMeta.TABLE_STATUS_DELETING,
+                         table_info_update_args_list[0][0][1].status)
+
+        for i in range(10):
+            if mock_table_info_repo.delete.called:
+                # delete_table method of mock_storage_driver should not
+                # have been called since table does not actually exist
+                self.assertFalse(mock_storage_driver.delete_table.called)
+                break
+            else:
+                time.sleep(1)
+
+        # delete method of mock_table_info_repo has been called
+        self.assertTrue(mock_table_info_repo.delete.called)
+
+        class FakeTableInfoDeleteFailedTableNotExist:
+            status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
+            name = table_name
+            in_use = False
+            id = None
+            schema = None
+            creation_date_time = None
+            internal_name = None
+
+        mock_table_info_repo = mock.Mock()
+        mock_table_info_repo.get.return_value = (
+            FakeTableInfoDeleteFailedTableNotExist())
+
+        storage_manager = async_simple_impl.AsyncSimpleStorageManager(
+            mock_storage_driver,
+            mock_table_info_repo
+        )
+        storage_manager.delete_table(context, table_name)
+
+        table_info_update_args_list = (
+            mock_table_info_repo.update.call_args_list
+        )
+
+        # called once, length of call_args_list indicates number of calls
+        self.assertEqual(1, len(table_info_update_args_list))
+
+        self.assertEqual(2, len(table_info_update_args_list[0]))
+
+        # tuple of Mock, TableInfo, and status list
+        self.assertEqual(3, len(table_info_update_args_list[0][0]))
+
+        # TableInfo status should be deleting
+        self.assertEqual(models.TableMeta.TABLE_STATUS_DELETING,
+                         table_info_update_args_list[0][0][1].status)
+
+        for i in range(10):
+            if mock_table_info_repo.delete.called:
+                # delete_table method of mock_storage_driver should not
+                # have been called since table does not actually exist
+                self.assertFalse(mock_storage_driver.delete_table.called)
+                break
+            else:
+                time.sleep(1)
+
+        # delete method of mock_table_info_repo has been called
+        self.assertTrue(mock_table_info_repo.delete.called)
+
+        class FakeTableInfoDeleteFailedButTableExist:
+            status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
+            name = table_name
+            in_use = False
+            id = None
+            schema = None
+            creation_date_time = None
+            internal_name = 'fake'
+
+        mock_table_info_repo = mock.Mock()
+        mock_table_info_repo.get.return_value = (
+            FakeTableInfoDeleteFailedButTableExist())
+
+        storage_manager = async_simple_impl.AsyncSimpleStorageManager(
+            mock_storage_driver,
+            mock_table_info_repo
+        )
+        storage_manager.delete_table(context, table_name)
+
+        table_info_update_args_list = (
+            mock_table_info_repo.update.call_args_list
+        )
+
+        # called once, length of call_args_list indicates number of calls
+        self.assertEqual(1, len(table_info_update_args_list))
+
+        self.assertEqual(2, len(table_info_update_args_list[0]))
+
+        # tuple of Mock, TableInfo, and status list
+        self.assertEqual(3, len(table_info_update_args_list[0][0]))
+
+        # TableInfo status should be deleting
+        self.assertEqual(models.TableMeta.TABLE_STATUS_DELETING,
+                         table_info_update_args_list[0][0][1].status)
+
+        for i in range(10):
+            if mock_table_info_repo.delete.called:
+                # delete_table method of mock_storage_driver should
+                # have been called because table exists
                 self.assertTrue(mock_storage_driver.delete_table.called)
                 break
             else:

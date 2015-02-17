@@ -230,6 +230,12 @@ class CassandraStorageDriver(driver.StorageDriver):
         :raises: BackendInteractionException
         """
 
+        if not table_info.internal_name:
+            LOG.info(("Table '{}' with tenant id '{}', id '{}' does not have "
+                      "valid internal name. Unable or no need to delete.").
+                     format(table_info.name, context.tenant, table_info.id))
+            return
+
         query = 'DROP TABLE IF EXISTS ' + table_info.internal_name
 
         self.__cluster_handler.execute_query(query)
