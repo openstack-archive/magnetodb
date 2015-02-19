@@ -15,6 +15,7 @@
 
 import random
 import string
+
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 
 

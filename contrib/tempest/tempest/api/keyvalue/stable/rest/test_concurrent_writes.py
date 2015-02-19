@@ -19,7 +19,7 @@ import threading
 
 from tempest.api.keyvalue.rest_base import base as rest_base
 from tempest.common.utils.data_utils import rand_name
-from tempest import exceptions
+from tempest_lib import exceptions
 
 
 class MagnetoDBConcurrentUpdateTestCase(rest_base.MagnetoDBConcurrentTestCase):
