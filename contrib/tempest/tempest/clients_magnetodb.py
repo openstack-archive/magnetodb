@@ -29,8 +29,8 @@ CONF = config.CONF
 
 class Manager(clients.Manager):
 
-    def __init__(self, credentials=None, interface='json', service=None):
-        super(Manager, self).__init__(credentials, interface, service)
+    def __init__(self, credentials=None, service=None):
+        super(Manager, self).__init__(credentials, service)
         auth_provider = self.get_auth_provider(self.credentials)
         creds = auth_provider.credentials
         auth_url = CONF.identity.uri
@@ -39,47 +39,46 @@ class Manager(clients.Manager):
         ks_creds = creds.username, creds.password, auth_url, creds.tenant_name
         self.dynamodb_client = dynamodb_client.APIClientDynamoDB(*ks_creds)
         region = CONF.magnetodb.region
-        if interface == 'json':
-            self.magnetodb_client = (
-                magnetodb_client.MagnetoDBClientJSON(
-                    auth_provider,
-                    CONF.magnetodb.catalog_type,
-                    region
-                )
+        self.magnetodb_client = (
+            magnetodb_client.MagnetoDBClientJSON(
+                auth_provider,
+                CONF.magnetodb.catalog_type,
+                region
             )
-            self.magnetodb_streaming_client = (
-                magnetodb_streaming_client.MagnetoDBStreamingClientJSON(
-                    auth_provider,
-                    CONF.magnetodb_streaming.catalog_type,
-                    region
-                )
+        )
+        self.magnetodb_streaming_client = (
+            magnetodb_streaming_client.MagnetoDBStreamingClientJSON(
+                auth_provider,
+                CONF.magnetodb_streaming.catalog_type,
+                region
             )
-            self.magnetodb_management_client = (
-                magnetodb_management_client.MagnetoDBManagementClientJSON(
-                    auth_provider,
-                    CONF.magnetodb_management.catalog_type,
-                    region
-                )
+        )
+        self.magnetodb_management_client = (
+            magnetodb_management_client.MagnetoDBManagementClientJSON(
+                auth_provider,
+                CONF.magnetodb_management.catalog_type,
+                region
             )
-            self.magnetodb_monitoring_client = (
-                magnetodb_monitoring_client.MagnetoDBMonitoringClientJSON(
-                    auth_provider,
-                    CONF.magnetodb_monitoring.catalog_type,
-                    region
-                )
+        )
+        self.magnetodb_monitoring_client = (
+            magnetodb_monitoring_client.MagnetoDBMonitoringClientJSON(
+                auth_provider,
+                CONF.magnetodb_monitoring.catalog_type,
+                region
             )
+        )
 
 
 class AltManager(Manager):
 
-    def __init__(self, interface='json', service=None):
+    def __init__(self, service=None):
         self.credentials = auth.get_credentials('alt_user')
-        super(AltManager, self).__init__(self.credentials, interface, service)
+        super(AltManager, self).__init__(self.credentials, service)
 
 
 class AdminManager(Manager):
 
-    def __init__(self, interface='json', service=None):
+    def __init__(self, service=None):
         self.credentials = auth.get_credentials('identity_admin')
         super(AdminManager, self).__init__(
-            self.credentials, interface, service)
+            self.credentials, service)
