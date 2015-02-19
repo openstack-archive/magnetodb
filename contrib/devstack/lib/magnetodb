@@ -66,7 +66,7 @@ MAGNETODB_SERVICE_PORT=${MAGNETODB_SERVICE_PORT:-8480}
 MAGNETODB_STREAMING_SERVICE_PORT=${MAGNETODB_STREAMING_SERVICE_PORT:-8481}
 MAGNETODB_SERVICE_PROTOCOL=${MAGNETODB_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
 
-TEMPEST_REVISION=${TEMPEST_REVISION:-'3176b8ea'}
+TEMPEST_REVISION=${TEMPEST_REVISION:-'5921b523'}
 
 # Functions
 # ---------
@@ -317,11 +317,15 @@ function configure_magnetodb() {
 function configure_magnetodb_tempest_plugin() {
     cd $TEMPEST_DIR
     git checkout $TEMPEST_REVISION
-    echo -e nose >> $TEMPEST_DIR/test-requirements.txt
-    echo -e nose-subunit >> $TEMPEST_DIR/test-requirements.txt
-    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/stable/"
-    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/in_progress/"
-    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/not_ready/"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable commands "\n\tfind . -type f -name \"*.pyc\" -delete\n\tbash tools/pretty_tox.sh 'tempest.api.keyvalue.stable --parallel --concurrency=2'"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable setenv "{[tempestenv]setenv}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable deps "{[tempestenv]deps}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress commands "\n\tfind . -type f -name \"*.pyc\" -delete\n\tbash tools/pretty_tox.sh 'tempest.api.keyvalue.in_progress --parallel --concurrency=2'"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress setenv "{[tempestenv]setenv}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress deps "{[tempestenv]deps}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready commands "\n\tfind . -type f -name \"*.pyc\" -delete\n\tbash tools/pretty_tox.sh 'tempest.api.keyvalue.not_ready --parallel --concurrency=2'"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready setenv "{[tempestenv]setenv}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready deps "{[tempestenv]deps}"
     cp -r $MAGNETODB_DIR/contrib/tempest/ $TEMPEST_DIR/..
 }
 
