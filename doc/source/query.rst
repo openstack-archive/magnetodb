@@ -37,7 +37,7 @@ Request Parameters
    **key_conditions**
       | The selection criteria for the query.
       | Type: String to Condition object map
-      | Required: No
+      | Required: Yes
 
    **limit**
       | Type: Number
