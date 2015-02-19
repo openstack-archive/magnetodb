@@ -17,8 +17,8 @@ import copy
 
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
 from tempest.common.utils.data_utils import rand_name
-from tempest import exceptions
 from tempest import test
+from tempest_lib import exceptions
 
 
 class MagnetoDBCreateTableNegativeTestCase(MagnetoDBTestCase):
