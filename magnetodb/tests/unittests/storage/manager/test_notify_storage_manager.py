@@ -101,6 +101,7 @@ class TestNotifyStorageManager(test_notification.TestNotify):
             id = None
             schema = None
             creation_date_time = None
+            internal_name = None
 
         mock_table_info_repo = mock.Mock()
         mock_table_info_repo.get.return_value = FakeTableInfo()
