@@ -105,7 +105,7 @@ Installing Cassandra Cluster Manager::
 
 Creating a cluster named ''Storage'' of three nodes of Cassandra 2.1.3::
 
-    ccm create Storage -v 2.0.11
+    ccm create Storage -v 2.1.3
     ccm populate -n 3
 
 Starting Cassandra Cluster::
@@ -118,9 +118,9 @@ Starting Cassandra Cluster::
 
 Creating keyspaces in cassandra::
 
-    # Replication factor is 1
-    echo "CREATE KEYSPACE magnetodb WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };" > ~/.ccm/cql.txt
-    echo "CREATE KEYSPACE user_default_tenant WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };" >> ~/.ccm/cql.txt
+    # Replication factor is 3
+    echo "CREATE KEYSPACE magnetodb WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };" > ~/.ccm/cql.txt
+    echo "CREATE KEYSPACE user_default_tenant WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };" >> ~/.ccm/cql.txt
     echo 'CREATE TABLE magnetodb.table_info(tenant text, name text, id uuid, exists int, "schema" text, status text, internal_name text, last_update_date_time timestamp, creation_date_time timestamp, PRIMARY KEY(tenant, name));' >> ~/.ccm/cql.txt
     echo 'CREATE TABLE magnetodb.backup_info(tenant text, table_name text, id uuid, name text, status text, start_date_time timestamp, finish_date_time timestamp, location text, strategy map<text, text>, PRIMARY KEY((tenant, table_name), id));' >> ~/.ccm/cql.txt
     echo 'CREATE TABLE magnetodb.restore_info(tenant text, table_name text, id uuid, status text, backup_id uuid, start_date_time timestamp, finish_date_time timestamp, source text, PRIMARY KEY((tenant, table_name), id));' >> ~/.ccm/cql.txt
