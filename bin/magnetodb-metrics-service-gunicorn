@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-# Copyright 2013 Mirantis Inc.
 # Copyright 2015 Symantec Corporation
 # All Rights Reserved.
 #
@@ -18,16 +17,11 @@
 
 import os
 import sys
-from paste import deploy
 
 import eventlet
 eventlet.patcher.monkey_patch(all=True)
 
-from eventlet import wsgi as eventlet_wsgi
-eventlet_wsgi.MAX_HEADER_LINE = 65536
-
 from magnetodb.openstack.common import service
-from magnetodb.common import wsgi
 from magnetodb.service import health_check_metrics
 
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
@@ -42,20 +36,11 @@ from oslo.config import cfg
 
 CONF = cfg.ConfigOpts()
 common_opts = [
-    cfg.StrOpt('api_paste_config',
-               help='File name for the paste.deploy config for magnetodb-api'),
-
     cfg.StrOpt('bind_host'),
-
     cfg.IntOpt('bind_port'),
 ]
 
 CONF.register_opts(common_opts)
-
-
-def run_wsgi_server(application):
-    sock = eventlet.listen((CONF.bind_host, CONF.bind_port))
-    eventlet_wsgi.server(sock, application)
 
 
 if __name__ == '__main__':
@@ -64,13 +49,10 @@ if __name__ == '__main__':
     CONF(project=mdb_common.PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
 
     try:
-        api_paste_config_file = CONF.find_file(CONF.api_paste_config)
-        app = deploy.loadapp("config:{}".format(api_paste_config_file))
         launcher = service.ServiceLauncher()
 
         port, host = (CONF.bind_port, CONF.bind_host)
 
-        launcher.launch_service(wsgi.Service(app, port, host=host))
         launcher.launch_service(
             health_check_metrics.HealthcheckMetricsService(
                 host=host, port=port

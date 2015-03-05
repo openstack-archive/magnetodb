@@ -14,10 +14,16 @@
 #    under the License.
 
 from oslo_utils import timeutils
+from oslo.config import cfg
+
 import datetime
-import sys
+import errno
+import eventlet
 import routes
 import routes.middleware
+import socket
+import sys
+import time
 import webob.dec
 import webob.exc
 
@@ -26,8 +32,100 @@ from oslo_serialization import jsonutils as json
 from magnetodb.i18n import _
 from magnetodb.openstack.common import exception
 from magnetodb.openstack.common import log as logging
+from magnetodb.openstack.common import service
+
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
+
+
+class Service(service.Service):
+    """Provides a Service API for wsgi servers.
+
+    This gives us the ability to launch wsgi servers with the
+    Launcher classes in service.py.
+    """
+
+    def __init__(self, application, port,
+                 host='0.0.0.0', backlog=4096, threads=1000):
+        self.application = application
+        self._port = port
+        self._host = host
+        self._backlog = backlog if backlog else CONF.backlog
+        super(Service, self).__init__(threads)
+
+    def _get_socket(self, host, port, backlog):
+        info = socket.getaddrinfo(host,
+                                  port,
+                                  socket.AF_UNSPEC,
+                                  socket.SOCK_STREAM)[0]
+        family = info[0]
+        bind_addr = info[-1]
+
+        sock = None
+        retry_until = time.time() + 30
+        while not sock and time.time() < retry_until:
+            try:
+                sock = eventlet.listen(bind_addr,
+                                       backlog=backlog,
+                                       family=family)
+
+            except socket.error as err:
+                if err.args[0] != errno.EADDRINUSE:
+                    raise
+                eventlet.sleep(0.1)
+        if not sock:
+            raise RuntimeError(_("Could not bind to %(host)s:%(port)s "
+                                 "after trying for 30 seconds") %
+                               {'host': host, 'port': port})
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # sockets can hang around forever without keepalive
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
+        if hasattr(socket, 'TCP_KEEPIDLE'):
+            sock.setsockopt(socket.IPPROTO_TCP,
+                            socket.TCP_KEEPIDLE,
+                            CONF.tcp_keepidle)
+
+        return sock
+
+    def start(self):
+        """Start serving this service using the provided server instance.
+
+        :returns: None
+
+        """
+        super(Service, self).start()
+        self._socket = self._get_socket(self._host, self._port, self._backlog)
+        self.tg.add_thread(self._run, self.application, self._socket)
+
+    @property
+    def backlog(self):
+        return self._backlog
+
+    @property
+    def host(self):
+        return self._socket.getsockname()[0] if self._socket else self._host
+
+    @property
+    def port(self):
+        return self._socket.getsockname()[1] if self._socket else self._port
+
+    def stop(self):
+        """Stop serving this API.
+
+        :returns: None
+
+        """
+        super(Service, self).stop()
+
+    def _run(self, application, socket):
+        """Start a WSGI server in a new green thread."""
+        logger = logging.getLogger('eventlet.wsgi')
+        eventlet.wsgi.server(socket,
+                             application,
+                             custom_pool=self.tg.pool,
+                             log=logging.WritableLogger(logger))
 
 
 class Middleware(object):
