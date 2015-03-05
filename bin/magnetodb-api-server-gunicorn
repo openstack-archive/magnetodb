@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2013 Mirantis Inc.
+# Copyright 2015 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,8 +15,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
+eventlet.patcher.monkey_patch(all=True)
+
 import multiprocessing
+import gunicorn.app.base
+
+from gunicorn import six
 import os
+from paste import deploy
+import subprocess
 import sys
 
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
@@ -24,6 +32,9 @@ import sys
 possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
                                                 os.pardir,
                                                 os.pardir))
+exe_dir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
+                                        os.pardir))
+
 if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
@@ -38,6 +49,8 @@ common_opts = [
 
     cfg.IntOpt('bind_port'),
 
+    cfg.BoolOpt('enable_metrics_service', default=False),
+
     cfg.IntOpt('magnetodb_api_workers', default=multiprocessing.cpu_count()),
 
     cfg.IntOpt('magnetodb_worker_connections', default=10),
@@ -45,25 +58,51 @@ common_opts = [
 
 CONF.register_opts(common_opts)
 
+
+class MagnetoDBAPIGunicornApplication(gunicorn.app.base.BaseApplication):
+
+    def __init__(self, app, options=None):
+        self.options = options or {}
+        self.application = app
+        super(MagnetoDBAPIGunicornApplication, self).__init__()
+
+    def load_config(self):
+        config = dict([(key, value)
+                       for key, value in six.iteritems(self.options)
+                       if key in self.cfg.settings and value is not None])
+        for key, value in six.iteritems(config):
+            self.cfg.set(key.lower(), value)
+
+    def load(self):
+        return self.application
+
+
 if __name__ == '__main__':
     from magnetodb import common as mdb_common
     prog_name = os.path.basename(sys.argv[0])
     CONF(project=mdb_common.PROJECT_NAME, prog=prog_name, args=sys.argv[1:])
 
-    api_paste_config_file = CONF.find_file(CONF.api_paste_config)
+    if CONF.enable_metrics_service:
+        # start the metrics service in background
+        svc_executable = os.path.join(exe_dir,
+                                      'magnetodb-metrics-service-gunicorn')
+        svc_config_file = sys.argv[2]
 
-    os.system(
-        "gunicorn "
-        "--bind {}:{} "
-        "--workers {} "
-        "--worker-class eventlet "
-        "--worker-connections {} "
+        subprocess.Popen(["python",
+                          svc_executable, "--config-file", svc_config_file])
+
+    api_paste_config_file = CONF.find_file(CONF.api_paste_config)
+    options = {
+        'bind': '{}:{}'.format(CONF.bind_host, CONF.bind_port),
+        'workers': CONF.magnetodb_api_workers,
+        'worker-class': 'eventlet',
+        'worker-connections': CONF.magnetodb_worker_connections,
         # limit-request-field_size param must be set to 0
         # for working with large PKI tokens
-        "--limit-request-field_size 0 "
-        "--paste {}".format(
-            CONF.bind_host, CONF.bind_port,
-            CONF.magnetodb_api_workers, CONF.magnetodb_worker_connections,
-            api_paste_config_file
-        )
-    )
+        'limit-request-field_size': 0,
+        'paste': api_paste_config_file
+    }
+
+    app = deploy.loadapp("config:{}".format(api_paste_config_file))
+
+    MagnetoDBAPIGunicornApplication(app, options).run()

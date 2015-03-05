@@ -27,7 +27,6 @@ from eventlet import wsgi as eventlet_wsgi
 eventlet_wsgi.MAX_HEADER_LINE = 65536
 
 from magnetodb.openstack.common import service
-from magnetodb.common import wsgi
 from magnetodb.service import health_check_metrics
 
 # If ../PRODUCT_NAME/__init__.py exists, add ../ to Python search path, so that
@@ -53,11 +52,6 @@ common_opts = [
 CONF.register_opts(common_opts)
 
 
-def run_wsgi_server(application):
-    sock = eventlet.listen((CONF.bind_host, CONF.bind_port))
-    eventlet_wsgi.server(sock, application)
-
-
 if __name__ == '__main__':
     from magnetodb import common as mdb_common
     prog_name = os.path.basename(sys.argv[0])
@@ -70,7 +64,6 @@ if __name__ == '__main__':
 
         port, host = (CONF.bind_port, CONF.bind_host)
 
-        launcher.launch_service(wsgi.Service(app, port, host=host))
         launcher.launch_service(
             health_check_metrics.HealthcheckMetricsService(
                 host=host, port=port
