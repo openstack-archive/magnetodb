@@ -5,6 +5,8 @@ if is_service_enabled magnetodb; then
     elif [[ "$1" == "stack" && "$2" == "install" ]]; then
         echo_summary "Installing Magnetodb"
         install_magnetodb
+        echo "Cleaning MagnetoDB data"
+        clean_magnetodb
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configuring Magnetodb"
         configure_magnetodb
@@ -20,8 +22,6 @@ if is_service_enabled magnetodb; then
     if [[ "$1" == "unstack" ]]; then
         echo "Stopping MagnetoDB"
         stop_magnetodb
-        echo "Cleaning MagnetoDB data"
-        clean_magnetodb
     fi
 
     if [[ "$1" == "clean" ]]; then
