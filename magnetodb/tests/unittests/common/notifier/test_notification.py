@@ -15,8 +15,8 @@
 
 import unittest
 
-from oslo.config import cfg
-from oslo.messaging.notify import _impl_test
+from oslo_config import cfg
+from oslo_messaging.notify import _impl_test
 
 
 DATETIMEFORMAT = "%Y-%m-%d %H:%M:%S.%f"

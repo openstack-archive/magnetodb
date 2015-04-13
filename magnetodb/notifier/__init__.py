@@ -15,10 +15,10 @@
 
 import socket
 
-from oslo.config import cfg
-from oslo.messaging import notify
-from oslo.messaging import serializer
-from oslo.messaging import transport
+from oslo_config import cfg
+from oslo_messaging import notify
+from oslo_messaging import serializer
+from oslo_messaging import transport
 from oslo_serialization import jsonutils
 
 from magnetodb import common as mdb_common

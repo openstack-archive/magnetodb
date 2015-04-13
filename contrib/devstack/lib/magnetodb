@@ -53,7 +53,6 @@ MAGNETODB_RUN_USER=${MAGNETODB_RUN_USER:-$STACK_USER}
 # Set up additional requirements
 # Use this pattern: MAGNETODB_ADDITIONAL_REQ="Requirement_1\nRequirement_2\nRequirement_N"
 # Example: MAGNETODB_ADDITIONAL_REQ="tox<1.7.0\nBabel>=0.9.6\ncassandra-driver>=1.0.0"
-MAGNETODB_ADDITIONAL_REQ=${MAGNETODB_ADDITIONAL_REQ:-"tox<1.7.0"}
 
 #Keystone variables
 MAGNETODB_USER=${MAGNETODB_USER:-magnetodb}
@@ -66,7 +65,7 @@ MAGNETODB_SERVICE_PORT=${MAGNETODB_SERVICE_PORT:-8480}
 MAGNETODB_STREAMING_SERVICE_PORT=${MAGNETODB_STREAMING_SERVICE_PORT:-8481}
 MAGNETODB_SERVICE_PROTOCOL=${MAGNETODB_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
 
-TEMPEST_REVISION=${TEMPEST_REVISION:-'3176b8ea'}
+TEMPEST_REVISION=${TEMPEST_REVISION:-'5921b523'}
 
 # Functions
 # ---------
@@ -304,19 +303,23 @@ function configure_magnetodb() {
     iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_user $MAGNETODB_USER
     iniset $MAGNETODB_CONF_DIR/streaming-api-paste.ini filter:tokenauth admin_password $SERVICE_PASSWORD
 
-    iniset $MAGNETODB_CONF_DIR/magnetodb-api.conf DEFAULT rabbit_password $RABBIT_PASSWORD
-    iniset $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf DEFAULT rabbit_password $RABBIT_PASSWORD
+    iniset $MAGNETODB_CONF_DIR/magnetodb-api.conf oslo_messaging_rabbit rabbit_password $RABBIT_PASSWORD
+    iniset $MAGNETODB_CONF_DIR/magnetodb-async-task-executor.conf oslo_messaging_rabbit rabbit_password $RABBIT_PASSWORD
 }
 
 # configure_magnetodb_tempest_plugin() - copies magnetodb tempest plugin to tempest dir
 function configure_magnetodb_tempest_plugin() {
     cd $TEMPEST_DIR
     git checkout $TEMPEST_REVISION
-    echo -e nose >> $TEMPEST_DIR/test-requirements.txt
-    echo -e nose-subunit >> $TEMPEST_DIR/test-requirements.txt
-    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/stable/"
-    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/in_progress/"
-    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready commands "nosetests --with-subunit $TEMPEST_DIR/tempest/api/keyvalue/not_ready/"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable commands "\n\tfind . -type f -name \"*.pyc\" -delete\n\tbash tools/pretty_tox.sh 'tempest.api.keyvalue.stable {posargs}'"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable setenv "{[tempestenv]setenv}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-stable deps "{[tempestenv]deps}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress commands "\n\tfind . -type f -name \"*.pyc\" -delete\n\tbash tools/pretty_tox.sh 'tempest.api.keyvalue.in_progress {posargs}'"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress setenv "{[tempestenv]setenv}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-in-progress deps "{[tempestenv]deps}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready commands "\n\tfind . -type f -name \"*.pyc\" -delete\n\tbash tools/pretty_tox.sh 'tempest.api.keyvalue.not_ready {posargs}'"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready setenv "{[tempestenv]setenv}"
+    iniset $TEMPEST_DIR/tox.ini testenv:magnetodb-not-ready deps "{[tempestenv]deps}"
     cp -r $MAGNETODB_DIR/contrib/tempest/ $TEMPEST_DIR/..
 }
 

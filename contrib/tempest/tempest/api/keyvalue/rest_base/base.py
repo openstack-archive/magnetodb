@@ -19,7 +19,7 @@ from concurrent import futures
 from unittest import case as unittest_case
 
 from tempest import test
-from tempest import exceptions
+from tempest_lib import exceptions
 from tempest import clients_magnetodb as clients
 from tempest.common.utils import data_utils
 from tempest.openstack.common import log as logging

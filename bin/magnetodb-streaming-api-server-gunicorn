@@ -18,7 +18,7 @@
 import multiprocessing
 import os
 import sys
-from oslo.config import cfg
+from oslo_config import cfg
 
 CONF = cfg.ConfigOpts()
 common_opts = [
