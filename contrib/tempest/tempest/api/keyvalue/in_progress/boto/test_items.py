@@ -15,8 +15,8 @@
 #    under the License.
 
 from tempest.api.keyvalue.boto_base.base import MagnetoDBTestCase
-from tempest.common.utils.data_utils import rand_name
-from tempest.openstack.common import log as logging
+from tempest_lib.common.utils.data_utils import rand_name
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 

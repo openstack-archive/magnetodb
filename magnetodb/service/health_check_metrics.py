@@ -19,7 +19,7 @@ import requests
 from magnetodb.common.utils import statsdutil
 from magnetodb.openstack.common import log as logging
 from magnetodb.openstack.common import service
-from oslo.config import cfg
+from oslo_config import cfg
 
 LOG = logging.getLogger(__name__)
 

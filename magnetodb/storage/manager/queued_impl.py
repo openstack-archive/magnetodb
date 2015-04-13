@@ -15,7 +15,7 @@
 
 import logging
 
-from oslo import messaging
+import oslo_messaging
 
 from magnetodb.common import config
 from magnetodb.storage.manager import simple_impl as manager
@@ -34,10 +34,10 @@ class QueuedStorageManager(manager.SimpleStorageManager):
             schema_operation_timeout
         )
 
-        transport = messaging.get_transport(CONF)
-        target = messaging.Target(topic='schema')
+        transport = oslo_messaging.get_transport(CONF)
+        target = oslo_messaging.Target(topic='schema')
 
-        self._rpc_client = messaging.RPCClient(transport, target)
+        self._rpc_client = oslo_messaging.RPCClient(transport, target)
 
     def _do_create_table(self, context, table_info):
         self._rpc_client.cast(

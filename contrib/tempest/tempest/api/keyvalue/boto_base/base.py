@@ -20,8 +20,8 @@ from tempest import clients_magnetodb as clients
 from tempest import test
 
 from tempest.api.keyvalue.boto_base import test as boto_test
-from tempest.common.utils import data_utils
-from tempest.openstack.common import log as logging
+from tempest_lib.common.utils import data_utils
+from oslo_log import log as logging
 
 
 test.clients = clients

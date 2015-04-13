@@ -19,8 +19,8 @@ import os
 import sys
 import time
 
-from oslo.config import cfg
-from oslo import messaging
+from oslo_config import cfg
+import oslo_messaging as messaging
 
 import eventlet
 eventlet.patcher.monkey_patch(all=True)

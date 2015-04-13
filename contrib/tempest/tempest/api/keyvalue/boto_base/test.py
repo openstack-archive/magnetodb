@@ -25,11 +25,11 @@ from boto import exception
 from boto import s3
 import keystoneclient.exceptions
 
+from oslo_log import log as logging
 from tempest import clients
 from tempest.common.utils.file_utils import have_effective_read_access
 from tempest import config as cfg
 from tempest import exceptions
-from tempest.openstack.common import log as logging
 from tempest import test
 from tempest.api.keyvalue.boto_base.utils.wait import re_search_wait
 from tempest.api.keyvalue.boto_base.utils.wait import state_wait

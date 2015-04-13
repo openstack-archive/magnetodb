@@ -20,7 +20,7 @@ import threading
 from oslo_serialization import jsonutils as json
 
 from tempest.api.keyvalue.rest_base import base as rest_base
-from tempest.common.utils.data_utils import rand_name
+from tempest_lib.common.utils.data_utils import rand_name
 
 
 class MagnetoDBConcurrentUpdateTestCase(rest_base.MagnetoDBConcurrentTestCase):

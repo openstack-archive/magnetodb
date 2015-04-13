@@ -29,7 +29,7 @@ possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
 if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from magnetodb.openstack.common import log as logging
 from magnetodb.openstack.common import service

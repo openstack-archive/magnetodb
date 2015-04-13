@@ -17,7 +17,7 @@
 
 import os.path
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from magnetodb.common import exception
 from magnetodb.i18n import _

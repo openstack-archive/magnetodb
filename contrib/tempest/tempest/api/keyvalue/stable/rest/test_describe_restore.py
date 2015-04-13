@@ -16,7 +16,7 @@
 import uuid
 
 from tempest.api.keyvalue.rest_base.base import MagnetoDBTestCase
-from tempest.common.utils.data_utils import rand_name
+from tempest_lib.common.utils.data_utils import rand_name
 
 
 class MagnetoDBDescribeRestoreTest(MagnetoDBTestCase):

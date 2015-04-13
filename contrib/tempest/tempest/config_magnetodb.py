@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from tempest import config  # noqa
 
@@ -73,7 +73,6 @@ MagnetoDBManagementGroup = [
 class TempestConfigPrivateMagnetoDB(config.TempestConfigPrivate):
 
     def __init__(self, parse_conf=True):
-        super(TempestConfigPrivateMagnetoDB, self).__init__()
         config.register_opt_group(cfg.CONF, magnetodb_group, MagnetoDBGroup)
         config.register_opt_group(cfg.CONF, magnetodb_streaming_group,
                                   MagnetoDBStreamingGroup)
