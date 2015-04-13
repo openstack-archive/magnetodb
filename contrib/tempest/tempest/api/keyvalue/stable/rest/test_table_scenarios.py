@@ -17,8 +17,8 @@ import base64
 import copy
 
 from tempest.api.keyvalue.rest_base import base
-from tempest.common.utils.data_utils import rand_name
-from tempest import exceptions
+from tempest_lib.common.utils.data_utils import rand_name
+from tempest_lib import exceptions
 
 
 INDEX_NAME_N = "by_number"

@@ -25,7 +25,7 @@ from magnetodb.storage import models
 from magnetodb.storage import driver
 from magnetodb.storage.driver.cassandra import encoder as cas_enc
 
-from oslo.config import cfg
+from oslo_config import cfg
 import pyjolokia
 
 LOG = logging.getLogger(__name__)

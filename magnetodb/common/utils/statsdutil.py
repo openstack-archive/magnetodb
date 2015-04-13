@@ -15,7 +15,7 @@
 
 import socket
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from magnetodb.openstack.common import log as logging
 from magnetodb.statsd import statsd

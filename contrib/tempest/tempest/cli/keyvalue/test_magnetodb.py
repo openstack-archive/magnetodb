@@ -20,7 +20,7 @@ import time
 
 from tempest import cli
 from tempest import config_magnetodb as config
-from tempest.openstack.common import log as logging
+from oslo_log import log as logging
 
 CONF = config.CONF
 

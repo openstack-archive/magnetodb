@@ -18,11 +18,11 @@
 from concurrent import futures
 from unittest import case as unittest_case
 
+from oslo_log import log as logging
 from tempest import test
-from tempest import exceptions
+from tempest_lib.common.utils import data_utils
+from tempest_lib import exceptions
 from tempest import clients_magnetodb as clients
-from tempest.common.utils import data_utils
-from tempest.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 test.clients = clients
