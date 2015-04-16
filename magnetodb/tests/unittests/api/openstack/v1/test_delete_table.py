@@ -113,22 +113,21 @@ class DeleteTableTest(test_base_testcase.APITestCase):
         url = '/v1/data/default_tenant/tables/Thread'
 
         conn.request("DELETE", url, headers=headers)
-
-        response = conn.getresponse()
+        json_response = conn.getresponse().read()
 
         self.assertTrue(mock_delete_table.called)
 
-        json_response = response.read()
-        expected_response = (
-            '{"explanation": "The server could not comply with the request '
-            'since it is either malformed or otherwise incorrect.", '
-
-            '"code": 400, '
-
-            '"error": '
-            '{"message": "An unknown exception occurred", "traceback": null, '
-            '"type": "ResourceInUseException"}, '
-
-            '"title": "Bad Request"}'
-        )
-        self.assertEqual(expected_response, json_response)
+        response_payload = json.loads(json_response)
+        expected_response = {
+            "explanation": "The server could not comply with the request "
+                           "since it is either malformed or otherwise "
+                           "incorrect.",
+            "code": 400,
+            "error": {
+                "message": "An unknown exception occurred",
+                "traceback": None,
+                "type": "ResourceInUseException"
+            },
+            "title": "Bad Request"
+        }
+        self.assertEqual(expected_response, response_payload)

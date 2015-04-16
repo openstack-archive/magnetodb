@@ -31,7 +31,7 @@ class TestNotifyStorageManager(test_notification.TestNotify):
     def test_notify_create_table_async(self, mock_table_info_repo):
         self.cleanup_test_notifier()
 
-        context = mock.Mock(tenant='fake_tenant')
+        tenant = 'fake_tenant'
         table_name = 'fake_table'
         table_schema = 'fake_table_schema'
 
@@ -40,7 +40,7 @@ class TestNotifyStorageManager(test_notification.TestNotify):
 
         storage_manager = async_simple_impl.AsyncSimpleStorageManager(
             mock_storage_driver, mock_table_info_repo)
-        storage_manager.create_table(context, table_name, table_schema)
+        storage_manager.create_table(tenant, table_name, table_schema)
 
         # wait for async create table call to finish
         for i in range(10):
@@ -69,7 +69,7 @@ class TestNotifyStorageManager(test_notification.TestNotify):
     def test_notify_delete_table_async(self, mock_table_info_repo):
         self.cleanup_test_notifier()
 
-        context = mock.Mock(tenant='fake_tenant')
+        tenant = 'fake_tenant'
         table_name = 'fake_table'
 
         mock_storage_driver = mock.Mock()
@@ -89,7 +89,7 @@ class TestNotifyStorageManager(test_notification.TestNotify):
 
         storage_manager = async_simple_impl.AsyncSimpleStorageManager(
             mock_storage_driver, mock_table_info_repo)
-        storage_manager.delete_table(context, table_name)
+        storage_manager.delete_table(tenant, table_name)
 
         # wait for async delete table call to finish
         for i in range(10):

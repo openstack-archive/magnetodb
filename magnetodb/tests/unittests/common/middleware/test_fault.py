@@ -64,7 +64,7 @@ class TestFaultWrapper(unittest.TestCase):
         side_effect = self._side_effect_generator([validation_ex, "use args"])
         self.request.get_response = mock.Mock(side_effect=side_effect)
         response = self.fault_wrapper.process_request(self.request)
-        message = response[0].error['error']['message']
+        message = response.json_body['error']['message']
         self.assertEqual(expected_message, message)
 
     def test_process_request_backend_exception(self):
@@ -75,7 +75,7 @@ class TestFaultWrapper(unittest.TestCase):
         side_effect = self._side_effect_generator([backend_ex, "use args"])
         self.request.get_response = mock.Mock(side_effect=side_effect)
         response = self.fault_wrapper.process_request(self.request)
-        message = response[0].error['error']['message']
+        message = response.json_body['error']['message']
         self.assertEqual(expected_message, message)
 
     def test_process_request_low_level_exception(self):
@@ -86,5 +86,5 @@ class TestFaultWrapper(unittest.TestCase):
         side_effect = self._side_effect_generator([ex, "use args"])
         self.request.get_response = mock.Mock(side_effect=side_effect)
         response = self.fault_wrapper.process_request(self.request)
-        message = response[0].error['error']['message']
+        message = response.json_body['error']['message']
         self.assertNotEqual(ex_message, message)

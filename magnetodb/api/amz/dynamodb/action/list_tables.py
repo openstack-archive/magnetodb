@@ -14,8 +14,8 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import parser
-from magnetodb.common import exception
+from magnetodb.api.amz import parser
+from magnetodb.api.amz import exception as azm_exception
 from magnetodb import storage
 
 
@@ -42,7 +42,7 @@ class ListTablesDynamoDBAction(action.DynamoDBAction):
         try:
             table_names = (
                 storage.list_tables(
-                    self.context,
+                    self.tenant,
                     exclusive_start_table_name=exclusive_start_table_name,
                     limit=limit)
             )
@@ -53,7 +53,5 @@ class ListTablesDynamoDBAction(action.DynamoDBAction):
                 res[parser.Props.LAST_EVALUATED_TABLE_NAME] = table_names[-1]
 
             return res
-        except exception.AWSErrorResponseException as e:
-            raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise azm_exception.AWSErrorResponseException()

@@ -20,29 +20,29 @@ from magnetodb.api import validation
 from magnetodb.common import probe
 
 
-class CreateBackupController(object):
+@probe.Probe(__name__)
+def create_backup(req, project_id, table_name):
     """Creates a backup for a table."""
 
-    @probe.Probe(__name__)
-    def process_request(self, req, body, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+    utils.check_project_id(project_id)
 
-        with probe.Probe(__name__ + '.validation'):
-            validation.validate_table_name(table_name)
+    with probe.Probe(__name__ + '.validation'):
+        body = req.json_body
 
-            validation.validate_object(body, "body")
+        validation.validate_table_name(table_name)
 
-            backup_name = body.pop(parser.Props.BACKUP_NAME, None)
-            strategy = body.pop(parser.Props.STRATEGY, {})
+        validation.validate_object(body, "body")
 
-            validation.validate_unexpected_props(body, "body")
+        backup_name = body.pop(parser.Props.BACKUP_NAME, None)
+        strategy = body.pop(parser.Props.STRATEGY, {})
 
-        backup = storage.create_backup(
-            req.context, table_name, backup_name, strategy
-        )
+        validation.validate_unexpected_props(body, "body")
 
-        href_prefix = req.path_url
-        response = parser.Parser.format_backup(backup, href_prefix)
+    backup = storage.create_backup(
+        project_id, table_name, backup_name, strategy
+    )
 
-        return response
+    href_prefix = req.path_url
+    response = parser.Parser.format_backup(backup, href_prefix)
+
+    return response

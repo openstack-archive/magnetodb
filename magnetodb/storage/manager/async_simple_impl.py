@@ -15,6 +15,8 @@
 import logging
 import time
 
+from oslo_context import context as req_context
+
 from magnetodb import notifier
 
 from magnetodb.storage import models
@@ -33,22 +35,23 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
             schema_operation_timeout
         )
 
-    def _do_create_table(self, context, table_info):
+    def _do_create_table(self, tenant, table_info):
         start_time = time.time()
         future = self._execute_async(self._storage_driver.create_table,
-                                     context, table_info)
+                                     tenant, table_info)
 
         def callback(future):
             if not future.exception():
                 table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
                 table_info.internal_name = future.result()
                 self._table_info_repo.update(
-                    context, table_info, ["status", "internal_name"]
+                    tenant, table_info, ["status", "internal_name"]
                 )
                 self._notifier.info(
-                    context,
+                    req_context.get_current(),
                     notifier.EVENT_TYPE_TABLE_CREATE,
                     dict(
+                        tenant=tenant,
                         table_name=table_info.name,
                         table_uuid=str(table_info.id),
                         schema=table_info.schema,
@@ -56,13 +59,12 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
                     ))
             else:
                 table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
-                self._table_info_repo.update(
-                    context, table_info, ["status"]
-                )
+                self._table_info_repo.update(tenant, table_info, ["status"])
                 self._notifier.error(
-                    context,
+                    req_context.get_current(),
                     notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                     dict(
+                        tenant=tenant,
                         table_name=table_info.name,
                         table_uuid=str(table_info.id),
                         message=future.exception(),
@@ -71,19 +73,21 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
 
         future.add_done_callback(callback)
 
-    def _do_delete_table(self, context, table_info):
+    def _do_delete_table(self, tenant, table_info):
         start_time = time.time()
         future = self._execute_async(self._storage_driver.delete_table,
-                                     context, table_info)
+                                     tenant, table_info)
 
         def callback(future):
             if not future.exception():
                 self._table_info_repo.delete(
-                    context, table_info.name
+                    tenant, table_info.name
                 )
                 self._notifier.info(
-                    context, notifier.EVENT_TYPE_TABLE_DELETE,
+                    req_context.get_current(),
+                    notifier.EVENT_TYPE_TABLE_DELETE,
                     dict(
+                        tenant=tenant,
                         table_name=table_info.name,
                         table_uuid=str(table_info.id),
                         value=start_time
@@ -91,12 +95,14 @@ class AsyncSimpleStorageManager(manager.SimpleStorageManager):
             else:
                 table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
                 self._table_info_repo.update(
-                    context, table_info, ["status"]
+                    tenant, table_info, ["status"]
                 )
                 self._notifier.error(
-                    context, notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
+                    req_context.get_current(),
+                    notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                     dict(
                         message=future.exception(),
+                        tenant=tenant,
                         table_name=table_info.name,
                         table_uuid=str(table_info.id),
                         value=start_time

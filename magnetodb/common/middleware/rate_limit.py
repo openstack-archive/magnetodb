@@ -20,7 +20,7 @@ import re
 import time
 
 from magnetodb.common import exception
-from magnetodb.common import wsgi
+from oslo_middleware import base as wsgi
 from magnetodb import notifier
 from magnetodb.openstack.common import log as logging
 
