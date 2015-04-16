@@ -31,7 +31,7 @@ class CreateRestoreJobTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/management/default_tenant/default_table/restores'
+        url = '/v1/management/default_tenant/tables/default_table/restores'
 
         backup_uuid = uuid.uuid4()
 

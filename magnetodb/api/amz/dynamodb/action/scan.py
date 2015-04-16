@@ -14,8 +14,8 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import parser
-from magnetodb.common import exception
+from magnetodb.api.amz import parser
+from magnetodb.api.amz import exception as amz_exception
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -117,11 +117,11 @@ class ScanDynamoDBAction(action.DynamoDBAction):
 
             assert segment < total_segments
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()
 
         try:
             result = storage.scan(
-                self.context, table_name, condition_map,
+                self.tenant, table_name, condition_map,
                 attributes_to_get=attrs_to_get, limit=limit,
                 exclusive_start_key=exclusive_start_key)
 
@@ -151,7 +151,5 @@ class ScanDynamoDBAction(action.DynamoDBAction):
                 )
 
             return response
-        except exception.AWSErrorResponseException as e:
-            raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()

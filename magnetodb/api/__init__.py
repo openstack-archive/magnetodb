@@ -16,6 +16,8 @@
 import shlex
 import string
 
+from oslo_context import context
+
 from magnetodb.api.openstack.v1 import utils
 from magnetodb import common as mdb_common
 from magnetodb.openstack.common import log as logging
@@ -26,13 +28,11 @@ LOG = logging.getLogger(__name__)
 
 def enforce_policy(rule):
     def decorator(f):
-        def wrapper(self, *args, **kwargs):
-            context = args[0].context
-            project_id = kwargs.get('project_id')
-            utils.check_project_id(context, project_id)
-            policy.enforce(context, rule, {})
+        def wrapper(req, project_id, *args, **kwargs):
+            utils.check_project_id(project_id)
+            policy.enforce(context.get_current(), rule, {})
             LOG.debug('RBAC: Authorization granted')
-            return f(self, *args, **kwargs)
+            return f(req, project_id, *args, **kwargs)
         return wrapper
     return decorator
 

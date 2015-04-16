@@ -16,6 +16,7 @@
 import logging
 
 from oslo import messaging
+from oslo_context import context as req_context
 
 from magnetodb.common import config
 from magnetodb.storage.manager import simple_impl as manager
@@ -39,10 +40,14 @@ class QueuedStorageManager(manager.SimpleStorageManager):
 
         self._rpc_client = messaging.RPCClient(transport, target)
 
-    def _do_create_table(self, context, table_info):
+    def _do_create_table(self, tenant, table_info):
         self._rpc_client.cast(
-            context.to_dict(), 'create', table_name=table_info.name)
+            req_context.get_current().to_dict(), 'create',
+            tenant=tenant, table_name=table_info.name
+        )
 
-    def _do_delete_table(self, context, table_info):
+    def _do_delete_table(self, tenant, table_info):
         self._rpc_client.cast(
-            context.to_dict(), 'delete', table_name=table_info.name)
+            req_context.get_current().to_dict(), 'delete',
+            tenant=tenant, table_name=table_info.name
+        )

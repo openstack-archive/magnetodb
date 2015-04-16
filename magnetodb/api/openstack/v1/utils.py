@@ -13,9 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_context import context
+
 from magnetodb.common import exception
 
 
-def check_project_id(ctx, project_id):
+def check_project_id(project_id):
+    ctx = context.get_current()
     if not ctx.tenant or ctx.tenant != project_id:
         raise exception.Forbidden('No access to project')

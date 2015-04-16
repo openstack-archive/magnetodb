@@ -34,7 +34,7 @@ if os.path.exists(os.path.join(possible_topdir, "magnetodb", '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
 
-from magnetodb import context as ctxt
+from magnetodb import context as req_context
 from magnetodb import notifier
 from magnetodb.openstack.common import log as logging
 from magnetodb.common import exception
@@ -58,28 +58,31 @@ class SchemaEndpoint(object):
 
         LOG.debug('Endpoint created')
 
-    def create(self, ctx, table_name):
-        LOG.debug("Start creating table '%s'", table_name)
+    def create(self, ctx, tenant, table_name):
+        LOG.debug("Start creating table '%s' for tenant '%s'", table_name,
+                  tenant)
 
-        context = ctxt.RequestContext.from_dict(ctx)
+        context = req_context.RequestContext.from_dict(ctx)
         start_time = time.time()
 
         try:
-            table_info = self._table_info_repo.get(context, table_name)
+            table_info = self._table_info_repo.get(tenant, table_name)
         except exception.TableNotExistsException as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
+                    tenant=tenant,
                     table_name=table_name,
                     table_uuid="",
                     message=e.message,
                     value=start_time
                 )
             )
-            LOG.error("Create table failed."
-                      " Table info for table '%s' does not exist in repo",
-                      table_name)
+            LOG.error(
+                "Create table failed. Table info for tenant '%s' and table "
+                "'%s' does not exist in repo", tenant, table_name
+            )
             return
 
         if table_info.status != models.TableMeta.TABLE_STATUS_CREATING:
@@ -88,6 +91,7 @@ class SchemaEndpoint(object):
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
+                    tenant=tenant,
                     table_name=table_name,
                     table_uuid=str(table_info.id),
                     message=e.message,
@@ -95,27 +99,29 @@ class SchemaEndpoint(object):
                 )
             )
 
-            LOG.error("Create table failed. Table '%s' with uuid '%s' is in "
-                      "%s state but %s is expected",
-                      table_name,
-                      str(table_info.id),
-                      table_info.status,
-                      models.TableMeta.TABLE_STATUS_CREATING)
+            LOG.error(
+                "Create table failed. Table '%s' for tenant '%s' with "
+                "uuid '%s' is in %s state but %s is expected",
+                table_name, str(table_info.id), tenant, table_info.status,
+                models.TableMeta.TABLE_STATUS_CREATING
+            )
             return
 
         try:
             internal_name = self._storage_driver.create_table(
-                context, table_info)
+                tenant, table_info
+            )
 
             table_info.status = models.TableMeta.TABLE_STATUS_ACTIVE
 
             table_info.internal_name = internal_name
             self._table_info_repo.update(
-                context, table_info, ["status", "internal_name"])
+                tenant, table_info, ["status", "internal_name"])
             self._notifier.audit(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE,
                 dict(
+                    tenant=tenant,
                     table_name=table_name,
                     table_uuid=str(table_info.id),
                     index_count=len(table_info.schema['index_def_map'].keys()),
@@ -123,13 +129,14 @@ class SchemaEndpoint(object):
                 )
             )
 
-            LOG.debug("Table '%s' with uuid %s created", table_name,
-                      str(table_info.id))
+            LOG.debug("Table '%s' for tenant '%s' with uuid %s created",
+                      table_name, tenant, str(table_info.id))
         except Exception as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_CREATE_ERROR,
                 dict(
+                    tenant=tenant,
                     table_name=table_name,
                     table_uuid=str(table_info.id),
                     message=e.message,
@@ -137,33 +144,37 @@ class SchemaEndpoint(object):
                 )
             )
             table_info.status = models.TableMeta.TABLE_STATUS_CREATE_FAILED
-            self._table_info_repo.update(context, table_info, ["status"])
+            self._table_info_repo.update(tenant, table_info, ["status"])
 
-            LOG.error("Create table '%s' with uuid %s failed. %s",
-                      table_name, str(table_info.id), str(e))
+            LOG.error(
+                "Create table '%s' for tenant '%s' with uuid %s failed. %s",
+                table_name, tenant, str(table_info.id), str(e)
+            )
 
-    def delete(self, ctx, table_name):
+    def delete(self, ctx, tenant, table_name):
         LOG.debug("Start deleting table '%s'", table_name)
         start_time = time.time()
 
-        context = ctxt.RequestContext.from_dict(ctx)
+        context = req_context.RequestContext.from_dict(ctx)
 
         try:
-            table_info = self._table_info_repo.get(context, table_name)
+            table_info = self._table_info_repo.get(tenant, table_name)
         except exception.TableNotExistsException as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
+                    tenant=tenant,
                     table_name=table_name,
                     message=e.message,
                     value=start_time
                 )
             )
 
-            LOG.error("Delete table failed."
-                      " Table info for table '%s' does not exist in repo",
-                      table_name)
+            LOG.error(
+                "Delete table failed. Table info for tenant '%s' and "
+                "table '%s' does not exist in repo", tenant, table_name
+            )
 
             return
 
@@ -173,6 +184,7 @@ class SchemaEndpoint(object):
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
+                    tenant=tenant,
                     table_name=table_name,
                     table_uuid=str(table_info.id),
                     message=e.message,
@@ -180,34 +192,36 @@ class SchemaEndpoint(object):
                 )
             )
 
-            LOG.error("Delete table failed. Table '%s' with uuid %s is in %s "
-                      "state but %s is expected",
-                      table_name,
-                      str(table_info.id),
-                      table_info.status,
-                      models.TableMeta.TABLE_STATUS_DELETING)
+            LOG.error(
+                "Delete table failed. Table '%s' for tenant '%s' with "
+                "uuid %s is in %s state but %s is expected",
+                table_name, tenant, str(table_info.id), table_info.status,
+                models.TableMeta.TABLE_STATUS_DELETING
+            )
 
             return
 
         try:
-            self._storage_driver.delete_table(context, table_info)
-            self._table_info_repo.delete(context, table_name)
+            self._storage_driver.delete_table(tenant, table_info)
+            self._table_info_repo.delete(tenant, table_name)
             self._notifier.audit(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE,
                 dict(
+                    tenant=tenant,
                     table_name=table_name,
                     table_uuid=str(table_info.id),
                     value=start_time
                 )
             )
-            LOG.debug("Table '%s' with uuid %s deleted", table_name,
-                      str(table_info.id))
+            LOG.debug("Table '%s' for tenant '%s' with uuid %s deleted",
+                      table_name, tenant, str(table_info.id))
         except Exception as e:
             self._notifier.error(
                 context,
                 notifier.EVENT_TYPE_TABLE_DELETE_ERROR,
                 dict(
+                    tenant=tenant,
                     table_name=table_name,
                     table_uuid=str(table_info.id),
                     message=e.message,
@@ -215,12 +229,12 @@ class SchemaEndpoint(object):
                 )
             )
             table_info.status = models.TableMeta.TABLE_STATUS_DELETE_FAILED
-            self._table_info_repo.update(context, table_info, ["status"])
+            self._table_info_repo.update(tenant, table_info, ["status"])
 
-            LOG.error("Delete table '%s' with uuid %s failed. %s",
-                      table_name,
-                      str(table_info.id),
-                      str(e))
+            LOG.error(
+                "Delete table '%s' for tenant '%s' with uuid %s failed. %s",
+                table_name, tenant, str(table_info.id), str(e)
+            )
 
 
 if __name__ == '__main__':

@@ -16,7 +16,7 @@
 
 from oslo_serialization import jsonutils as json
 
-from magnetodb.api.amz.dynamodb import exception
+from magnetodb.api.amz import exception
 from magnetodb.storage import models
 
 

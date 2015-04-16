@@ -18,6 +18,7 @@ import mock
 
 from magnetodb.tests.fake import magnetodb_api_fake
 from magnetodb import policy
+from magnetodb import context
 
 
 class APITestCase(unittest.TestCase):
@@ -33,6 +34,7 @@ class APITestCase(unittest.TestCase):
 
     def setUp(self):
         self.policy_original = policy.enforce
+        context.RequestContext()
         policy.enforce = mock.MagicMock(return_value=1)
 
     def tearDown(self):

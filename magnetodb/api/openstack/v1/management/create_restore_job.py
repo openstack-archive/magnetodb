@@ -22,31 +22,31 @@ from magnetodb.api import validation
 from magnetodb.common import probe
 
 
-class CreateRestoreJobController(object):
+@probe.Probe(__name__)
+def create_restore_job(req, project_id, table_name):
     """Creates a restore job."""
 
-    @probe.Probe(__name__)
-    def process_request(self, req, body, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+    utils.check_project_id(project_id)
 
-        with probe.Probe(__name__ + '.validation'):
-            validation.validate_table_name(table_name)
-            validation.validate_object(body, "body")
+    with probe.Probe(__name__ + '.validation'):
+        validation.validate_table_name(table_name)
 
-            backup_id = body.pop(parser.Props.BACKUP_ID, None)
-            if backup_id:
-                backup_id = uuid.UUID(backup_id)
+        body = req.json_body
+        validation.validate_object(body, "body")
 
-            source = body.pop(parser.Props.SOURCE, None)
+        backup_id = body.pop(parser.Props.BACKUP_ID, None)
+        if backup_id:
+            backup_id = uuid.UUID(backup_id)
 
-            validation.validate_unexpected_props(body, "body")
+        source = body.pop(parser.Props.SOURCE, None)
 
-        restore_job = storage.create_restore_job(
-            req.context, table_name, backup_id, source
-        )
+        validation.validate_unexpected_props(body, "body")
 
-        href_prefix = req.path_url
-        response = parser.Parser.format_restore_job(restore_job, href_prefix)
+    restore_job = storage.create_restore_job(
+        project_id, table_name, backup_id, source
+    )
 
-        return response
+    href_prefix = req.path_url
+    response = parser.Parser.format_restore_job(restore_job, href_prefix)
+
+    return response
