@@ -14,9 +14,10 @@
 #    under the License.
 
 import time
-import webob
 
-from magnetodb.common import wsgi
+from oslo_context import context as req_context
+from oslo_middleware import base as wsgi
+
 from magnetodb import notifier
 from magnetodb.openstack.common import log as logging
 
@@ -40,8 +41,7 @@ class RequestNotificationsMiddleware(wsgi.Middleware):
 
         super(RequestNotificationsMiddleware, self).__init__(app)
 
-    @webob.dec.wsgify
-    def __call__(self, req):
+    def process_request(self, req):
         start_time = time.time()
 
         response = req.get_response(self.application)
@@ -49,31 +49,31 @@ class RequestNotificationsMiddleware(wsgi.Middleware):
         request_type = "unknown"
         request_args = {}
 
-        context = req.context if hasattr(req, 'context') else None
+        context = req_context.get_current()
         if context is not None:
             if hasattr(context, 'request_type') and context.request_type:
                 request_type = context.request_type
             if hasattr(context, 'request_args') and context.request_args:
                 request_args = context.request_args
 
-        event_type = notifier.create_request_event_type(
-            self.api_type, request_type, response.status_code
-        )
+            event_type = notifier.create_request_event_type(
+                self.api_type, request_type, response.status_code
+            )
 
-        payload = dict(
-            value=start_time,
-            request_content_length=req.content_length or 0,
-            response_content_length=response.content_length
-        )
+            payload = dict(
+                value=start_time,
+                request_content_length=req.content_length or 0,
+                response_content_length=response.content_length
+            )
 
-        if request_args:
-            payload.update(request_args)
+            if request_args:
+                payload.update(request_args)
 
-        if response.status_code >= 400:
-            payload.update(error=response.body)
-            self._notifier.error(context, event_type, payload)
-        else:
-            self._notifier.debug(context, event_type, payload)
+            if response.status_code >= 400:
+                payload.update(error=response.body)
+                self._notifier.error(context, event_type, payload)
+            else:
+                self._notifier.debug(context, event_type, payload)
 
         return response
 

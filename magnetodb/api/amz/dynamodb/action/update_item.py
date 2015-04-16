@@ -14,8 +14,8 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import exception
-from magnetodb.api.amz.dynamodb import parser
+from magnetodb.api.amz import exception as amz_exception
+from magnetodb.api.amz import parser
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -112,19 +112,19 @@ class UpdateItemDynamoDBAction(action.DynamoDBAction):
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
         except Exception:
-            raise exception.AWSValidationException()
+            raise amz_exception.AWSValidationException()
 
         try:
             # update item
             result, old_item = storage.update_item(
-                self.context,
+                self.tenant,
                 table_name,
                 key_attribute_map=key_attributes,
                 attribute_action_map=attribute_updates,
                 expected_condition_map=expected_item_conditions)
 
             if not result:
-                raise exception.AWSErrorResponseException()
+                raise amz_exception.AWSErrorResponseException()
 
             # format response
             response = {}
@@ -154,7 +154,7 @@ class UpdateItemDynamoDBAction(action.DynamoDBAction):
                 )
 
             return response
-        except exception.AWSErrorResponseException as e:
+        except amz_exception.AWSErrorResponseException as e:
             raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()

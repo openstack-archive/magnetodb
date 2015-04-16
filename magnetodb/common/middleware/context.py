@@ -18,8 +18,11 @@ import webob.exc
 
 from oslo_serialization import jsonutils as json
 
-from magnetodb.common import wsgi
+from oslo_middleware import base as wsgi
+
 from magnetodb import context
+
+from magnetodb.i18n import _
 
 
 class ContextMiddleware(wsgi.Middleware):
@@ -73,12 +76,14 @@ class ContextMiddleware(wsgi.Middleware):
                     explanation=_('Invalid service catalog json.'))
 
         auth_token = req.headers.get('X-Auth-Token', None)
-        req.context = self.make_context(is_admin=True,
-                                        auth_token=auth_token,
-                                        user_id=user_id,
-                                        tenant_id=tenant_id,
-                                        roles=roles,
-                                        service_catalog=service_catalog)
+        req.environ['magnetodb.context'] = self.make_context(
+            is_admin=True,
+            auth_token=auth_token,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            roles=roles,
+            service_catalog=service_catalog
+        )
 
     @classmethod
     def factory_method(cls, global_config, **local_config):

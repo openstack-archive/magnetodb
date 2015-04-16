@@ -981,11 +981,10 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
             self.client.put_item("nonexistent_table", item)
 
         exception_str = str(raises_cm.exception)
-        self.assertIn('"title": "Not Found"', exception_str)
-        self.assertIn('"explanation": "The resource could not be found."',
+        self.assertIn('"title":"Not Found"', exception_str)
+        self.assertIn('"explanation":"The resource could not be found."',
                       exception_str)
-        self.assertIn('"message": "Table \'nonexistent_table\''
-                      ' does not exist"',
+        self.assertIn('"message":"Table \'nonexistent_table\' does not exist"',
                       exception_str)
 
     @attr(type=['PI-undef', 'negative'])

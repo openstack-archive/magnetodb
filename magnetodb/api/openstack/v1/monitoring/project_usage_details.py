@@ -21,30 +21,25 @@ from magnetodb.common import exception
 LOG = logging.getLogger(__name__)
 
 
-class ProjectUsageController():
-    """Returns metrics.
-    """
+def project_usage_details(req, project_id):
+    """Returns metrics."""
+    if 'metrics' not in req.GET:
+        keys = ['size', 'item_count']
+    else:
+        keys = req.GET['metrics'].split(',')
 
-    def project_usage_details(self, req, project_id):
-        req.context.tenant = project_id
+    table_names = storage.list_tables(project_id)
 
-        if 'metrics' not in req.GET:
-            keys = ['size', 'item_count']
-        else:
-            keys = req.GET['metrics'].split(',')
+    result = []
+    for table_name in table_names:
+        try:
+            result.append({
+                "table_name": table_name,
+                "usage_detailes": storage.get_table_statistics(
+                    project_id, table_name, keys
+                )
+            })
+        except exception.ValidationError:
+            pass
 
-        table_names = storage.list_tables(req.context)
-
-        result = []
-        for table_name in table_names:
-            try:
-                result.append({
-                    "table_name": table_name,
-                    "usage_detailes": storage.get_table_statistics(req.context,
-                                                                   table_name,
-                                                                   keys)
-                })
-            except exception.ValidationError:
-                pass
-
-        return result
+    return result
