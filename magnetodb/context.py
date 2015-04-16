@@ -15,11 +15,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
+import weakref
 
 from oslo_context import context
 
-from magnetodb.openstack.common import local
 from magnetodb.openstack.common import log as logging
 from magnetodb import policy
 
@@ -33,31 +32,18 @@ class RequestContext(context.RequestContext):
     Represents the user taking a given action within the system.
 
     """
-    def __init__(self, user, tenant, is_admin=None, roles=None,
-                 project_name=None, request_id=None, auth_token=None,
-                 overwrite=True, service_catalog=None, domain=None,
-                 user_domain=None, project_domain=None, **kwargs):
+    def __init__(self, roles=None, project_name=None, service_catalog=None,
+                 **kwargs):
         """Initialize RequestContext.
-
-        :param overwrite: Set to False to ensure that the greenthread local
-            copy of the index is not overwritten.
 
         :param kwargs: Extra arguments that might be present, but we ignore
             because they possibly came in from older rpc messages.
         """
 
-        super(RequestContext, self).__init__(auth_token=auth_token,
-                                             user=user,
-                                             tenant=tenant,
-                                             domain=domain,
-                                             user_domain=user_domain,
-                                             project_domain=project_domain,
-                                             is_admin=is_admin,
-                                             request_id=request_id)
+        super(RequestContext, self).__init__(**kwargs)
+
         self.roles = roles or []
         self.project_name = project_name
-        if overwrite or not hasattr(local.store, 'context'):
-            self.update_store()
 
         if service_catalog:
             # Only include required parts of service_catalog
@@ -75,43 +61,12 @@ class RequestContext(context.RequestContext):
         elif self.is_admin and 'admin' not in self.roles:
             self.roles.append('admin')
 
-    def update_store(self):
-        local.store.context = self
-
     def to_dict(self):
         default = super(RequestContext, self).to_dict()
-        extra = {'user': self.user,
-                 'tenant': self.tenant,
-                 'project_name': self.project_name,
-                 'domain': self.domain,
+        extra = {'project_name': self.project_name,
                  'roles': self.roles,
                  'service_catalog': self.service_catalog}
         return dict(default.items() + extra.items())
 
-    @classmethod
-    def from_dict(cls, values):
-        return cls(**values)
-
-    def elevated(self, read_deleted=None, overwrite=False):
-        """Return a version of this context with admin flag set."""
-        context = self.deepcopy()
-        context.is_admin = True
-
-        if 'admin' not in context.roles:
-            context.roles.append('admin')
-
-        if read_deleted is not None:
-            context.read_deleted = read_deleted
-
-        return context
-
-    def deepcopy(self):
-        return copy.deepcopy(self)
-
-
-def get_admin_context(read_deleted="no"):
-    return RequestContext(user=None,
-                          tenant=None,
-                          is_admin=True,
-                          read_deleted=read_deleted,
-                          overwrite=False)
+    def update_store_by_weakref(self):
+        context._request_store.context = weakref.proxy(self)

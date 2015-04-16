@@ -15,9 +15,10 @@
 #    under the License.
 
 from webob import exc
+from webob import response
 
 
-class AWSErrorResponseException(exc.HTTPException):
+class AWSErrorResponseException(response.Response, exc.HTTPException):
     """Base Exception for rendering to AWS DynamoDB error
     JSON http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/
                                                             ErrorHandling.html
@@ -27,28 +28,27 @@ class AWSErrorResponseException(exc.HTTPException):
         " trying to fulfill the request."
     )
     error_code = 'InternalServerError'
-    status = '500'
+    response_code = 500
 
-    def __init__(self, response_message=None, error_code=None, status=None):
-        if response_message is not None:
-            self.response_message = response_message
-        if error_code is not None:
-            self.error_code = error_code
-        if status is not None:
-            self.status = status
+    def __init__(self, response_message=None, error_code=None,
+                 response_code=None):
+        if response_message is None:
+            response_message = self.response_message
+        if error_code is None:
+            error_code = self.error_code
+        if response_code is None:
+            response_code = self.response_code
 
-    def __call__(self, environ, start_response):
-        response_headers = [('Content-type', 'application/x-amz-json-1.0')]
-        start_response(self.status, response_headers)
-        return (
+        body = (
             '{{"__type":"com.amazonaws.dynamodb.v20111205#{}","message":"{}"}}'
-            .format(self.error_code, self.response_message)
-        )
+        ).format(error_code, response_message)
+        response.Response.__init__(self, body=body, status=response_code,
+                                   content_type='application/x-amz-json-1.0')
 
 
 class AWSBadRequestException(AWSErrorResponseException):
     """Base class for all errors with HTTP status code 400"""
-    status = '400'
+    response_code = 400
 
 
 class AWSResourceNotFoundException(AWSBadRequestException):
@@ -70,10 +70,10 @@ class AWSResourceInUseException(AWSBadRequestException):
 
 class AWSDuplicateTableError(AWSBadRequestException):
     def __init__(self, table_name):
-        self.response_message = (
-            "Table already exists: %s" % table_name
+        super(AWSDuplicateTableError, self).__init__(
+            response_message="Table already exists: %s" % table_name,
+            error_code='ResourceInUseException'
         )
-    error_code = 'ResourceInUseException'
 
 
 class AWSIncompleteSignatureError(AWSBadRequestException):
@@ -85,7 +85,7 @@ class AWSIncompleteSignatureError(AWSBadRequestException):
 
 class AWSAccessDeniedError(AWSErrorResponseException):
     """Base class for all errors with HTTP status code 403"""
-    status = '403'
+    response_code = 403
     response_message = 'User is not authorized to perform action'
     error_code = 'AccessDenied'
 

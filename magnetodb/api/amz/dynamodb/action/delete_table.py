@@ -15,9 +15,9 @@
 
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import parser
+from magnetodb.api.amz import parser
 from magnetodb import storage
-from magnetodb.common import exception
+from magnetodb.api.amz import exception as amz_exception
 
 
 class DeleteTableDynamoDBAction(action.DynamoDBAction):
@@ -33,9 +33,9 @@ class DeleteTableDynamoDBAction(action.DynamoDBAction):
         table_name = self.action_params.get(parser.Props.TABLE_NAME, None)
 
         try:
-            table_meta = storage.describe_table(self.context, table_name)
+            table_meta = storage.describe_table(self.tenant, table_name)
 
-            storage.delete_table(self.context, table_name)
+            storage.delete_table(self.tenant, table_name)
 
             # TODO(isviridov): fill ITEM_COUNT, TABLE_SIZE_BYTES,
             # CREATION_DATE_TIME with real data
@@ -69,7 +69,5 @@ class DeleteTableDynamoDBAction(action.DynamoDBAction):
                     parser.Props.TABLE_SIZE_BYTES: 0
                 }
             }
-        except exception.AWSErrorResponseException as e:
-            raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()

@@ -21,6 +21,7 @@ import unittest
 
 from oslo_utils import timeutils
 
+from magnetodb import context as req_context
 from magnetodb.common import exception
 from magnetodb.storage import driver as storage_driver
 from magnetodb.storage import models
@@ -31,6 +32,9 @@ from magnetodb.storage.manager import simple_impl
 
 class SimpleStorageManagerTestCase(unittest.TestCase):
     """The test for simple storage manager implementation."""
+
+    def setUp(self):
+        req_context.RequestContext()
 
     @mock.patch('magnetodb.storage.driver.StorageDriver.batch_write')
     @mock.patch('magnetodb.storage.manager.simple_impl.SimpleStorageManager.'

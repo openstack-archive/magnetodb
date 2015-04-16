@@ -23,7 +23,7 @@ import mock
 class AllProjectsUsageTest(test_base_testcase.APITestCase):
     """The test for v1 ReST API ProjectUsageController."""
 
-    @mock.patch('magnetodb.storage.list_tenant_tables')
+    @mock.patch('magnetodb.storage.list_all_tables')
     @mock.patch('magnetodb.storage.get_table_statistics')
     def test_table_usage_details(self, mock_get_table_statistics,
                                  mock_list_tenant_tables):

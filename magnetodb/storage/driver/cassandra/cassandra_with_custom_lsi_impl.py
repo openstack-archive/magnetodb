@@ -108,11 +108,11 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         self.__default_keyspace_opts = default_keyspace_opts
 
     @probe.Probe(__name__)
-    def create_table(self, context, table_info):
+    def create_table(self, tenant, table_info):
         """
         Create table at the backend side
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_info: TableInfo instance with table's meta information
 
         :returns: internal_table_name created
@@ -123,7 +123,7 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         table_schema = table_info.schema
 
         cas_table_name = USER_PREFIX + table_info.id.hex
-        cas_keyspace = USER_PREFIX + context.tenant
+        cas_keyspace = USER_PREFIX + tenant
         cas_full_table_name = '"{}"."{}"'.format(cas_keyspace, cas_table_name)
 
         self._create_keyspace_if_not_exists(cas_keyspace)
@@ -214,11 +214,11 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         return cas_full_table_name
 
     @probe.Probe(__name__)
-    def delete_table(self, context, table_info):
+    def delete_table(self, tenant, table_info):
         """
         Delete table from the backend side
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_info: TableInfo instance with table's meta information
 
         :raises: BackendInteractionException
@@ -488,10 +488,10 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         return result[0]['[applied]']
 
     @probe.Probe(__name__)
-    def put_item(self, context, table_info, attribute_map, return_values=None,
+    def put_item(self, tenant, table_info, attribute_map, return_values=None,
                  if_not_exist=False, expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param attribute_map: attribute name to AttributeValue mapping.
                     It defines row key and additional attributes to put
@@ -546,8 +546,9 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
             range_name = table_info.schema.range_key_name
 
             while True:
-                old_item = self._get_item_to_update(context, table_info,
-                                                    attribute_map)
+                old_item = self._get_item_to_update(
+                    tenant, table_info, attribute_map
+                )
                 if not self._conditions_satisfied(
                         old_item, expected_condition_map):
                     raise exception.ConditionalCheckFailedException()
@@ -592,7 +593,7 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
                                                  consistent=True)
             return True, None
 
-    def batch_write(self, context, write_request_list):
+    def batch_write(self, tenant, write_request_list):
         query_builder = []
 
         for table_info, write_request in write_request_list:
@@ -642,10 +643,10 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         return query_builder
 
     @probe.Probe(__name__)
-    def delete_item(self, context, table_info, key_attribute_map,
+    def delete_item(self, tenant, table_info, key_attribute_map,
                     expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row to be deleted
@@ -751,7 +752,8 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
 
         return [right_condition]
 
-    def _append_indexed_condition(self, attr_name, condition, query_builder,
+    @staticmethod
+    def _append_indexed_condition(attr_name, condition, query_builder,
                                   column_prefix=USER_PREFIX):
         if query_builder is None:
             query_builder = collections.deque()
@@ -841,10 +843,10 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         return query_builder
 
     @probe.Probe(__name__)
-    def update_item(self, context, table_info, key_attribute_map,
+    def update_item(self, tenant, table_info, key_attribute_map,
                     attribute_action_map, expected_condition_map={}):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param key_attribute_map: key attribute name to
             AttributeValue mapping. It defines row it to update item
@@ -861,7 +863,7 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         attribute_action_map = attribute_action_map or {}
 
         while True:
-            old_item = self._get_item_to_update(context, table_info,
+            old_item = self._get_item_to_update(tenant, table_info,
                                                 key_attribute_map)
             if not self._conditions_satisfied(old_item,
                                               expected_condition_map):
@@ -919,7 +921,7 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
                 if not result or result[0]['[applied]']:
                     return True, old_item
 
-    def _get_item_to_update(self, context, table_info, key_attribute_map):
+    def _get_item_to_update(self, tenant, table_info, key_attribute_map):
         hash_key_value = key_attribute_map.get(
             table_info.schema.hash_key_name, None
         )
@@ -932,13 +934,13 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         ]
 
         items = self.select_item(
-            context, table_info, hash_condition_list,
-            range_condition_list, select_type=models.SelectType.all(),
-            consistent=True
+            tenant, table_info, hash_condition_list, range_condition_list,
+            select_type=models.SelectType.all(), consistent=True
         ).items
         return items[0] if items else None
 
-    def _get_del_attr_value(self, attr_name, attr_value, old_item):
+    @staticmethod
+    def _get_del_attr_value(attr_name, attr_value, old_item):
         # We have no value, just remove an attr
         if not attr_value or not old_item:
             return None
@@ -1033,12 +1035,12 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
         return conditions
 
     @probe.Probe(__name__)
-    def select_item(self, context, table_info, hash_key_condition_list,
+    def select_item(self, tenant, table_info, hash_key_condition_list,
                     range_key_to_query_condition_list, select_type,
                     index_name=None, limit=None, exclusive_start_key=None,
                     consistent=True, order_type=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param hash_key_condition_list: list of IndexedCondition instances.
                     Defines conditions for hash key to perform query on
@@ -1267,10 +1269,10 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
                                    count=count)
 
     @probe.Probe(__name__)
-    def scan(self, context, table_info, condition_map, attributes_to_get=None,
+    def scan(self, tenant, table_info, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None, consistent=False):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param condition_map: indexed attribute name to list of
                     ScanCondition instances mapping. It defines rows
@@ -1309,7 +1311,7 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
                 ]
 
         selected = self.select_item(
-            context, table_info, hash_key_condition_list,
+            tenant, table_info, hash_key_condition_list,
             range_key_condition_list, models.SelectType.all(), limit=limit,
             exclusive_start_key=exclusive_start_key, consistent=consistent
         )
@@ -1325,7 +1327,7 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
             limit2 = limit - selected.count if limit else None
 
             selected2 = self.select_item(
-                context, table_info, hash_key_condition_list,
+                tenant, table_info, hash_key_condition_list,
                 range_key_condition_list, models.SelectType.all(),
                 limit=limit2, consistent=consistent)
 
@@ -1339,8 +1341,8 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
 
         if selected.items:
             filtered_items = filter(
-                lambda item: self._conditions_satisfied(
-                    item, condition_map),
+                lambda attr_item: self._conditions_satisfied(
+                    attr_item, condition_map),
                 selected.items)
             count = len(filtered_items)
         else:
@@ -1468,14 +1470,14 @@ class CassandraStorageDriverWithCustomLSI(driver.StorageDriver):
                 "Can't perform healthcheck query. Error: " + ex.message)
         return True
 
-    def get_table_statistics(self, context, table_info, keys):
+    def get_table_statistics(self, tenant, table_info, keys):
 
         tn = table_info.internal_name.split(".", 2)
         table_name = tn[1].strip('"')
 
         vals = {
             'user_prefix': USER_PREFIX,
-            'tenant': context.tenant,
+            'tenant': tenant,
             'table_name': table_name,
         }
 
