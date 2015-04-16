@@ -23,63 +23,63 @@ from magnetodb import storage
 from magnetodb.storage import models
 
 
-class PutItemController(object):
+@api.enforce_policy("mdb:put_item")
+@probe.Probe(__name__)
+@request_context_decorator.request_type("put_item")
+def put_item(req, project_id, table_name):
     """Creates a new item, or replaces an old item. """
 
-    @api.enforce_policy("mdb:put_item")
-    @probe.Probe(__name__)
-    @request_context_decorator.request_type("put_item")
-    def process_request(self, req, body, project_id, table_name):
-        with probe.Probe(__name__ + '.validation'):
-            validation.validate_object(body, "body")
+    with probe.Probe(__name__ + '.validation'):
+        body = req.json_body
+        validation.validate_object(body, "body")
 
-            expected = body.pop(parser.Props.EXPECTED, {})
-            validation.validate_object(expected, parser.Props.EXPECTED)
-            # parse expected item conditions
-            expected_item_conditions = (
-                parser.Parser.parse_expected_attribute_conditions(expected)
-            )
-
-            item = body.pop(parser.Props.ITEM, None)
-            validation.validate_object(item, parser.Props.ITEM)
-            # parse item
-            item_attributes = parser.Parser.parse_item_attributes(item)
-
-            # parse return_values param
-            return_values_json = body.pop(
-                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
-            )
-
-            validation.validate_string(return_values_json,
-                                       parser.Props.RETURN_VALUES)
-
-            return_values = models.InsertReturnValuesType(return_values_json)
-
-            # parse return_values param
-            time_to_live = body.pop(
-                parser.Props.TIME_TO_LIVE, None
-            )
-
-            if time_to_live is not None:
-                time_to_live = validation.validate_integer(
-                    time_to_live, parser.Props.TIME_TO_LIVE, min_val=0
-                )
-
-            validation.validate_unexpected_props(body, "body")
-
-        # put item
-        result, old_item = storage.put_item(
-            req.context, table_name, item_attributes,
-            return_values=return_values,
-            if_not_exist=False,
-            expected_condition_map=expected_item_conditions,
+        expected = body.pop(parser.Props.EXPECTED, {})
+        validation.validate_object(expected, parser.Props.EXPECTED)
+        # parse expected item conditions
+        expected_item_conditions = (
+            parser.Parser.parse_expected_attribute_conditions(expected)
         )
 
-        response = {}
+        item = body.pop(parser.Props.ITEM, None)
+        validation.validate_object(item, parser.Props.ITEM)
+        # parse item
+        item_attributes = parser.Parser.parse_item_attributes(item)
 
-        if old_item:
-            response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(old_item)
+        # parse return_values param
+        return_values_json = body.pop(
+            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+        )
+
+        validation.validate_string(return_values_json,
+                                   parser.Props.RETURN_VALUES)
+
+        return_values = models.InsertReturnValuesType(return_values_json)
+
+        # parse return_values param
+        time_to_live = body.pop(
+            parser.Props.TIME_TO_LIVE, None
+        )
+
+        if time_to_live is not None:
+            time_to_live = validation.validate_integer(
+                time_to_live, parser.Props.TIME_TO_LIVE, min_val=0
             )
 
-        return response
+        validation.validate_unexpected_props(body, "body")
+
+    # put item
+    result, old_item = storage.put_item(
+        project_id, table_name, item_attributes,
+        return_values=return_values,
+        if_not_exist=False,
+        expected_condition_map=expected_item_conditions,
+    )
+
+    response = {}
+
+    if old_item:
+        response[parser.Props.ATTRIBUTES] = (
+            parser.Parser.format_item_attributes(old_item)
+        )
+
+    return response

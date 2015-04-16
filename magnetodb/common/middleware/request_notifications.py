@@ -14,9 +14,9 @@
 #    under the License.
 
 import time
-import webob
 
-from magnetodb.common import wsgi
+from oslo_middleware import base as wsgi
+
 from magnetodb import notifier
 from magnetodb.openstack.common import log as logging
 
@@ -40,8 +40,7 @@ class RequestNotificationsMiddleware(wsgi.Middleware):
 
         super(RequestNotificationsMiddleware, self).__init__(app)
 
-    @webob.dec.wsgify
-    def __call__(self, req):
+    def process_request(self, req):
         start_time = time.time()
 
         response = req.get_response(self.application)
@@ -49,7 +48,7 @@ class RequestNotificationsMiddleware(wsgi.Middleware):
         request_type = "unknown"
         request_args = {}
 
-        context = req.context if hasattr(req, 'context') else None
+        context = req.environ.get('magnetodb.context', None)
         if context is not None:
             if hasattr(context, 'request_type') and context.request_type:
                 request_type = context.request_type

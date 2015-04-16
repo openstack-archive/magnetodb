@@ -27,6 +27,8 @@ from cassandra import query
 from cassandra import encoder
 from oslo_serialization import jsonutils as json
 
+from magnetodb import context as req_context
+
 from magnetodb.common.cassandra import cluster_handler
 from magnetodb.common import exception
 from magnetodb.storage.driver.cassandra import cassandra_impl as driver
@@ -335,11 +337,10 @@ class TestCassandraBase(unittest.TestCase):
         cls.CLUSTER_HANDLER.shutdown()
 
     def setUp(self):
+        req_context.RequestContext()
         if self._tenant_scope == self.TENANT_PER_TEST_METHOD:
             self.keyspace = self._get_unique_name()
             self._create_tenant(self.tenant)
-
-        self.context = FakeContext(self.tenant)
 
         self.table_name = self._get_unique_name()
 
@@ -616,7 +617,7 @@ class TestCassandraTableCrud(TestCassandraBase):
                                     index_def_map)
 
         self.CASANDRA_STORAGE_IMPL.create_table(
-            self.context, self.table_name, schema
+            self.tenant, self.table_name, schema
         )
 
         self.assertIn(self.table_name, self._get_table_names())
@@ -640,23 +641,30 @@ class TestCassandraTableCrud(TestCassandraBase):
 
         with self.assertRaises(exception.TableAlreadyExistsException):
             self.CASANDRA_STORAGE_IMPL.create_table(
-                self.context, self.table_name, schema
+                self.tenant, self.table_name, schema
             )
 
             self.assertEqual([self.table_name], self._get_table_names())
 
             self.CASANDRA_STORAGE_IMPL.create_table(
-                self.context, self.table_name, schema
+                self.tenant, self.table_name, schema
             )
 
     def test_list_table(self):
-        self.assertNotIn(self.table_name,
-                         self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
+        self.assertNotIn(
+            self.table_name,
+            self.CASANDRA_STORAGE_IMPL.list_tables(
+                self.tenant
+            )
+        )
 
         self._create_table()
 
-        self.assertIn(self.table_name,
-                      self.CASANDRA_STORAGE_IMPL.list_tables(self.context))
+        self.assertIn(
+            self.table_name, self.CASANDRA_STORAGE_IMPL.list_tables(
+                self.tenant
+            )
+        )
 
     def test_describe_table(self):
 
@@ -677,7 +685,7 @@ class TestCassandraTableCrud(TestCassandraBase):
                                     index_def_map)
 
         desc = self.CASANDRA_STORAGE_IMPL.describe_table(
-            self.context, self.table_name)
+            self.tenant, self.table_name)
 
         self.assertEqual(schema, desc.schema)
 
@@ -686,7 +694,8 @@ class TestCassandraTableCrud(TestCassandraBase):
 
         self.assertIn(self.table_name, self._get_table_names())
 
-        self.CASANDRA_STORAGE_IMPL.delete_table(self.context, self.table_name)
+        self.CASANDRA_STORAGE_IMPL.delete_table(self.tenant,
+                                                self.table_name)
 
         self.assertNotIn(self.table_name, self._get_table_names())
 
@@ -704,7 +713,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, self.table_name, del_item_key
+            self.tenant, self.table_name, del_item_key
         )
 
         all = self._select_all()
@@ -722,7 +731,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, self.table_name, del_item_key)
+            self.tenant, self.table_name, del_item_key)
 
         all = self._select_all()
 
@@ -746,7 +755,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, self.table_name, del_item_key, expected
+            self.tenant, self.table_name, del_item_key, expected
         )
 
         all = self._select_all()
@@ -775,7 +784,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertRaises(
             exception.ConditionalCheckFailedException,
             self.CASANDRA_STORAGE_IMPL.delete_item,
-            self.context, self.table_name, del_item_key, expected
+            self.tenant, self.table_name, del_item_key, expected
         )
 
         all = self._select_all()
@@ -805,7 +814,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.delete_item(
-            self.context, self.table_name, del_item_key, expected)
+            self.tenant, self.table_name, del_item_key, expected)
 
         self.assertTrue(result)
 
@@ -832,7 +841,7 @@ class TestCassandraDeleteItem(TestCassandraBase):
         self.assertRaises(
             exception.ConditionalCheckFailedException,
             self.CASANDRA_STORAGE_IMPL.delete_item,
-            self.context, self.table_name, del_item_key, expected
+            self.tenant, self.table_name, del_item_key, expected
         )
 
         all = self._select_all()
@@ -854,7 +863,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -872,7 +881,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.specific_attributes(['fstr'])
         )
 
@@ -892,7 +901,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -911,7 +920,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -931,7 +940,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -950,7 +959,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -970,7 +979,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -989,7 +998,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1009,7 +1018,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1028,7 +1037,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1048,7 +1057,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1067,7 +1076,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all(), index_name="index"
         )
 
@@ -1087,7 +1096,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all(), index_name="index"
         )
 
@@ -1109,7 +1118,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1132,7 +1141,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1154,7 +1163,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1180,7 +1189,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1207,7 +1216,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1233,7 +1242,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
@@ -1254,14 +1263,14 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all()
         )
 
         self.assertEqual(2, result.count)
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all(), limit=1
         )
 
@@ -1278,7 +1287,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.count())
 
         self.assertEqual(1, result.count)
@@ -1297,7 +1306,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_conditions,
+            self.tenant, self.table_name, key_conditions,
             models.SelectType.all(),
             exclusive_start_key=exclusive_start_key
         )
@@ -1321,7 +1330,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_conditions,
+            self.tenant, self.table_name, key_conditions,
             models.SelectType.all(), limit=1,
             exclusive_start_key=exclusive_start_key
         )
@@ -1332,7 +1341,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result2 = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_conditions,
+            self.tenant, self.table_name, key_conditions,
             models.SelectType.all(), limit=1,
             exclusive_start_key=exclusive_start_key2
         )
@@ -1354,7 +1363,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_conditions,
+            self.tenant, self.table_name, key_conditions,
             models.SelectType.all(), exclusive_start_key=exclusive_start_key
         )
 
@@ -1377,7 +1386,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all(),
             limit=2
         )
@@ -1391,7 +1400,7 @@ class TestCassandraSelectItem(TestCassandraBase):
         self.assertIsNotNone(last_eval_key)
 
         result2 = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, indexed_cond,
+            self.tenant, self.table_name, indexed_cond,
             models.SelectType.all(), exclusive_start_key=last_eval_key
         )
 
@@ -1417,7 +1426,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
         expected['str'] = models.AttributeValue('S', 'new')
@@ -1428,7 +1437,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1450,7 +1459,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1462,7 +1471,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1484,7 +1493,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1496,7 +1505,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1518,7 +1527,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1530,7 +1539,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1552,7 +1561,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1564,7 +1573,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1588,7 +1597,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1602,7 +1611,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1624,7 +1633,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1638,7 +1647,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1660,7 +1669,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1674,7 +1683,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1696,7 +1705,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1710,7 +1719,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1732,7 +1741,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1746,7 +1755,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1768,7 +1777,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1782,7 +1791,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1808,7 +1817,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1822,7 +1831,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1844,7 +1853,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1858,7 +1867,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1882,7 +1891,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1896,7 +1905,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1921,7 +1930,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1935,7 +1944,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1957,7 +1966,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -1969,7 +1978,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -1991,7 +2000,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2003,7 +2012,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2025,7 +2034,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2037,7 +2046,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2059,7 +2068,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2073,7 +2082,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2095,7 +2104,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2107,7 +2116,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2132,7 +2141,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2146,7 +2155,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2168,7 +2177,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2182,7 +2191,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2204,7 +2213,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2218,7 +2227,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2240,7 +2249,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2254,7 +2263,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2276,7 +2285,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2290,7 +2299,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2312,7 +2321,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2326,7 +2335,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2352,7 +2361,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2366,7 +2375,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2388,7 +2397,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2402,7 +2411,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2426,7 +2435,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2440,7 +2449,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2465,7 +2474,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2479,7 +2488,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2502,7 +2511,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         self.CASANDRA_STORAGE_IMPL.update_item(
-            self.context, self.table_name, keys, actions)
+            self.tenant, self.table_name, keys, actions)
 
         expected = self.expected_data.copy()
 
@@ -2515,7 +2524,7 @@ class TestCassandraUpdateItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, keys_condition,
+            self.tenant, self.table_name, keys_condition,
             models.SelectType.all()
         )
 
@@ -2532,7 +2541,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'str': models.AttributeValue('S', 'str'),
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2540,7 +2550,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2555,7 +2565,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'number': models.AttributeValue('N', 42),
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2563,7 +2574,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2578,7 +2589,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'blb': models.AttributeValue('B', decoded_value='blob'),
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2586,7 +2598,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2601,7 +2613,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'set_string': models.AttributeValue('SS', {'str1', 'str2'})
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2609,7 +2622,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2624,7 +2637,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'set_number': models.AttributeValue('NS', {42, 43})
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2632,7 +2646,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2649,7 +2663,8 @@ class TestCassandraPutItem(TestCassandraBase):
             ),
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2657,7 +2672,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2674,7 +2689,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2682,7 +2698,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2699,7 +2715,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2707,7 +2724,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2724,7 +2741,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2732,7 +2750,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2749,7 +2767,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2757,7 +2776,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2774,7 +2793,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2782,7 +2802,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2799,7 +2819,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2807,7 +2828,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2824,7 +2845,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2832,7 +2854,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2849,7 +2871,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2857,7 +2880,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2874,7 +2897,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2882,7 +2906,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2897,7 +2921,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'fstr': models.AttributeValue('S', 'str')
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2905,7 +2930,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2920,7 +2945,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'fnum': models.AttributeValue('N', 42),
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2928,7 +2954,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2943,7 +2969,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'fblb': models.AttributeValue('B', decoded_value='blob'),
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2951,7 +2978,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2966,7 +2993,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'fsstr': models.AttributeValue('SS', {'str1', 'str2'}),
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2974,7 +3002,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -2989,7 +3017,8 @@ class TestCassandraPutItem(TestCassandraBase):
             'fsnum': models.AttributeValue('NS', {42, 43})
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -2997,7 +3026,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3014,7 +3043,8 @@ class TestCassandraPutItem(TestCassandraBase):
             ),
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3022,7 +3052,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3039,7 +3069,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3047,7 +3078,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3064,7 +3095,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3072,7 +3104,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3089,7 +3121,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3097,7 +3130,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3114,7 +3147,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3122,7 +3156,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3139,7 +3173,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3147,7 +3182,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3164,7 +3199,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3172,7 +3208,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3189,7 +3225,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3197,7 +3234,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3214,7 +3251,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant, self.table_name,
+                                            put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3222,7 +3260,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3239,7 +3277,8 @@ class TestCassandraPutItem(TestCassandraBase):
             )
         }
 
-        self.CASANDRA_STORAGE_IMPL.put_item(self.context, self.table_name, put)
+        self.CASANDRA_STORAGE_IMPL.put_item(self.tenant,
+                                            self.table_name, put)
 
         key_condition = {
             'id': [models.Condition.eq(models.AttributeValue('N', 1))],
@@ -3247,7 +3286,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3270,7 +3309,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3280,7 +3320,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3303,7 +3343,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3313,7 +3354,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3338,7 +3379,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3352,7 +3394,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3377,7 +3419,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3387,7 +3430,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3412,7 +3455,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3422,7 +3466,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3451,7 +3495,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3465,7 +3510,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3488,7 +3533,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3498,7 +3544,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3521,7 +3567,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3535,7 +3582,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3559,7 +3606,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3569,7 +3617,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3594,7 +3642,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3604,7 +3653,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3628,7 +3677,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3638,7 +3688,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3668,7 +3718,8 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.put_item(
-            self.context, self.table_name, put, expected_condition_map=expected
+            self.tenant, self.table_name, put,
+            expected_condition_map=expected
         )
         self.assertTrue(result)
 
@@ -3678,7 +3729,7 @@ class TestCassandraPutItem(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.query(
-            self.context, self.table_name, key_condition,
+            self.tenant, self.table_name, key_condition,
             models.SelectType.all()
         )
 
@@ -3692,7 +3743,7 @@ class TestCassandraScan(TestCassandraBase):
         self._insert_data()
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, {})
+            self.tenant, self.table_name, {})
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -3709,7 +3760,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -3725,7 +3776,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(1, result.count)
         self.assertEqual('121', result.items[0]['range'].decoded_value)
@@ -3741,7 +3792,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -3756,7 +3807,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -3771,7 +3822,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(0, result.count)
 
@@ -3785,7 +3836,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -3800,7 +3851,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(0, result.count)
 
@@ -3816,7 +3867,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(1, result.count)
         self._validate_data(result.items[0])
@@ -3833,7 +3884,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, condition)
+            self.tenant, self.table_name, condition)
 
         self.assertEqual(0, result.count)
 
@@ -3851,7 +3902,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, {},
+            self.tenant, self.table_name, {},
             exclusive_start_key=last_evaluated_key,
             limit=2)
 
@@ -3861,7 +3912,7 @@ class TestCassandraScan(TestCassandraBase):
         }
 
         result2 = self.CASANDRA_STORAGE_IMPL.scan(
-            self.context, self.table_name, {},
+            self.tenant, self.table_name, {},
             exclusive_start_key=last_evaluated_key2,
             limit=2)
 
@@ -3906,7 +3957,7 @@ class TestCassandraBatch(TestCassandraBase):
             ]
         }
 
-        self.CASANDRA_STORAGE_IMPL.execute_write_batch(self.context,
+        self.CASANDRA_STORAGE_IMPL.execute_write_batch(self.tenant,
                                                        put_requests)
 
         key_conditions = [{
@@ -3922,6 +3973,8 @@ class TestCassandraBatch(TestCassandraBase):
 
         for key, item in zip(key_conditions, put_items):
             result = self.CASANDRA_STORAGE_IMPL.query(
-                self.context, self.table_name, key, models.SelectType.all())
+                self.tenant, self.table_name, key,
+                models.SelectType.all()
+            )
 
             self.assertEqual([item], result.items)

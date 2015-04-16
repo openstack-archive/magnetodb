@@ -14,8 +14,8 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import parser
-from magnetodb.api.amz.dynamodb import exception
+from magnetodb.api.amz import parser
+from magnetodb.api.amz import exception as amz_exception
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -138,12 +138,12 @@ class QueryDynamoDBAction(action.DynamoDBAction):
                 models.ORDER_TYPE_DESC
             )
         except Exception:
-            raise exception.AWSValidationException()
+            raise amz_exception.AWSValidationException()
 
         try:
             # select item
             result = storage.query(
-                self.context, table_name, indexed_condition_map,
+                self.tenant, table_name, indexed_condition_map,
                 select_type=select_type, index_name=index_name, limit=limit,
                 consistent=consistent_read, order_type=order_type,
                 exclusive_start_key=exclusive_start_key_attributes
@@ -177,7 +177,5 @@ class QueryDynamoDBAction(action.DynamoDBAction):
                         result.last_evaluated_key)
                 )
             return response
-        except exception.AWSErrorResponseException as e:
-            raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()

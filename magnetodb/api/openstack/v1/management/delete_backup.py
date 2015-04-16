@@ -22,22 +22,20 @@ from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 
 
-class DeleteBackupController(object):
+@probe.Probe(__name__)
+def delete_backup(req, project_id, table_name, backup_id):
     """Deletes a backup."""
 
-    @probe.Probe(__name__)
-    def process_request(self, req, project_id, table_name, backup_id):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+    utils.check_project_id(project_id)
 
-        with probe.Probe(__name__ + '.validation'):
-            validation.validate_table_name(table_name)
+    with probe.Probe(__name__ + '.validation'):
+        validation.validate_table_name(table_name)
 
-        backup = storage.delete_backup(
-            req.context, table_name, uuid.UUID(backup_id)
-        )
+    backup = storage.delete_backup(
+        project_id, table_name, uuid.UUID(backup_id)
+    )
 
-        href_prefix = req.path_url
-        response = parser.Parser.format_backup(backup, href_prefix)
+    href_prefix = req.path_url
+    response = parser.Parser.format_backup(backup, href_prefix)
 
-        return response
+    return response

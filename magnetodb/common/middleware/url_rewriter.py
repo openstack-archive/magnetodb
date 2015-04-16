@@ -15,7 +15,7 @@
 
 from oslo_config import cfg
 
-from magnetodb.common import wsgi
+from oslo_middleware import base as wsgi
 from magnetodb.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)

@@ -20,10 +20,10 @@ LOG = logging.getLogger(__name__)
 
 class RestoreInfoRepository(object):
 
-    def get(self, context, table_name, restore_job_id):
+    def get(self, tenant, table_name, restore_job_id):
         """Get restore job info
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: string, name of the restored table
         :param restore_job_id: string, id of the restore job
 
@@ -33,12 +33,12 @@ class RestoreInfoRepository(object):
         """
         raise NotImplementedError()
 
-    def list(self, context, table_name,
+    def list(self, tenant, table_name,
              exclusive_start_restore_job_id=None,
              limit=None):
         """List restore job info items for a table
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: string, name of the restored table
         :param exclusive_start_restore_job_id: string, last restore job id,
                 retrieved in previous list call
@@ -50,10 +50,10 @@ class RestoreInfoRepository(object):
         """
         raise NotImplementedError()
 
-    def save(self, context, restore_job_meta):
+    def save(self, tenant, restore_job_meta):
         """Save restore job info
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param restore_job_meta: RestoreJobMeta, restore job info to save
 
         :returns: RestoreJobMeta
@@ -62,11 +62,10 @@ class RestoreInfoRepository(object):
         """
         raise NotImplementedError()
 
-    def update(self, context, table_name, restore_job_id,
+    def update(self, tenant, table_name, restore_job_id,
                status=None, finish_date_time=None):
         """Update editable attributes of restore job info
 
-        :param context: current request context
         :param table_name: string, name of the restored table
         :param restore_job_id: string, id of the restore job
         :param status: string, new value for status

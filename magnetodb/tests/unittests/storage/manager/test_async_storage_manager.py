@@ -19,6 +19,7 @@ import mock
 import time
 import unittest
 
+from magnetodb import context as req_context
 from magnetodb.storage import models
 from magnetodb.storage.manager import async_simple_impl
 
@@ -26,9 +27,12 @@ from magnetodb.storage.manager import async_simple_impl
 class AsyncStorageManagerTestCase(unittest.TestCase):
     """The test for async storage manager implementation."""
 
+    def setUp(self):
+        req_context.RequestContext()
+
     @mock.patch('magnetodb.storage.table_info_repo')
     def test_create_table_async(self, mock_table_info_repo):
-        context = mock.Mock(tenant='fake_tenant')
+        tenant = 'fake_tenant'
         table_name = 'fake_table'
         table_schema = 'fake_table_schema'
 
@@ -46,7 +50,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
             mock_storage_driver,
             mock_table_info_repo
         )
-        storage_manager.create_table(context, table_name, table_schema)
+        storage_manager.create_table(tenant, table_name, table_schema)
 
         # called once, length of call_args_list indicates number of calls
         self.assertEqual(1, len(table_info_save_args_list))
@@ -87,7 +91,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
 
     @mock.patch('magnetodb.storage.table_info_repo')
     def test_delete_table_async(self, mock_table_info_repo):
-        context = mock.Mock(tenant='fake_tenant')
+        tenant = 'fake_tenant'
         table_name = 'fake_table'
 
         mock_storage_driver = mock.Mock()
@@ -109,7 +113,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
             mock_storage_driver,
             mock_table_info_repo
         )
-        storage_manager.delete_table(context, table_name)
+        storage_manager.delete_table(tenant, table_name)
 
         table_info_update_args_list = (
             mock_table_info_repo.update.call_args_list
@@ -140,7 +144,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
 
     @mock.patch('magnetodb.storage.table_info_repo')
     def test_delete_table_create_or_delete_failed(self, mock_table_info_repo):
-        context = mock.Mock(tenant='fake_tenant')
+        tenant = 'fake_tenant'
         table_name = 'fake_table'
 
         mock_storage_driver = mock.Mock()
@@ -162,7 +166,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
             mock_storage_driver,
             mock_table_info_repo
         )
-        storage_manager.delete_table(context, table_name)
+        storage_manager.delete_table(tenant, table_name)
 
         table_info_update_args_list = (
             mock_table_info_repo.update.call_args_list
@@ -209,7 +213,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
             mock_storage_driver,
             mock_table_info_repo
         )
-        storage_manager.delete_table(context, table_name)
+        storage_manager.delete_table(tenant, table_name)
 
         table_info_update_args_list = (
             mock_table_info_repo.update.call_args_list
@@ -256,7 +260,7 @@ class AsyncStorageManagerTestCase(unittest.TestCase):
             mock_storage_driver,
             mock_table_info_repo
         )
-        storage_manager.delete_table(context, table_name)
+        storage_manager.delete_table(tenant, table_name)
 
         table_info_update_args_list = (
             mock_table_info_repo.update.call_args_list

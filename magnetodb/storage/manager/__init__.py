@@ -16,11 +16,11 @@
 
 
 class StorageManager(object):
-    def create_table(self, context, table_name, table_schema):
+    def create_table(self, tenant, table_name, table_schema):
         """
         Create table
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of the table to create
         :param table_schema: TableSchema instance which define table to create
 
@@ -30,11 +30,11 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def delete_table(self, context, table_name):
+    def delete_table(self, tenant, table_name):
         """
         Delete table
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of table to delete
 
         :returns: TableMeta instance with metadata of created table
@@ -43,11 +43,11 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def describe_table(self, context, table_name):
+    def describe_table(self, tenant, table_name):
         """
         Describe table
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of table to describes
 
         :returns: TableMeta instance
@@ -56,10 +56,10 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def list_tables(self, context, exclusive_start_table_name=None,
+    def list_tables(self, tenant, exclusive_start_table_name=None,
                     limit=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param exclusive_start_table_name:
         :param limit: limit of returned table names
         :returns: list of table names
@@ -68,8 +68,8 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def list_tenant_tables(self, last_evaluated_project=None,
-                           last_evaluated_table=None, limit=None):
+    def list_all_tables(self, last_evaluated_project=None,
+                        last_evaluated_table=None, limit=None):
         """
         :param last_evaluated_project: last evaluated project id
         :param last_evaluated_table: last evaluated table name
@@ -80,10 +80,10 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def put_item(self, context, table_name, attribute_map, return_values=None,
+    def put_item(self, tenant, table_name, attribute_map, return_values=None,
                  if_not_exist=False, expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: name of the table
         :param attribute_map: attribute name to AttributeValue instance map,
                 which represents item to put
@@ -102,11 +102,11 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def put_item_async(self, context, table_name, attribute_map,
+    def put_item_async(self, tenant, table_name, attribute_map,
                        return_values=None, if_not_exist=False,
                        expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: name of the table
         :param attribute_map: attribute name to AttributeValue instance map,
                 which represents item to put
@@ -125,10 +125,10 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def delete_item(self, context, table_name, key_attribute_map,
+    def delete_item(self, tenant, table_name, key_attribute_map,
                     expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: name of the table
         :param key_attribute_map: attribute name to AttributeValue
                     instance map, which represents key to identify item
@@ -146,10 +146,10 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def delete_item_async(self, context, table_name, key_attribute_map,
+    def delete_item_async(self, tenant, table_name, key_attribute_map,
                           expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: name of the table
         :param key_attribute_map: attribute name to AttributeValue
                     instance map, which represents key to identify item
@@ -165,9 +165,9 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def execute_write_batch(self, context, write_request_map):
+    def execute_write_batch(self, tenant, write_request_map):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param write_request_map: table name to WriteItemRequest
                 instance list map to execute batch operation
 
@@ -175,9 +175,9 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def execute_get_batch(self, context, get_request_list):
+    def execute_get_batch(self, tenant, get_request_list):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param get_request_list: contains GetItemRequest instances to execute
                     batch operation
 
@@ -185,10 +185,10 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def update_item(self, context, table_name, key_attribute_map,
+    def update_item(self, tenant, table_name, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of table to delete item from
         :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row it to update item
@@ -205,11 +205,11 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def query(self, context, table_name, indexed_condition_map,
+    def query(self, tenant, table_name, indexed_condition_map,
               select_type=None, index_name=None, limit=None,
               exclusive_start_key=None, consistent=True, order_type=None):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of table to get item from
         :param indexed_condition_map: indexed attribute name to
                     IndexedCondition instance mapping. It defines rows
@@ -233,10 +233,10 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def get_item(self, context, table_name, key_attribute_map,
+    def get_item(self, tenant, table_name, key_attribute_map,
                  select_type=None, consistent=True):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of table to get item from
         :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row to get
@@ -253,11 +253,11 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def scan(self, context, table_name, condition_map, attributes_to_get=None,
+    def scan(self, tenant, table_name, condition_map, attributes_to_get=None,
              limit=None, exclusive_start_key=None,
              consistent=False):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of table to get item from
         :param condition_map: attribute name to
                     ScanCondition instance mapping. It defines rows
@@ -276,9 +276,9 @@ class StorageManager(object):
         """
         raise NotImplementedError()
 
-    def get_table_statistics(self, context, table_info, keys):
+    def get_table_statistics(self, tenant, table_info, keys):
         """
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param keys: list of metrics
 

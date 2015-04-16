@@ -24,11 +24,11 @@ class BackupManager(object):
     def __init__(self, backup_info_repo):
         self.backup_info_repo = backup_info_repo
 
-    def create_backup(self, context, table_name, backup_name, strategy):
+    def create_backup(self, tenant, table_name, backup_name, strategy):
         """
         Create backup
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of the table to backup
         :param backup_name: String, name of the backup to create
         :param strategy: Dict, strategy used for the backup
@@ -47,16 +47,16 @@ class BackupManager(object):
             strategy=strategy,
             start_date_time=timeutils.utcnow())
 
-        return self.backup_info_repo.save(context, backup_meta)
+        return self.backup_info_repo.save(tenant, backup_meta)
 
-    def describe_backup(self, context, table_name, backup_id):
-        return self.backup_info_repo.get(context, table_name, backup_id)
+    def describe_backup(self, tenant, table_name, backup_id):
+        return self.backup_info_repo.get(tenant, table_name, backup_id)
 
-    def delete_backup(self, context, table_name, backup_id):
-        return self.backup_info_repo.delete(context, table_name, backup_id)
+    def delete_backup(self, tenant, table_name, backup_id):
+        return self.backup_info_repo.delete(tenant, table_name, backup_id)
 
-    def list_backups(self, context, table_name,
+    def list_backups(self, tenant, table_name,
                      exclusive_start_backup_id, limit):
 
         return self.backup_info_repo.list(
-            context, table_name, exclusive_start_backup_id, limit)
+            tenant, table_name, exclusive_start_backup_id, limit)
