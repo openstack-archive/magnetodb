@@ -18,6 +18,8 @@ import unittest
 from oslo.config import cfg
 from oslo.messaging.notify import _impl_test
 
+from magnetodb import context as req_context
+
 
 DATETIMEFORMAT = "%Y-%m-%d %H:%M:%S.%f"
 CONF = cfg.CONF
@@ -42,6 +44,9 @@ class TestNotify(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.setup_notification_driver()
+
+    def setUp(self):
+        req_context.RequestContext()
 
     @classmethod
     def get_notifications(cls):

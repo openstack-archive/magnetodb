@@ -29,7 +29,7 @@ class ListBackupsTest(test_base_testcase.APITestCase):
                    'Accept': 'application/json'}
 
         conn = httplib.HTTPConnection('localhost:8080')
-        url = '/v1/management/default_tenant/default_table/backups'
+        url = '/v1/management/default_tenant/tables/default_table/backups'
         list_backups_mock.return_value = []
         conn.request("GET", url, headers=headers)
 

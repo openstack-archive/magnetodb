@@ -35,8 +35,10 @@ class DescribeRestoreJobTest(test_base_testcase.APITestCase):
         the_uuid = uuid.uuid4()
         backup_uuid = uuid.uuid4()
 
-        url = '/v1/management/default_tenant/the_table/restores/{}'.format(
-            the_uuid.hex)
+        url = (
+            '/v1/management/default_tenant/tables/the_table/restores/{}'
+            .format(the_uuid.hex)
+        )
 
         describe_restore_job_mock.return_value = models.RestoreJobMeta(
             the_uuid,

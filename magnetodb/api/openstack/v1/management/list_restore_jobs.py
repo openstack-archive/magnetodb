@@ -22,45 +22,43 @@ from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 
 
-class ListRestoreJobsController(object):
+@probe.Probe(__name__)
+def list_restore_jobs(req, project_id, table_name):
     """List restore jobs."""
 
-    @probe.Probe(__name__)
-    def process_request(self, req, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+    utils.check_project_id(project_id)
 
-        validation.validate_table_name(table_name)
+    validation.validate_table_name(table_name)
 
-        params = req.params.copy()
+    params = req.params.copy()
 
-        exclusive_start_restore_job_id = params.pop(
-            parser.Props.EXCLUSIVE_START_RESTORE_JOB_ID, None)
-        if exclusive_start_restore_job_id:
-            exclusive_start_restore_job_id = uuid.UUID(
-                exclusive_start_restore_job_id
-            )
+    exclusive_start_restore_job_id = params.pop(
+        parser.Props.EXCLUSIVE_START_RESTORE_JOB_ID, None)
+    if exclusive_start_restore_job_id:
+        exclusive_start_restore_job_id = uuid.UUID(
+            exclusive_start_restore_job_id
+        )
 
-        limit = params.pop(parser.Props.LIMIT, None)
-        if limit:
-            limit = validation.validate_integer(limit, parser.Props.LIMIT,
-                                                min_val=0)
+    limit = params.pop(parser.Props.LIMIT, None)
+    if limit:
+        limit = validation.validate_integer(limit, parser.Props.LIMIT,
+                                            min_val=0)
 
-        restore_jobs = storage.list_restore_jobs(
-            req.context, table_name, exclusive_start_restore_job_id, limit)
+    restore_jobs = storage.list_restore_jobs(
+        table_name, exclusive_start_restore_job_id, limit)
 
-        response = {}
+    response = {}
 
-        if restore_jobs and limit == len(restore_jobs):
-            response[
-                parser.Props.LAST_EVALUATED_RESTORE_JOB_ID
-            ] = restore_jobs[-1].id.hex
+    if restore_jobs and limit == len(restore_jobs):
+        response[
+            parser.Props.LAST_EVALUATED_RESTORE_JOB_ID
+        ] = restore_jobs[-1].id.hex
 
-        self_link_prefix = req.path_url
+    self_link_prefix = req.path_url
 
-        response[parser.Props.RESTORE_JOBS] = [
-            parser.Parser.format_restore_job(restore_job, self_link_prefix)
-            for restore_job in restore_jobs
-        ]
+    response[parser.Props.RESTORE_JOBS] = [
+        parser.Parser.format_restore_job(restore_job, self_link_prefix)
+        for restore_job in restore_jobs
+    ]
 
-        return response
+    return response

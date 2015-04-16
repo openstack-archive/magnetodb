@@ -13,9 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import webob
+from oslo_middleware import base as wsgi
 
-from magnetodb.common import wsgi
 from magnetodb.common import probe
 
 from magnetodb.openstack.common import log as logging
@@ -35,8 +34,7 @@ class ProbeFilter(wsgi.Middleware):
         self.probe = probe.Probe(app.__class__)
         super(ProbeFilter, self).__init__(app)
 
-    @webob.dec.wsgify
-    def __call__(self, req):
+    def process_request(self, req):
         with self.probe:
             return req.get_response(self.application)
 
