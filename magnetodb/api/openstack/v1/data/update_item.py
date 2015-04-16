@@ -23,78 +23,78 @@ from magnetodb import storage
 from magnetodb.storage import models
 
 
-class UpdateItemController(object):
+@api.enforce_policy("mdb:update_item")
+@probe.Probe(__name__)
+@request_context_decorator.request_type("update_item")
+def update_item(req, project_id, table_name):
     """
     Edits(or inserts if item does not already exist) an item's attributes.
     """
 
-    @api.enforce_policy("mdb:update_item")
-    @probe.Probe(__name__)
-    @request_context_decorator.request_type("update_item")
-    def process_request(self, req, body, project_id, table_name):
-        with probe.Probe(__name__ + '.validation'):
-            validation.validate_object(body, "body")
+    with probe.Probe(__name__ + '.validation'):
+        body = req.json_body
+        validation.validate_object(body, "body")
 
-            # parse expected item conditions
-            expected_item_conditions_json = body.pop(parser.Props.EXPECTED,
-                                                     None)
-            if expected_item_conditions_json is not None:
-                validation.validate_object(expected_item_conditions_json,
-                                           parser.Props.EXPECTED)
-                expected_item_conditions = (
-                    parser.Parser.parse_expected_attribute_conditions(
-                        expected_item_conditions_json
-                    )
+        # parse expected item conditions
+        expected_item_conditions_json = body.pop(parser.Props.EXPECTED,
+                                                 None)
+        if expected_item_conditions_json is not None:
+            validation.validate_object(expected_item_conditions_json,
+                                       parser.Props.EXPECTED)
+            expected_item_conditions = (
+                parser.Parser.parse_expected_attribute_conditions(
+                    expected_item_conditions_json
                 )
-            else:
-                expected_item_conditions = None
-
-            attribute_updates_json = body.pop(parser.Props.ATTRIBUTE_UPDATES,
-                                              None)
-            validation.validate_object(attribute_updates_json,
-                                       parser.Props.ATTRIBUTE_UPDATES)
-            # parse attribute updates
-            attribute_updates = parser.Parser.parse_attribute_updates(
-                attribute_updates_json
             )
+        else:
+            expected_item_conditions = None
 
-            # parse key_attributes
-            key_attributes_json = body.pop(parser.Props.KEY, None)
-            validation.validate_object(key_attributes_json, parser.Props.KEY)
+        attribute_updates_json = body.pop(parser.Props.ATTRIBUTE_UPDATES,
+                                          None)
+        validation.validate_object(attribute_updates_json,
+                                   parser.Props.ATTRIBUTE_UPDATES)
+        # parse attribute updates
+        attribute_updates = parser.Parser.parse_attribute_updates(
+            attribute_updates_json
+        )
 
-            key_attribute_map = parser.Parser.parse_item_attributes(
-                key_attributes_json
-            )
+        # parse key_attributes
+        key_attributes_json = body.pop(parser.Props.KEY, None)
+        validation.validate_object(key_attributes_json, parser.Props.KEY)
 
-            # parse return_values param
-            return_values_json = body.pop(
-                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
-            )
+        key_attribute_map = parser.Parser.parse_item_attributes(
+            key_attributes_json
+        )
 
-            validation.validate_string(return_values_json,
-                                       parser.Props.RETURN_VALUES)
+        # parse return_values param
+        return_values_json = body.pop(
+            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+        )
 
-            return_values = models.UpdateReturnValuesType(return_values_json)
+        validation.validate_string(return_values_json,
+                                   parser.Props.RETURN_VALUES)
 
-            validation.validate_unexpected_props(body, "body")
+        return_values = models.UpdateReturnValuesType(return_values_json)
 
-        result, old_item = storage.update_item(
-            req.context,
-            table_name,
-            key_attribute_map=key_attribute_map,
-            attribute_action_map=attribute_updates,
-            expected_condition_map=expected_item_conditions)
+        validation.validate_unexpected_props(body, "body")
 
-        if not result:
-            raise exception.BackendInteractionError("Unexpected empty result")
+    result, old_item = storage.update_item(
+        project_id,
+        table_name,
+        key_attribute_map=key_attribute_map,
+        attribute_action_map=attribute_updates,
+        expected_condition_map=expected_item_conditions)
 
-        # format response
-        response = {}
+    if not result:
+        raise exception.BackendInteractionError("Unexpected empty result")
 
-        if return_values.type != parser.Values.RETURN_VALUES_NONE:
-            response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(old_item)
-                if old_item else {}
-            )
+    # format response
+    response = {}
 
-        return response
+    if return_values.type != parser.Values.RETURN_VALUES_NONE:
+        response[parser.Props.ATTRIBUTES] = (
+            parser.Parser.format_item_attributes(old_item)
+            if old_item else {}
+        )
+
+    return response

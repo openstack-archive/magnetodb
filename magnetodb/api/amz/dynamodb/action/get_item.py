@@ -14,8 +14,8 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import exception
-from magnetodb.api.amz.dynamodb import parser
+from magnetodb.api.amz import exception as amz_exception
+from magnetodb.api.amz import parser
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -77,12 +77,12 @@ class GetItemDynamoDBAction(action.DynamoDBAction):
             )
 
         except Exception:
-            raise exception.AWSValidationException()
+            raise amz_exception.AWSValidationException()
 
         try:
             # get item
             result = storage.get_item(
-                self.context, table_name, key_attributes,
+                self.tenant, table_name, key_attributes,
                 select_type=select_type, consistent=consistent_read)
 
             # format response
@@ -105,7 +105,5 @@ class GetItemDynamoDBAction(action.DynamoDBAction):
                 )
 
             return response
-        except exception.AWSErrorResponseException as e:
-            raise e
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()

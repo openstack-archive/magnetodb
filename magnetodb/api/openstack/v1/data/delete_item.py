@@ -22,63 +22,63 @@ from magnetodb import storage
 from magnetodb.storage import models
 
 
-class DeleteItemController(object):
+@api.enforce_policy("mdb:delete_item")
+@probe.Probe(__name__)
+@request_context_decorator.request_type("delete_item")
+def delete_item(req, project_id, table_name):
     """Deletes a single item in a table by primary key. """
 
-    @api.enforce_policy("mdb:delete_item")
-    @probe.Probe(__name__)
-    @request_context_decorator.request_type("delete_item")
-    def process_request(self, req, body, project_id, table_name):
-        with probe.Probe(__name__ + '.jsonschema.validate'):
-            validation.validate_object(body, "body")
+    with probe.Probe(__name__ + '.jsonschema.validate'):
+        body = req.json_body
+        validation.validate_object(body, "body")
 
-            # parse expected item conditions
-            expected_item_conditions_json = body.pop(parser.Props.EXPECTED,
-                                                     None)
-            if expected_item_conditions_json:
-                validation.validate_object(expected_item_conditions_json,
-                                           parser.Props.EXPECTED)
-                expected_item_conditions = (
-                    parser.Parser.parse_expected_attribute_conditions(
-                        expected_item_conditions_json
-                    )
+        # parse expected item conditions
+        expected_item_conditions_json = body.pop(parser.Props.EXPECTED,
+                                                 None)
+        if expected_item_conditions_json:
+            validation.validate_object(expected_item_conditions_json,
+                                       parser.Props.EXPECTED)
+            expected_item_conditions = (
+                parser.Parser.parse_expected_attribute_conditions(
+                    expected_item_conditions_json
                 )
-            else:
-                expected_item_conditions = None
-
-            # parse key_attributes
-            key_attributes_json = body.pop(parser.Props.KEY, None)
-            validation.validate_object(key_attributes_json, parser.Props.KEY)
-
-            key_attributes = parser.Parser.parse_item_attributes(
-                key_attributes_json
             )
+        else:
+            expected_item_conditions = None
 
-            # parse return_values param
-            return_values_json = body.pop(
-                parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
-            )
+        # parse key_attributes
+        key_attributes_json = body.pop(parser.Props.KEY, None)
+        validation.validate_object(key_attributes_json, parser.Props.KEY)
 
-            validation.validate_string(return_values_json,
-                                       parser.Props.RETURN_VALUES)
+        key_attributes = parser.Parser.parse_item_attributes(
+            key_attributes_json
+        )
 
-            return_values = models.DeleteReturnValuesType(return_values_json)
+        # parse return_values param
+        return_values_json = body.pop(
+            parser.Props.RETURN_VALUES, parser.Values.RETURN_VALUES_NONE
+        )
 
-            validation.validate_unexpected_props(body, "body")
+        validation.validate_string(return_values_json,
+                                   parser.Props.RETURN_VALUES)
 
-        # delete item
-        storage.delete_item(req.context, table_name, key_attributes,
-                            expected_condition_map=expected_item_conditions)
+        return_values = models.DeleteReturnValuesType(return_values_json)
 
-        # format response
-        response = {}
+        validation.validate_unexpected_props(body, "body")
 
-        if return_values.type != parser.Values.RETURN_VALUES_NONE:
-            # TODO(cwang):
-            # It is needed to return all deleted item attributes
-            #
-            response[parser.Props.ATTRIBUTES] = (
-                parser.Parser.format_item_attributes(key_attributes)
-            )
+    # delete item
+    storage.delete_item(project_id, table_name, key_attributes,
+                        expected_condition_map=expected_item_conditions)
 
-        return response
+    # format response
+    response = {}
+
+    if return_values.type != parser.Values.RETURN_VALUES_NONE:
+        # TODO(cwang):
+        # It is needed to return all deleted item attributes
+        #
+        response[parser.Props.ATTRIBUTES] = (
+            parser.Parser.format_item_attributes(key_attributes)
+        )
+
+    return response

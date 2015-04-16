@@ -16,13 +16,12 @@
 
 import hashlib
 import requests
-import webob
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils as json
 
-from magnetodb.api.amz.dynamodb import exception
-from magnetodb.common import wsgi
+from magnetodb.api.amz import exception as amz_exception
+from oslo_middleware import base as wsgi
 from magnetodb.i18n import _, _LE, _LI
 from magnetodb.openstack.common import log as logging
 
@@ -51,7 +50,7 @@ class EC2Token(wsgi.Middleware):
 
     def __init__(self, app, conf):
         self.conf = conf
-        self.application = app
+        super(EC2Token, self).__init__(app)
 
     def _conf_get(self, name):
         return self.conf.get(name, None)
@@ -101,8 +100,7 @@ class EC2Token(wsgi.Middleware):
 
         return access
 
-    @webob.dec.wsgify(RequestClass=wsgi.Request)
-    def __call__(self, req):
+    def process_request(self, req):
         if not self._conf_get('multi_cloud'):
             return self._authorize(req, self._conf_get_auth_uri())
         else:
@@ -116,10 +114,10 @@ class EC2Token(wsgi.Middleware):
                 try:
                     LOG.debug("Attempt authorize on %s", auth_uri)
                     return self._authorize(req, auth_uri)
-                except exception.AWSErrorResponseException as e:
+                except amz_exception.AWSErrorResponseException as e:
                     LOG.debug("Authorize failed: %s", e.__class__)
                     last_failure = e
-            raise last_failure or exception.AWSAccessDeniedError()
+            raise last_failure or amz_exception.AWSAccessDeniedError()
 
     def _is_v2_token(self, token_body):
         return 'access' in token_body
@@ -143,7 +141,7 @@ class EC2Token(wsgi.Middleware):
                 return self.application
             else:
                 LOG.info(_LI("No AWS Signature found."))
-                raise exception.AWSIncompleteSignatureError()
+                raise amz_exception.AWSIncompleteSignatureError()
 
         access = self._get_access(req)
         if not access:
@@ -151,14 +149,14 @@ class EC2Token(wsgi.Middleware):
                 return self.application
             else:
                 LOG.info(_LI("No AWSAccessKeyId/Authorization Credential"))
-                raise exception.AWSIncompleteSignatureError()
+                raise amz_exception.AWSIncompleteSignatureError()
 
         LOG.info(_LI("AWS credentials found, checking against keystone."))
 
         if not auth_uri:
             LOG.error(_LE("Ec2Token authorization failed, no auth_uri "
                           "specified in config file"))
-            raise exception.AWSErrorResponseException(
+            raise amz_exception.AWSErrorResponseException(
                 _LI('Service misconfigured')
             )
         # Make a copy of args for authentication and signature verification.
@@ -200,7 +198,7 @@ class EC2Token(wsgi.Middleware):
                 metadata = result['token']['roles']
                 roles = [r['name'] for r in metadata]
             else:
-                raise exception.AWSInvalidClientTokenIdError()
+                raise amz_exception.AWSInvalidClientTokenIdError()
             LOG.info(_LI("AWS authentication successful."))
         except (AttributeError, KeyError):
             LOG.info(_LI("AWS authentication failure."))
@@ -212,11 +210,11 @@ class EC2Token(wsgi.Middleware):
                 reason = None
 
             if reason == "EC2 access key not found.":
-                raise exception.AWSInvalidClientTokenIdError()
+                raise amz_exception.AWSInvalidClientTokenIdError()
             elif reason == "EC2 signature not supplied.":
-                raise exception.AWSSignatureError()
+                raise amz_exception.AWSSignatureError()
             else:
-                raise exception.AWSAccessDeniedError()
+                raise amz_exception.AWSAccessDeniedError()
 
         # Authenticated!
         ec2_creds = {'ec2Credentials': {'access': access,

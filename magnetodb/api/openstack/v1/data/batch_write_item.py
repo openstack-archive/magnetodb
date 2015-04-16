@@ -22,32 +22,31 @@ from magnetodb.common.utils import request_context_decorator
 from magnetodb import storage
 
 
-class BatchWriteItemController(object):
+@api.enforce_policy("mdb:batch_write_item")
+@probe.Probe(__name__)
+@request_context_decorator.request_type("batch_write")
+def batch_write_item(req, project_id):
     """The BatchWriteItem operation puts or deletes
     multiple items in one or more tables.
     """
 
-    @api.enforce_policy("mdb:batch_write_item")
-    @probe.Probe(__name__)
-    @request_context_decorator.request_type("batch_write")
-    def process_request(self, req, body, project_id):
-        with probe.Probe(__name__ + '.validation'):
-            validation.validate_object(body, "body")
+    with probe.Probe(__name__ + '.validation'):
+        body = req.json_body
+        validation.validate_object(body, "body")
 
-            request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
-            validation.validate_object(request_items_json,
-                                       parser.Props.REQUEST_ITEMS)
+        request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
+        validation.validate_object(request_items_json,
+                                   parser.Props.REQUEST_ITEMS)
 
-            validation.validate_unexpected_props(body, "body")
+        validation.validate_unexpected_props(body, "body")
 
-            # parse request_items
-            request_map = parser.Parser.parse_batch_write_request_items(
-                request_items_json
-            )
+        # parse request_items
+        request_map = parser.Parser.parse_batch_write_request_items(
+            request_items_json
+        )
 
-        unprocessed_items = storage.execute_write_batch(
-            req.context, request_map)
+    unprocessed_items = storage.execute_write_batch(project_id, request_map)
 
-        return {
-            'unprocessed_items': parser.Parser.format_request_items(
-                unprocessed_items)}
+    return {
+        'unprocessed_items': parser.Parser.format_request_items(
+            unprocessed_items)}

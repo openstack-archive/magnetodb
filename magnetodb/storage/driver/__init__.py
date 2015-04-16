@@ -15,11 +15,11 @@
 
 
 class StorageDriver(object):
-    def create_table(self, context, table_info):
+    def create_table(self, tenant, table_info):
         """
         Create table at the backend side
 
-        :param context: current request context
+        :param tenant for table
         :param table_info: TableInfo instance with table's meta information
 
         :returns: internal_table_name created
@@ -28,22 +28,22 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def delete_table(self, context, table_info):
+    def delete_table(self, tenant, table_info):
         """
         Delete table from the backend side
 
-        :param context: current request context
+        :param tenant for table
         :param table_info: TableInfo instance with table's meta information
 
         :raises: BackendInteractionException
         """
         raise NotImplementedError()
 
-    def batch_write(self, context, write_request_list):
+    def batch_write(self, tenant, write_request_list):
         """
         Execute batch on storage backend side
 
-        :param context: current request context
+        :param tenant for table
         :param write_request_list: (TableInfo, WriteItemRequest) list,
                     represents write requests set to be perform
 
@@ -51,10 +51,11 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def put_item(self, context, table_info, attribute_map, return_values=None,
-                 if_not_exist=False, expected_condition_map=None):
+    def put_item(self, tenant, table_info, attribute_map,
+                 return_values=None, if_not_exist=False,
+                 expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param attribute_map: attribute name to AttributeValue mapping.
                     It defines row key and additional attributes to put
@@ -74,10 +75,10 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def delete_item(self, context, table_info, key_attribute_map,
+    def delete_item(self, tenant, table_info, key_attribute_map,
                     expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row to be deleted
@@ -94,10 +95,10 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def update_item(self, context, table_info, key_attribute_map,
+    def update_item(self, tenant, table_info, key_attribute_map,
                     attribute_action_map, expected_condition_map=None):
         """
-        :param context: current request context
+        :param tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param key_attribute_map: key attribute name to
                     AttributeValue mapping. It defines row it to update item
@@ -114,12 +115,12 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def select_item(self, context, table_info, hash_key_condition_list,
+    def select_item(self, tenant, table_info, hash_key_condition_list,
                     range_key_to_query_condition_list, select_type,
                     index_name=None, limit=None, exclusive_start_key=None,
                     consistent=True, order_type=None):
         """
-        :param context: current request context
+        :param tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param hash_key_condition_list: list of IndexedCondition instances.
                     Defines conditions for hash key to perform query on
@@ -145,11 +146,11 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def scan(self, context, table_info, condition_map, attributes_to_get=None,
-             limit=None, exclusive_start_key=None,
+    def scan(self, tenant, table_info, condition_map,
+             attributes_to_get=None, limit=None, exclusive_start_key=None,
              consistent=False):
         """
-        :param context: current request context
+        :param tenant for table
         :param table_info: TableInfo instance with table's meta information
         :param condition_map: attribute name to list of ScanCondition
                     instances mapping. It defines rows set to be selected
@@ -167,7 +168,7 @@ class StorageDriver(object):
         """
         raise NotImplementedError()
 
-    def get_table_statistics(self, context, table_info, keys):
+    def get_table_statistics(self, tenant, table_info, keys):
         """
         :param context: current request context
         :param table_info: TableInfo instance with table's meta information

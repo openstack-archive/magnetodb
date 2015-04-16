@@ -41,17 +41,17 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
         self.__cluster_handler = cluster_handler
         self.__enc = encoder.Encoder()
 
-    def delete(self, context, table_name, backup_id):
+    def delete(self, tenant, table_name, backup_id):
         LOG.debug("Deleting backup '{}' for table '{}'".format(
             backup_id, table_name))
-        backup_meta = self.get(context, table_name, backup_id)
+        backup_meta = self.get(tenant, table_name, backup_id)
 
         query_builder = collections.deque()
         query_builder.append("DELETE FROM")
         query_builder.append(
             " {} WHERE tenant='{}' AND table_name='{}' AND id={}".format(
                 self.SYSTEM_TABLE_BACKUP_INFO,
-                context.tenant, table_name, backup_id
+                tenant, table_name, backup_id
             )
         )
 
@@ -63,7 +63,7 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
             backup_id, table_name))
         return backup_meta
 
-    def save(self, context, backup_meta):
+    def save(self, tenant, backup_meta):
         LOG.debug("Saving backup '{}' for table '{}'".format(
             backup_meta.id, backup_meta.table_name))
 
@@ -72,13 +72,13 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
             for name in self.__set_field_list
         }
 
-        self._update(context, backup_meta.table_name, backup_meta.id, attrs)
+        self._update(tenant, backup_meta.table_name, backup_meta.id, attrs)
 
         LOG.debug("Saved backup '{}' for table '{}'".format(
             backup_meta.id, backup_meta.table_name))
         return backup_meta
 
-    def get(self, context, table_name, backup_id):
+    def get(self, tenant, table_name, backup_id):
         LOG.debug("Getting backup '{}' for table '{}'".format(
             backup_id, table_name))
         query_builder = collections.deque()
@@ -86,7 +86,7 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
         query_builder.append(
             " {} WHERE tenant='{}' AND table_name='{}' AND id={}".format(
                 self.SYSTEM_TABLE_BACKUP_INFO,
-                context.tenant, table_name, backup_id
+                tenant, table_name, backup_id
             )
         )
 
@@ -109,14 +109,14 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
             backup_id, table_name))
         return models.BackupMeta(**backup_info_attrs)
 
-    def list(self, context, table_name,
+    def list(self, tenant, table_name,
              exclusive_start_backup_id=None, limit=None):
 
         query_builder = collections.deque()
         query_builder.append(
             "SELECT * FROM {} WHERE tenant='{}' AND table_name='{}'".format(
                 self.SYSTEM_TABLE_BACKUP_INFO,
-                context.tenant, table_name
+                tenant, table_name
             )
         )
 
@@ -143,7 +143,7 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
             for row in rows
         ]
 
-    def update(self, context, table_name, backup_id,
+    def update(self, tenant, table_name, backup_id,
                status=None, finish_date_time=None, location=None):
 
         if status or finish_date_time or location:
@@ -159,11 +159,11 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
             if location:
                 attrs['location'] = location
 
-            self._update(context, table_name, backup_id, attrs)
+            self._update(tenant, table_name, backup_id, attrs)
 
-        return self.get(context, table_name, backup_id)
+        return self.get(tenant, table_name, backup_id)
 
-    def _update(self, context, table_name, backup_id, attrs):
+    def _update(self, tenant, table_name, backup_id, attrs):
         LOG.debug(
             "Updating attributes {} of backup '{}' for table '{}'".format(
                 attrs, backup_id, table_name))
@@ -188,7 +188,7 @@ class CassandraBackupInfoRepository(backup_info_repo.BackupInfoRepository):
 
         query_builder.append(
             " WHERE tenant='{}' AND table_name='{}' AND id={}".format(
-                context.tenant, table_name, backup_id
+                tenant, table_name, backup_id
             )
         )
 

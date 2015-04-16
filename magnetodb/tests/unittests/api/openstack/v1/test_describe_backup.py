@@ -34,8 +34,10 @@ class DescribeBackupTest(test_base_testcase.APITestCase):
 
         the_uuid = uuid.uuid4()
 
-        url = '/v1/management/default_tenant/default_table/backups/{}'.format(
-            the_uuid.hex)
+        url = (
+            '/v1/management/default_tenant/tables/default_table/backups/{}'
+            .format(the_uuid.hex)
+        )
 
         describe_backup_mock.return_value = models.BackupMeta(
             the_uuid,
