@@ -36,8 +36,8 @@ For help:
 import Queue
 from threading import Event
 
-from gevent import monkey
-monkey.patch_all()
+import eventlet
+eventlet.patcher.monkey_patch(all=True)
 
 from magnetodb.common import setup_global_env
 from oslo_config.cfg import Opt
@@ -51,32 +51,30 @@ from magnetodb.storage import models
 from magnetodb import storage
 from magnetodb.common.config import CONF
 
+from magnetodb import context as req_context
+
 
 class NameSpace(object):
     """Custom Namespace object for parser. """
     pass
 
 
-def context():
-    """Custom context object. """
-    pass
-
-
-def parse_put_item(table, item_json):
+def parse_put_item(item_json):
     """CassandraStorageImpl put_item method wrapper. """
     py_obj = json.loads(item_json)
-    return models.PutItemRequest(
-        table, Parser.parse_item_attributes(py_obj)
+    return models.WriteItemRequest(
+        models.WriteItemRequest.WRITE_REQUEST_TYPE_PUT,
+        Parser.parse_item_attributes(py_obj)
     )
 
 
-def string_loader(storage_impl, table, input_string):
+def string_loader(tenant, table, input_string):
     """Load data from specified string. """
 
-    storage_impl.put_item(context, parse_put_item(table, input_string))
+    storage.put_item(tenant, table, parse_put_item(input_string))
 
 
-def sequence_loader(table, sequence):
+def sequence_loader(tenant, table, sequence):
     """Load data from specified text file.
 
     :param table: Table name
@@ -92,7 +90,7 @@ def sequence_loader(table, sequence):
     count_done = [0]
 
     for item in sequence:
-        future = storage.put_item_async(context, parse_put_item(table, item))
+        future = storage.put_item_async(tenant, table, parse_put_item(item))
         count_sent += 1
 
         def callback(future):
@@ -139,22 +137,24 @@ def main():
 
     setup_global_env(args=sys.argv[1:])
 
+    req_context.RequestContext()
+
     try:
-        context.tenant, table = CONF.table_name.split('.')
+        tenant, table = CONF.table_name.split('.')
     except ValueError:
         print 'Bad table name. Use format: <tenant_name>.<table_name>'
         return
 
-    #Checking for stdin
+    # Checking for stdin
     if not sys.stdin.isatty():
         lines = sys.stdin.readlines()
-        sequence_loader(table, lines)
+        sequence_loader(tenant, table, lines)
         return
 
     if CONF.input_file:
-        sequence_loader(table, CONF.input_file)
+        sequence_loader(tenant, table, CONF.input_file)
     elif CONF.input_string:
-        string_loader(table, CONF.input_string)
+        string_loader(tenant, table, CONF.input_string)
     else:
         print ("You have not specified any input data. Use '-h' or '--help' "
                "keys for script using info")

@@ -25,30 +25,18 @@ import traceback
 import webob
 
 from magnetodb.common import exception
-from magnetodb.common import wsgi
+from oslo_middleware import base as wsgi
 
 from magnetodb.openstack.common import log as logging
+
 
 LOG = logging.getLogger(__name__)
 
 
-class Fault(object):
-
-    def __init__(self, error, content_type='application/json'):
-        self.error = error
-        self.content_type = content_type
-
-    @webob.dec.wsgify(RequestClass=wsgi.Request)
-    def __call__(self, req):
-        serializer = wsgi.ResponseSerializer()
-        resp = serializer.serialize(self.error, self.content_type)
-        default_webob_exc = webob.exc.HTTPInternalServerError()
-        resp.status_code = self.error.get('code', default_webob_exc.code)
-        return resp
-
-
 class FaultWrapper(wsgi.Middleware):
     """Replace error body with something the client can parse."""
+
+    DEFAULT_WEBOB_EXCEPTION = webob.exc.HTTPInternalServerError()
 
     error_map = {
         # Common errors
@@ -110,20 +98,29 @@ class FaultWrapper(wsgi.Middleware):
 
         return error
 
+    def _create_error_response(self, ex):
+        error_info = self._error(ex)
+
+        return webob.Response(
+            json_body=error_info,
+            status=error_info.get('code', self.DEFAULT_WEBOB_EXCEPTION.code)
+        )
+
     def process_request(self, req):
         try:
             return req.get_response(self.application)
         except (exception.BackendInteractionException,
                 exception.ValidationError) as ex:
             LOG.debug(ex)
-            return req.get_response(Fault(self._error(ex)))
+
+            return self._create_error_response(ex)
         except Exception as ex:
             # some lower level exception. It is better to know about it
             # so, log the original message
             LOG.exception(ex)
             # but don't propagate internal details beyond here
             ex.args = (u'message="An Internal Error Occurred"',)
-            return req.get_response(Fault(self._error(ex)))
+            return self._create_error_response(ex)
 
     @classmethod
     def factory_method(cls, global_config, **local_config):

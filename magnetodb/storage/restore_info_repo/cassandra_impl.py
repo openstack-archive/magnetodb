@@ -42,7 +42,7 @@ class CassandraRestoreInfoRepository(restore_info_repo.RestoreInfoRepository):
         self.__cluster_handler = cluster_handler
         self.__enc = encoder.Encoder()
 
-    def save(self, context, restore_job_meta):
+    def save(self, tenant, restore_job_meta):
         LOG.debug("Saving restore job '{}' for table '{}'".format(
             restore_job_meta.id, restore_job_meta.table_name))
 
@@ -52,7 +52,7 @@ class CassandraRestoreInfoRepository(restore_info_repo.RestoreInfoRepository):
         }
 
         self._update(
-            context, restore_job_meta.table_name,
+            tenant, restore_job_meta.table_name,
             restore_job_meta.id, attrs
         )
 
@@ -60,7 +60,7 @@ class CassandraRestoreInfoRepository(restore_info_repo.RestoreInfoRepository):
             restore_job_meta.id, restore_job_meta.table_name))
         return restore_job_meta
 
-    def get(self, context, table_name, restore_job_id):
+    def get(self, tenant, table_name, restore_job_id):
         LOG.debug("Getting restore job '{}' for table '{}'".format(
             restore_job_id, table_name))
         query_builder = collections.deque()
@@ -68,7 +68,7 @@ class CassandraRestoreInfoRepository(restore_info_repo.RestoreInfoRepository):
         query_builder.append(
             " {} WHERE tenant='{}' AND table_name='{}' AND id={}".format(
                 self.SYSTEM_TABLE_RESTORE_INFO,
-                context.tenant, table_name, restore_job_id
+                tenant, table_name, restore_job_id
             )
         )
 
@@ -91,14 +91,14 @@ class CassandraRestoreInfoRepository(restore_info_repo.RestoreInfoRepository):
             restore_job_id, table_name))
         return models.RestoreJobMeta(**restore_info_attrs)
 
-    def list(self, context, table_name,
+    def list(self, tenant, table_name,
              exclusive_start_restore_job_id=None, limit=None):
 
         query_builder = collections.deque()
         query_builder.append(
             "SELECT * FROM {} WHERE tenant='{}' AND table_name='{}'".format(
                 self.SYSTEM_TABLE_RESTORE_INFO,
-                context.tenant, table_name
+                tenant, table_name
             )
         )
 
@@ -127,7 +127,7 @@ class CassandraRestoreInfoRepository(restore_info_repo.RestoreInfoRepository):
             for row in rows
         ]
 
-    def update(self, context, table_name, restore_job_id,
+    def update(self, tenant, table_name, restore_job_id,
                status=None, finish_date_time=None):
 
         if status or finish_date_time:
@@ -140,11 +140,11 @@ class CassandraRestoreInfoRepository(restore_info_repo.RestoreInfoRepository):
             if finish_date_time:
                 attrs['finish_date_time'] = finish_date_time
 
-            self._update(context, table_name, restore_job_id, attrs)
+            self._update(tenant, table_name, restore_job_id, attrs)
 
-        return self.get(context, table_name, restore_job_id)
+        return self.get(tenant, table_name, restore_job_id)
 
-    def _update(self, context, table_name, restore_job_id, attrs):
+    def _update(self, tenant, table_name, restore_job_id, attrs):
         LOG.debug(
             "Updating attributes {} of restore job '{}' for table '{}'".format(
                 attrs, restore_job_id, table_name))
@@ -169,7 +169,7 @@ class CassandraRestoreInfoRepository(restore_info_repo.RestoreInfoRepository):
 
         query_builder.append(
             " WHERE tenant='{}' AND table_name='{}' AND id={}".format(
-                context.tenant, table_name, restore_job_id
+                tenant, table_name, restore_job_id
             )
         )
 

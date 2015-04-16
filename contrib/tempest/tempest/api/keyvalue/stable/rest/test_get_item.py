@@ -144,8 +144,6 @@ class MagnetoDBGetItemTest(MagnetoDBTestCase):
                                  True)
         exception = raises_cm.exception
         self.assertIn("Not Found", exception._error_string)
-        self.assertIn("The resource could not be found.",
-                      exception._error_string)
 
     @attr(type='GI-20')
     def test_get_item_valid_attribute_to_get(self):

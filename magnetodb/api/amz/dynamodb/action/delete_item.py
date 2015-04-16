@@ -14,9 +14,8 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import exception as ddb_exception
-from magnetodb.api.amz.dynamodb import parser
-from magnetodb.common import exception
+from magnetodb.api.amz import exception as amz_exception
+from magnetodb.api.amz import parser
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -102,23 +101,21 @@ class DeleteItemDynamoDBAction(action.DynamoDBAction):
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
         except Exception:
-            raise ddb_exception.AWSValidationException()
+            raise amz_exception.AWSValidationException()
 
         try:
             # put item
             result = storage.delete_item(
-                self.context,
+                self.tenant,
                 table_name,
                 key_attributes,
                 expected_condition_map=expected_item_conditions
             )
-        except ddb_exception.AWSErrorResponseException as e:
-            raise e
         except Exception:
-            raise ddb_exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()
 
         if not result:
-            raise ddb_exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()
 
         # format response
         response = {}
@@ -137,8 +134,7 @@ class DeleteItemDynamoDBAction(action.DynamoDBAction):
                 response[parser.Props.ITEM_COLLECTION_METRICS] = {
                     parser.Props.ITEM_COLLECTION_KEY: {
                         parser.Parser.format_item_attributes(
-                            models.AttributeValue(models.ATTRIBUTE_TYPE_STRING,
-                                                  "key")
+                            models.AttributeValue("S",  "key")
                         )
                     },
                     parser.Props.SIZE_ESTIMATED_RANGE_GB: [0]
@@ -154,4 +150,4 @@ class DeleteItemDynamoDBAction(action.DynamoDBAction):
 
             return response
         except Exception:
-            raise exception.ddb_exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()

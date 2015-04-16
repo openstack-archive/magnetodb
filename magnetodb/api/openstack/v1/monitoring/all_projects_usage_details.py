@@ -21,32 +21,29 @@ from magnetodb.common import exception
 LOG = logging.getLogger(__name__)
 
 
-class AllProjectsUsageController():
-    """Returns metrics.
-    """
+def all_projects_usage_details(req):
+    """Returns metrics."""
 
-    def projects_usage_details(self, req):
-        if 'metrics' not in req.GET:
-            keys = ['size', 'item_count']
-        else:
-            keys = req.GET['metrics'].split(',')
+    if 'metrics' not in req.GET:
+        keys = ['size', 'item_count']
+    else:
+        keys = req.GET['metrics'].split(',')
 
-        tables = storage.list_tenant_tables(
-            last_evaluated_project=req.GET.get('last_evaluated_project'),
-            last_evaluated_table=req.GET.get('last_evaluated_table'),
-            limit=req.GET.get('limit', 1000)
-        )
+    tables = storage.list_all_tables(
+        last_evaluated_tenant=req.GET.get('last_evaluated_project'),
+        last_evaluated_table=req.GET.get('last_evaluated_table'),
+        limit=req.GET.get('limit', 1000)
+    )
 
-        for row in tables:
-            req.context.tenant = row["tenant"]
-            try:
-                row["usage_detailes"] = storage.get_table_statistics(
-                    req.context, row["name"], keys
-                )
-            except exception.ValidationError:
-                table_meta = storage.describe_table(req.context,
-                                                    row["name"])
-                row["status"] = table_meta.status
-                row["usage_detailes"] = {}
+    for row in tables:
+        tenant = row["tenant"]
+        try:
+            row["usage_detailes"] = storage.get_table_statistics(
+                tenant, row["name"], keys
+            )
+        except exception.ValidationError:
+            table_meta = storage.describe_table(tenant, row["name"])
+            row["status"] = table_meta.status
+            row["usage_detailes"] = {}
 
-        return tables
+    return tables

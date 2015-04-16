@@ -14,8 +14,8 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import exception
-from magnetodb.api.amz.dynamodb import parser
+from magnetodb.api.amz import exception as amz_exception
+from magnetodb.api.amz import parser
 from magnetodb import storage
 from magnetodb.storage import models
 
@@ -103,12 +103,12 @@ class PutItemDynamoDBAction(action.DynamoDBAction):
                 parser.Values.RETURN_CONSUMED_CAPACITY_NONE
             )
         except Exception:
-            raise exception.AWSValidationException()
+            raise amz_exception.AWSValidationException()
 
         try:
             # put item
             result, old_item = storage.put_item(
-                self.context,
+                self.tenant,
                 table_name,
                 item_attributes,
                 return_values,
@@ -117,7 +117,7 @@ class PutItemDynamoDBAction(action.DynamoDBAction):
             )
 
             if not result:
-                raise exception.AWSErrorResponseException()
+                raise amz_exception.AWSErrorResponseException()
 
             # format response
             response = {}
@@ -147,7 +147,7 @@ class PutItemDynamoDBAction(action.DynamoDBAction):
                 )
 
             return response
-        except exception.AWSErrorResponseException as e:
-            raise e
+        except amz_exception.AWSErrorResponseException:
+            raise
         except Exception:
-            raise exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()
