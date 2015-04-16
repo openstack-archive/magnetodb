@@ -24,10 +24,10 @@ class RestoreManager(object):
     def __init__(self, restore_info_repo):
         self.restore_info_repo = restore_info_repo
 
-    def create_restore_job(self, context, table_name, backup_id, source):
+    def create_restore_job(self, tenant, table_name, backup_id, source):
         """Create restore job
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: String, name of the table to restore
         :param backup_id: String, id of the backup to restore from
         :param source: String, source of the backup to restore from
@@ -45,13 +45,13 @@ class RestoreManager(object):
             source=source,
             start_date_time=timeutils.utcnow())
 
-        return self.restore_info_repo.save(context, restore_meta)
+        return self.restore_info_repo.save(tenant, restore_meta)
 
-    def describe_restore_job(self, context, table_name, restore_job_id):
-        return self.restore_info_repo.get(context, table_name, restore_job_id)
+    def describe_restore_job(self, tenant, table_name, restore_job_id):
+        return self.restore_info_repo.get(tenant, table_name, restore_job_id)
 
-    def list_restore_jobs(self, context, table_name,
+    def list_restore_jobs(self, tenant, table_name,
                           exclusive_start_restore_job_id, limit):
 
         return self.restore_info_repo.list(
-            context, table_name, exclusive_start_restore_job_id, limit)
+            tenant, table_name, exclusive_start_restore_job_id, limit)

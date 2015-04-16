@@ -44,22 +44,21 @@ class TableInfo(object):
 
 class TableInfoRepository(object):
 
-    def get(self, context, table_name, fields_to_refresh):
+    def get(self, tenant, table_name, fields_to_refresh):
         raise NotImplementedError()
 
-    def get_tenant_table_names(self, context, exclusive_start_table_name=None,
-                               limit=None):
+    def list_tables(self, tenant, exclusive_start_table_name=None, limit=None):
         raise NotImplementedError()
 
-    def list_tenant_tables(self, last_evaluated_project=None,
-                           last_evaluated_table=None, limit=None):
+    def list_all_tables(self, last_evaluated_tenant=None,
+                        last_evaluated_table=None, limit=None):
         raise NotImplementedError()
 
-    def update(self, table_info, field_list=None):
+    def update(self, tenant, table_info, field_list=None):
         raise NotImplementedError()
 
-    def save(self, context, table_info):
+    def save(self, tenant, table_info):
         raise NotImplementedError()
 
-    def delete(self, context, table_name):
+    def delete(self, tenant, table_name):
         raise NotImplementedError()

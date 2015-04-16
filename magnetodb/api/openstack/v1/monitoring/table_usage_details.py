@@ -20,19 +20,14 @@ from magnetodb import storage
 LOG = logging.getLogger(__name__)
 
 
-class TableUsageController():
-    """Returns metrics.
-    """
+def table_usage_details(req, project_id, table_name):
+    """Returns metrics."""
 
-    def table_usage_details(self, req, project_id, table_name):
-        req.context.tenant = project_id
+    if 'metrics' not in req.GET:
+        keys = ['size', 'item_count']
+    else:
+        keys = req.GET['metrics'].split(',')
 
-        if 'metrics' not in req.GET:
-            keys = ['size', 'item_count']
-        else:
-            keys = req.GET['metrics'].split(',')
+    result = storage.get_table_statistics(project_id, table_name, keys)
 
-        result = storage.get_table_statistics(
-            req.context, table_name, keys)
-
-        return result
+    return result
