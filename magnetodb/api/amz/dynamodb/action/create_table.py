@@ -14,10 +14,10 @@
 #    under the License.
 
 from magnetodb.api.amz.dynamodb import action
-from magnetodb.api.amz.dynamodb import parser
+from magnetodb.api.amz import parser
 
 from magnetodb import storage
-from magnetodb.api.amz.dynamodb import exception as ddb_exception
+from magnetodb.api.amz import exception as amz_exception
 from magnetodb.common import exception
 from magnetodb.storage import models
 
@@ -83,12 +83,12 @@ class CreateTableDynamoDBAction(action.DynamoDBAction):
             )
 
         except Exception:
-            raise ddb_exception.AWSValidationException()
+            raise amz_exception.AWSValidationException()
 
         try:
             # creating table
             table_meta = storage.create_table(
-                self.context, table_name, table_schema
+                self.tenant, table_name, table_schema
             )
 
             result = {
@@ -127,8 +127,6 @@ class CreateTableDynamoDBAction(action.DynamoDBAction):
 
             return result
         except exception.TableAlreadyExistsException:
-            raise ddb_exception.AWSDuplicateTableError(table_name)
-        except ddb_exception.AWSErrorResponseException as e:
-            raise e
+            raise amz_exception.AWSDuplicateTableError(table_name=table_name)
         except Exception:
-            raise ddb_exception.AWSErrorResponseException()
+            raise amz_exception.AWSErrorResponseException()

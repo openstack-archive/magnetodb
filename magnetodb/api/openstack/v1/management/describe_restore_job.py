@@ -22,20 +22,19 @@ from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 
 
-class DescribeRestoreJobController(object):
+@probe.Probe(__name__)
+def describe_restore_job(req, project_id, table_name,
+                         restore_job_id):
     """Describes a restore job."""
 
-    @probe.Probe(__name__)
-    def process_request(self, req, project_id, table_name, restore_job_id):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+    utils.check_project_id(project_id)
 
-        validation.validate_table_name(table_name)
+    validation.validate_table_name(table_name)
 
-        restore_job = storage.describe_restore_job(
-            req.context, table_name, uuid.UUID(restore_job_id)
-        )
-        href_prefix = req.path_url
-        response = parser.Parser.format_restore_job(restore_job, href_prefix)
+    restore_job = storage.describe_restore_job(
+        project_id, table_name, uuid.UUID(restore_job_id)
+    )
+    href_prefix = req.path_url
+    response = parser.Parser.format_restore_job(restore_job, href_prefix)
 
-        return response
+    return response

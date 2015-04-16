@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from magnetodb.common import wsgi
+from oslo_middleware import base as wsgi
 
 from magnetodb.openstack.common import log as logging
 

@@ -20,10 +20,10 @@ LOG = logging.getLogger(__name__)
 
 class BackupInfoRepository(object):
 
-    def get(self, context, table_name, backup_id):
+    def get(self, tenant, table_name, backup_id):
         """Get backup info
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: string, name of the backed up table
         :param backup_id: string, id of the backup
 
@@ -33,12 +33,12 @@ class BackupInfoRepository(object):
         """
         raise NotImplementedError()
 
-    def list(self, context, table_name,
+    def list(self, tenant, table_name,
              exclusive_start_backup_id=None,
              limit=None):
         """List backup info items for a table
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: string, name of the backed up table
         :param exclusive_start_backup_id: string, last backup id,
                 retrieved in previous list call
@@ -50,10 +50,10 @@ class BackupInfoRepository(object):
         """
         raise NotImplementedError()
 
-    def save(self, context, backup_meta):
+    def save(self, tenant, backup_meta):
         """Save backup info
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param backup_meta: BackupMeta, backup info to save
 
         :returns: BackupMeta
@@ -62,10 +62,10 @@ class BackupInfoRepository(object):
         """
         raise NotImplementedError()
 
-    def delete(self, context, table_name, backup_id):
+    def delete(self, tenant, table_name, backup_id):
         """Delete backup info
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: string, name of the backed up table
         :param backup_id: string, id of the backup
 
@@ -75,11 +75,11 @@ class BackupInfoRepository(object):
         """
         raise NotImplementedError()
 
-    def update(self, context, table_name, backup_id,
+    def update(self, tenant, table_name, backup_id,
                status=None, finish_date_time=None, location=None):
         """Update editable attributes of backup info
 
-        :param context: current request context
+        :param tenant: tenant for table
         :param table_name: string, name of the backed up table
         :param backup_id: string, id of the backup
         :param status: string, new value for status

@@ -14,6 +14,13 @@
 #    under the License.
 import functools
 
+from oslo_context import context as req_context
+
+
+def context_update_store_wrapper(context, func, *args, **kwargs):
+    context.update_store_by_weakref()
+    return func(*args, **kwargs)
+
 
 def request_type(event, **dec_kwargs):
     """
@@ -25,9 +32,9 @@ def request_type(event, **dec_kwargs):
     def decorating_func(func):
 
         @functools.wraps(func)
-        def _request_type(ctrl, req, *args, **kwargs):
-            req.context.request_type = event
-            resp = func(ctrl, req, *args, **kwargs)
+        def _request_type(*args, **kwargs):
+            req_context.get_current().request_type = event
+            resp = func(*args, **kwargs)
             return resp
 
         return _request_type
