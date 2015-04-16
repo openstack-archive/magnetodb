@@ -33,16 +33,16 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
                     "last_update_date_time", "creation_date_time")
     __creating_to_active_field_list_to_update = ("internal_name", "status")
 
-    def _save_table_info_to_cache(self, context, table_info):
-        tenant_tables_cache = self.__table_info_cache.get(context.tenant)
+    def _save_table_info_to_cache(self, tenant, table_info):
+        tenant_tables_cache = self.__table_info_cache.get(tenant)
         if tenant_tables_cache is None:
             tenant_tables_cache = {}
-            self.__table_info_cache[context.tenant] = tenant_tables_cache
+            self.__table_info_cache[tenant] = tenant_tables_cache
 
         tenant_tables_cache[table_info.name] = table_info
 
-    def _get_table_info_from_cache(self, context, table_name):
-        tenant_tables_cache = self.__table_info_cache.get(context.tenant)
+    def _get_table_info_from_cache(self, tenant, table_name):
+        tenant_tables_cache = self.__table_info_cache.get(tenant)
         if tenant_tables_cache is None:
             return None
         table_info_cached = tenant_tables_cache.get(table_name)
@@ -51,8 +51,8 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
         return copy.copy(table_info_cached)
 
-    def _remove_table_info_from_cache(self, context, table_name):
-        tenant_tables_cache = self.__table_info_cache.get(context.tenant)
+    def _remove_table_info_from_cache(self, tenant, table_name):
+        tenant_tables_cache = self.__table_info_cache.get(tenant)
         if tenant_tables_cache is None:
             return None
 
@@ -63,18 +63,18 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
         self.__table_info_cache = {}
         self.__table_cache_lock = threading.Lock()
 
-    def get(self, context, table_name, fields_to_refresh=tuple()):
-        table_info = self._get_table_info_from_cache(context, table_name)
+    def get(self, tenant, table_name, fields_to_refresh=tuple()):
+        table_info = self._get_table_info_from_cache(tenant, table_name)
         if table_info is None:
             with self.__table_cache_lock:
-                table_info = self._get_table_info_from_cache(context,
+                table_info = self._get_table_info_from_cache(tenant,
                                                              table_name)
                 if table_info is None:
                     table_info = table_info_repo.TableInfo(
                         table_name, None, None, None
                     )
-                    self.__refresh(context, table_info)
-                    self._save_table_info_to_cache(context, table_info)
+                    self.__refresh(tenant, table_info)
+                    self._save_table_info_to_cache(tenant, table_info)
                     return table_info
 
         if table_info.status == models.TableMeta.TABLE_STATUS_CREATING:
@@ -83,17 +83,16 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
                 self.__creating_to_active_field_list_to_update
             )
         if fields_to_refresh:
-            self.__refresh(context, table_info, fields_to_refresh)
+            self.__refresh(tenant, table_info, fields_to_refresh)
 
         return table_info
 
     @probe.Probe(__name__)
-    def get_tenant_table_names(self, context, exclusive_start_table_name=None,
-                               limit=None):
+    def list_tables(self, tenant, exclusive_start_table_name=None, limit=None):
         query_builder = collections.deque()
         query_builder.append(
             "SELECT name FROM {} WHERE tenant='{}'".format(
-                self.SYSTEM_TABLE_TABLE_INFO, context.tenant
+                self.SYSTEM_TABLE_TABLE_INFO, tenant
             )
         )
 
@@ -111,7 +110,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
         return [row['name'] for row in tables]
 
-    def _list_tenant_tables_no_paging(self, limit):
+    def _list_all_tables_no_paging(self, limit):
         query_builder = collections.deque()
         query_builder.append(
             "SELECT tenant, name, status FROM {}".format(
@@ -125,16 +124,16 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
                                                     consistent=True)
 
     @probe.Probe(__name__)
-    def list_tenant_tables(self, last_evaluated_project=None,
-                           last_evaluated_table=None, limit=None):
-        if last_evaluated_project is None:
-            return self._list_tenant_tables_no_paging(limit)
+    def list_all_tables(self, last_evaluated_tenant=None,
+                        last_evaluated_table=None, limit=None):
+        if last_evaluated_tenant is None:
+            return self._list_all_tables_no_paging(limit)
 
         query_builder = collections.deque()
         query_builder.append(
             "SELECT tenant, name, status FROM {} "
             "WHERE tenant = '{}'".format(
-                self.SYSTEM_TABLE_TABLE_INFO, last_evaluated_project)
+                self.SYSTEM_TABLE_TABLE_INFO, last_evaluated_tenant)
         )
 
         if last_evaluated_table:
@@ -150,14 +149,14 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
         query = ("SELECT tenant, name, status FROM {} WHERE "
                  "TOKEN(tenant) > TOKEN('{}') LIMIT {}".format(
-                     self.SYSTEM_TABLE_TABLE_INFO, last_evaluated_project,
+                     self.SYSTEM_TABLE_TABLE_INFO, last_evaluated_tenant,
                      limit - len(head)))
 
         tail = self.__cluster_handler.execute_query(query, consistent=True)
 
         return head + tail
 
-    def __refresh(self, context, table_info, field_list=__field_list):
+    def __refresh(self, tenant, table_info, field_list=__field_list):
         query_builder = collections.deque()
         query_builder.append("SELECT ")
         query_builder.append(",".join(map('"{}"'.format, field_list)))
@@ -165,7 +164,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
         query_builder.append(
             " FROM {} WHERE tenant='{}' AND name='{}'".format(
                 self.SYSTEM_TABLE_TABLE_INFO,
-                context.tenant, table_info.name
+                tenant, table_info.name
             )
         )
 
@@ -174,7 +173,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
         )
 
         if not result:
-            self._remove_table_info_from_cache(context, table_info.name)
+            self._remove_table_info_from_cache(tenant, table_info.name)
             raise exception.TableNotExistsException(
                 "Table '{}' does not exist".format(table_info.name)
             )
@@ -184,7 +183,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
             setattr(table_info, name, value)
         return True
 
-    def update(self, context, table_info, field_list=None):
+    def update(self, tenant, table_info, field_list=None):
         if not field_list:
             field_list = self.__field_list
 
@@ -212,7 +211,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
 
         query_builder.append(
             " WHERE tenant='{}' AND name='{}' IF exists=1".format(
-                context.tenant, table_info.name
+                tenant, table_info.name
             )
         )
 
@@ -224,10 +223,10 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
             raise exception.TableNotExistsException(
                 "Table {} does not exist".format(table_info.name)
             )
-        self._remove_table_info_from_cache(context, table_info.name)
+        self._remove_table_info_from_cache(tenant, table_info.name)
         return True
 
-    def save(self, context, table_info):
+    def save(self, tenant, table_info):
         enc = encoder.Encoder()
 
         query_builder = collections.deque()
@@ -236,7 +235,7 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
             '(exists, tenant, name, id, "schema", status,'
             ' internal_name, last_update_date_time, creation_date_time)'
             "VALUES(1, '{}', '{}', {}".format(
-                self.SYSTEM_TABLE_TABLE_INFO, context.tenant, table_info.name,
+                self.SYSTEM_TABLE_TABLE_INFO, tenant, table_info.name,
                 enc.cql_encode_all_types(table_info.id)
             )
         )
@@ -280,16 +279,16 @@ class CassandraTableInfoRepository(table_info_repo.TableInfoRepository):
                 "Table {} already exists".format(table_info.name)
             )
 
-        self._save_table_info_to_cache(context, copy.copy(table_info))
+        self._save_table_info_to_cache(tenant, copy.copy(table_info))
         return True
 
-    def delete(self, context, table_name):
+    def delete(self, tenant, table_name):
         query = (
             "DELETE FROM {}"
             " WHERE tenant='{}' AND name='{}'".format(
-                self.SYSTEM_TABLE_TABLE_INFO, context.tenant, table_name
+                self.SYSTEM_TABLE_TABLE_INFO, tenant, table_name
             )
         )
         self.__cluster_handler.execute_query(query, consistent=True)
-        self._remove_table_info_from_cache(context, table_name)
+        self._remove_table_info_from_cache(tenant, table_name)
         return True

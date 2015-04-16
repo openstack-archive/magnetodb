@@ -22,46 +22,44 @@ from magnetodb.api.openstack.v1 import utils
 from magnetodb.common import probe
 
 
-class ListBackupsController(object):
-    """Deletes a backup."""
+@probe.Probe(__name__)
+def list_backups(req, project_id, table_name):
+    """List the backups."""
 
-    @probe.Probe(__name__)
-    def process_request(self, req, project_id, table_name):
-        utils.check_project_id(req.context, project_id)
-        req.context.tenant = project_id
+    utils.check_project_id(project_id)
 
-        with probe.Probe(__name__ + '.validation'):
-            validation.validate_table_name(table_name)
+    with probe.Probe(__name__ + '.validation'):
+        validation.validate_table_name(table_name)
 
-            params = req.params.copy()
+        params = req.params.copy()
 
-            exclusive_start_backup_id = params.pop(
-                parser.Props.EXCLUSIVE_START_BACKUP_ID, None)
+        exclusive_start_backup_id = params.pop(
+            parser.Props.EXCLUSIVE_START_BACKUP_ID, None)
 
-            if exclusive_start_backup_id:
-                exclusive_start_backup_id = uuid.UUID(
-                    exclusive_start_backup_id
-                )
+        if exclusive_start_backup_id:
+            exclusive_start_backup_id = uuid.UUID(
+                exclusive_start_backup_id
+            )
 
-            limit = params.pop(parser.Props.LIMIT, None)
-            if limit:
-                limit = validation.validate_integer(limit, parser.Props.LIMIT,
-                                                    min_val=0)
+        limit = params.pop(parser.Props.LIMIT, None)
+        if limit:
+            limit = validation.validate_integer(limit, parser.Props.LIMIT,
+                                                min_val=0)
 
-        backups = storage.list_backups(
-            req.context, table_name, exclusive_start_backup_id, limit)
+    backups = storage.list_backups(
+        project_id, table_name, exclusive_start_backup_id, limit)
 
-        response = {}
+    response = {}
 
-        if backups and limit == len(backups):
-            response[parser.Props.LAST_EVALUATED_BACKUP_ID] = (
-                backups[-1].id.hex)
+    if backups and limit == len(backups):
+        response[parser.Props.LAST_EVALUATED_BACKUP_ID] = (
+            backups[-1].id.hex)
 
-        self_link_prefix = req.path_url
+    self_link_prefix = req.path_url
 
-        response[parser.Props.BACKUPS] = [
-            parser.Parser.format_backup(backup, self_link_prefix)
-            for backup in backups
-        ]
+    response[parser.Props.BACKUPS] = [
+        parser.Parser.format_backup(backup, self_link_prefix)
+        for backup in backups
+    ]
 
-        return response
+    return response

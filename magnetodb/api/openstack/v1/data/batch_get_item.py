@@ -21,45 +21,44 @@ from magnetodb.common.utils import request_context_decorator
 from magnetodb import storage
 
 
-class BatchGetItemController(object):
+@api.enforce_policy("mdb:batch_get_item")
+@probe.Probe(__name__)
+@request_context_decorator.request_type("batch_read")
+def batch_get_item(req, project_id):
     """The BatchGetitem operation returns the attributes
     of one or more items from one or more tables.
     """
 
-    @api.enforce_policy("mdb:batch_get_item")
-    @probe.Probe(__name__)
-    @request_context_decorator.request_type("batch_read")
-    def process_request(self, req, body, project_id):
-        with probe.Probe(__name__ + '.validation'):
-            validation.validate_object(body, "body")
+    with probe.Probe(__name__ + '.validation'):
+        body = req.json_body
+        validation.validate_object(body, "body")
 
-            request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
-            validation.validate_object(request_items_json,
-                                       parser.Props.REQUEST_ITEMS)
+        request_items_json = body.pop(parser.Props.REQUEST_ITEMS, None)
+        validation.validate_object(request_items_json,
+                                   parser.Props.REQUEST_ITEMS)
 
-            validation.validate_unexpected_props(body, "body")
+        validation.validate_unexpected_props(body, "body")
 
-        # parse request_items
-        request_list = parser.Parser.parse_batch_get_request_items(
-            request_items_json
-        )
+    # parse request_items
+    request_list = parser.Parser.parse_batch_get_request_items(
+        request_items_json
+    )
 
-        result, unprocessed = storage.execute_get_batch(
-            req.context, request_list)
+    result, unprocessed = storage.execute_get_batch(project_id, request_list)
 
-        responses = {}
-        for tname, res in result:
-            if not res.items:
-                continue
-            table_items = responses.get(tname, None)
-            if table_items is None:
-                table_items = []
-                responses[tname] = table_items
-            item = parser.Parser.format_item_attributes(res.items[0])
-            table_items.append(item)
+    responses = {}
+    for tname, res in result:
+        if not res.items:
+            continue
+        table_items = responses.get(tname, None)
+        if table_items is None:
+            table_items = []
+            responses[tname] = table_items
+        item = parser.Parser.format_item_attributes(res.items[0])
+        table_items.append(item)
 
-        return {
-            'responses': responses,
-            'unprocessed_keys': parser.Parser.format_batch_get_unprocessed(
-                unprocessed, request_items_json)
-        }
+    return {
+        'responses': responses,
+        'unprocessed_keys': parser.Parser.format_batch_get_unprocessed(
+            unprocessed, request_items_json)
+    }

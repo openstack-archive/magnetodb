@@ -17,6 +17,7 @@ import Queue
 import re
 import threading
 
+from oslo_context import context as req_context
 from oslo_serialization import jsonutils as json
 
 from magnetodb import api
@@ -50,7 +51,7 @@ def make_put_item(item):
 
 
 def bulk_load_app(environ, start_response):
-    context = environ['webob.adhoc_attrs']['context']
+    context = req_context.get_current()
 
     path = environ['PATH_INFO']
 
@@ -73,7 +74,7 @@ def bulk_load_app(environ, start_response):
 
     LOG.debug('Tenant: %s, table name: %s', project_id, table_name)
 
-    utils.check_project_id(context, project_id)
+    utils.check_project_id(project_id)
 
     _notifier.info(
         context,
@@ -112,7 +113,7 @@ def bulk_load_app(environ, start_response):
 
         try:
             future = storage.put_item_async(
-                context, table_name, make_put_item(chunk)
+                project_id, table_name, make_put_item(chunk)
             )
 
             put_count += 1

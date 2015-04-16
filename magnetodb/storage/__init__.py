@@ -16,6 +16,8 @@
 
 from oslo_serialization import jsonutils as json
 
+from oslo_context import context as req_context
+
 from magnetodb.common import config
 from magnetodb.openstack.common import importutils
 from magnetodb.openstack.common import log as logging
@@ -105,11 +107,11 @@ def setup():
     __RESTORE_MANAGER_IMPL = context["restore_manager"]
 
 
-def create_table(context, table_name, table_schema):
+def create_table(tenant, table_name, table_schema):
     """
     Creates table
 
-    :param context: current request context
+    :param tenant: tenant for table creating to
     :param table_name: String, name of the table to create
     :param table_schema: TableSchema instance which define table to create
 
@@ -117,62 +119,67 @@ def create_table(context, table_name, table_schema):
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(
-        table_name=table_name, table_schema=table_schema
+    req_context.get_current().request_args = dict(
+        tenant=tenant, table_name=table_name, table_schema=table_schema
     )
-    return __STORAGE_MANAGER_IMPL.create_table(context, table_name,
+    return __STORAGE_MANAGER_IMPL.create_table(tenant, table_name,
                                                table_schema)
 
 
-def delete_table(context, table_name):
+def delete_table(tenant, table_name):
     """
     Delete table
 
-    :param context: current request context
+    :param tenant: tenant for table deleting from
     :param table_name: String, name of table to delete
 
     :returns: TableMeta instance with metadata of created table
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(table_name=table_name)
-    return __STORAGE_MANAGER_IMPL.delete_table(context, table_name)
+    req_context.get_current().request_args = dict(
+        tenant=tenant, table_name=table_name
+    )
+    return __STORAGE_MANAGER_IMPL.delete_table(tenant, table_name)
 
 
-def describe_table(context, table_name):
+def describe_table(tenant, table_name):
     """
     Describe table
 
-    :param context: current request context
+    :param tenant for getting table from
     :param table_name: String, name of table to describes
 
     :returns: TableMeta instance
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(table_name=table_name)
-    return __STORAGE_MANAGER_IMPL.describe_table(context, table_name)
+    req_context.get_current().request_args = dict(
+        tenant=tenant, table_name=table_name
+    )
+    return __STORAGE_MANAGER_IMPL.describe_table(tenant, table_name)
 
 
-def list_tables(context, exclusive_start_table_name=None, limit=None):
+def list_tables(tenant, exclusive_start_table_name=None, limit=None):
     """
-    :param context: current request context
+    :param tenant for getting table names from
     :param exclusive_start_table_name:
     :param limit: limit of returned table names
     :returns: list of table names
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(
-        exclusive_start_table_name=exclusive_start_table_name, limit=limit
+    req_context.get_current().request_args = dict(
+        tenant=tenant, exclusive_start_table_name=exclusive_start_table_name,
+        limit=limit
     )
     return __STORAGE_MANAGER_IMPL.list_tables(
-        context, exclusive_start_table_name, limit
+        tenant, exclusive_start_table_name, limit
     )
 
 
-def list_tenant_tables(last_evaluated_project=None,
-                       last_evaluated_table=None, limit=None):
+def list_all_tables(last_evaluated_tenant=None,
+                    last_evaluated_table=None, limit=None):
     """
     :param last_evaluated_project: last evaluated project id
     :param last_evaluated_table: last evaluated table name
@@ -181,15 +188,15 @@ def list_tenant_tables(last_evaluated_project=None,
 
     :raises: BackendInteractionException
     """
-    return __STORAGE_MANAGER_IMPL.list_tenant_tables(
-        last_evaluated_project, last_evaluated_table, limit
+    return __STORAGE_MANAGER_IMPL.list_all_tables(
+        last_evaluated_tenant, last_evaluated_table, limit
     )
 
 
-def put_item(context, table_name, attribute_map, return_values=None,
+def put_item(tenant, table_name, attribute_map, return_values=None,
              if_not_exist=False, expected_condition_map=None):
     """
-    :param context: current request context
+    :param tenant: tenant for table for putting item to
     :param table_name: name of the table
     :param attribute_map: attribute name to AttributeValue instance map,
                 which represents item to put
@@ -206,21 +213,22 @@ def put_item(context, table_name, attribute_map, return_values=None,
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(
-        table_name=table_name, attribute_map=attribute_map,
+    req_context.get_current().request_args = dict(
+        tenant=tenant, table_name=table_name, attribute_map=attribute_map,
         return_values=return_values, if_not_exist=if_not_exist,
         expected_condition_map=expected_condition_map
     )
     return __STORAGE_MANAGER_IMPL.put_item(
-        context, table_name, attribute_map, return_values,
+        tenant, table_name, attribute_map, return_values,
         if_not_exist, expected_condition_map
     )
 
 
-def put_item_async(context, table_name, attribute_map, return_values=None,
-                   if_not_exist=False, expected_condition_map=None):
+def put_item_async(tenant, table_name, attribute_map,
+                   return_values=None, if_not_exist=False,
+                   expected_condition_map=None):
     """
-    :param context: current request context
+    :param tenant: tenant for table for putting item to
     :param table_name: name of the table
     :param attribute_map: attribute name to AttributeValue instance map,
                 which represents item to put
@@ -238,15 +246,15 @@ def put_item_async(context, table_name, attribute_map, return_values=None,
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.put_item_async(
-        context, table_name, attribute_map, return_values,
+        tenant, table_name, attribute_map, return_values,
         if_not_exist, expected_condition_map
     )
 
 
-def delete_item(context, table_name, key_attribute_map,
+def delete_item(tenant, table_name, key_attribute_map,
                 expected_condition_map=None):
     """
-    :param context: current request context
+    :param tenant: tenant for table for deleting item from
     :param table_name: name of the table
     :param key_attribute_map: attribute name to AttributeValue instance map,
                 which represents key to identify item
@@ -262,19 +270,20 @@ def delete_item(context, table_name, key_attribute_map,
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(
-        table_name=table_name, key_attribute_map=key_attribute_map,
+    req_context.get_current().request_args = dict(
+        tenant=tenant, table_name=table_name,
+        key_attribute_map=key_attribute_map,
         expected_condition_map=expected_condition_map
     )
     return __STORAGE_MANAGER_IMPL.delete_item(
-        context, table_name, key_attribute_map, expected_condition_map
+        tenant, table_name, key_attribute_map, expected_condition_map
     )
 
 
-def delete_item_async(context, table_name, key_attribute_map,
+def delete_item_async(tenant, table_name, key_attribute_map,
                       expected_condition_map=None):
     """
-    :param context: current request context
+    :param tenant: tenant for table for deleting item from
     :param table_name: name of the table
     :param key_attribute_map: attribute name to AttributeValue instance map,
                 which represents key to identify item
@@ -289,39 +298,45 @@ def delete_item_async(context, table_name, key_attribute_map,
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.delete_item_async(
-        context, table_name, key_attribute_map, expected_condition_map
+        tenant, table_name, key_attribute_map, expected_condition_map
     )
 
 
-def execute_write_batch(context, write_request_map):
+def execute_write_batch(tenant, write_request_map):
     """
-    :param context: current request context
+    :param tenant: tenant for table for performing batch operations for
     :param write_request_map: table name to WriteItemRequest
                 instance list map to execute batch operation
 
     :returns: Unprocessed request list
     """
 
-    return __STORAGE_MANAGER_IMPL.execute_write_batch(context,
+    req_context.get_current().request_args = dict(
+        tenant=tenant, write_request_map=write_request_map
+    )
+    return __STORAGE_MANAGER_IMPL.execute_write_batch(tenant,
                                                       write_request_map)
 
 
-def execute_get_batch(context, get_request_list):
+def execute_get_batch(tenant, get_request_list):
     """
-    :param context: current request context
+    :param tenant: tenant for table for performing batch operations for
     :param get_request_list: contains get requests instances to execute
                              batch operation
 
     :returns: tuple of items list and unprocessed request list
     """
-    context.request_args = dict(get_request_list=get_request_list)
-    return __STORAGE_MANAGER_IMPL.execute_get_batch(context, get_request_list)
+    req_context.get_current().request_args = dict(
+        tenant=tenant, get_request_list=get_request_list)
+    return __STORAGE_MANAGER_IMPL.execute_get_batch(
+        tenant, get_request_list
+    )
 
 
-def update_item(context, table_name, key_attribute_map,
+def update_item(tenant, table_name, key_attribute_map,
                 attribute_action_map, expected_condition_map=None):
     """
-    :param context: current request context
+    :param tenant: tenant for table where item will be updated
     :param table_name: String, name of table to delete item from
     :param key_attribute_map: key attribute name to
                 AttributeValue mapping. It defines row it to update item
@@ -336,23 +351,24 @@ def update_item(context, table_name, key_attribute_map,
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(
-        table_name=table_name, key_attribute_map=key_attribute_map,
+    req_context.get_current().request_args = dict(
+        tenant=tenant, table_name=table_name,
+        key_attribute_map=key_attribute_map,
         attribute_action_map=attribute_action_map,
         expected_condition_map=expected_condition_map
     )
     return __STORAGE_MANAGER_IMPL.update_item(
-        context, table_name, key_attribute_map, attribute_action_map,
+        tenant, table_name, key_attribute_map, attribute_action_map,
         expected_condition_map
     )
 
 
-def query(context, table_name, indexed_condition_map=None,
+def query(tenant, table_name, indexed_condition_map=None,
           select_type=None, index_name=None, limit=None,
           exclusive_start_key=None, consistent=True,
           order_type=None):
     """
-    :param context: current request context
+    :param tenant: tenant for table for querying items from
     :param table_name: String, name of table to get item from
     :param indexed_condition_map: indexed attribute name to
                 IndexedCondition instance mapping. It defines rows
@@ -375,22 +391,23 @@ def query(context, table_name, indexed_condition_map=None,
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(
-        table_name=table_name, indexed_condition_map=indexed_condition_map,
-        select_type=select_type, index_name=index_name, limit=limit,
+    req_context.get_current().request_args = dict(
+        tenant=tenant, table_name=table_name,
+        indexed_condition_map=indexed_condition_map, select_type=select_type,
+        index_name=index_name, limit=limit,
         exclusive_start_key=exclusive_start_key, consistent=consistent,
         order_type=order_type
     )
     return __STORAGE_MANAGER_IMPL.query(
-        context, table_name, indexed_condition_map, select_type, index_name,
-        limit, exclusive_start_key, consistent, order_type
+        tenant, table_name, indexed_condition_map, select_type,
+        index_name, limit, exclusive_start_key, consistent, order_type
     )
 
 
-def get_item(context, table_name, key_attribute_map=None,
+def get_item(tenant, table_name, key_attribute_map=None,
              select_type=None, consistent=True):
     """
-    :param context: current request context
+    :param tenant: tenant for table for getting item from
     :param table_name: String, name of table to get item from
     :param key_attribute_map: key attribute name to
                 AttributeValue mapping. It defines row to get
@@ -406,15 +423,15 @@ def get_item(context, table_name, key_attribute_map=None,
     :raises: BackendInteractionException
     """
     return __STORAGE_MANAGER_IMPL.get_item(
-        context, table_name, key_attribute_map, select_type, consistent
+        tenant, table_name, key_attribute_map, select_type, consistent
     )
 
 
-def scan(context, table_name, condition_map, attributes_to_get=None,
+def scan(tenant, table_name, condition_map, attributes_to_get=None,
          limit=None, exclusive_start_key=None,
          consistent=False):
     """
-    :param context: current request context
+    :param tenant: tenant for table for scanning items from
     :param table_name: String, name of table to get item from
     :param condition_map: attribute name to
                 IndexedCondition instance mapping. It defines rows
@@ -431,13 +448,13 @@ def scan(context, table_name, condition_map, attributes_to_get=None,
 
     :raises: BackendInteractionException
     """
-    context.request_args = dict(
-        table_name=table_name, condition_map=condition_map,
+    req_context.get_current().request_args = dict(
+        tenant=tenant, table_name=table_name, condition_map=condition_map,
         attributes_to_get=attributes_to_get, limit=limit,
         exclusive_start_key=exclusive_start_key, consistent=consistent,
     )
     return __STORAGE_MANAGER_IMPL.scan(
-        context, table_name, condition_map, attributes_to_get, limit,
+        tenant, table_name, condition_map, attributes_to_get, limit,
         exclusive_start_key, consistent=False
     )
 
@@ -451,9 +468,8 @@ def health_check():
     return __STORAGE_MANAGER_IMPL.health_check()
 
 
-def get_table_statistics(context, table_name, keys):
+def get_table_statistics(tenant, table_name, keys):
     """
-    :param context: current request context
     :param table_name: String, name of table to get item count from
     :param keys: list of metrics
 
@@ -461,16 +477,16 @@ def get_table_statistics(context, table_name, keys):
 
     :raises: BackendInteractionException
     """
-    return __STORAGE_MANAGER_IMPL.get_table_statistics(context,
-                                                       table_name,
-                                                       keys)
+    return __STORAGE_MANAGER_IMPL.get_table_statistics(
+        tenant, table_name, keys
+    )
 
 
-def create_backup(context, table_name, backup_name, strategy):
+def create_backup(tenant, table_name, backup_name, strategy):
     """
     Create backup
 
-    :param context: current request context
+    :param tenant: tenant for table
     :param table_name: String, name of the table to backup
     :param backup_name: String, name of the backup to create
     :param strategy: Dict, strategy used for the backup
@@ -481,30 +497,30 @@ def create_backup(context, table_name, backup_name, strategy):
     """
 
     return __BACKUP_MANAGER_IMPL.create_backup(
-        context, table_name, backup_name, strategy)
+        tenant, table_name, backup_name, strategy)
 
 
-def describe_backup(context, table_name, backup_id):
+def describe_backup(tenant, table_name, backup_id):
     return __BACKUP_MANAGER_IMPL.describe_backup(
-        context, table_name, backup_id)
+        tenant, table_name, backup_id)
 
 
-def delete_backup(context, table_name, backup_id):
+def delete_backup(tenant, table_name, backup_id):
     return __BACKUP_MANAGER_IMPL.delete_backup(
-        context, table_name, backup_id)
+        table_name, backup_id)
 
 
-def list_backups(context, table_name,
+def list_backups(tenant, table_name,
                  exclusive_start_backup_id, limit):
     return __BACKUP_MANAGER_IMPL.list_backups(
-        context, table_name, exclusive_start_backup_id, limit)
+        tenant, table_name, exclusive_start_backup_id, limit)
 
 
-def create_restore_job(context, table_name, backup_id, source):
+def create_restore_job(tenant, table_name, backup_id, source):
     """
     Create restore job
 
-    :param context: current request context
+    :param tenant: tenant for table
     :param table_name: String, name of the table to restore
     :param backup_id: String, id of the backup to restore from
     :param source: String, source of the backup to restore from
@@ -515,16 +531,16 @@ def create_restore_job(context, table_name, backup_id, source):
     """
 
     return __RESTORE_MANAGER_IMPL.create_restore_job(
-        context, table_name, backup_id, source)
+        tenant, table_name, backup_id, source)
 
 
-def describe_restore_job(context, table_name, restore_job_id):
+def describe_restore_job(tenant, table_name, restore_job_id):
     return __RESTORE_MANAGER_IMPL.describe_restore_job(
-        context, table_name, restore_job_id)
+        tenant, table_name, restore_job_id)
 
 
-def list_restore_jobs(context, table_name,
+def list_restore_jobs(tenant, table_name,
                       exclusive_start_restore_job_id, limit):
 
     return __RESTORE_MANAGER_IMPL.list_restore_jobs(
-        context, table_name, exclusive_start_restore_job_id, limit)
+        tenant, table_name, exclusive_start_restore_job_id, limit)
