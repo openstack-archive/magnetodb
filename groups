@@ -1,4 +1,6 @@
-global:Registered-Users	Registered Users
+# UUID                                  	Group Name
+#
+14519f8eac7a6c4c34d48b271667c091c7cccb7f	magnetodb-core
 754a548a017b2a53b4de43d8ab2d369dc3cb5465	magnetodb-milestone
 adaef4ae84aedc4f8afaadaf043d24e80edb8797	magnetodb-release
-14519f8eac7a6c4c34d48b271667c091c7cccb7f	magnetodb-core
+global:Registered-Users                 	Registered Users
