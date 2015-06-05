@@ -84,7 +84,7 @@ class MagnetoDBQueriesTestCase(MagnetoDBTestCase):
         self._create_test_table(self.smoke_attrs, tname, self.smoke_schema,
                                 wait_for_active=True)
         self.put_smoke_item(tname, 'forum1', 'subject2',
-                            'message text', 'John', '10')
+                             'message text', 'John', '10')
 
         key_conditions = {
             'forum': {
