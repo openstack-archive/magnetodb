@@ -1,0 +1,18 @@
+{
+    "key": {
+        "ForumName": {
+            "S": "MagnetoDB"
+        },
+        "Subject": {
+            "S": "How do I delete an item?"
+        }
+    },
+    "attribute_updates": {
+        "ViewsCount": {
+            "action": "ADD",
+          "value": {
+            "N": "1"
+          }
+        }
+    }
+}
