@@ -1,0 +1,31 @@
+{
+    "table_name": "Thread",
+    "attribute_definitions": [
+        {
+            "attribute_name": "ForumName",
+            "attribute_type": "S"
+        },
+        {
+            "attribute_name": "Subject",
+            "attribute_type": "S"
+        },
+        {
+            "attribute_name": "Tags",
+            "attribute_type": "SS"
+        },
+        {
+            "attribute_name": "ViewsCount",
+            "attribute_type": "N"
+        }
+    ],
+    "key_schema": [
+        {
+            "attribute_name": "ForumName",
+            "key_type": "HASH"
+        },
+        {
+            "attribute_name": "Subject",
+            "key_type": "RANGE"
+        }
+    ]
+}

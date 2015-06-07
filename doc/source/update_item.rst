@@ -116,3 +116,50 @@ Sample Response
 
 .. literalinclude:: ../api/openstack/samples/update_item_sample_response.json
     :language: javascript
+
+
+-----------------------------
+Atomic Counters with Examples 
+-----------------------------
+
+      | Atomic counters garentee the updateitem operation to increment or decrement the value of an existing attribute will not interfer with other write requests.
+      | If action is "ADD" then MagnetoDB guarantees that operation will be performed atomically. Sets and numbers are only valid types for ADD action.
+      | Only if attribute type is number then this attribute can be used as atomic counter.
+
+Atomic Counter Create Table
+'''''''''''''''''''''''''''
+
+      | 1. Create table for forum threads. We have 4 attributes: name, subject, tags and views count (we want to use it like atomic counter)
+
+
+.. literalinclude:: ../api/openstack/samples/atomic_counter_create_table.json
+    :language: javascript
+
+Atomic Put
+''''''''''
+
+      | 2. Put new item into Thread table.
+
+.. literalinclude:: ../api/openstack/samples/atomic_counter_put.json
+    :language: javascript
+
+Atomic View Count
+'''''''''''''''''
+
+      | If we try to query an item now we'll see that ViewsCount = 0 and Tags = ["Update", "Multiple Items"].
+      | 3. Use update_item to update Tags
+
+
+.. literalinclude:: ../api/openstack/samples/atomic_counter_view_count.json
+    :language: javascript
+
+Atomic Update
+'''''''''''''
+
+      | If we try to query an item now we'll see that ViewsCount = 0 and Tags = ["Update", "Multiple Items", "HelpMe"]
+      | With Atomic counters different users looking the thread and we need to update ViewsCount
+      | Any time when different users try to query our item, they shell see same value of ViewsCount. After our request ViewsCount should be 1.
+      | Different users can update this value simultaneously.
+
+.. literalinclude:: ../api/openstack/samples/atomic_counter_update.json  
+    :language: javascript
