@@ -17,7 +17,7 @@ import functools
 import time
 import threading
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from magnetodb.openstack.common import log as logging
 
