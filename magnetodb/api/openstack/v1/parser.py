@@ -765,7 +765,7 @@ class Parser():
             Props.BACKUP_NAME: backup.name,
             Props.TABLE_NAME: backup.table_name,
             Props.STATUS: backup.status,
-            Props.STRATEGY: backup.strategy,
+            Props.STRATEGY: dict(backup.strategy),
             Props.START_DATE_TIME: backup.start_date_time,
             Props.LOCATION: backup.location
         }

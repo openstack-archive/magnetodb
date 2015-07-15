@@ -971,22 +971,6 @@ class MagnetoDBPutItemTest(MagnetoDBTestCase):
         self.assertIn("u'type': u'ConditionalCheckFailedException'",
                       exception_str)
 
-    @attr(type=['PI-123', 'negative'])
-    def test_put_item_resource_not_found_exception(self):
-        item = {
-            "message": {"S": 'message_text'},
-            "author": {"S": "Bob"}
-        }
-        with self.assertRaises(exceptions.NotFound) as raises_cm:
-            self.client.put_item("nonexistent_table", item)
-
-        exception_str = str(raises_cm.exception)
-        self.assertIn('"title":"Not Found"', exception_str)
-        self.assertIn('"explanation":"The resource could not be found."',
-                      exception_str)
-        self.assertIn('"message":"Table \'nonexistent_table\' does not exist"',
-                      exception_str)
-
     @attr(type=['PI-undef', 'negative'])
     def test_put_item_if_not_exists_negative(self):
         self.table_name = rand_name(self.table_prefix).replace('-', '')
