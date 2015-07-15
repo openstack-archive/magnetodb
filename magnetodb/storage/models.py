@@ -899,7 +899,7 @@ class BackupMeta(ModelBase):
             start_date_time=start_date_time,
             finish_date_time=finish_date_time,
             location=location,
-            strategy=strategy
+            strategy=dict(strategy)
         )
 
 
