@@ -16,10 +16,7 @@
 
 # Install magnetodb devstack integration
 DEST_DIR=/opt/stack/new
-MAGNETODB_BASE=$DEST_DIR/magnetodb/contrib/devstack
-DEVSTACK_BASE=$DEST_DIR/devstack
 DEVSTACK_GATE=$DEST_DIR/devstack-gate
 
-cp $MAGNETODB_BASE/lib/* $DEVSTACK_BASE/lib
-cp $MAGNETODB_BASE/extras.d/* $DEVSTACK_BASE/extras.d
+export DEVSTACK_LOCAL_CONFIG="enable_plugin magnetodb https://github.com/stackforge/magnetodb"
 sed -e 's/ERROR_ON_CLONE=True/ERROR_ON_CLONE=False/' -i $DEVSTACK_GATE/devstack-vm-gate.sh
