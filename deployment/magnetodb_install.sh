@@ -21,7 +21,7 @@ CassandraClusterAmountNodes="3"
 KEYSPACE_TenantName="default_tenant"
 KEYSPACE_ReplicationFactor="3"
 CCMURL="https://github.com/pcmanus/ccm"
-MagnetodbURL="https://github.com/stackforge/magnetodb.git"
+MagnetodbURL="https://git.openstack.org/stackforge/magnetodb.git"
 UserName=stack
 UserGroup=stack
 
