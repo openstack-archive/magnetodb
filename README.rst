@@ -8,7 +8,7 @@ Wiki - https://wiki.openstack.org/wiki/MagnetoDB
 
 IRC - #magnetodb at FreeNode
 
-Source code - https://github.com/stackforge/magnetodb
+Source code - https://git.openstack.org/stackforge/magnetodb
 
 Documentation - http://magnetodb.readthedocs.org/en/latest/
 

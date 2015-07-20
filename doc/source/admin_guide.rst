@@ -141,7 +141,7 @@ Installing MagnetoDB::
     sudo mkdir -p /opt/magnetodb
     sudo chown -R magneto:magneto /opt/magnetodb
 
-    git clone https://github.com/stackforge/magnetodb.git /opt/magnetodb
+    git clone https://git.openstack.org/stackforge/magnetodb.git /opt/magnetodb
     cd /opt/magnetodb
     sudo pip2.7 install -r requirements.txt -r test-requirements.txt
 

@@ -43,7 +43,7 @@ Getting the code
 
 Grab the code from GitHub::
 
-$ git clone https://github.com/stackforge/magnetodb.git
+$ git clone https://git.openstack.org/stackforge/magnetodb.git
 $ cd magnetodb
 
 

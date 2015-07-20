@@ -2,18 +2,15 @@ This directory contains the files necessary to integrate Magnetodb with devstack
 
 To install::
 
-    $ DEVSTACK_DIR=.../path/to/devstack
-    $ cp lib/magnetodb ${DEVSTACK_DIR}/lib
-    $ cp extras.d/90-magnetodb.sh ${DEVSTACK_DIR}/extras.d
-
-To configure devstack to run Magnetodb::
-
-    $ cd ${DEVSTACK_DIR}
-    $ echo "enable_service magnetodb" >> local.conf
+    $ echo "enable_plugin magnetodb https://git.openstack.org/stackforge/magnetodb" >> local.conf
 
 To have an ability to run functional tests::
 
     $ echo "enable_service tempest" >> local.conf
+
+To install magnetodb and keystone only in addition to first step::
+
+    $ echo "ENABLED_SERVICES=key,mysql,rabbit" >> local.conf
 
 Also for disabling Cassandra backend and install only Magnetodb::
 
