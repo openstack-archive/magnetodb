@@ -1,9 +1,0 @@
-{
-    "item": {
-      "ForumName": {"S": "MagnetoDB"},
-      "Subject": {"S": "How do I delete an item?"},
-      "LastPostedBy": {"S": "user1@test.com"},
-      "Tags": {"SS": ["Update", "Multiple Items"]},
-      "ViewsCount": {"N": "0"}
-    }
-}

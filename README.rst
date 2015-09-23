@@ -1,15 +1,6 @@
-MagnetoDB
-=========
-**MagnetoDB** - key-value store for OpenStack
+This project is no longer maintained.
 
-Links
-------------------
-Wiki - https://wiki.openstack.org/wiki/MagnetoDB
-
-IRC - #magnetodb at FreeNode
-
-Source code - https://git.openstack.org/stackforge/magnetodb
-
-Documentation - http://magnetodb.readthedocs.org/en/latest/
-
-Specs - http://magnetodb-specs.readthedocs.org/en/latest/
+The contents of this repository are still available in the Git
+source code management system.  To see the contents of this
+repository before it reached its end of life, please check out the
+previous commit with "git checkout HEAD^1".

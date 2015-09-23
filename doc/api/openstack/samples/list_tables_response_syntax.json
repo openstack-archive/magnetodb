@@ -1,9 +1,0 @@
-{
-    "last_evaluated_table_name": "string",
-    "tables": [
-        {
-            "rel": "string",
-            "href": "url"
-        }
-    ]
-}
